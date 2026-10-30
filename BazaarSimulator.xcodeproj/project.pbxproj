@@ -18,6 +18,11 @@
 			path = BazaarSimulator;
 			sourceTree = "<group>";
 		};
+		42C7C2403094B43900513D5B /* docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = docs;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -36,6 +41,7 @@
 				42C7C2A03094562600513D5B /* .swiftlint.yml */,
 				42C7C2193094562600513D5B /* BazaarSimulator */,
 				42C7C2183094562600513D5B /* Products */,
+				42C7C2403094B43900513D5B /* docs */,
 			);
 			sourceTree = "<group>";
 		};
@@ -62,6 +68,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				42C7C2193094562600513D5B /* BazaarSimulator */,
+				42C7C2403094B43900513D5B /* docs */,
 			);
 			name = BazaarSimulator;
 			productName = BazaarSimulator;
