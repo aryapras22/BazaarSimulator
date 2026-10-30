@@ -12,9 +12,57 @@
 		42C7C2A13094562600513D5B /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		42C7C2A23094562600513D5B /* Exceptions for "BazaarSimulator" folder in "BazaarSimulator" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/Navigation/.gitkeep,
+				Core/Analysis/.gitkeep,
+				Core/DesignSystem/Components/.gitkeep,
+				Core/DesignSystem/Modifiers/.gitkeep,
+				Core/DesignSystem/Styles/.gitkeep,
+				Core/DesignSystem/Tokens/.gitkeep,
+				Core/Domain/.gitkeep,
+				Core/Persistence/.gitkeep,
+				Core/Repositories/.gitkeep,
+				Core/Resources/.gitkeep,
+				Core/Resources/MockData/.gitkeep,
+				Core/Services/FloorPlanReading/.gitkeep,
+				Core/Session/.gitkeep,
+				Core/Simulation/.gitkeep,
+				Features/Analysis/View/.gitkeep,
+				Features/Analysis/ViewComponents/.gitkeep,
+				Features/Analysis/ViewModel/.gitkeep,
+				Features/LayoutEditor/View/.gitkeep,
+				Features/LayoutEditor/ViewComponents/.gitkeep,
+				Features/LayoutEditor/ViewModel/.gitkeep,
+				Features/Parameters/View/.gitkeep,
+				Features/Parameters/ViewComponents/.gitkeep,
+				Features/Parameters/ViewModel/.gitkeep,
+				Features/ProjectLibrary/View/.gitkeep,
+				Features/ProjectLibrary/ViewComponents/.gitkeep,
+				Features/ProjectLibrary/ViewModel/.gitkeep,
+				Features/ProjectOverview/View/.gitkeep,
+				Features/ProjectOverview/ViewComponents/.gitkeep,
+				Features/ProjectOverview/ViewModel/.gitkeep,
+				Features/ProjectSetup/View/.gitkeep,
+				Features/ProjectSetup/ViewComponents/.gitkeep,
+				Features/ProjectSetup/ViewModel/.gitkeep,
+				Features/Simulation/Scene/.gitkeep,
+				Features/Simulation/View/.gitkeep,
+				Features/Simulation/ViewComponents/.gitkeep,
+				Features/Simulation/ViewModel/.gitkeep,
+			);
+			target = 42C7C2163094562600513D5B /* BazaarSimulator */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		42C7C2193094562600513D5B /* BazaarSimulator */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				42C7C2A23094562600513D5B /* Exceptions for "BazaarSimulator" folder in "BazaarSimulator" target */,
+			);
 			path = BazaarSimulator;
 			sourceTree = "<group>";
 		};
