@@ -1,32 +1,50 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var booths: [Booth] = []
+    private static let layoutFiles = ["annyeong-market-layout", "beyond-market-layout"]
+
+    @State private var selectedFile = ContentView.layoutFiles[0]
+    @State private var layout: BazaarLayout?
     @State private var loadError: String?
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading) {
+            Picker("Layout", selection: $selectedFile) {
+                ForEach(Self.layoutFiles, id: \.self) { Text($0).tag($0) }
+            }
             if let loadError {
                 Text(loadError)
-            } else {
-                List(booths) { booth in
+            } else if let layout {
+                summary(of: layout)
+                List(layout.booths) { booth in
                     HStack {
                         Text(booth.id).monospaced()
-                        Text(booth.name)
+                        Text(booth.type).foregroundStyle(.secondary)
                         Spacer()
-                        Text(booth.category).foregroundStyle(.secondary)
+                        Text("\(booth.w, specifier: "%.1f") x \(booth.h, specifier: "%.1f") m")
                     }
                 }
             }
         }
-        .task { loadBooths() }
+        .padding()
+        .task(id: selectedFile) { loadLayout() }
     }
 
-    private func loadBooths() {
+    private func summary(of layout: BazaarLayout) -> some View {
+        VStack(alignment: .leading) {
+            Text(layout.meta.name).font(.headline)
+            Text(layout.meta.sheet).foregroundStyle(.secondary)
+            Text("\(layout.meta.world.w, specifier: "%.1f") x \(layout.meta.world.h, specifier: "%.1f") m")
+            Text("\(layout.booths.count) booths, \(layout.tables.count) tables, \(layout.doors.count) doors")
+        }
+    }
+
+    private func loadLayout() {
         do {
-            booths = try MockDataStore.load([Booth].self, from: "booths")
+            layout = try MockDataStore.load(BazaarLayout.self, from: selectedFile)
+            loadError = nil
         } catch {
-            loadError = "Could not load booths: \(error)"
+            loadError = "Could not load \(selectedFile): \(error)"
         }
     }
 }
