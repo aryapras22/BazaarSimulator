@@ -354,7 +354,7 @@ Analysis and Simulation do not share an engine. Each run has its own instance fr
 ## Feature flows
 ### Project setup
 
-```haskell
+```mermaid
 sequenceDiagram
     autonumber
     actor User
@@ -382,7 +382,7 @@ The user can press Cancel at any point, which stops the queue. After Continue to
 
 ### Compare layouts
 
-```haskell
+```mermaid
 sequenceDiagram
     autonumber
     actor User
