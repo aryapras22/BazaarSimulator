@@ -1,6 +1,4 @@
 # Developer Agreement
-
-# Developer Agreement
 > This document defines the team's agreed workflows for branching, pull requests, naming conventions, commit messages and code quality. Every contributor follows these rules to keep the codebase clean and collaborative. The technical rules (layers, file and function limits, tests, reusable components) are explained in `Architecture.md`. This page says which of them block a merge.
 
 ## Branching strategy
