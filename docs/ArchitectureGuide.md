@@ -43,7 +43,7 @@ Out of scope: vehicles, parking, road transport. Export is optional for now.
 * * *
 ## Architecture: feature-sliced MVVM + simulation core
 
-```sql
+```mermaid
 graph TD
     subgraph "Presentation (per feature)"
         View["View (SwiftUI)"]
