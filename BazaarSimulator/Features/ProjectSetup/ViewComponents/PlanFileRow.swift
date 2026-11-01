@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlanFileRow: View {
     let display: PlanRowDisplay
-    var onEdit: (() -> Void)? = nil
+    var onEdit: (() -> Void)?
     let onDelete: () -> Void
     var onRetry: (() -> Void)?
 
