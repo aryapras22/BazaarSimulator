@@ -23,7 +23,7 @@ Project setup ships as two pull requests, split along the layer rules.
 | PR | Branch | Contents |
 | ---| ---| --- |
 | 1. UI | `feature/project-setup-ui` | Design system, app shell, project library sidebar, project setup screen, view models, `ProjectSession`, the import protocol and a scripted fake |
-| 2. Backend | `feature/legend-and-layout-upload` (rename to `feature/project-setup-reading` if preferred) | `PDFImportService`, the real `ImportQueue`, reader backends, the mapper from reader output to metres, SwiftData and `ProjectRepository` |
+| 2. Backend | `feature/project-setup-reading` | `PDFImportService`, the real `ImportQueue`, reader backends, the mapper from reader output to metres, SwiftData and `ProjectRepository` |
 
 Both branches start from `dev`. The UI PR merges first. The backend PR then rebases on `dev` and conforms the real queue to the protocol from the UI PR, so it changes no view code (layer rule 2: view models use services through protocols).
 
