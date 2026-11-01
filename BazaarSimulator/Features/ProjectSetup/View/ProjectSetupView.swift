@@ -3,8 +3,8 @@ import UniformTypeIdentifiers
 
 struct ProjectSetupView: View {
     @Bindable var viewModel: ProjectSetupViewModel
-    @State private var isLegendImporterPresented: Bool = false
-    @State private var isFloorPlanImporterPresented: Bool = false
+    @State private var importTarget: ImportFileKind?
+    @State private var lastImportTarget: ImportFileKind?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -26,20 +26,21 @@ struct ProjectSetupView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Palette.background)
         .fileImporter(
-            isPresented: $isLegendImporterPresented,
+            isPresented: Binding(
+                get: { importTarget != nil },
+                set: { if !$0 { importTarget = nil } }
+            ),
             allowedContentTypes: [.pdf],
             allowsMultipleSelection: true
         ) { result in
-            if case .success(let urls) = result {
+            let target = importTarget ?? lastImportTarget
+            importTarget = nil
+            lastImportTarget = nil
+            guard case .success(let urls) = result, let target else { return }
+            switch target {
+            case .legend:
                 viewModel.addLegendFiles(urls: urls)
-            }
-        }
-        .fileImporter(
-            isPresented: $isFloorPlanImporterPresented,
-            allowedContentTypes: [.pdf],
-            allowsMultipleSelection: true
-        ) { result in
-            if case .success(let urls) = result {
+            case .floorPlan:
                 viewModel.addFloorPlanFiles(urls: urls)
             }
         }
@@ -96,7 +97,10 @@ struct ProjectSetupView: View {
 
             DropZone(
                 hint: "PDF · one legend for all the layouts",
-                onChoose: { isLegendImporterPresented = true },
+                onChoose: {
+                    lastImportTarget = .legend
+                    importTarget = .legend
+                },
                 onDrop: viewModel.addLegendFiles
             )
 
@@ -154,7 +158,10 @@ struct ProjectSetupView: View {
 
             DropZone(
                 hint: "PDF · one file per layout · up to 6",
-                onChoose: { isFloorPlanImporterPresented = true },
+                onChoose: {
+                    lastImportTarget = .floorPlan
+                    importTarget = .floorPlan
+                },
                 onDrop: viewModel.addFloorPlanFiles
             )
             .disabled(!viewModel.isFloorPlanZoneEnabled)
