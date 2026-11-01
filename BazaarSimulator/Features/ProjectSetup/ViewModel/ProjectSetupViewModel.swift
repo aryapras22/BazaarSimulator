@@ -143,13 +143,20 @@ final class ProjectSetupViewModel {
 
         guard validatePDFs(urls: urls) else { return }
 
-        if floorPlanFiles.count + urls.count > 6 {
+        let capacity = max(0, 6 - floorPlanFiles.count)
+        guard capacity > 0 else {
             bannerMessage = "At most 6 floor plans allowed"
             return
         }
 
-        bannerMessage = nil
-        importQueue.add(urls: urls, kind: .floorPlan, projectID: projectID)
+        let acceptedURLs = Array(urls.prefix(capacity))
+        if acceptedURLs.count < urls.count {
+            bannerMessage = "At most 6 floor plans allowed"
+        } else {
+            bannerMessage = nil
+        }
+
+        importQueue.add(urls: acceptedURLs, kind: .floorPlan, projectID: projectID)
     }
 
     func removeLegendEntry(id: UUID) {

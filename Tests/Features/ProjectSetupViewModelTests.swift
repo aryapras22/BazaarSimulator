@@ -56,6 +56,32 @@ struct ProjectSetupViewModelTests {
         #expect(viewModel.statusText.contains("At most 6"))
     }
 
+    @Test("addFloorPlanFiles accepts files up to 6 and drops the rest with a message")
+    @MainActor
+    func addFloorPlanFilesAcceptsUpToCap() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+
+        let fourPlans = (1...4).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
+        viewModel.addFloorPlanFiles(urls: fourPlans)
+        #expect(viewModel.floorPlanFiles.count == 4)
+
+        let threeMorePlans = (5...7).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
+        viewModel.addFloorPlanFiles(urls: threeMorePlans)
+
+        #expect(viewModel.floorPlanFiles.count == 6)
+        #expect(viewModel.statusText.contains("At most 6"))
+    }
+
     @Test("Non-PDF files are refused with a message")
     @MainActor
     func nonPDFFilesRefusedWithMessage() {
