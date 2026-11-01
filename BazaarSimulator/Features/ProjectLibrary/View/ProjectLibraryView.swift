@@ -29,7 +29,7 @@ struct ProjectLibraryView: View {
         }
         .padding(Spacing.m)
         .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.sidebarBase.opacity(0.85))
+        .sidebarBackground()
     }
 
     private var headerView: some View {
