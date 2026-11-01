@@ -220,26 +220,81 @@ VStack(alignment: .leading)
 * * *
 ## The seam between UI and backend
 
-The setup view model talks to the import pipeline through one protocol in `Core/Services/FloorPlanReading/`, named `ImportQueueing` or similar.
+### ProjectSessionProtocol
+```swift
+@MainActor
+protocol ProjectSessionProtocol: AnyObject {
+    var projects: [ProjectSummary] { get }
+    var activeProjectID: UUID? { get }
+    var activeProject: ProjectSummary? { get }
+
+    @discardableResult
+    func createProject(named name: String) -> ProjectSummary
+    func selectProject(id: UUID)
+    func renameProject(id: UUID, to name: String)
+
+    func draft(for projectID: UUID) -> ProjectDraft?
+    func setDraft(_ draft: ProjectDraft, for projectID: UUID)
+}
+```
+
+### AppRouter
+```swift
+enum AppDestination: Equatable, Sendable {
+    case empty
+    case setup(projectID: UUID)
+    case review(projectID: UUID)
+}
+
+@Observable
+@MainActor
+final class AppRouter {
+    var destination: AppDestination
+    func showEmpty()
+    func showSetup(projectID: UUID)
+    func showReview(projectID: UUID)
+}
+```
+
+### ImportQueueing
+The setup view model talks to the import pipeline through one protocol in `Core/Services/FloorPlanReading/`, named `ImportQueueing`.
+
+```swift
+@MainActor
+protocol ImportQueueing: AnyObject {
+    var files: [ImportFile] { get }
+    func files(for projectID: UUID) -> [ImportFile]
+    func legend(for projectID: UUID) -> Legend?
+    func extractedLayout(for fileID: UUID) -> ExtractedLayout?
+
+    func add(urls: [URL], kind: ImportFileKind, projectID: UUID)
+    func remove(fileID: UUID)
+    func retry(fileID: UUID)
+    func cancel(projectID: UUID)
+    func removeAll(projectID: UUID)
+}
+```
 
 | The view model needs | Shape |
 | ---| --- |
-| Add files of a kind | `add(urls, kind)` |
-| Remove a file | `remove(id)` |
-| Cancel the run | `cancel()` |
-| Files and their states | observable list of `ImportFile` |
-| Results | the legend, and the extracted layout per file |
+| Add files of a kind | `add(urls, kind, projectID)` |
+| Remove a file | `remove(fileID)` |
+| Retry a file | `retry(fileID)` |
+| Cancel the run | `cancel(projectID)` |
+| Files and their states | observable list of `ImportFile`, filtered with `files(for: projectID)` |
+| Results | `legend(for: projectID)`, and `extractedLayout(for: fileID)` |
 | Row details | file size and an optional thumbnail per file |
 
 Domain types added in the UI PR (`Core/Domain/`, plain `Sendable` structs):
 *   `ImportFileKind`: legend or floor plan
 *   `ImportFileState`: waiting, reading (with optional progress), done (with result counts), failed (with message), cancelled
-*   `ImportFile`: id, URL, kind, state, file size, optional thumbnail data
+*   `ImportFile`: projectID, id, URL, kind, state, file size, optional thumbnail data
+*   `ProjectSummary`: id, name
 *   `Legend` and `LegendEntry`: name and RGB color
 *   `ExtractedLayout`: name, size in metres, booths, doors
 *   `ProjectDraft`: name, legend, layouts
 
-The UI PR ships `ScriptedImportQueue`, a fake that conforms to the protocol. It moves each file through waiting, reading with rising progress, and done after a short delay, returning counts from the bundled mock layouts. It can be told to fail a named file, so the failed row can be checked by hand. It lives in `BazaarSimulator/PreviewSupport/` so `AppServices` can use it in every build until the backend PR, which then moves it to `Tests/Support/`. `AppServices` uses it until the backend PR swaps in the real queue.
+The UI PR ships `ScriptedImportQueue`, a fake that conforms to `ImportQueueing`. It moves each file through waiting, reading with rising progress, and done after a short delay, returning counts from the bundled mock layouts. It can be told to fail a named file, so the failed row can be checked by hand. It lives in `BazaarSimulator/PreviewSupport/` for now, not `Tests/Support/`, because SPM cannot depend on a test target across schemes. `AppServices` uses it until the backend PR swaps in the real queue. Extracted layouts are produced for done floor plans and required by `continueToReview`; no hardcoded layout fallback is invented if a layout is missing.
 * * *
 ## Files
 
@@ -249,13 +304,16 @@ App/
   AppServices.swift                 holds the shared import queue
   Navigation/
     AppRouter.swift                 empty / setup / review placeholder
+    ProjectScreenFactory.swift      builds and caches setup view models per project
     RootView.swift                  NavigationSplitView and background
     EmptyWorkspaceView.swift
+PreviewSupport/
+  ScriptedImportQueue.swift
 Core/
   Domain/                           types listed in the seam section
   DesignSystem/
     Tokens/       Palette, Spacing, Radius, Typography
-    Modifiers/    Card, SectionLabel, AppBackground
+    Modifiers/    Card, SectionLabel, AppBackground, SidebarBackground
     Styles/       PrimaryButtonStyle, SecondaryButtonStyle
     Components/   ProgressBar
   Session/
@@ -273,8 +331,7 @@ Features/
     ViewComponents/DropZone.swift, LegendEntryRow.swift, PlanFileRow.swift,
                    PlanRowStatusView.swift, RemovePillButtonStyle.swift
 Tests/
-  Support/ScriptedImportQueue.swift
-  Core/AppRouterTests.swift
+  Core/AppRouterTests.swift, ProjectSessionTests.swift, ProjectScreenFactoryTests.swift
   Features/ProjectSetupViewModelTests.swift, ImportRowFormatterTests.swift,
            ProjectLibraryViewModelTests.swift
 ```
