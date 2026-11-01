@@ -53,7 +53,7 @@ struct ProjectSetupViewModelTests {
         viewModel.addFloorPlanFiles(urls: [seventhPlan])
 
         #expect(viewModel.floorPlanFiles.count == 6)
-        #expect(viewModel.statusText.contains("At most 6"))
+        #expect(viewModel.statusText == "Only 6 floor plans allowed")
     }
 
     @Test("addFloorPlanFiles accepts files up to 6 and drops the rest with a message")
@@ -79,7 +79,7 @@ struct ProjectSetupViewModelTests {
         viewModel.addFloorPlanFiles(urls: threeMorePlans)
 
         #expect(viewModel.floorPlanFiles.count == 6)
-        #expect(viewModel.statusText.contains("At most 6"))
+        #expect(viewModel.statusText == "Only 6 floor plans allowed. Added 2 of 3.")
     }
 
     @Test("Non-PDF files are refused with a message")

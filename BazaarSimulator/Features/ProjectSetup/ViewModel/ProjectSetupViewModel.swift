@@ -4,6 +4,8 @@ import Observation
 @Observable
 @MainActor
 final class ProjectSetupViewModel {
+    private static let maxFloorPlans = 6
+
     let projectID: UUID
     private let session: any ProjectSessionProtocol
     private let importQueue: any ImportQueueing
@@ -62,7 +64,7 @@ final class ProjectSetupViewModel {
     }
 
     var isFloorPlanZoneEnabled: Bool {
-        hasLegend && floorPlanFiles.count < 6
+        hasLegend && floorPlanFiles.count < Self.maxFloorPlans
     }
 
     var hasPendingFiles: Bool {
@@ -146,15 +148,16 @@ final class ProjectSetupViewModel {
 
         guard validatePDFs(urls: urls) else { return }
 
-        let capacity = max(0, 6 - floorPlanFiles.count)
+        let capacity = max(0, Self.maxFloorPlans - floorPlanFiles.count)
         guard capacity > 0 else {
-            bannerMessage = "At most 6 floor plans allowed"
+            bannerMessage = "Only \(Self.maxFloorPlans) floor plans allowed"
             return
         }
 
         let acceptedURLs = Array(urls.prefix(capacity))
         if acceptedURLs.count < urls.count {
-            bannerMessage = "At most 6 floor plans allowed"
+            bannerMessage = "Only \(Self.maxFloorPlans) floor plans allowed. " +
+                "Added \(acceptedURLs.count) of \(urls.count)."
         } else {
             bannerMessage = nil
         }
