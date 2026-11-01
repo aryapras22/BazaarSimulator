@@ -5,7 +5,6 @@ struct SectionLabel: ViewModifier {
         content
             .font(Typography.sectionLabel)
             .tracking(0.5)
-            .textCase(.uppercase)
             .foregroundColor(Palette.textSecondary)
     }
 }
