@@ -191,4 +191,81 @@ extension ProjectSetupViewModelTests {
         #expect(viewModel.bannerMessage == "Some floor plans could not be read")
         #expect(session.draft(for: project.id) == nil)
     }
+
+    @Test("Removed entries stay removed after a second legend")
+    @MainActor
+    func removedEntriesStayRemovedAfterSecondLegend() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        guard let removedID = viewModel.legendEntries.first?.id else {
+            Issue.record("Expected legend entries")
+            return
+        }
+        viewModel.removeLegendEntry(id: removedID)
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend2.pdf")])
+
+        #expect(viewModel.legendEntries.count == 5)
+        #expect(!viewModel.legendEntries.contains(where: { $0.id == removedID }))
+    }
+
+    @Test("Removing the only legend file clears the legend")
+    @MainActor
+    func removingOnlyLegendFileClearsLegend() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        #expect(viewModel.hasLegend)
+
+        queue.remove(fileID: queue.files[0].id)
+
+        #expect(!viewModel.hasLegend)
+        #expect(viewModel.legendEntries.isEmpty)
+    }
+
+    @Test("Retrying a failed legend replaces its result")
+    @MainActor
+    func retryingFailedLegendReplacesResult() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        queue.failFile(named: "legend.pdf")
+
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        #expect(viewModel.legendEntries.isEmpty)
+        guard let failedFileID = viewModel.pendingLegendRows.first?.id else {
+            Issue.record("Expected pending legend row")
+            return
+        }
+
+        queue.failingFileNames.removeAll()
+        viewModel.retryLegendFile(id: failedFileID)
+
+        #expect(viewModel.legendEntries.count == 3)
+        #expect(viewModel.pendingLegendRows.isEmpty)
+    }
 }

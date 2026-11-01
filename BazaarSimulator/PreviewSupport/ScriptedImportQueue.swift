@@ -7,7 +7,7 @@ import Observation
 @MainActor
 final class ScriptedImportQueue: ImportQueueing {
     private(set) var files: [ImportFile] = []
-    private var legendsByProject: [UUID: Legend] = [:]
+    private var legendsByFile: [UUID: Legend] = [:]
     private var extractedLayouts: [UUID: ExtractedLayout] = [:]
 
     var failingFileNames: Set<String> = []
@@ -24,7 +24,12 @@ final class ScriptedImportQueue: ImportQueueing {
     }
 
     func legend(for projectID: UUID) -> Legend? {
-        legendsByProject[projectID]
+        // Deduplicating categories by name across legend files is a backend decision.
+        let entries = files(for: projectID)
+            .filter { $0.kind == .legend }
+            .compactMap { legendsByFile[$0.id] }
+            .flatMap(\.entries)
+        return entries.isEmpty ? nil : Legend(entries: entries)
     }
 
     func extractedLayout(for fileID: UUID) -> ExtractedLayout? {
@@ -59,6 +64,7 @@ final class ScriptedImportQueue: ImportQueueing {
         activeTasks[fileID]?.cancel()
         activeTasks.removeValue(forKey: fileID)
         files.removeAll { $0.id == fileID }
+        legendsByFile.removeValue(forKey: fileID)
         extractedLayouts.removeValue(forKey: fileID)
     }
 
@@ -77,6 +83,8 @@ final class ScriptedImportQueue: ImportQueueing {
 
     func retry(fileID: UUID) {
         guard let index = files.firstIndex(where: { $0.id == fileID }) else { return }
+        legendsByFile.removeValue(forKey: fileID)
+        extractedLayouts.removeValue(forKey: fileID)
         files[index].state = .waiting
         let file = files[index]
         if isSynchronous {
@@ -91,10 +99,10 @@ final class ScriptedImportQueue: ImportQueueing {
         for id in matchingIDs {
             activeTasks[id]?.cancel()
             activeTasks.removeValue(forKey: id)
+            legendsByFile.removeValue(forKey: id)
             extractedLayouts.removeValue(forKey: id)
         }
         files.removeAll { $0.projectID == projectID }
-        legendsByProject.removeValue(forKey: projectID)
     }
 
     func failFile(named name: String) {
@@ -126,7 +134,7 @@ final class ScriptedImportQueue: ImportQueueing {
                     color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0)
                 )
             ])
-            legendsByProject[file.projectID] = defaultLegend
+            legendsByFile[file.id] = defaultLegend
             files[index].state = .done(booths: 0, doors: 0)
         } else {
             files[index].state = .done(booths: 66, doors: 3)
