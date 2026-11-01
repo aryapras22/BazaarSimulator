@@ -99,6 +99,28 @@ struct ProjectSetupViewModelTests {
         #expect(!viewModel.legendEntries.contains(where: { $0.id == entryToRemove.id }))
     }
 
+    @Test("Legend entries appear once async legend read finishes")
+    @MainActor
+    func legendEntriesAppearOnceAsyncReadFinishes() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: false)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        #expect(viewModel.legendEntries.isEmpty)
+
+        try? await Task.sleep(nanoseconds: 500_000_000)
+
+        #expect(!viewModel.legendEntries.isEmpty)
+        #expect(viewModel.hasLegend)
+    }
+
     @Test("The status text names the first plan still reading")
     @MainActor
     func statusTextNamesFirstPlanStillReading() {

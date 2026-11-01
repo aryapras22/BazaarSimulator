@@ -14,8 +14,13 @@ final class ProjectSetupViewModel {
         set { session.renameProject(id: projectID, to: newValue) }
     }
 
-    var legendEntries: [LegendEntry] = []
+    private var removedLegendEntryIDs: Set<UUID> = []
     var bannerMessage: String?
+
+    var legendEntries: [LegendEntry] {
+        guard let queueLegend = importQueue.legend(for: projectID) else { return [] }
+        return queueLegend.entries.filter { !removedLegendEntryIDs.contains($0.id) }
+    }
 
     init(
         projectID: UUID,
@@ -27,10 +32,6 @@ final class ProjectSetupViewModel {
         self.session = session
         self.importQueue = importQueue
         self.onContinue = onContinue
-
-        if let existingLegend = importQueue.legend(for: projectID) {
-            self.legendEntries = existingLegend.entries
-        }
     }
 
     var floorPlanFiles: [ImportFile] {
@@ -38,7 +39,7 @@ final class ProjectSetupViewModel {
     }
 
     var hasLegend: Bool {
-        !legendEntries.isEmpty || importQueue.legend(for: projectID) != nil
+        importQueue.legend(for: projectID) != nil
     }
 
     var isFloorPlanZoneEnabled: Bool {
@@ -59,7 +60,7 @@ final class ProjectSetupViewModel {
 
     var isContinueEnabled: Bool {
         guard !projectName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        guard !legendEntries.isEmpty else { return false }
+        guard hasLegend else { return false }
         guard !floorPlanFiles.isEmpty else { return false }
 
         for file in floorPlanFiles {
@@ -91,7 +92,7 @@ final class ProjectSetupViewModel {
             return false
         }
 
-        if allDone && !legendEntries.isEmpty {
+        if allDone && hasLegend {
             if projectName.trimmingCharacters(in: .whitespaces).isEmpty {
                 return "Name the project to continue"
             }
@@ -105,9 +106,6 @@ final class ProjectSetupViewModel {
         guard validatePDFs(urls: urls) else { return }
         bannerMessage = nil
         importQueue.add(urls: urls, kind: .legend, projectID: projectID)
-        if let queueLegend = importQueue.legend(for: projectID) {
-            legendEntries = queueLegend.entries
-        }
     }
 
     func addFloorPlanFiles(urls: [URL]) {
@@ -128,7 +126,7 @@ final class ProjectSetupViewModel {
     }
 
     func removeLegendEntry(id: UUID) {
-        legendEntries.removeAll { $0.id == id }
+        removedLegendEntryIDs.insert(id)
     }
 
     func deleteFloorPlan(id: UUID) {
