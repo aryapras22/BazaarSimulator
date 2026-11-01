@@ -1,32 +1,29 @@
 import SwiftUI
 
 struct RootView: View {
-    let services: AppServices
-    @State private var router = AppRouter()
-    @State private var libraryViewModel: ProjectLibraryViewModel?
+    private let services: AppServices
+    @State private var router: AppRouter
+    @State private var factory: ProjectScreenFactory
+    @State private var libraryViewModel: ProjectLibraryViewModel
 
     init(services: AppServices? = nil) {
-        self.services = services ?? AppServices()
+        let effectiveServices = services ?? AppServices()
+        let router = AppRouter()
+        let factory = ProjectScreenFactory(services: effectiveServices, router: router)
+        self.services = effectiveServices
+        _router = State(initialValue: router)
+        _factory = State(initialValue: factory)
+        _libraryViewModel = State(initialValue: factory.makeLibraryViewModel())
     }
 
     var body: some View {
         NavigationSplitView {
-            if let libraryViewModel {
-                ProjectLibraryView(viewModel: libraryViewModel)
-            }
+            ProjectLibraryView(viewModel: libraryViewModel)
         } detail: {
             detailView
         }
         .appBackground()
         .preferredColorScheme(.dark)
-        .onAppear {
-            if libraryViewModel == nil {
-                libraryViewModel = ProjectLibraryViewModel(
-                    session: services.projectSession,
-                    onOpenProject: { router.showSetup(projectID: $0) }
-                )
-            }
-        }
     }
 
     @ViewBuilder
@@ -35,14 +32,8 @@ struct RootView: View {
         case .empty:
             EmptyWorkspaceView()
         case .setup(let projectID):
-            ProjectSetupView(
-                viewModel: ProjectSetupViewModel(
-                    projectID: projectID,
-                    session: services.projectSession,
-                    importQueue: services.importQueue,
-                    onContinue: { router.showReview(projectID: $0) }
-                )
-            )
+            ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
+                .id(projectID)
         case .review:
             ReviewPlaceholderView()
         }
