@@ -1,7 +1,9 @@
+import Foundation
 import Testing
 @testable import BazaarSimulator
 
 @Suite("AppRouterTests")
+@MainActor
 struct AppRouterTests {
     @Test("No project selected shows the empty workspace")
     func noProjectSelectedShowsEmpty() {
@@ -9,17 +11,27 @@ struct AppRouterTests {
         #expect(router.destination == .empty)
     }
 
-    @Test("A new project shows setup")
-    func newProjectShowsSetup() {
+    @Test("A project shows setup with projectID")
+    func projectShowsSetup() {
         let router = AppRouter()
-        router.showSetup()
-        #expect(router.destination == .setup)
+        let id = UUID()
+        router.showSetup(projectID: id)
+        #expect(router.destination == .setup(projectID: id))
     }
 
-    @Test("Continue shows the review placeholder")
-    func continueShowsReviewPlaceholder() {
-        let router = AppRouter(destination: .setup)
-        router.showReviewPlaceholder()
-        #expect(router.destination == .reviewPlaceholder)
+    @Test("Continue shows review with projectID")
+    func continueShowsReview() {
+        let id = UUID()
+        let router = AppRouter(destination: .setup(projectID: id))
+        router.showReview(projectID: id)
+        #expect(router.destination == .review(projectID: id))
+    }
+
+    @Test("Show empty resets destination to empty")
+    func showEmptyResetsDestination() {
+        let id = UUID()
+        let router = AppRouter(destination: .setup(projectID: id))
+        router.showEmpty()
+        #expect(router.destination == .empty)
     }
 }

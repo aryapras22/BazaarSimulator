@@ -3,8 +3,8 @@ import Observation
 
 enum AppDestination: Equatable, Sendable {
     case empty
-    case setup
-    case reviewPlaceholder
+    case setup(projectID: UUID)
+    case review(projectID: UUID)
 }
 
 @Observable
@@ -20,11 +20,11 @@ final class AppRouter {
         destination = .empty
     }
 
-    func showSetup() {
-        destination = .setup
+    func showSetup(projectID: UUID) {
+        destination = .setup(projectID: projectID)
     }
 
-    func showReviewPlaceholder() {
-        destination = .reviewPlaceholder
+    func showReview(projectID: UUID) {
+        destination = .review(projectID: projectID)
     }
 }

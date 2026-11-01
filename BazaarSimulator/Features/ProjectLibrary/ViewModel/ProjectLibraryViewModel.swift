@@ -7,11 +7,11 @@ final class ProjectLibraryViewModel {
     var searchText: String = ""
 
     private let session: any ProjectSessionProtocol
-    private let router: AppRouter
+    private let onOpenProject: (UUID) -> Void
 
-    init(session: any ProjectSessionProtocol, router: AppRouter) {
+    init(session: any ProjectSessionProtocol, onOpenProject: @escaping (UUID) -> Void) {
         self.session = session
-        self.router = router
+        self.onOpenProject = onOpenProject
     }
 
     var projects: [ProjectSummary] {
@@ -36,7 +36,7 @@ final class ProjectLibraryViewModel {
 
     func selectProject(_ project: ProjectSummary) {
         session.selectProject(id: project.id)
-        router.showSetup()
+        onOpenProject(project.id)
     }
 
     private func nextFreeProjectName() -> String {

@@ -59,8 +59,7 @@ struct ProjectLibraryView: View {
     let first = session.createProject(named: "Bazaar 1")
     session.createProject(named: "Bazaar 2")
     session.selectProject(id: first.id)
-    let router = AppRouter()
-    let viewModel = ProjectLibraryViewModel(session: session, router: router)
+    let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { _ in })
 
     return ProjectLibraryView(viewModel: viewModel)
         .preferredColorScheme(.dark)

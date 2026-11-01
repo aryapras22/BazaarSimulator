@@ -23,7 +23,7 @@ struct RootView: View {
             if libraryViewModel == nil {
                 libraryViewModel = ProjectLibraryViewModel(
                     session: services.projectSession,
-                    router: router
+                    onOpenProject: { router.showSetup(projectID: $0) }
                 )
             }
         }
@@ -34,17 +34,16 @@ struct RootView: View {
         switch router.destination {
         case .empty:
             EmptyWorkspaceView()
-        case .setup:
-            let projectID = services.projectSession.activeProjectID ?? UUID()
+        case .setup(let projectID):
             ProjectSetupView(
                 viewModel: ProjectSetupViewModel(
                     projectID: projectID,
                     session: services.projectSession,
                     importQueue: services.importQueue,
-                    router: router
+                    onContinue: { router.showReview(projectID: $0) }
                 )
             )
-        case .reviewPlaceholder:
+        case .review:
             ReviewPlaceholderView()
         }
     }

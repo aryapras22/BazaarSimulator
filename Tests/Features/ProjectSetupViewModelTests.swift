@@ -10,12 +10,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         #expect(!viewModel.hasLegend)
@@ -34,12 +33,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -64,12 +62,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         let nonPDF = URL(fileURLWithPath: "/tmp/image.png")
@@ -85,12 +82,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -109,12 +105,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: false)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -133,12 +128,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         #expect(!viewModel.isContinueEnabled)
@@ -164,12 +158,11 @@ struct ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: false)
-        let router = AppRouter()
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { _ in }
         )
 
         let file = ImportFile(
@@ -187,18 +180,18 @@ struct ProjectSetupViewModelTests {
         #expect(!viewModel.isCancelEnabled)
     }
 
-    @Test("Continue writes the draft to ProjectSession")
+    @Test("Continue writes the draft to ProjectSession and invokes onContinue")
     @MainActor
     func continueWritesDraftToSession() {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        let router = AppRouter()
+        var continuedProjectID: UUID?
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            router: router
+            onContinue: { continuedProjectID = $0 }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -211,6 +204,6 @@ struct ProjectSetupViewModelTests {
         #expect(session.draft(for: project.id)?.name == "Super Bazaar")
         #expect(session.draft(for: project.id)?.legend.entries.count == 3)
         #expect(session.draft(for: project.id)?.layouts.count == 1)
-        #expect(router.destination == .reviewPlaceholder)
+        #expect(continuedProjectID == project.id)
     }
 }

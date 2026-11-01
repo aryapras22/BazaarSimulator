@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import BazaarSimulator
 
@@ -7,8 +8,7 @@ struct ProjectLibraryViewModelTests {
     @MainActor
     func newProjectsAreNumberedIncrementally() {
         let session = ProjectSession()
-        let router = AppRouter()
-        let viewModel = ProjectLibraryViewModel(session: session, router: router)
+        let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { _ in })
 
         viewModel.createProject()
         #expect(session.projects.count == 1)
@@ -27,8 +27,7 @@ struct ProjectLibraryViewModelTests {
     @MainActor
     func freedNumberIsReused() {
         let session = ProjectSession()
-        let router = AppRouter()
-        let viewModel = ProjectLibraryViewModel(session: session, router: router)
+        let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { _ in })
 
         viewModel.createProject()
         viewModel.createProject()
@@ -45,8 +44,7 @@ struct ProjectLibraryViewModelTests {
     @MainActor
     func searchFiltersCaseInsensitive() {
         let session = ProjectSession()
-        let router = AppRouter()
-        let viewModel = ProjectLibraryViewModel(session: session, router: router)
+        let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { _ in })
 
         session.createProject(named: "Summer Bazaar")
         session.createProject(named: "Winter Fair")
@@ -72,8 +70,7 @@ struct ProjectLibraryViewModelTests {
     @MainActor
     func renamingThroughSessionUpdatesRow() {
         let session = ProjectSession()
-        let router = AppRouter()
-        let viewModel = ProjectLibraryViewModel(session: session, router: router)
+        let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { _ in })
 
         viewModel.createProject()
         guard let createdID = session.projects.first?.id else {
@@ -83,5 +80,18 @@ struct ProjectLibraryViewModelTests {
 
         session.renameProject(id: createdID, to: "Grand Bazaar")
         #expect(viewModel.filteredProjects.first?.name == "Grand Bazaar")
+    }
+
+    @Test("Selecting a project selects it in session and invokes onOpenProject")
+    @MainActor
+    func selectProjectInvokesCallback() {
+        let session = ProjectSession()
+        var openedID: UUID?
+        let viewModel = ProjectLibraryViewModel(session: session, onOpenProject: { openedID = $0 })
+        let project = session.createProject(named: "Bazaar 1")
+
+        viewModel.selectProject(project)
+        #expect(session.activeProjectID == project.id)
+        #expect(openedID == project.id)
     }
 }

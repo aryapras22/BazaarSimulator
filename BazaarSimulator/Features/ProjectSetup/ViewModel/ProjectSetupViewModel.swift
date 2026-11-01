@@ -7,7 +7,7 @@ final class ProjectSetupViewModel {
     let projectID: UUID
     let session: any ProjectSessionProtocol
     let importQueue: any ImportQueueing
-    let router: AppRouter
+    let onContinue: (UUID) -> Void
 
     var projectName: String {
         get { session.projects.first { $0.id == projectID }?.name ?? "" }
@@ -21,12 +21,12 @@ final class ProjectSetupViewModel {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         importQueue: any ImportQueueing,
-        router: AppRouter
+        onContinue: @escaping (UUID) -> Void
     ) {
         self.projectID = projectID
         self.session = session
         self.importQueue = importQueue
-        self.router = router
+        self.onContinue = onContinue
 
         if let existingLegend = importQueue.legend {
             self.legendEntries = existingLegend.entries
@@ -168,7 +168,7 @@ final class ProjectSetupViewModel {
         )
 
         session.setDraft(draft, for: projectID)
-        router.showReviewPlaceholder()
+        onContinue(projectID)
     }
 
     private func validatePDFs(urls: [URL]) -> Bool {

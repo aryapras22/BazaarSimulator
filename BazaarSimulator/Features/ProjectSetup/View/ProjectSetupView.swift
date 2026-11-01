@@ -194,12 +194,11 @@ struct ProjectSetupView: View {
     let session = ProjectSession()
     let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue()
-    let router = AppRouter()
     let viewModel = ProjectSetupViewModel(
         projectID: project.id,
         session: session,
         importQueue: queue,
-        router: router
+        onContinue: { _ in }
     )
 
     return ProjectSetupView(viewModel: viewModel)
@@ -210,12 +209,11 @@ struct ProjectSetupView: View {
     let session = ProjectSession()
     let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue(isSynchronous: true)
-    let router = AppRouter()
     let viewModel = ProjectSetupViewModel(
         projectID: project.id,
         session: session,
         importQueue: queue,
-        router: router
+        onContinue: { _ in }
     )
     viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
 
@@ -227,12 +225,11 @@ struct ProjectSetupView: View {
     let session = ProjectSession()
     let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue(isSynchronous: false)
-    let router = AppRouter()
     let viewModel = ProjectSetupViewModel(
         projectID: project.id,
         session: session,
         importQueue: queue,
-        router: router
+        onContinue: { _ in }
     )
 
     viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
