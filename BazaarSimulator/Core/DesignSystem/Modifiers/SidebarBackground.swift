@@ -30,9 +30,38 @@ extension View {
     }
 }
 
-#Preview {
+#Preview("Normal") {
     Text("Sidebar")
         .frame(width: 240, height: 600)
+        .sidebarBackground()
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Long Text") {
+    Text("Sidebar with a longer label across the column")
+        .frame(width: 240, height: 600)
+        .sidebarBackground()
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Empty Value") {
+    Color.clear
+        .frame(width: 240, height: 600)
+        .sidebarBackground()
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Dark Mode") {
+    Text("Dark Sidebar")
+        .frame(width: 240, height: 600)
+        .sidebarBackground()
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Disabled") {
+    Text("Disabled Sidebar")
+        .frame(width: 240, height: 600)
+        .disabled(true)
         .sidebarBackground()
         .preferredColorScheme(.dark)
 }

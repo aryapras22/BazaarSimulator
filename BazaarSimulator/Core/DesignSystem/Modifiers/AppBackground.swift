@@ -3,24 +3,7 @@ import SwiftUI
 struct AppBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(
-                ZStack {
-                    Palette.background
-                    RadialGradient(
-                        colors: [Palette.glowBlue.opacity(0.85), Color.clear],
-                        center: .init(x: 0.1, y: 0.8),
-                        startRadius: 20,
-                        endRadius: 420
-                    )
-                    RadialGradient(
-                        colors: [Palette.glowOrange.opacity(0.75), Color.clear],
-                        center: .init(x: 0.12, y: 1.0),
-                        startRadius: 10,
-                        endRadius: 360
-                    )
-                }
-                .ignoresSafeArea()
-            )
+            .background(Palette.background.ignoresSafeArea())
     }
 }
 
