@@ -326,15 +326,27 @@ protocol AnalysisServiceProtocol: Sendable {
 
 `RecommendationBuilder` is a pure type. Given the analyses and a metric, it picks the better layout and builds the "Our choice" card: a headline value per layout and the plain-language "What this means" lines. The wording lives in a bundled JSON file, not in Swift.
 ### Cross-feature state
-The editor, parameters, overview, analysis, and simulation all work on the same project. That state lives in one injected object in `Core/Session/`. `ProjectSession` owns the active project, the in-memory project list (`[ProjectSummary]`), and project drafts (`[UUID: ProjectDraft]`), delegating persistence to repositories once built.
+The editor, parameters, overview, analysis, and simulation all work on the same project. That state lives in one injected object in `Core/Session/`.
 
 ```swift
 @MainActor @Observable
-final class ProjectSession: ProjectSessionProtocol {
-    private(set) var projects: [ProjectSummary]
-    private(set) var activeProjectID: UUID?
-    var activeProject: ProjectSummary? { ... }
+final class ProjectSession {
+    var project: Project
+    var activeLayoutID: Layout.ID?
+    var selectedObjectID: UUID?
+}
+```
 
+Until `ProjectRepository` is added, `ProjectSessionProtocol` also holds the in-memory project list and setup drafts:
+
+```swift
+@MainActor
+protocol ProjectSessionProtocol: AnyObject {
+    var projects: [ProjectSummary] { get }
+    var activeProjectID: UUID? { get }
+    var activeProject: ProjectSummary? { get }
+
+    @discardableResult
     func createProject(named name: String) -> ProjectSummary
     func selectProject(id: UUID)
     func renameProject(id: UUID, to name: String)
