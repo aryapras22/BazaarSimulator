@@ -44,4 +44,16 @@ struct ImportRowFormatterTests {
         #expect(display.title == "legend.pdf")
         #expect(display.isReading)
     }
+
+    @Test("Rows without thumbnail data have no thumbnail")
+    func rowWithoutThumbnailDataHasNoThumbnail() {
+        let file = ImportFile(
+            projectID: UUID(),
+            url: URL(fileURLWithPath: "/tmp/plan.pdf"),
+            kind: .floorPlan,
+            state: .waiting
+        )
+        let row = ImportRowFormatter.formatRow(file: file, layoutIndex: 1)
+        #expect(row.thumbnailData == nil)
+    }
 }

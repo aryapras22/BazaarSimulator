@@ -33,7 +33,7 @@ struct PlanFileRow: View {
 
     @ViewBuilder
     private var leadingIcon: some View {
-        if display.hasThumbnail, let data = display.thumbnailData, let nsImage = NSImage(data: data) {
+        if let data = display.thumbnailData, let nsImage = NSImage(data: data) {
             Image(nsImage: nsImage)
                 .resizable()
                 .scaledToFill()

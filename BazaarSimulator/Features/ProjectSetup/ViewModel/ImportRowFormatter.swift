@@ -13,7 +13,6 @@ struct PlanRowDisplay: Equatable, Sendable, Identifiable {
     let title: String
     let subtitle: String
     let status: Status
-    let hasThumbnail: Bool
     let thumbnailData: Data?
 
     var isReading: Bool {
@@ -26,14 +25,12 @@ struct PlanRowDisplay: Equatable, Sendable, Identifiable {
         title: String,
         subtitle: String,
         status: Status,
-        hasThumbnail: Bool = false,
         thumbnailData: Data? = nil
     ) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
         self.status = status
-        self.hasThumbnail = hasThumbnail
         self.thumbnailData = thumbnailData
     }
 }
@@ -69,59 +66,41 @@ enum ImportRowFormatter {
     }
 
     static func formatRow(file: ImportFile, layoutIndex: Int, locale: Locale = .current) -> PlanRowDisplay {
-        let title = file.url.lastPathComponent
-        let sub = subtitle(layoutIndex: layoutIndex, byteCount: file.fileSize, locale: locale)
-
-        let status: PlanRowDisplay.Status
-        switch file.state {
-        case .waiting:
-            status = .waiting(text: "Waiting...")
-        case .reading(let progress):
-            status = .reading(progress: progress)
-        case .done(let booths, let doors):
-            status = .done(text: doneText(booths: booths, doors: doors))
-        case .failed(let message):
-            status = .failed(message: message)
-        case .cancelled:
-            status = .cancelled(text: "Cancelled")
-        }
-
-        return PlanRowDisplay(
+        PlanRowDisplay(
             id: file.id,
-            title: title,
-            subtitle: sub,
-            status: status,
-            hasThumbnail: file.thumbnailData != nil,
+            title: file.url.lastPathComponent,
+            subtitle: subtitle(layoutIndex: layoutIndex, byteCount: file.fileSize, locale: locale),
+            status: status(for: file.state, doneText: doneText),
             thumbnailData: file.thumbnailData
         )
     }
 
     static func formatLegendRow(file: ImportFile, locale: Locale = .current) -> PlanRowDisplay {
-        let title = file.url.lastPathComponent
         let formattedBytes = formatByteCount(file.fileSize, locale: locale)
-        let sub = "Legend · \(formattedBytes)"
-
-        let status: PlanRowDisplay.Status
-        switch file.state {
-        case .waiting:
-            status = .waiting(text: "Waiting...")
-        case .reading(let progress):
-            status = .reading(progress: progress)
-        case .done:
-            status = .done(text: "✓ Done")
-        case .failed(let message):
-            status = .failed(message: message)
-        case .cancelled:
-            status = .cancelled(text: "Cancelled")
-        }
-
         return PlanRowDisplay(
             id: file.id,
-            title: title,
-            subtitle: sub,
-            status: status,
-            hasThumbnail: file.thumbnailData != nil,
+            title: file.url.lastPathComponent,
+            subtitle: "Legend · \(formattedBytes)",
+            status: status(for: file.state, doneText: { _, _ in "✓ Done" }),
             thumbnailData: file.thumbnailData
         )
+    }
+
+    private static func status(
+        for state: ImportFileState,
+        doneText: (Int, Int) -> String
+    ) -> PlanRowDisplay.Status {
+        switch state {
+        case .waiting:
+            return .waiting(text: "Waiting...")
+        case .reading(let progress):
+            return .reading(progress: progress)
+        case .done(let booths, let doors):
+            return .done(text: doneText(booths, doors))
+        case .failed(let message):
+            return .failed(message: message)
+        case .cancelled:
+            return .cancelled(text: "Cancelled")
+        }
     }
 }
