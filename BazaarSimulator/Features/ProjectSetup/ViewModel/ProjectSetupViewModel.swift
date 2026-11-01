@@ -79,7 +79,7 @@ final class ProjectSetupViewModel {
 
     var isContinueEnabled: Bool {
         guard !projectName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        guard hasLegend else { return false }
+        guard !legendEntries.isEmpty else { return false }
         guard !floorPlanFiles.isEmpty else { return false }
 
         for file in floorPlanFiles {
@@ -120,6 +120,9 @@ final class ProjectSetupViewModel {
         }
 
         if allDone && hasLegend {
+            if legendEntries.isEmpty {
+                return "Keep at least one legend category to continue"
+            }
             if projectName.trimmingCharacters(in: .whitespaces).isEmpty {
                 return "Name the project to continue"
             }

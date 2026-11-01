@@ -242,3 +242,56 @@ struct ProjectSetupViewModelTests {
         #expect(continuedProjectID == project.id)
     }
 }
+
+extension ProjectSetupViewModelTests {
+    @Test("Continue is disabled when every legend entry is removed")
+    @MainActor
+    func continueDisabledWhenAllLegendEntriesRemoved() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        #expect(viewModel.isContinueEnabled)
+
+        for entry in viewModel.legendEntries {
+            viewModel.removeLegendEntry(id: entry.id)
+        }
+
+        #expect(!viewModel.isContinueEnabled)
+        #expect(viewModel.statusText == "Keep at least one legend category to continue")
+    }
+
+    @Test("Continue saves only the remaining legend entries")
+    @MainActor
+    func continueSavesRemainingLegendEntries() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        guard let firstID = viewModel.legendEntries.first?.id else {
+            Issue.record("Expected legend entries")
+            return
+        }
+        viewModel.removeLegendEntry(id: firstID)
+
+        viewModel.continueToReview()
+
+        #expect(session.draft(for: project.id)?.legend.entries.count == 2)
+    }
+}
