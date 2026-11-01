@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct DropZone: View {
     let hint: String
@@ -33,8 +32,12 @@ struct DropZone: View {
             RoundedRectangle(cornerRadius: Radius.l)
                 .stroke(borderColor, lineWidth: 1)
         )
-        .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
-            handleDrop(providers: providers)
+        .dropDestination(for: URL.self) { urls, _ in
+            guard isEnabled, !urls.isEmpty else { return false }
+            onDrop(urls)
+            return true
+        } isTargeted: { targeted in
+            isTargeted = targeted
         }
     }
 
@@ -57,29 +60,6 @@ struct DropZone: View {
         }
         return isEnabled ? Palette.surfaceBorder : Palette.surfaceDisabledBorder
     }
-
-    private func handleDrop(providers: [NSItemProvider]) -> Bool {
-        guard isEnabled else { return false }
-        var collectedURLs: [URL] = []
-        let group = DispatchGroup()
-
-        for provider in providers {
-            group.enter()
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                if let url {
-                    collectedURLs.append(url)
-                }
-                group.leave()
-            }
-        }
-
-        group.notify(queue: .main) {
-            if !collectedURLs.isEmpty {
-                onDrop(collectedURLs)
-            }
-        }
-        return true
-    }
 }
 
 #Preview("Enabled") {
@@ -99,8 +79,8 @@ struct DropZone: View {
         onChoose: {},
         onDrop: { _ in }
     )
-    .disabled(true)
     .padding()
     .background(Palette.background)
     .preferredColorScheme(.dark)
+    .disabled(true)
 }
