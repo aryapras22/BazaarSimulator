@@ -239,7 +239,7 @@ Domain types added in the UI PR (`Core/Domain/`, plain `Sendable` structs):
 *   `ExtractedLayout`: name, size in metres, booths, doors
 *   `ProjectDraft`: name, legend, layouts
 
-The UI PR ships `ScriptedImportQueue`, a fake that conforms to the protocol. It moves each file through waiting, reading with rising progress, and done after a short delay, returning counts from the bundled mock layouts. It can be told to fail a named file, so the failed row can be checked by hand. It lives with the test support code and previews, not in `Core/`. `AppServices` uses it until the backend PR swaps in the real queue.
+The UI PR ships `ScriptedImportQueue`, a fake that conforms to the protocol. It moves each file through waiting, reading with rising progress, and done after a short delay, returning counts from the bundled mock layouts. It can be told to fail a named file, so the failed row can be checked by hand. It lives in `BazaarSimulator/PreviewSupport/` so `AppServices` can use it in every build until the backend PR, which then moves it to `Tests/Support/`. `AppServices` uses it until the backend PR swaps in the real queue.
 * * *
 ## Files
 

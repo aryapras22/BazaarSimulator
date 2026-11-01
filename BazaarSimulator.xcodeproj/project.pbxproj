@@ -6,10 +6,6 @@
 	objectVersion = 110;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		42C7C2B03094562600513D5B /* Tests/Support/ScriptedImportQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C7C2B13094562600513D5B /* Tests/Support/ScriptedImportQueue.swift */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		42C7C2AA3094562600513D5B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -25,7 +21,6 @@
 		42C7C2A03094562600513D5B /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
 		42C7C2A13094562600513D5B /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BazaarSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		42C7C2B13094562600513D5B /* Tests/Support/ScriptedImportQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/Support/ScriptedImportQueue.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -78,7 +73,6 @@
 				Features/.gitkeep,
 				Fixtures/.gitkeep,
 				Support/.gitkeep,
-				Support/ScriptedImportQueue.swift,
 				UITests/.gitkeep,
 			);
 			target = 42C7C2A53094562600513D5B /* BazaarSimulatorTests */;
@@ -132,7 +126,6 @@
 				42C7C2183094562600513D5B /* Products */,
 				42C7C2A63094562600513D5B /* Tests */,
 				42C7C2403094B43900513D5B /* docs */,
-				42DB54883096EAE300519F66 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -143,14 +136,6 @@
 				42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		42DB54883096EAE300519F66 /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-				42C7C2B13094562600513D5B /* Tests/Support/ScriptedImportQueue.swift */,
-			);
-			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -253,7 +238,6 @@
 		42C7C2133094562600513D5B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
-				42C7C2B03094562600513D5B /* Tests/Support/ScriptedImportQueue.swift in Sources */,
 			);
 		};
 		42C7C2A83094562600513D5B /* Sources */ = {

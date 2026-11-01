@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+/// Stands in for the real queue until the backend PR swaps AppServices to the real one,
+/// then moves to Tests/Support/.
 @Observable
 @MainActor
 final class ScriptedImportQueue: ImportQueueing {
