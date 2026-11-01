@@ -134,7 +134,12 @@ struct ProjectSetupViewModelTests {
             onContinue: { _ in }
         )
 
-        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        queue.insert(ImportFile(
+            projectID: project.id,
+            url: URL(fileURLWithPath: "/tmp/legend.pdf"),
+            kind: .legend,
+            state: .done(booths: 0, doors: 0)
+        ))
 
         let plan1 = URL(fileURLWithPath: "/tmp/plan1.pdf")
         let plan2 = URL(fileURLWithPath: "/tmp/plan2.pdf")
@@ -305,5 +310,57 @@ struct ProjectSetupViewModelTests {
         #expect(session.draft(for: project.id)?.legend.entries.count == 3)
         #expect(session.draft(for: project.id)?.layouts.count == 1)
         #expect(continuedProjectID == project.id)
+    }
+
+    @Test("Dropping an async legend creates pendingLegendRows and sets status")
+    @MainActor
+    func asyncLegendCreatesPendingRowAndStatus() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: false)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+
+        #expect(viewModel.pendingLegendRows.count == 1)
+        #expect(viewModel.statusText == "Reading the legend...")
+    }
+
+    @Test("Failed legend file can be retried or deleted")
+    @MainActor
+    func failedLegendCanBeRetriedOrDeleted() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        queue.failFile(named: "bad_legend.pdf")
+
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/bad_legend.pdf")])
+
+        #expect(viewModel.pendingLegendRows.count == 1)
+        guard let row = viewModel.pendingLegendRows.first else {
+            Issue.record("Expected pending row")
+            return
+        }
+        if case .failed = row.status {
+            // Success
+        } else {
+            Issue.record("Expected failed row status")
+        }
+
+        viewModel.deleteLegendFile(id: row.id)
+        #expect(viewModel.pendingLegendRows.isEmpty)
+        #expect(viewModel.legendFiles.isEmpty)
     }
 }

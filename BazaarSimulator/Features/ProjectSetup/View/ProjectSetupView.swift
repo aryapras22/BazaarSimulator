@@ -81,7 +81,7 @@ struct ProjectSetupView: View {
                 onDrop: viewModel.addLegendFiles
             )
 
-            if !viewModel.legendEntries.isEmpty {
+            if !viewModel.pendingLegendRows.isEmpty || !viewModel.legendEntries.isEmpty {
                 scannedLegendsCard
             }
         }
@@ -89,22 +89,35 @@ struct ProjectSetupView: View {
 
     private var scannedLegendsCard: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
-            Text("SCANNED LEGENDS · \(viewModel.legendEntries.count) Elements")
+            let label = viewModel.legendEntries.isEmpty
+                ? "LEGEND"
+                : "SCANNED LEGENDS · \(viewModel.legendEntries.count) Elements"
+            Text(label)
                 .sectionLabel()
 
             VStack(spacing: Spacing.xs) {
-                ForEach(viewModel.legendEntries) { entry in
-                    LegendEntryRow(
-                        name: entry.name,
-                        color: Color(
-                            .sRGB,
-                            red: entry.color.red,
-                            green: entry.color.green,
-                            blue: entry.color.blue,
-                            opacity: 1.0
-                        ),
-                        onRemove: { viewModel.removeLegendEntry(id: entry.id) }
-                    )
+                if !viewModel.pendingLegendRows.isEmpty {
+                    ForEach(viewModel.pendingLegendRows) { row in
+                        PlanFileRow(
+                            display: row,
+                            onDelete: { viewModel.deleteLegendFile(id: row.id) },
+                            onRetry: { viewModel.retryLegendFile(id: row.id) }
+                        )
+                    }
+                } else {
+                    ForEach(viewModel.legendEntries) { entry in
+                        LegendEntryRow(
+                            name: entry.name,
+                            color: Color(
+                                .sRGB,
+                                red: entry.color.red,
+                                green: entry.color.green,
+                                blue: entry.color.blue,
+                                opacity: 1.0
+                            ),
+                            onRemove: { viewModel.removeLegendEntry(id: entry.id) }
+                        )
+                    }
                 }
             }
             .padding(Spacing.l)

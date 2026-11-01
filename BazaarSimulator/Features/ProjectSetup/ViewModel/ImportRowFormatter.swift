@@ -101,4 +101,41 @@ enum ImportRowFormatter {
             thumbnailData: file.thumbnailData
         )
     }
+
+    static func formatLegendRow(file: ImportFile, locale: Locale = .current) -> PlanRowDisplay {
+        let title = file.url.lastPathComponent
+        let formattedBytes = formatByteCount(file.fileSize, locale: locale)
+        let sub = "Legend · \(formattedBytes)"
+
+        let status: PlanRowDisplay.Status
+        let isReading: Bool
+
+        switch file.state {
+        case .waiting:
+            status = .waiting(text: "Waiting...")
+            isReading = false
+        case .reading(let progress):
+            status = .reading(progress: progress)
+            isReading = true
+        case .done:
+            status = .done(text: "✓ Done")
+            isReading = false
+        case .failed(let message):
+            status = .failed(message: message)
+            isReading = false
+        case .cancelled:
+            status = .cancelled(text: "Cancelled")
+            isReading = false
+        }
+
+        return PlanRowDisplay(
+            id: file.id,
+            title: title,
+            subtitle: sub,
+            status: status,
+            isReading: isReading,
+            hasThumbnail: file.thumbnailData != nil,
+            thumbnailData: file.thumbnailData
+        )
+    }
 }

@@ -34,6 +34,19 @@ final class ProjectSetupViewModel {
         self.onContinue = onContinue
     }
 
+    var legendFiles: [ImportFile] {
+        importQueue.files(for: projectID).filter { $0.kind == .legend }
+    }
+
+    var pendingLegendRows: [PlanRowDisplay] {
+        legendFiles.filter { file in
+            if case .done = file.state { return false }
+            return true
+        }.map { file in
+            ImportRowFormatter.formatLegendRow(file: file)
+        }
+    }
+
     var floorPlanFiles: [ImportFile] {
         importQueue.files(for: projectID).filter { $0.kind == .floorPlan }
     }
@@ -77,6 +90,14 @@ final class ProjectSetupViewModel {
     var statusText: String {
         if let bannerMessage {
             return bannerMessage
+        }
+
+        if legendFiles.contains(where: {
+            if case .reading = $0.state { return true }
+            if case .waiting = $0.state { return true }
+            return false
+        }) {
+            return "Reading the legend..."
         }
 
         if let firstReadingIndex = floorPlanFiles.firstIndex(where: {
@@ -134,6 +155,14 @@ final class ProjectSetupViewModel {
     }
 
     func retryFloorPlan(id: UUID) {
+        importQueue.retry(fileID: id)
+    }
+
+    func deleteLegendFile(id: UUID) {
+        importQueue.remove(fileID: id)
+    }
+
+    func retryLegendFile(id: UUID) {
         importQueue.retry(fileID: id)
     }
 

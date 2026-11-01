@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PlanFileRow: View {
     let display: PlanRowDisplay
-    let onEdit: () -> Void
+    var onEdit: (() -> Void)? = nil
     let onDelete: () -> Void
     var onRetry: (() -> Void)?
 
@@ -53,8 +53,10 @@ struct PlanFileRow: View {
                 Button("Retry", action: onRetry)
             }
 
-            Button("Edit", action: onEdit)
-                .disabled(true)
+            if let onEdit {
+                Button("Edit", action: onEdit)
+                    .disabled(true)
+            }
 
             Button("Delete", role: .destructive, action: onDelete)
         } label: {

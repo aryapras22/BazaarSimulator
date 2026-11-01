@@ -28,4 +28,20 @@ struct ImportRowFormatterTests {
         let done = ImportRowFormatter.doneText(booths: 66, doors: 3)
         #expect(done == "✓ 66 booths · 3 doors")
     }
+
+    @Test("Legend row subtitle is Legend · formattedBytes")
+    func legendRowSubtitle() {
+        let fixedLocale = Locale(identifier: "en_US")
+        let file = ImportFile(
+            projectID: UUID(),
+            url: URL(fileURLWithPath: "/tmp/legend.pdf"),
+            kind: .legend,
+            state: .reading(progress: 0.5),
+            fileSize: 2_400_000
+        )
+        let display = ImportRowFormatter.formatLegendRow(file: file, locale: fixedLocale)
+        #expect(display.subtitle == "Legend · 2.4 MB")
+        #expect(display.title == "legend.pdf")
+        #expect(display.isReading)
+    }
 }
