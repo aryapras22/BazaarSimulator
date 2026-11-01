@@ -13,7 +13,8 @@ final class ScriptedImportQueue: ImportQueueing {
     var failingFileNames: Set<String> = []
     var isSynchronous: Bool = false
 
-    private var activeTasks: [UUID: Task<Void, Never>] = [:]
+    private var worker: Task<Void, Never>?
+    private var currentFileID: UUID?
 
     init(isSynchronous: Bool = false) {
         self.isSynchronous = isSynchronous
@@ -50,9 +51,10 @@ final class ScriptedImportQueue: ImportQueueing {
 
             if isSynchronous {
                 processFileSynchronously(file)
-            } else {
-                startAsyncProcessing(for: file)
             }
+        }
+        if !isSynchronous {
+            startWorkerIfNeeded()
         }
     }
 
@@ -61,23 +63,30 @@ final class ScriptedImportQueue: ImportQueueing {
     }
 
     func remove(fileID: UUID) {
-        activeTasks[fileID]?.cancel()
-        activeTasks.removeValue(forKey: fileID)
+        let wasCurrent = (currentFileID == fileID)
         files.removeAll { $0.id == fileID }
         legendsByFile.removeValue(forKey: fileID)
         extractedLayouts.removeValue(forKey: fileID)
+        if wasCurrent {
+            cancelCurrentFileAndRestart()
+        }
     }
 
     func cancel(projectID: UUID) {
+        var cancelledCurrent = false
         for index in files.indices where files[index].projectID == projectID {
             switch files[index].state {
             case .waiting, .reading:
-                activeTasks[files[index].id]?.cancel()
-                activeTasks.removeValue(forKey: files[index].id)
+                if files[index].id == currentFileID {
+                    cancelledCurrent = true
+                }
                 files[index].state = .cancelled
             case .done, .failed, .cancelled:
                 break
             }
+        }
+        if cancelledCurrent {
+            cancelCurrentFileAndRestart()
         }
     }
 
@@ -90,19 +99,21 @@ final class ScriptedImportQueue: ImportQueueing {
         if isSynchronous {
             processFileSynchronously(file)
         } else {
-            startAsyncProcessing(for: file)
+            startWorkerIfNeeded()
         }
     }
 
     func removeAll(projectID: UUID) {
-        let matchingIDs = files.filter { $0.projectID == projectID }.map(\.id)
+        let matchingIDs = Set(files.filter { $0.projectID == projectID }.map(\.id))
+        let removedCurrent = currentFileID.map { matchingIDs.contains($0) } ?? false
         for id in matchingIDs {
-            activeTasks[id]?.cancel()
-            activeTasks.removeValue(forKey: id)
             legendsByFile.removeValue(forKey: id)
             extractedLayouts.removeValue(forKey: id)
         }
         files.removeAll { $0.projectID == projectID }
+        if removedCurrent {
+            cancelCurrentFileAndRestart()
+        }
     }
 
     func failFile(named name: String) {
@@ -149,38 +160,60 @@ final class ScriptedImportQueue: ImportQueueing {
         }
     }
 
-    private func startAsyncProcessing(for file: ImportFile) {
-        let task = Task { @MainActor [weak self] in
-            guard let self else { return }
-            guard let index = self.files.firstIndex(where: { $0.id == file.id }) else { return }
-
-            self.files[index].state = .reading(progress: 0.1)
-
-            if self.failingFileNames.contains(file.url.lastPathComponent) {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                if Task.isCancelled { return }
-                if let idx = self.files.firstIndex(where: { $0.id == file.id }) {
-                    let message = file.kind == .legend
-                        ? "Couldn't read this legend"
-                        : "Couldn't read this plan"
-                    self.files[idx].state = .failed(message: message)
-                }
-                return
+    private func startWorkerIfNeeded() {
+        guard worker == nil else { return }
+        worker = Task { @MainActor [weak self] in
+            while let self, !Task.isCancelled, let file = self.nextWaitingFile() {
+                self.currentFileID = file.id
+                await self.readAsync(file)
             }
-
-            for step in [0.35, 0.70, 0.95] {
-                try? await Task.sleep(nanoseconds: 80_000_000)
-                if Task.isCancelled { return }
-                if let idx = self.files.firstIndex(where: { $0.id == file.id }) {
-                    self.files[idx].state = .reading(progress: step)
-                }
+            if !Task.isCancelled {
+                self?.currentFileID = nil
+                self?.worker = nil
             }
+        }
+    }
 
+    private func cancelCurrentFileAndRestart() {
+        worker?.cancel()
+        worker = nil
+        currentFileID = nil
+        startWorkerIfNeeded()
+    }
+
+    private func nextWaitingFile() -> ImportFile? {
+        files.first { $0.kind == .legend && $0.state == .waiting }
+            ?? files.first { $0.state == .waiting }
+    }
+
+    private func readAsync(_ file: ImportFile) async {
+        guard let index = files.firstIndex(where: { $0.id == file.id }) else { return }
+
+        files[index].state = .reading(progress: 0.1)
+
+        if failingFileNames.contains(file.url.lastPathComponent) {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            if Task.isCancelled { return }
+            if let idx = files.firstIndex(where: { $0.id == file.id }) {
+                let message = file.kind == .legend
+                    ? "Couldn't read this legend"
+                    : "Couldn't read this plan"
+                files[idx].state = .failed(message: message)
+            }
+            return
+        }
+
+        for step in [0.35, 0.70, 0.95] {
             try? await Task.sleep(nanoseconds: 80_000_000)
             if Task.isCancelled { return }
-
-            self.processFileSynchronously(file)
+            if let idx = files.firstIndex(where: { $0.id == file.id }) {
+                files[idx].state = .reading(progress: step)
+            }
         }
-        activeTasks[file.id] = task
+
+        try? await Task.sleep(nanoseconds: 80_000_000)
+        if Task.isCancelled { return }
+
+        processFileSynchronously(file)
     }
 }
