@@ -294,4 +294,24 @@ extension ProjectSetupViewModelTests {
 
         #expect(session.draft(for: project.id)?.legend.entries.count == 2)
     }
+
+    @Test("Refused files show an error status")
+    @MainActor
+    func refusedFilesShowErrorStatus() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/image.png")])
+        #expect(viewModel.isStatusError)
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        #expect(!viewModel.isStatusError)
+    }
 }

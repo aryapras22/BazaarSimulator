@@ -202,7 +202,7 @@ struct ProjectSetupView: View {
 
             Text(viewModel.statusText)
                 .font(Typography.caption)
-                .foregroundColor(Palette.textSecondary)
+                .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
 
             Button("Cancel") {
                 viewModel.cancel()

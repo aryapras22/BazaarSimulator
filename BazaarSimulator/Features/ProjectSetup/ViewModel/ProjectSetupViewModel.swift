@@ -17,7 +17,11 @@ final class ProjectSetupViewModel {
     }
 
     private var removedLegendEntryIDs: Set<UUID> = []
-    var bannerMessage: String?
+    private(set) var bannerMessage: String?
+
+    var isStatusError: Bool {
+        bannerMessage != nil
+    }
 
     var legendEntries: [LegendEntry] {
         guard let queueLegend = importQueue.legend(for: projectID) else { return [] }
