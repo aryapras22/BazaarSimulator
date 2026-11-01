@@ -28,17 +28,17 @@ final class ProjectSetupViewModel {
         self.importQueue = importQueue
         self.onContinue = onContinue
 
-        if let existingLegend = importQueue.legend {
+        if let existingLegend = importQueue.legend(for: projectID) {
             self.legendEntries = existingLegend.entries
         }
     }
 
     var floorPlanFiles: [ImportFile] {
-        importQueue.files.filter { $0.kind == .floorPlan }
+        importQueue.files(for: projectID).filter { $0.kind == .floorPlan }
     }
 
     var hasLegend: Bool {
-        !legendEntries.isEmpty || importQueue.legend != nil
+        !legendEntries.isEmpty || importQueue.legend(for: projectID) != nil
     }
 
     var isFloorPlanZoneEnabled: Bool {
@@ -46,7 +46,7 @@ final class ProjectSetupViewModel {
     }
 
     var isReadingAnyFile: Bool {
-        importQueue.files.contains { file in
+        importQueue.files(for: projectID).contains { file in
             if case .reading = file.state { return true }
             if case .waiting = file.state { return true }
             return false
@@ -104,8 +104,8 @@ final class ProjectSetupViewModel {
     func addLegendFiles(urls: [URL]) {
         guard validatePDFs(urls: urls) else { return }
         bannerMessage = nil
-        importQueue.add(urls: urls, kind: .legend)
-        if let queueLegend = importQueue.legend {
+        importQueue.add(urls: urls, kind: .legend, projectID: projectID)
+        if let queueLegend = importQueue.legend(for: projectID) {
             legendEntries = queueLegend.entries
         }
     }
@@ -124,7 +124,7 @@ final class ProjectSetupViewModel {
         }
 
         bannerMessage = nil
-        importQueue.add(urls: urls, kind: .floorPlan)
+        importQueue.add(urls: urls, kind: .floorPlan, projectID: projectID)
     }
 
     func removeLegendEntry(id: UUID) {
@@ -132,15 +132,15 @@ final class ProjectSetupViewModel {
     }
 
     func deleteFloorPlan(id: UUID) {
-        importQueue.remove(id: id)
+        importQueue.remove(fileID: id)
     }
 
     func retryFloorPlan(id: UUID) {
-        importQueue.retry(id: id)
+        importQueue.retry(fileID: id)
     }
 
     func cancel() {
-        importQueue.cancel()
+        importQueue.cancel(projectID: projectID)
     }
 
     func continueToReview() {
@@ -148,7 +148,7 @@ final class ProjectSetupViewModel {
 
         var layouts: [ExtractedLayout] = []
         for file in floorPlanFiles {
-            if let layout = importQueue.extractedLayouts[file.id] {
+            if let layout = importQueue.extractedLayout(for: file.id) {
                 layouts.append(layout)
             } else {
                 layouts.append(ExtractedLayout(

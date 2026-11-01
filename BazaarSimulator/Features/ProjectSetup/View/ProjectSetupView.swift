@@ -233,19 +233,22 @@ struct ProjectSetupView: View {
     )
 
     viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
-    queue.files.append(ImportFile(
+    queue.insert(ImportFile(
+        projectID: project.id,
         url: URL(fileURLWithPath: "/tmp/layout1.pdf"),
         kind: .floorPlan,
         state: .done(booths: 66, doors: 3),
         fileSize: 2_516_582
     ))
-    queue.files.append(ImportFile(
+    queue.insert(ImportFile(
+        projectID: project.id,
         url: URL(fileURLWithPath: "/tmp/layout2.pdf"),
         kind: .floorPlan,
         state: .done(booths: 66, doors: 3),
         fileSize: 2_726_298
     ))
-    queue.files.append(ImportFile(
+    queue.insert(ImportFile(
+        projectID: project.id,
         url: URL(fileURLWithPath: "/tmp/layout3.pdf"),
         kind: .floorPlan,
         state: .reading(progress: 0.5),

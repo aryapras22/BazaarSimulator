@@ -6,9 +6,9 @@ import Observation
 @Observable
 @MainActor
 final class ScriptedImportQueue: ImportQueueing {
-    var files: [ImportFile] = []
-    var legend: Legend?
-    var extractedLayouts: [UUID: ExtractedLayout] = [:]
+    private(set) var files: [ImportFile] = []
+    private var legendsByProject: [UUID: Legend] = [:]
+    private var extractedLayouts: [UUID: ExtractedLayout] = [:]
 
     var failingFileNames: Set<String> = []
     var isSynchronous: Bool = false
@@ -19,10 +19,23 @@ final class ScriptedImportQueue: ImportQueueing {
         self.isSynchronous = isSynchronous
     }
 
-    func add(urls: [URL], kind: ImportFileKind) {
+    func files(for projectID: UUID) -> [ImportFile] {
+        files.filter { $0.projectID == projectID }
+    }
+
+    func legend(for projectID: UUID) -> Legend? {
+        legendsByProject[projectID]
+    }
+
+    func extractedLayout(for fileID: UUID) -> ExtractedLayout? {
+        extractedLayouts[fileID]
+    }
+
+    func add(urls: [URL], kind: ImportFileKind, projectID: UUID) {
         for url in urls {
             let fileSize = fileSize(for: url)
             let file = ImportFile(
+                projectID: projectID,
                 url: url,
                 kind: kind,
                 state: .waiting,
@@ -38,15 +51,19 @@ final class ScriptedImportQueue: ImportQueueing {
         }
     }
 
-    func remove(id: UUID) {
-        activeTasks[id]?.cancel()
-        activeTasks.removeValue(forKey: id)
-        files.removeAll { $0.id == id }
-        extractedLayouts.removeValue(forKey: id)
+    func insert(_ file: ImportFile) {
+        files.append(file)
     }
 
-    func cancel() {
-        for index in files.indices {
+    func remove(fileID: UUID) {
+        activeTasks[fileID]?.cancel()
+        activeTasks.removeValue(forKey: fileID)
+        files.removeAll { $0.id == fileID }
+        extractedLayouts.removeValue(forKey: fileID)
+    }
+
+    func cancel(projectID: UUID) {
+        for index in files.indices where files[index].projectID == projectID {
             switch files[index].state {
             case .waiting, .reading:
                 activeTasks[files[index].id]?.cancel()
@@ -58,8 +75,8 @@ final class ScriptedImportQueue: ImportQueueing {
         }
     }
 
-    func retry(id: UUID) {
-        guard let index = files.firstIndex(where: { $0.id == id }) else { return }
+    func retry(fileID: UUID) {
+        guard let index = files.firstIndex(where: { $0.id == fileID }) else { return }
         files[index].state = .waiting
         let file = files[index]
         if isSynchronous {
@@ -69,15 +86,15 @@ final class ScriptedImportQueue: ImportQueueing {
         }
     }
 
-    func reset() {
-        for task in activeTasks.values {
-            task.cancel()
+    func removeAll(projectID: UUID) {
+        let matchingIDs = files.filter { $0.projectID == projectID }.map(\.id)
+        for id in matchingIDs {
+            activeTasks[id]?.cancel()
+            activeTasks.removeValue(forKey: id)
+            extractedLayouts.removeValue(forKey: id)
         }
-        activeTasks.removeAll()
-        files.removeAll()
-        legend = nil
-        extractedLayouts.removeAll()
-        failingFileNames.removeAll()
+        files.removeAll { $0.projectID == projectID }
+        legendsByProject.removeValue(forKey: projectID)
     }
 
     func failFile(named name: String) {
@@ -109,7 +126,7 @@ final class ScriptedImportQueue: ImportQueueing {
                     color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0)
                 )
             ])
-            self.legend = defaultLegend
+            legendsByProject[file.projectID] = defaultLegend
             files[index].state = .done(booths: 0, doors: 0)
         } else {
             files[index].state = .done(booths: 66, doors: 3)
