@@ -191,20 +191,32 @@ struct ProjectSetupView: View {
 }
 
 #Preview("Screen 2: Initial Setup") {
-    let session = ProjectSession(projectName: "Bazaar 1")
+    let session = ProjectSession()
+    let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue()
     let router = AppRouter()
-    let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+    let viewModel = ProjectSetupViewModel(
+        projectID: project.id,
+        session: session,
+        importQueue: queue,
+        router: router
+    )
 
     return ProjectSetupView(viewModel: viewModel)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Screen 3: Legend Read") {
-    let session = ProjectSession(projectName: "Bazaar 1")
+    let session = ProjectSession()
+    let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue(isSynchronous: true)
     let router = AppRouter()
-    let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+    let viewModel = ProjectSetupViewModel(
+        projectID: project.id,
+        session: session,
+        importQueue: queue,
+        router: router
+    )
     viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
 
     return ProjectSetupView(viewModel: viewModel)
@@ -212,10 +224,16 @@ struct ProjectSetupView: View {
 }
 
 #Preview("Screen 4: Plans Uploaded") {
-    let session = ProjectSession(projectName: "Bazaar 1")
+    let session = ProjectSession()
+    let project = session.createProject(named: "Bazaar 1")
     let queue = ScriptedImportQueue(isSynchronous: false)
     let router = AppRouter()
-    let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+    let viewModel = ProjectSetupViewModel(
+        projectID: project.id,
+        session: session,
+        importQueue: queue,
+        router: router
+    )
 
     viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
     queue.files.append(ImportFile(

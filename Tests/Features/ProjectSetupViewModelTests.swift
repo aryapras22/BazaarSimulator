@@ -8,9 +8,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func floorPlansRefusedUntilLegendIsRead() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         #expect(!viewModel.hasLegend)
         #expect(!viewModel.isFloorPlanZoneEnabled)
@@ -26,9 +32,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func maxSixFloorPlansAllowed() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
         #expect(viewModel.hasLegend)
@@ -50,9 +62,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func nonPDFFilesRefusedWithMessage() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         let nonPDF = URL(fileURLWithPath: "/tmp/image.png")
         viewModel.addLegendFiles(urls: [nonPDF])
@@ -65,9 +83,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func removingLegendEntryUpdatesDraftAndCount() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
         #expect(viewModel.legendEntries.count == 3)
@@ -83,9 +107,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func statusTextNamesFirstPlanStillReading() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: false)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
 
@@ -101,9 +131,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func continueConditions() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         #expect(!viewModel.isContinueEnabled)
 
@@ -126,9 +162,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func cancelMarksFilesCancelled() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: false)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         let file = ImportFile(
             url: URL(fileURLWithPath: "/tmp/plan.pdf"),
@@ -149,9 +191,15 @@ struct ProjectSetupViewModelTests {
     @MainActor
     func continueWritesDraftToSession() {
         let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
         let router = AppRouter()
-        let viewModel = ProjectSetupViewModel(session: session, importQueue: queue, router: router)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            router: router
+        )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
         viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
@@ -159,10 +207,10 @@ struct ProjectSetupViewModelTests {
 
         viewModel.continueToReview()
 
-        #expect(session.currentDraft != nil)
-        #expect(session.currentDraft?.name == "Super Bazaar")
-        #expect(session.currentDraft?.legend.entries.count == 3)
-        #expect(session.currentDraft?.layouts.count == 1)
+        #expect(session.draft(for: project.id) != nil)
+        #expect(session.draft(for: project.id)?.name == "Super Bazaar")
+        #expect(session.draft(for: project.id)?.legend.entries.count == 3)
+        #expect(session.draft(for: project.id)?.layouts.count == 1)
         #expect(router.destination == .reviewPlaceholder)
     }
 }

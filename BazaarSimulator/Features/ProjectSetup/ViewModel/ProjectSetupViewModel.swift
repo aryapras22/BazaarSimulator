@@ -4,29 +4,29 @@ import Observation
 @Observable
 @MainActor
 final class ProjectSetupViewModel {
-    var projectName: String = "" {
-        didSet {
-            session.projectName = projectName
-        }
+    let projectID: UUID
+    let session: any ProjectSessionProtocol
+    let importQueue: any ImportQueueing
+    let router: AppRouter
+
+    var projectName: String {
+        get { session.projects.first { $0.id == projectID }?.name ?? "" }
+        set { session.renameProject(id: projectID, to: newValue) }
     }
 
     var legendEntries: [LegendEntry] = []
     var bannerMessage: String?
 
-    let session: any ProjectSessionProtocol
-    let importQueue: any ImportQueueing
-    let router: AppRouter
-
     init(
+        projectID: UUID,
         session: any ProjectSessionProtocol,
         importQueue: any ImportQueueing,
         router: AppRouter
     ) {
+        self.projectID = projectID
         self.session = session
         self.importQueue = importQueue
         self.router = router
-        self.projectName = session.projectName.isEmpty ? "Bazaar 1" : session.projectName
-        self.session.projectName = self.projectName
 
         if let existingLegend = importQueue.legend {
             self.legendEntries = existingLegend.entries
@@ -167,8 +167,7 @@ final class ProjectSetupViewModel {
             layouts: layouts
         )
 
-        session.currentDraft = draft
-        session.projectName = projectName
+        session.setDraft(draft, for: projectID)
         router.showReviewPlaceholder()
     }
 

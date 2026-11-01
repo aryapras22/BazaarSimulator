@@ -35,8 +35,10 @@ struct RootView: View {
         case .empty:
             EmptyWorkspaceView()
         case .setup:
+            let projectID = services.projectSession.activeProjectID ?? UUID()
             ProjectSetupView(
                 viewModel: ProjectSetupViewModel(
+                    projectID: projectID,
                     session: services.projectSession,
                     importQueue: services.importQueue,
                     router: router

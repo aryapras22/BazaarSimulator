@@ -3,47 +3,52 @@ import Observation
 
 @MainActor
 protocol ProjectSessionProtocol: AnyObject {
-    var activeProjectId: UUID? { get set }
-    var projectName: String { get set }
-    var currentDraft: ProjectDraft? { get set }
-    var onProjectRenamed: ((UUID, String) -> Void)? { get set }
-    func selectProject(id: UUID, name: String)
-    func setProjectName(_ name: String)
+    var projects: [ProjectSummary] { get }
+    var activeProjectID: UUID? { get }
+    var activeProject: ProjectSummary? { get }
+
+    @discardableResult
+    func createProject(named name: String) -> ProjectSummary
+    func selectProject(id: UUID)
+    func renameProject(id: UUID, to name: String)
+
+    func draft(for projectID: UUID) -> ProjectDraft?
+    func setDraft(_ draft: ProjectDraft, for projectID: UUID)
 }
 
 @Observable
 @MainActor
 final class ProjectSession: ProjectSessionProtocol {
-    var activeProjectId: UUID?
-    private var internalProjectName: String = ""
+    private(set) var projects: [ProjectSummary] = []
+    private(set) var activeProjectID: UUID?
+    private var drafts: [UUID: ProjectDraft] = [:]
 
-    var projectName: String {
-        get { internalProjectName }
-        set {
-            internalProjectName = newValue
-            if let activeProjectId {
-                onProjectRenamed?(activeProjectId, newValue)
-            }
-        }
+    var activeProject: ProjectSummary? {
+        projects.first { $0.id == activeProjectID }
     }
 
-    var currentDraft: ProjectDraft?
-
-    @ObservationIgnored
-    var onProjectRenamed: ((UUID, String) -> Void)?
-
-    init(activeProjectId: UUID? = nil, projectName: String = "", currentDraft: ProjectDraft? = nil) {
-        self.activeProjectId = activeProjectId
-        self.internalProjectName = projectName
-        self.currentDraft = currentDraft
+    @discardableResult
+    func createProject(named name: String) -> ProjectSummary {
+        let summary = ProjectSummary(name: name)
+        projects.append(summary)
+        return summary
     }
 
-    func selectProject(id: UUID, name: String) {
-        self.activeProjectId = id
-        self.internalProjectName = name
+    func selectProject(id: UUID) {
+        guard projects.contains(where: { $0.id == id }) else { return }
+        activeProjectID = id
     }
 
-    func setProjectName(_ name: String) {
-        self.projectName = name
+    func renameProject(id: UUID, to name: String) {
+        guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
+        projects[index].name = name
+    }
+
+    func draft(for projectID: UUID) -> ProjectDraft? {
+        drafts[projectID]
+    }
+
+    func setDraft(_ draft: ProjectDraft, for projectID: UUID) {
+        drafts[projectID] = draft
     }
 }

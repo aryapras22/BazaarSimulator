@@ -15,7 +15,7 @@ struct ProjectLibraryView: View {
                         } label: {
                             ProjectRow(
                                 name: project.name,
-                                isSelected: viewModel.selectedProjectId == project.id
+                                isSelected: viewModel.selectedProjectID == project.id
                             )
                         }
                         .buttonStyle(.plain)
@@ -56,13 +56,11 @@ struct ProjectLibraryView: View {
 
 #Preview {
     let session = ProjectSession()
+    let first = session.createProject(named: "Bazaar 1")
+    session.createProject(named: "Bazaar 2")
+    session.selectProject(id: first.id)
     let router = AppRouter()
     let viewModel = ProjectLibraryViewModel(session: session, router: router)
-    viewModel.projects = [
-        ProjectItem(name: "Bazaar 1"),
-        ProjectItem(name: "Bazaar 2")
-    ]
-    viewModel.selectedProjectId = viewModel.projects[0].id
 
     return ProjectLibraryView(viewModel: viewModel)
         .preferredColorScheme(.dark)
