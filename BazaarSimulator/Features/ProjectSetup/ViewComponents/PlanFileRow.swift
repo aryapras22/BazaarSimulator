@@ -93,8 +93,7 @@ struct PlanFileRow: View {
             id: UUID(),
             title: "floor_layout_2.pdf",
             subtitle: "Layout 2 · 2.6 MB",
-            status: .reading(progress: 0.65),
-            isReading: true
+            status: .reading(progress: 0.65)
         ),
         onEdit: {},
         onDelete: {}
@@ -110,8 +109,7 @@ struct PlanFileRow: View {
             id: UUID(),
             title: "floor_layout_3.pdf",
             subtitle: "Layout 3 · 1.8 MB",
-            status: .reading(progress: nil),
-            isReading: true
+            status: .reading(progress: nil)
         ),
         onEdit: {},
         onDelete: {}

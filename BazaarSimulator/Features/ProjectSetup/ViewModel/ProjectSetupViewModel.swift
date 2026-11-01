@@ -51,6 +51,12 @@ final class ProjectSetupViewModel {
         importQueue.files(for: projectID).filter { $0.kind == .floorPlan }
     }
 
+    var planRows: [PlanRowDisplay] {
+        floorPlanFiles.enumerated().map { index, file in
+            ImportRowFormatter.formatRow(file: file, layoutIndex: index + 1)
+        }
+    }
+
     var hasLegend: Bool {
         importQueue.legend(for: projectID) != nil
     }

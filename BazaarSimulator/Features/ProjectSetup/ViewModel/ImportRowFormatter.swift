@@ -13,16 +13,19 @@ struct PlanRowDisplay: Equatable, Sendable, Identifiable {
     let title: String
     let subtitle: String
     let status: Status
-    let isReading: Bool
     let hasThumbnail: Bool
     let thumbnailData: Data?
+
+    var isReading: Bool {
+        if case .reading = status { return true }
+        return false
+    }
 
     init(
         id: UUID,
         title: String,
         subtitle: String,
         status: Status,
-        isReading: Bool = false,
         hasThumbnail: Bool = false,
         thumbnailData: Data? = nil
     ) {
@@ -30,7 +33,6 @@ struct PlanRowDisplay: Equatable, Sendable, Identifiable {
         self.title = title
         self.subtitle = subtitle
         self.status = status
-        self.isReading = isReading
         self.hasThumbnail = hasThumbnail
         self.thumbnailData = thumbnailData
     }
@@ -71,24 +73,17 @@ enum ImportRowFormatter {
         let sub = subtitle(layoutIndex: layoutIndex, byteCount: file.fileSize, locale: locale)
 
         let status: PlanRowDisplay.Status
-        let isReading: Bool
-
         switch file.state {
         case .waiting:
             status = .waiting(text: "Waiting...")
-            isReading = false
         case .reading(let progress):
             status = .reading(progress: progress)
-            isReading = true
         case .done(let booths, let doors):
             status = .done(text: doneText(booths: booths, doors: doors))
-            isReading = false
         case .failed(let message):
             status = .failed(message: message)
-            isReading = false
         case .cancelled:
             status = .cancelled(text: "Cancelled")
-            isReading = false
         }
 
         return PlanRowDisplay(
@@ -96,7 +91,6 @@ enum ImportRowFormatter {
             title: title,
             subtitle: sub,
             status: status,
-            isReading: isReading,
             hasThumbnail: file.thumbnailData != nil,
             thumbnailData: file.thumbnailData
         )
@@ -108,24 +102,17 @@ enum ImportRowFormatter {
         let sub = "Legend · \(formattedBytes)"
 
         let status: PlanRowDisplay.Status
-        let isReading: Bool
-
         switch file.state {
         case .waiting:
             status = .waiting(text: "Waiting...")
-            isReading = false
         case .reading(let progress):
             status = .reading(progress: progress)
-            isReading = true
         case .done:
             status = .done(text: "✓ Done")
-            isReading = false
         case .failed(let message):
             status = .failed(message: message)
-            isReading = false
         case .cancelled:
             status = .cancelled(text: "Cancelled")
-            isReading = false
         }
 
         return PlanRowDisplay(
@@ -133,7 +120,6 @@ enum ImportRowFormatter {
             title: title,
             subtitle: sub,
             status: status,
-            isReading: isReading,
             hasThumbnail: file.thumbnailData != nil,
             thumbnailData: file.thumbnailData
         )

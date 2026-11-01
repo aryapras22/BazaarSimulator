@@ -145,20 +145,18 @@ struct ProjectSetupView: View {
 
     private var uploadedPlansCard: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
-            Text("UPLOADED · \(viewModel.floorPlanFiles.count) Plans")
+            Text("UPLOADED · \(viewModel.planRows.count) Plans")
                 .sectionLabel()
 
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.floorPlanFiles.enumerated()), id: \.element.id) { index, file in
-                    let display = ImportRowFormatter.formatRow(file: file, layoutIndex: index + 1)
+                ForEach(Array(viewModel.planRows.enumerated()), id: \.element.id) { index, row in
                     PlanFileRow(
-                        display: display,
-                        onEdit: {},
-                        onDelete: { viewModel.deleteFloorPlan(id: file.id) },
-                        onRetry: { viewModel.retryFloorPlan(id: file.id) }
+                        display: row,
+                        onDelete: { viewModel.deleteFloorPlan(id: row.id) },
+                        onRetry: { viewModel.retryFloorPlan(id: row.id) }
                     )
 
-                    if index < viewModel.floorPlanFiles.count - 1 {
+                    if index < viewModel.planRows.count - 1 {
                         Divider()
                             .background(Palette.surfaceBorder)
                     }
