@@ -1,17 +1,13 @@
-//
-//  BazaarSimulatorApp.swift
-//  BazaarSimulator
-//
-//  Created by Arya on 30/10/26.
-//
-
 import SwiftUI
 
 @main
 struct BazaarSimulatorApp: App {
+    @State private var services = AppServices()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(services: services)
+                .preferredColorScheme(.dark)
         }
     }
 }
