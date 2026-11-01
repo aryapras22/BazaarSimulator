@@ -150,8 +150,8 @@ extension ProjectSetupViewModelTests {
             Issue.record("Expected pending row")
             return
         }
-        if case .failed = row.status {
-            // Success
+        if case .failed(let message) = row.status {
+            #expect(message == "Couldn't read this legend")
         } else {
             Issue.record("Expected failed row status")
         }

@@ -2,7 +2,6 @@ import Foundation
 
 @MainActor
 protocol ImportQueueing: AnyObject {
-    var files: [ImportFile] { get }
     func files(for projectID: UUID) -> [ImportFile]
     func legend(for projectID: UUID) -> Legend?
     func extractedLayout(for fileID: UUID) -> ExtractedLayout?

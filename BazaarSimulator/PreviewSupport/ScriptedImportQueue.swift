@@ -121,7 +121,8 @@ final class ScriptedImportQueue: ImportQueueing {
         guard let index = files.firstIndex(where: { $0.id == file.id }) else { return }
 
         if failingFileNames.contains(file.url.lastPathComponent) {
-            files[index].state = .failed(message: "Couldn't read this plan")
+            let message = file.kind == .legend ? "Couldn't read this legend" : "Couldn't read this plan"
+            files[index].state = .failed(message: message)
             return
         }
 
@@ -159,7 +160,10 @@ final class ScriptedImportQueue: ImportQueueing {
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 if Task.isCancelled { return }
                 if let idx = self.files.firstIndex(where: { $0.id == file.id }) {
-                    self.files[idx].state = .failed(message: "Couldn't read this plan")
+                    let message = file.kind == .legend
+                        ? "Couldn't read this legend"
+                        : "Couldn't read this plan"
+                    self.files[idx].state = .failed(message: message)
                 }
                 return
             }

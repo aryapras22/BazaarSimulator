@@ -1,8 +1,5 @@
 import Foundation
 
-typealias ImportKind = ImportFileKind
-typealias ImportState = ImportFileState
-
 enum ImportFileKind: String, Sendable, Codable, Hashable {
     case legend
     case floorPlan

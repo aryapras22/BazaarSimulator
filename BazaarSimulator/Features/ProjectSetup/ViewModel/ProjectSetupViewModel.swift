@@ -84,7 +84,7 @@ final class ProjectSetupViewModel {
     }
 
     var isContinueEnabled: Bool {
-        guard !projectName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        guard !projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         guard !legendEntries.isEmpty else { return false }
         guard !floorPlanFiles.isEmpty else { return false }
 
@@ -129,7 +129,7 @@ final class ProjectSetupViewModel {
             if legendEntries.isEmpty {
                 return "Keep at least one legend category to continue"
             }
-            if projectName.trimmingCharacters(in: .whitespaces).isEmpty {
+            if projectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 return "Name the project to continue"
             }
             return "Ready to continue"
@@ -208,7 +208,7 @@ final class ProjectSetupViewModel {
         }
 
         let draft = ProjectDraft(
-            name: projectName,
+            name: projectName.trimmingCharacters(in: .whitespacesAndNewlines),
             legend: Legend(entries: legendEntries),
             layouts: layouts
         )
