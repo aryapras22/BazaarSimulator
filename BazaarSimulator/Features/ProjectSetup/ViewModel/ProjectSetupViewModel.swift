@@ -5,9 +5,9 @@ import Observation
 @MainActor
 final class ProjectSetupViewModel {
     let projectID: UUID
-    let session: any ProjectSessionProtocol
-    let importQueue: any ImportQueueing
-    let onContinue: (UUID) -> Void
+    private let session: any ProjectSessionProtocol
+    private let importQueue: any ImportQueueing
+    private let onContinue: (UUID) -> Void
 
     var projectName: String {
         get { session.projects.first { $0.id == projectID }?.name ?? "" }
@@ -65,7 +65,7 @@ final class ProjectSetupViewModel {
         hasLegend && floorPlanFiles.count < 6
     }
 
-    var isReadingAnyFile: Bool {
+    var hasPendingFiles: Bool {
         importQueue.files(for: projectID).contains { file in
             if case .reading = file.state { return true }
             if case .waiting = file.state { return true }
@@ -74,7 +74,7 @@ final class ProjectSetupViewModel {
     }
 
     var isCancelEnabled: Bool {
-        isReadingAnyFile
+        hasPendingFiles
     }
 
     var isContinueEnabled: Bool {
@@ -164,22 +164,27 @@ final class ProjectSetupViewModel {
     }
 
     func deleteFloorPlan(id: UUID) {
+        bannerMessage = nil
         importQueue.remove(fileID: id)
     }
 
     func retryFloorPlan(id: UUID) {
+        bannerMessage = nil
         importQueue.retry(fileID: id)
     }
 
     func deleteLegendFile(id: UUID) {
+        bannerMessage = nil
         importQueue.remove(fileID: id)
     }
 
     func retryLegendFile(id: UUID) {
+        bannerMessage = nil
         importQueue.retry(fileID: id)
     }
 
     func cancel() {
+        bannerMessage = nil
         importQueue.cancel(projectID: projectID)
     }
 

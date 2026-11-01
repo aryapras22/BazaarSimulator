@@ -1,9 +1,10 @@
-import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ProjectSetupView: View {
     @Bindable var viewModel: ProjectSetupViewModel
+    @State private var isLegendImporterPresented: Bool = false
+    @State private var isFloorPlanImporterPresented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -24,6 +25,24 @@ struct ProjectSetupView: View {
         .padding(Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Palette.background)
+        .fileImporter(
+            isPresented: $isLegendImporterPresented,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            if case .success(let urls) = result {
+                viewModel.addLegendFiles(urls: urls)
+            }
+        }
+        .fileImporter(
+            isPresented: $isFloorPlanImporterPresented,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: true
+        ) { result in
+            if case .success(let urls) = result {
+                viewModel.addFloorPlanFiles(urls: urls)
+            }
+        }
     }
 
     private var headerView: some View {
@@ -77,7 +96,7 @@ struct ProjectSetupView: View {
 
             DropZone(
                 hint: "PDF · one legend for all the layouts",
-                onChoose: { openFileDialog(allowsMultiple: true, onSelect: viewModel.addLegendFiles) },
+                onChoose: { isLegendImporterPresented = true },
                 onDrop: viewModel.addLegendFiles
             )
 
@@ -132,7 +151,7 @@ struct ProjectSetupView: View {
 
             DropZone(
                 hint: "PDF · one file per layout · up to 6",
-                onChoose: { openFileDialog(allowsMultiple: true, onSelect: viewModel.addFloorPlanFiles) },
+                onChoose: { isFloorPlanImporterPresented = true },
                 onDrop: viewModel.addFloorPlanFiles
             )
             .disabled(!viewModel.isFloorPlanZoneEnabled)
@@ -186,17 +205,6 @@ struct ProjectSetupView: View {
             }
             .buttonStyle(.primary)
             .disabled(!viewModel.isContinueEnabled)
-        }
-    }
-
-    private func openFileDialog(allowsMultiple: Bool, onSelect: @escaping ([URL]) -> Void) {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = allowsMultiple
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.pdf]
-        if panel.runModal() == .OK {
-            onSelect(panel.urls)
         }
     }
 }
