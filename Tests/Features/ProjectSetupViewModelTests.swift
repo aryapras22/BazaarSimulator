@@ -363,4 +363,35 @@ struct ProjectSetupViewModelTests {
         #expect(viewModel.pendingLegendRows.isEmpty)
         #expect(viewModel.legendFiles.isEmpty)
     }
+
+    @Test("Continue refuses to navigate if extracted layout is missing")
+    @MainActor
+    func continueRefusesWhenLayoutMissing() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        var continued = false
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in continued = true }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        let planFile = ImportFile(
+            projectID: project.id,
+            url: URL(fileURLWithPath: "/tmp/plan1.pdf"),
+            kind: .floorPlan,
+            state: .done(booths: 10, doors: 2)
+        )
+        queue.insert(planFile)
+        #expect(queue.extractedLayout(for: planFile.id) == nil)
+
+        viewModel.continueToReview()
+
+        #expect(!continued)
+        #expect(viewModel.bannerMessage == "Some floor plans could not be read")
+        #expect(session.draft(for: project.id) == nil)
+    }
 }

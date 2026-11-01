@@ -173,19 +173,10 @@ final class ProjectSetupViewModel {
     func continueToReview() {
         guard isContinueEnabled else { return }
 
-        var layouts: [ExtractedLayout] = []
-        for file in floorPlanFiles {
-            if let layout = importQueue.extractedLayout(for: file.id) {
-                layouts.append(layout)
-            } else {
-                layouts.append(ExtractedLayout(
-                    id: file.id,
-                    name: file.url.deletingPathExtension().lastPathComponent,
-                    sizeInMetres: LayoutDimensions(width: 70.1, height: 84.2),
-                    booths: 66,
-                    doors: 3
-                ))
-            }
+        let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
+        guard layouts.count == floorPlanFiles.count else {
+            bannerMessage = "Some floor plans could not be read"
+            return
         }
 
         let draft = ProjectDraft(
