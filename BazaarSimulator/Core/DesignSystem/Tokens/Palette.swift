@@ -29,6 +29,32 @@ enum Palette {
     static let destructive = Color(hex: 0xF44245)
     static let primaryDisabled = Color(hex: 0x281B28)
     static let primaryDisabledText = Color(hex: 0x46444F)
+
+    static let canvasGridLine = Color(hex: 0x071327)
+    static let canvasFloor = Color(hex: 0xFBFCFE)
+    static let canvasLine = Color(hex: 0x1F4E86)
+    static let canvasLineGlow = Color(hex: 0x2F6BB1, alpha: 0.4)
+    static let canvasBoothFill = Color(hex: 0xF6F6F6)
+    static let canvasOpenSide = Color(hex: 0xFFBCB0)
+    static let canvasSelection = Color(hex: 0xF86323)
+    static let canvasFlowFill = Color(hex: 0xD9ECF8)
+    static let canvasFlowLine = Color(hex: 0x708EA9)
+    static let canvasDoorFill = Color(hex: 0xF2CAB6)
+    static let canvasDoorLine = Color(hex: 0xEB6547)
+    static let canvasDoorSelected = Color(hex: 0xB72008)
+    static let canvasIssue = destructive
+    static let highlight = Color(hex: 0xF76222)
+    static let fieldOnSurface = Color(hex: 0x3F4D64)
+    static let fieldOnSurfaceBorder = Color(hex: 0x47556B)
+    static let popoverOnSurface = Color(hex: 0x4F5D73)
+    static let diagramFill = Color(hex: 0xC5CEDB)
+    static let diagramChip = Color(hex: 0x525A65)
+    static let tipBackground = Color(hex: 0x8CB5EB)
+    static let tipText = Color(hex: 0x072955)
+    static let tipButton = Color(hex: 0xBAE3FE)
+    static let segmentedSelected = Color(hex: 0x3A485E)
+    static let primaryDisabledOnSurface = Color(hex: 0x50313B)
+    static let primaryDisabledOnSurfaceText = Color(hex: 0xA7999D)
 }
 
 extension Color {
