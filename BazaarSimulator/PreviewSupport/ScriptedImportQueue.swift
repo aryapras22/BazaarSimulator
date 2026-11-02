@@ -7,7 +7,7 @@ import simd
 @Observable
 @MainActor
 final class ScriptedImportQueue: ImportQueueing {
-    private static let mockLayoutFileNames = [
+    var mockLayoutFileNames: [String] = [
         "annyeong-market-layout",
         "beyond-market-layout"
     ]
@@ -155,36 +155,33 @@ final class ScriptedImportQueue: ImportQueueing {
             legendsByFile[file.id] = defaultLegend
             files[index].state = .done(booths: 0, doors: 0)
         } else {
-            let extracted = buildExtractedLayout(for: file)
-            extractedLayouts[file.id] = extracted
-            files[index].state = .done(booths: extracted.booths, doors: extracted.doors)
+            if let extracted = buildExtractedLayout(for: file) {
+                extractedLayouts[file.id] = extracted
+                files[index].state = .done(booths: extracted.booths, doors: extracted.doors)
+            } else {
+                files[index].state = .failed(message: "Couldn't load the mock layout")
+            }
         }
     }
 
-    private func buildExtractedLayout(for file: ImportFile) -> ExtractedLayout {
+    private func buildExtractedLayout(for file: ImportFile) -> ExtractedLayout? {
+        guard !mockLayoutFileNames.isEmpty else { return nil }
         let projectPlans = files(for: file.projectID).filter { $0.kind == .floorPlan }
         let planIndex = projectPlans.firstIndex { $0.id == file.id } ?? 0
-        let mockName = Self.mockLayoutFileNames[planIndex % Self.mockLayoutFileNames.count]
+        let mockName = mockLayoutFileNames[planIndex % mockLayoutFileNames.count]
         let projectLegend = legend(for: file.projectID) ?? Legend()
         let fileName = file.url.deletingPathExtension().lastPathComponent
 
-        if let dto = try? MockDataStore.load(BazaarLayoutDTO.self, from: mockName) {
-            let mapped = MockLayoutMapper.layout(
-                from: dto,
-                legend: projectLegend,
-                id: file.id,
-                nameOverride: fileName
-            )
-            return ExtractedLayout(layout: mapped)
+        guard let dto = try? MockDataStore.load(BazaarLayoutDTO.self, from: mockName) else {
+            return nil
         }
-
-        return ExtractedLayout(
+        let mapped = MockLayoutMapper.layout(
+            from: dto,
+            legend: projectLegend,
             id: file.id,
-            name: fileName,
-            sizeInMetres: LayoutDimensions(width: 70.1, height: 84.2),
-            booths: 66,
-            doors: 3
+            nameOverride: fileName
         )
+        return ExtractedLayout(layout: mapped)
     }
 
     private func startWorkerIfNeeded() {

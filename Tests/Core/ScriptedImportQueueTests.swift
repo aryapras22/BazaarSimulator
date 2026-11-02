@@ -32,4 +32,24 @@ struct ScriptedImportQueueTests {
         }
         #expect(files[1].state == .waiting)
     }
+
+    @Test("A plan whose mock layout cannot load fails")
+    @MainActor
+    func planWhoseMockLayoutCannotLoadFails() {
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        queue.mockLayoutFileNames = ["missing-mock-layout"]
+        let projectID = UUID()
+
+        queue.add(
+            urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")],
+            kind: .floorPlan,
+            projectID: projectID
+        )
+
+        let file = queue.files(for: projectID).first
+        #expect(file?.state == .failed(message: "Couldn't load the mock layout"))
+        if let fileID = file?.id {
+            #expect(queue.extractedLayout(for: fileID) == nil)
+        }
+    }
 }
