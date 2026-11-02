@@ -9,5 +9,8 @@ struct BazaarSimulatorApp: App {
             RootView(services: services)
                 .preferredColorScheme(.dark)
         }
+        .commands {
+            AppCommands()
+        }
     }
 }

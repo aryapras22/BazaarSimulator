@@ -57,6 +57,7 @@ struct LayoutEditorView: View {
         .toolbar {
             editorToolbar
         }
+        .focusedSceneValue(\.editorCommandActions, commandActions)
         .onKeyPress(.escape) {
             viewModel.selectObject(nil)
             return .handled
@@ -118,6 +119,26 @@ struct LayoutEditorView: View {
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
             issues: viewModel.canvasIssueSnapshot
+        )
+    }
+
+    private var commandActions: EditorCommandActions {
+        let selected = viewModel.selectedObject
+        let isMovable = selected?.kind.isMovable == true
+        let isRotatable = selected?.kind.isRotatable == true
+        return EditorCommandActions(
+            canUndo: viewModel.canUndo,
+            canRedo: viewModel.canRedo,
+            hasSelection: isMovable,
+            canRotate: isRotatable,
+            undo: { viewModel.undo() },
+            redo: { viewModel.redo() },
+            deleteSelected: { viewModel.deleteSelected() },
+            duplicateSelected: { viewModel.duplicateSelected() },
+            rotateSelected: { viewModel.rotateSelected() },
+            zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
+            zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
+            fitToView: { viewModel.fitToView(in: canvasViewSize) }
         )
     }
 
