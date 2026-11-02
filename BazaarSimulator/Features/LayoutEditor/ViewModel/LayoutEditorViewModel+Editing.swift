@@ -133,17 +133,28 @@ extension LayoutEditorViewModel {
 
     func handleContextAction(_ action: CanvasContextAction) {
         switch action {
-        case .rotateSelected:
+        case .rotate(let id):
+            guard prepareContextTarget(id) else { return }
             rotateSelected()
-        case .duplicateSelected:
+        case .duplicate(let id):
+            guard prepareContextTarget(id) else { return }
             duplicateSelected()
-        case .resetOpenSides:
+        case .resetOpenSides(let id):
+            guard prepareContextTarget(id) else { return }
             resetOpenSidesForSelected()
-        case .deleteSelected:
+        case .delete(let id):
+            guard prepareContextTarget(id) else { return }
             deleteSelected()
         case let .addObject(kind, worldPoint):
             addObject(kind: kind, at: worldPoint)
         }
+    }
+
+    private func prepareContextTarget(_ id: UUID) -> Bool {
+        if selectionID != id {
+            selectObject(id)
+        }
+        return pendingAction == nil && selectionID == id
     }
 
     private func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {

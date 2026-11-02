@@ -2,10 +2,10 @@ import SwiftUI
 import simd
 
 enum CanvasContextAction: Sendable, Equatable {
-    case rotateSelected
-    case duplicateSelected
-    case resetOpenSides
-    case deleteSelected
+    case rotate(UUID)
+    case duplicate(UUID)
+    case resetOpenSides(UUID)
+    case delete(UUID)
     case addObject(kind: LayoutObjectKind, atWorld: SIMD2<Double>)
 }
 
@@ -122,24 +122,26 @@ struct LayoutCanvasView: View {
     @ViewBuilder
     private var contextMenuContent: some View {
         if snapshot.tab == .floorPlan {
-            if let selectedID = snapshot.selectionID,
-               let selected = snapshot.layout.objects.first(where: { $0.id == selectedID }) {
-                if selected.kind.isRotatable {
+            let hitID = LayoutHitTester.object(at: hoverTracker.world, in: snapshot.layout, tab: snapshot.tab)
+            if let hitID,
+               let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
+               target.kind.isMovable {
+                if target.kind.isRotatable {
                     Button("Rotate 90°") {
-                        onContextAction(.rotateSelected)
+                        onContextAction(.rotate(hitID))
                     }
                 }
                 Button("Duplicate") {
-                    onContextAction(.duplicateSelected)
+                    onContextAction(.duplicate(hitID))
                 }
-                if selected.kind == .booth {
+                if target.kind == .booth {
                     Button("Reset open sides") {
-                        onContextAction(.resetOpenSides)
+                        onContextAction(.resetOpenSides(hitID))
                     }
                 }
                 Divider()
                 Button("Delete", role: .destructive) {
-                    onContextAction(.deleteSelected)
+                    onContextAction(.delete(hitID))
                 }
             } else {
                 Button("Add Booth Here") {

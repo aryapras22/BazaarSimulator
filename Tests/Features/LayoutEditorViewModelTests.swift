@@ -139,4 +139,35 @@ struct LayoutEditorViewModelTests {
 
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
+
+    @Test("Context delete on another object deletes that object")
+    func contextDeleteOnAnotherObjectDeletesTarget() throws {
+        let context = Self.makeContext()
+        let booths = context.layout.objects.filter { $0.kind == .booth }
+        let boothA = try #require(booths.first)
+        let boothB = try #require(booths.dropFirst().first)
+
+        context.viewModel.selectObject(boothA.id)
+        context.viewModel.handleContextAction(.delete(boothB.id))
+
+        let remainingIDs = try #require(context.viewModel.activeLayout?.objects.map(\.id))
+        #expect(remainingIDs.contains(boothA.id))
+        #expect(!remainingIDs.contains(boothB.id))
+    }
+
+    @Test("Context action on another object with unsaved changes asks first")
+    func contextActionOnAnotherObjectWithUnsavedChangesAsksFirst() throws {
+        let context = Self.makeContext()
+        let booths = context.layout.objects.filter { $0.kind == .booth }
+        let boothA = try #require(booths.first)
+        let boothB = try #require(booths.dropFirst().first)
+
+        context.viewModel.selectObject(boothA.id)
+        context.viewModel.inspectorDraft?.widthM = 4.0
+        context.viewModel.handleContextAction(.delete(boothB.id))
+
+        #expect(context.viewModel.pendingAction == .selectObject(boothB.id))
+        let remainingIDs = try #require(context.viewModel.activeLayout?.objects.map(\.id))
+        #expect(remainingIDs.contains(boothB.id))
+    }
 }
