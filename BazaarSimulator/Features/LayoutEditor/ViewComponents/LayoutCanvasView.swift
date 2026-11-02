@@ -28,6 +28,7 @@ struct LayoutCanvasView: View {
     let snapshot: CanvasDisplaySnapshot
     @Binding var transform: CanvasTransform
     var isFocused: FocusState<Bool>.Binding
+    var excludedTrailingWidth: CGFloat = 0
     var onSelect: (UUID?) -> Void = { _ in }
     var onHover: (UUID?) -> Void = { _ in }
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
@@ -79,12 +80,12 @@ struct LayoutCanvasView: View {
         .gesture(canvasGesture)
         .simultaneousGesture(magnificationGesture)
         .overlay {
-            CanvasScrollCatcher { delta, location, isPreciseScrolling, isCommandDown in
-                if !isPreciseScrolling || isCommandDown {
+            CanvasScrollCatcher(excludedTrailingWidth: excludedTrailingWidth) { delta, location, isPrecise, isCmd in
+                if !isPrecise || isCmd {
                     let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
                     transform = transform.zoomedForScroll(
                         deltaY: Double(delta.height),
-                        isPrecise: isPreciseScrolling,
+                        isPrecise: isPrecise,
                         around: anchor
                     )
                 } else {

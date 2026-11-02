@@ -13,6 +13,9 @@ struct LayoutEditorView: View {
                     snapshot: canvasSnapshot,
                     transform: $viewModel.transform,
                     isFocused: $isCanvasFocused,
+                    excludedTrailingWidth: (viewModel.selectedObject != nil && viewModel.inspectorDraft != nil)
+                        ? InspectorPanel.width + Spacing.l * 2
+                        : 0,
                     onSelect: { viewModel.selectObject($0) },
                     onHover: { viewModel.hoverID = $0 },
                     onDragEnded: { id, delta, isOptionDown in

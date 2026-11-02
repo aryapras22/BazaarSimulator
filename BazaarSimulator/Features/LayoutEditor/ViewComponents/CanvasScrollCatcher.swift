@@ -2,19 +2,23 @@ import AppKit
 import SwiftUI
 
 struct CanvasScrollCatcher: NSViewRepresentable {
+    var excludedTrailingWidth: CGFloat = 0
     var onScroll: (_ delta: CGSize, _ location: CGPoint, _ isPreciseScrolling: Bool, _ isCommandDown: Bool) -> Void
 
     func makeNSView(context: Context) -> ScrollCatcherView {
         let view = ScrollCatcherView()
+        view.excludedTrailingWidth = excludedTrailingWidth
         view.onScroll = onScroll
         return view
     }
 
     func updateNSView(_ nsView: ScrollCatcherView, context: Context) {
+        nsView.excludedTrailingWidth = excludedTrailingWidth
         nsView.onScroll = onScroll
     }
 
     final class ScrollCatcherView: NSView {
+        var excludedTrailingWidth: CGFloat = 0
         var onScroll: ((CGSize, CGPoint, Bool, Bool) -> Void)?
         private var monitor: Any?
 
@@ -39,6 +43,7 @@ struct CanvasScrollCatcher: NSViewRepresentable {
             guard let window, event.window === window else { return }
             let location = convert(event.locationInWindow, from: nil)
             guard bounds.contains(location) else { return }
+            guard location.x < bounds.width - excludedTrailingWidth else { return }
             onScroll?(
                 CGSize(width: event.scrollingDeltaX, height: event.scrollingDeltaY),
                 location,

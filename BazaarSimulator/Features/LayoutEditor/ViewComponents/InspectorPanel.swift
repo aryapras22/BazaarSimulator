@@ -22,7 +22,7 @@ struct InspectorPanel<Content: View, Footer: View>: View {
             footer()
         }
         .padding(Spacing.xl)
-        .frame(width: 340)
+        .frame(width: InspectorPanel<EmptyView, EmptyView>.width)
         .background(
             RoundedRectangle(cornerRadius: Radius.xl)
                 .fill(Palette.surface)
@@ -32,6 +32,10 @@ struct InspectorPanel<Content: View, Footer: View>: View {
                 .stroke(Palette.surfaceBorder, lineWidth: 1)
         )
     }
+}
+
+extension InspectorPanel where Content == EmptyView, Footer == EmptyView {
+    static let width: CGFloat = 340
 }
 
 struct InspectorSaveButtonStyle: ButtonStyle {
