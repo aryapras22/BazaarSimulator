@@ -160,7 +160,7 @@ func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID)
 `BazaarLayout` today decodes only `meta`, `booths`, `doors`, and `tables`. It is a file format, not a domain type, so it moves.
 
 *   Move `Core/Domain/BazaarLayout.swift` to `Core/Services/LayoutImport/BazaarLayoutDTO.swift` and rename the type `BazaarLayoutDTO`.
-*   Decode every key in the table above. Optional for keys missing in one file (`foyer`, `corridor`, `kidsLabel`, `kidsSeats`). Ignore `pantia`, `arrows`, `lobbyBlock` (empty or zero in both files); decode them as optional so a future file with data does not fail, and note them in a comment.
+*   Decode every key in the table above. Optional for keys missing in one file (`foyer`, `corridor`, `kidsLabel`, `kidsSeats`). Do not decode `pantia`, `arrows`, and `lobbyBlock` (empty or all zero in both bundled files), and note them in a comment.
 *   Add `MockLayoutMapper` in `Core/Services/LayoutImport/`: `static func layout(from dto: BazaarLayoutDTO, legend: Legend) -> Layout`. Pure, no I/O. `MockDataStore` stays the loader.
 
 Mapping rules:

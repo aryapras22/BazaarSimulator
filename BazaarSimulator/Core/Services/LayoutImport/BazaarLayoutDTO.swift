@@ -21,10 +21,7 @@ struct BazaarLayoutDTO: Decodable, Sendable, Equatable {
     let closed: [BazaarRectDTO]
     let foyer: BazaarZoneDTO?
     let corridor: BazaarZoneDTO?
-    // Empty or all-zero in both bundled files; decoded optionally so a future file with data does not fail.
-    let pantia: [[Double]]?
-    let arrows: [[Double]]?
-    let lobbyBlock: BazaarRectDTO?
+    // `pantia`, `arrows`, and `lobbyBlock` are empty or all zero in both bundled files and are not decoded.
 }
 
 struct BazaarWorldDTO: Decodable, Sendable, Equatable {
