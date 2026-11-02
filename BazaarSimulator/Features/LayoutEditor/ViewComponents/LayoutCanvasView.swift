@@ -27,6 +27,7 @@ struct CanvasDisplaySnapshot: Sendable {
 struct LayoutCanvasView: View {
     let snapshot: CanvasDisplaySnapshot
     @Binding var transform: CanvasTransform
+    var isFocused: FocusState<Bool>.Binding
     var onSelect: (UUID?) -> Void = { _ in }
     var onHover: (UUID?) -> Void = { _ in }
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
@@ -92,6 +93,9 @@ struct LayoutCanvasView: View {
                 }
             }
         }
+        .focusable()
+        .focusEffectDisabled()
+        .focused(isFocused)
         .onKeyPress(.escape) {
             if activeDragObjectID != nil {
                 activeDragObjectID = nil
@@ -274,6 +278,7 @@ struct LayoutCanvasView: View {
         layoutSize: PreviewLayouts.annyeong().sizeM,
         in: SIMD2<Double>(900, 650)
     )
+    @Previewable @FocusState var isFocused: Bool
     let layout = PreviewLayouts.annyeong()
     LayoutCanvasView(
         snapshot: CanvasDisplaySnapshot(
@@ -282,7 +287,8 @@ struct LayoutCanvasView: View {
             tab: .floorPlan,
             selectionID: layout.objects.first { $0.kind == .booth }?.id
         ),
-        transform: $transform
+        transform: $transform,
+        isFocused: $isFocused
     )
     .frame(width: 900, height: 650)
     .preferredColorScheme(.dark)
@@ -293,6 +299,7 @@ struct LayoutCanvasView: View {
         layoutSize: PreviewLayouts.beyond().sizeM,
         in: SIMD2<Double>(900, 650)
     )
+    @Previewable @FocusState var isFocused: Bool
     let layout = PreviewLayouts.beyond()
     LayoutCanvasView(
         snapshot: CanvasDisplaySnapshot(
@@ -301,7 +308,8 @@ struct LayoutCanvasView: View {
             tab: .flow,
             selectionID: layout.objects.first { $0.kind == .door }?.id
         ),
-        transform: $transform
+        transform: $transform,
+        isFocused: $isFocused
     )
     .frame(width: 900, height: 650)
     .preferredColorScheme(.dark)
@@ -309,6 +317,7 @@ struct LayoutCanvasView: View {
 
 #Preview("Validation Issue & Zoomed Labels") {
     @Previewable @State var transform = CanvasTransform(scale: 20, offset: SIMD2<Double>(50, 50))
+    @Previewable @FocusState var isFocused: Bool
     let layout = PreviewLayouts.smallMarket()
     let boothID = layout.objects.first { $0.kind == .booth }?.id ?? UUID()
     LayoutCanvasView(
@@ -322,7 +331,8 @@ struct LayoutCanvasView: View {
                 blockedSidesByBoothID: [boothID: .right]
             )
         ),
-        transform: $transform
+        transform: $transform,
+        isFocused: $isFocused
     )
     .frame(width: 900, height: 650)
     .preferredColorScheme(.dark)

@@ -12,6 +12,7 @@ struct LayoutEditorView: View {
                 LayoutCanvasView(
                     snapshot: canvasSnapshot,
                     transform: $viewModel.transform,
+                    isFocused: $isCanvasFocused,
                     onSelect: { viewModel.selectObject($0) },
                     onHover: { viewModel.hoverID = $0 },
                     onDragEnded: { id, delta, isOptionDown in
@@ -20,9 +21,6 @@ struct LayoutEditorView: View {
                     onContextAction: { viewModel.handleContextAction($0) },
                     onInteract: { isCanvasFocused = true }
                 )
-                .focusable()
-                .focusEffectDisabled()
-                .focused($isCanvasFocused)
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteSelected()
                     return .handled
