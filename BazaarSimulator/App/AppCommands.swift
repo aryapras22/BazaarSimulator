@@ -56,13 +56,13 @@ struct AppCommands: Commands {
             Button("Rotate 90°") {
                 actions?.rotateSelected()
             }
-            .keyboardShortcut("r", modifiers: [])
+            .keyboardShortcut("r", modifiers: .command)
             .disabled(!(actions?.canRotate ?? false))
 
             Button("Delete") {
                 actions?.deleteSelected()
             }
-            .keyboardShortcut(.delete, modifiers: [])
+            .keyboardShortcut(.delete, modifiers: .command)
             .disabled(!(actions?.hasSelection ?? false))
         }
 
