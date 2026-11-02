@@ -1,11 +1,17 @@
 import Foundation
 import Observation
+import simd
 
 /// Stands in for the real queue until the backend PR swaps AppServices to the real one,
 /// then moves to Tests/Support/.
 @Observable
 @MainActor
 final class ScriptedImportQueue: ImportQueueing {
+    private static let mockLayoutFileNames = [
+        "annyeong-market-layout",
+        "beyond-market-layout"
+    ]
+
     private(set) var files: [ImportFile] = []
     private var legendsByFile: [UUID: Legend] = [:]
     private var extractedLayouts: [UUID: ExtractedLayout] = [:]
@@ -149,15 +155,36 @@ final class ScriptedImportQueue: ImportQueueing {
             legendsByFile[file.id] = defaultLegend
             files[index].state = .done(booths: 0, doors: 0)
         } else {
-            files[index].state = .done(booths: 66, doors: 3)
-            extractedLayouts[file.id] = ExtractedLayout(
-                id: file.id,
-                name: file.url.deletingPathExtension().lastPathComponent,
-                sizeInMetres: LayoutDimensions(width: 70.1, height: 84.2),
-                booths: 66,
-                doors: 3
-            )
+            let extracted = buildExtractedLayout(for: file)
+            extractedLayouts[file.id] = extracted
+            files[index].state = .done(booths: extracted.booths, doors: extracted.doors)
         }
+    }
+
+    private func buildExtractedLayout(for file: ImportFile) -> ExtractedLayout {
+        let projectPlans = files(for: file.projectID).filter { $0.kind == .floorPlan }
+        let planIndex = projectPlans.firstIndex { $0.id == file.id } ?? 0
+        let mockName = Self.mockLayoutFileNames[planIndex % Self.mockLayoutFileNames.count]
+        let projectLegend = legend(for: file.projectID) ?? Legend()
+        let fileName = file.url.deletingPathExtension().lastPathComponent
+
+        if let dto = try? MockDataStore.load(BazaarLayoutDTO.self, from: mockName) {
+            let mapped = MockLayoutMapper.layout(
+                from: dto,
+                legend: projectLegend,
+                id: file.id,
+                nameOverride: fileName
+            )
+            return ExtractedLayout(layout: mapped)
+        }
+
+        return ExtractedLayout(
+            id: file.id,
+            name: fileName,
+            sizeInMetres: LayoutDimensions(width: 70.1, height: 84.2),
+            booths: 66,
+            doors: 3
+        )
     }
 
     private func startWorkerIfNeeded() {
