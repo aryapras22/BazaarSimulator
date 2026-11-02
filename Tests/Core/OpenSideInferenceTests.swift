@@ -126,4 +126,18 @@ struct OpenSideInferenceTests {
         #expect(sides.contains(.bottom))
         #expect(sides.contains(.left))
     }
+
+    @Test("On Annyeong, no booth has zero open sides")
+    func annyeongBoothsHaveAtLeastOneOpenSide() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "annyeong-market-layout")
+        let legend = Legend(entries: [
+            LegendEntry(name: "Food & Beverage", color: LegendColor(red: 1, green: 0, blue: 0))
+        ])
+
+        let layout = MockLayoutMapper.layout(from: dto, legend: legend)
+        let booths = layout.objects.filter { $0.kind == .booth }
+
+        #expect(!booths.isEmpty)
+        #expect(booths.allSatisfy { !$0.openSides.isEmpty })
+    }
 }

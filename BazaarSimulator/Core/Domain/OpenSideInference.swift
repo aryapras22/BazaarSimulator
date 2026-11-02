@@ -23,13 +23,39 @@ enum OpenSideInference {
             return false
         }
 
+        let isHorizontalSide = side == .top || side == .bottom
+        let sideLength = isHorizontalSide ? booth.placement.sizeM.x : booth.placement.sizeM.y
+        guard sideLength > 1e-6 else { return false }
+
+        var blockedSpan = 0.0
         for candidate in layout.objects where candidate.id != booth.id {
             guard candidate.kind.blocksWalking else { continue }
             if LayoutGeometry.intersects(strip, candidate.placement) {
-                return false
+                blockedSpan += overlappingSpanAlongSide(
+                    side: side,
+                    of: booth.placement,
+                    with: candidate.placement
+                )
             }
         }
 
-        return true
+        return blockedSpan < sideLength - 0.5
+    }
+
+    private static func overlappingSpanAlongSide(
+        side: OpenSides,
+        of boothPlacement: Placement,
+        with obstaclePlacement: Placement
+    ) -> Double {
+        let isHorizontalSide = side == .top || side == .bottom
+        let halfLength = (isHorizontalSide ? boothPlacement.sizeM.x : boothPlacement.sizeM.y) / 2.0
+        let localCorners = LayoutGeometry.corners(of: obstaclePlacement).map {
+            LayoutGeometry.toLocal(point: $0, in: boothPlacement)
+        }
+        let coords = localCorners.map { isHorizontalSide ? $0.x : $0.y }
+        guard let minCoord = coords.min(), let maxCoord = coords.max() else { return 0 }
+        let start = max(-halfLength, minCoord)
+        let end = min(halfLength, maxCoord)
+        return max(0, end - start)
     }
 }

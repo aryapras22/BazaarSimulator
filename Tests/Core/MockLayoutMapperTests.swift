@@ -87,17 +87,6 @@ struct MockLayoutMapperTests {
         #expect(second.doorFlow?.direction == .exit)
     }
 
-    @Test("On Annyeong, no booth has zero open sides")
-    func annyeongBoothsHaveAtLeastOneOpenSide() throws {
-        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "annyeong-market-layout")
-
-        let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
-        let booths = layout.objects.filter { $0.kind == .booth }
-
-        #expect(!booths.isEmpty)
-        #expect(booths.allSatisfy { !$0.openSides.isEmpty })
-    }
-
     private func count(_ kind: LayoutObjectKind, in layout: Layout) -> Int {
         layout.objects.filter { $0.kind == kind }.count
     }

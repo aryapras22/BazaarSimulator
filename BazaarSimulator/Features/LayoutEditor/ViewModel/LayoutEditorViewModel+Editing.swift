@@ -21,9 +21,6 @@ extension LayoutEditorViewModel {
         }
         guard after != before else { return }
         commitEdit(.replace(before: before, after: after))
-        if selectionID == id {
-            inspectorDraft = inspectorDraft
-        }
     }
 
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
@@ -31,9 +28,6 @@ extension LayoutEditorViewModel {
         var after = before
         after.placement.center += deltaWorld
         commitEdit(.replace(before: before, after: after))
-        if selectionID == id {
-            inspectorDraft = inspectorDraft
-        }
     }
 
     func rotateSelected() {
@@ -46,8 +40,8 @@ extension LayoutEditorViewModel {
 
     func deleteSelected() {
         guard let layout = activeLayout,
-              let selectedID,
-              let index = layout.objects.firstIndex(where: { $0.id == selectedID }) else {
+              let selectionID,
+              let index = layout.objects.firstIndex(where: { $0.id == selectionID }) else {
             return
         }
         let target = layout.objects[index]
