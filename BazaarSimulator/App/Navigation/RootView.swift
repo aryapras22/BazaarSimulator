@@ -5,6 +5,7 @@ struct RootView: View {
     @State private var router: AppRouter
     @State private var factory: ProjectScreenFactory
     @State private var libraryViewModel: ProjectLibraryViewModel
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     init(services: AppServices? = nil) {
         let effectiveServices = services ?? AppServices()
@@ -17,13 +18,20 @@ struct RootView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             ProjectLibraryView(viewModel: libraryViewModel)
         } detail: {
             detailView
         }
         .appBackground()
         .preferredColorScheme(.dark)
+        .onChange(of: router.destination) { _, newDestination in
+            if case .review = newDestination {
+                columnVisibility = .detailOnly
+            } else {
+                columnVisibility = .all
+            }
+        }
     }
 
     @ViewBuilder
@@ -34,8 +42,9 @@ struct RootView: View {
         case .setup(let projectID):
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
-        case .review:
-            ReviewPlaceholderView()
+        case .review(let projectID):
+            LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
+                .id(projectID)
         }
     }
 }

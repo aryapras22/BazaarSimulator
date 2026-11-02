@@ -31,4 +31,20 @@ struct ProjectScreenFactoryTests {
 
         #expect(first !== second)
     }
+
+    @Test("makeLayoutEditorViewModel(projectID:) caches per project ID")
+    func cachesLayoutEditorViewModelPerProjectID() {
+        let services = AppServices()
+        let router = AppRouter()
+        let factory = ProjectScreenFactory(services: services, router: router)
+        let id1 = UUID()
+        let id2 = UUID()
+
+        let first = factory.makeLayoutEditorViewModel(projectID: id1)
+        let second = factory.makeLayoutEditorViewModel(projectID: id1)
+        let other = factory.makeLayoutEditorViewModel(projectID: id2)
+
+        #expect(first === second)
+        #expect(first !== other)
+    }
 }
