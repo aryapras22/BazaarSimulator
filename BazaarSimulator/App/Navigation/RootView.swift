@@ -9,16 +9,7 @@ struct RootView: View {
 
     init(services: AppServices? = nil) {
         let effectiveServices = services ?? AppServices()
-        let initialDestination: AppDestination
-        if let activeID = effectiveServices.projectSession.activeProjectID {
-            if effectiveServices.projectSession.draft(for: activeID) != nil {
-                initialDestination = .review(projectID: activeID)
-            } else {
-                initialDestination = .setup(projectID: activeID)
-            }
-        } else {
-            initialDestination = .empty
-        }
+        let initialDestination = effectiveServices.initialDestination
         let router = AppRouter(destination: initialDestination)
         let factory = ProjectScreenFactory(services: effectiveServices, router: router)
         self.services = effectiveServices
