@@ -99,4 +99,11 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     var isSelectable: Bool {
         isMovable || isResizable
     }
+
+    var isStructural: Bool {
+        switch self {
+        case .wall, .pillar, .closedArea: return true
+        default: return false
+        }
+    }
 }

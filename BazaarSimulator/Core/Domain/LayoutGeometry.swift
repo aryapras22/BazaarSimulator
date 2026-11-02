@@ -107,6 +107,18 @@ enum LayoutGeometry {
         return true
     }
 
+    static func overlapDepth(_ first: Placement, _ second: Placement) -> Double {
+        let cornersA = corners(of: first)
+        let cornersB = corners(of: second)
+        var smallest = Double.greatestFiniteMagnitude
+        for axis in separatingAxes(for: cornersA) + separatingAxes(for: cornersB) {
+            let (minA, maxA) = project(cornersA, onto: axis)
+            let (minB, maxB) = project(cornersB, onto: axis)
+            smallest = min(smallest, min(maxA, maxB) - max(minA, minB))
+        }
+        return smallest
+    }
+
     static func polygonContains(_ polygon: [SIMD2<Double>], point: SIMD2<Double>) -> Bool {
         guard polygon.count >= 3 else { return false }
         var isInside = false

@@ -146,4 +146,43 @@ struct LayoutValidatorTests {
 
         #expect(issues.contains { $0.kind == .belowMinimumSize && $0.severity == .error })
     }
+
+    @Test("A pillar just outside the hall edge is not flagged")
+    func pillarOutsideHallEdgeNotFlagged() {
+        let pillar = LayoutObject(
+            kind: .pillar,
+            label: "P1",
+            placement: Placement(center: SIMD2<Double>(-0.1, 10), sizeM: SIMD2<Double>(0.5, 0.5))
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [pillar]
+        )
+
+        let issues = LayoutValidator.issues(in: layout)
+
+        #expect(!issues.contains { $0.kind == .outsideFloor })
+    }
+
+    @Test("A booth half outside the hall is flagged")
+    func boothHalfOutsideHallFlagged() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(0, 10), sizeM: SIMD2<Double>(2, 2)),
+            openSides: .right
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [booth]
+        )
+
+        let issues = LayoutValidator.issues(in: layout)
+
+        #expect(issues.contains { $0.kind == .outsideFloor && $0.objectIDs == [booth.id] })
+    }
 }

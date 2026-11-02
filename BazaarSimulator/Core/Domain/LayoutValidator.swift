@@ -2,6 +2,9 @@ import Foundation
 import simd
 
 enum LayoutValidator {
+    static let overlapToleranceM = 0.1
+    static let floorToleranceM = 0.15
+
     static func issues(in layout: Layout) -> [LayoutIssue] {
         var result: [LayoutIssue] = []
         result.append(contentsOf: checkMinimumSizes(in: layout))
@@ -43,7 +46,7 @@ enum LayoutValidator {
             for other in obstacles where other.id != booth.id {
                 let pair: Set<UUID> = [booth.id, other.id]
                 guard !reportedPairs.contains(pair) else { continue }
-                if LayoutGeometry.intersects(booth.placement, other.placement) {
+                if LayoutGeometry.overlapDepth(booth.placement, other.placement) > overlapToleranceM {
                     reportedPairs.insert(pair)
                     issues.append(
                         LayoutIssue(
@@ -62,8 +65,13 @@ enum LayoutValidator {
     private static func checkFloorBounds(in layout: Layout) -> [LayoutIssue] {
         guard !layout.hall.isEmpty || !layout.lobby.isEmpty else { return [] }
         var issues: [LayoutIssue] = []
-        for object in layout.objects where object.kind.isMovable {
-            if !LayoutGeometry.isPlacementInsideWalkableFloor(object.placement, in: layout) {
+        for object in layout.objects where object.kind.isMovable && !object.kind.isStructural {
+            var inset = object.placement
+            inset.sizeM = SIMD2<Double>(
+                max(0.01, inset.sizeM.x - 2 * floorToleranceM),
+                max(0.01, inset.sizeM.y - 2 * floorToleranceM)
+            )
+            if !LayoutGeometry.isPlacementInsideWalkableFloor(inset, in: layout) {
                 issues.append(
                     LayoutIssue(
                         severity: .warning,
