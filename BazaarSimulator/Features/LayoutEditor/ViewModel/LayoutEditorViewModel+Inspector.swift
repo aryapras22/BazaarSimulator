@@ -69,6 +69,29 @@ extension LayoutEditorViewModel {
         return layout
     }
 
+    var currentDoorAdvice: DoorAdviceDisplay? {
+        guard let selected = selectedObject,
+              selected.kind == .door,
+              let draft = inspectorDraft,
+              let previewLayout = layoutWithInspectorDraft else {
+            return nil
+        }
+        let previewDoor = draft.applied(to: selected)
+        guard let advice = DoorFlowAdvisor.advice(for: previewDoor, in: previewLayout) else {
+            return nil
+        }
+        return DoorAdviceDisplay(
+            message: advice.message,
+            actionTitle: advice.actionTitle,
+            suggestedDirection: advice.suggestedDirection
+        )
+    }
+
+    func applyDoorAdvice() {
+        guard let advice = currentDoorAdvice else { return }
+        inspectorDraft?.doorDirection = advice.suggestedDirection
+    }
+
     func saveInspectorChanges() {
         guard isSaveChangesEnabled,
               let selected = selectedObject,

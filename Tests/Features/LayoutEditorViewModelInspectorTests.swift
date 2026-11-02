@@ -85,4 +85,26 @@ struct LayoutEditorViewModelInspectorTests {
 
         #expect(context.viewModel.inspectorDraft?.openSides == .top)
     }
+
+    @Test("Use advice sets the draft direction and Save applies it")
+    func useAdviceSetsDraftDirectionAndSaves() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        context.viewModel.selectTab(.flow)
+        let doorNW = try #require(
+            context.layout.objects.first { $0.kind == .door && $0.label == "Door NW" }
+        )
+
+        context.viewModel.selectObject(doorNW.id)
+        #expect(context.viewModel.currentDoorAdvice?.suggestedDirection == .entrance)
+
+        context.viewModel.applyDoorAdvice()
+        #expect(context.viewModel.inspectorDraft?.doorDirection == .entrance)
+        #expect(context.viewModel.isSaveChangesEnabled)
+
+        context.viewModel.saveInspectorChanges()
+        let savedDoor = try #require(
+            context.viewModel.activeLayout?.objects.first { $0.id == doorNW.id }
+        )
+        #expect(savedDoor.doorFlow?.direction == .entrance)
+    }
 }
