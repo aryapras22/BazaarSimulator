@@ -13,6 +13,15 @@ enum OpenSideInference {
     }
 
     static func isSideOpen(_ side: OpenSides, of booth: LayoutObject, in layout: Layout) -> Bool {
+        isSideOpen(side, of: booth, in: layout, candidates: layout.objects)
+    }
+
+    static func isSideOpen(
+        _ side: OpenSides,
+        of booth: LayoutObject,
+        in layout: Layout,
+        candidates: [LayoutObject]
+    ) -> Bool {
         let strip = LayoutGeometry.stripPlacement(
             for: side,
             of: booth.placement,
@@ -28,7 +37,7 @@ enum OpenSideInference {
         guard sideLength > 1e-6 else { return false }
 
         var blockedSpan = 0.0
-        for candidate in layout.objects where candidate.id != booth.id {
+        for candidate in candidates where candidate.id != booth.id {
             guard candidate.kind.blocksWalking else { continue }
             if LayoutGeometry.intersects(strip, candidate.placement) {
                 blockedSpan += overlappingSpanAlongSide(

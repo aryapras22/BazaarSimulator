@@ -122,4 +122,21 @@ struct LayoutEditorViewModelTests {
         #expect(added.placement.center == SIMD2<Double>(20.0, 10.0))
         #expect(added.openSides == .all)
     }
+
+    @Test("Hovering does not refresh issues")
+    func hoveringDoesNotRefreshIssues() throws {
+        let context = Self.makeContext()
+        let booths = context.layout.objects.filter { $0.kind == .booth }
+        let first = try #require(booths.first)
+        let second = try #require(booths.dropFirst().first)
+
+        context.viewModel.hoverID = first.id
+        #expect(context.viewModel.issues.isEmpty)
+
+        var moved = second
+        moved.placement.center = first.placement.center
+        context.viewModel.commitEdit(.replace(before: second, after: moved))
+
+        #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
+    }
 }

@@ -6,11 +6,14 @@ enum LayoutValidator {
     static let floorToleranceM = 0.15
 
     static func issues(in layout: Layout) -> [LayoutIssue] {
+        let boundsByID = Dictionary(
+            uniqueKeysWithValues: layout.objects.map { ($0.id, LayoutGeometry.bounds(of: $0.placement)) }
+        )
         var result: [LayoutIssue] = []
         result.append(contentsOf: checkMinimumSizes(in: layout))
-        result.append(contentsOf: checkOverlaps(in: layout))
+        result.append(contentsOf: checkOverlaps(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkFloorBounds(in: layout))
-        result.append(contentsOf: checkBoothOpenSides(in: layout))
+        result.append(contentsOf: checkBoothOpenSides(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkHallDoors(in: layout))
         return result
     }
@@ -36,14 +39,22 @@ enum LayoutValidator {
         return issues
     }
 
-    private static func checkOverlaps(in layout: Layout) -> [LayoutIssue] {
+    private static func checkOverlaps(
+        in layout: Layout,
+        boundsByID: [UUID: BoundingBox]
+    ) -> [LayoutIssue] {
         var issues: [LayoutIssue] = []
         let booths = layout.objects.filter { $0.kind == .booth }
         let obstacles = layout.objects.filter { $0.kind.blocksWalking && $0.kind != .closedArea }
 
         var reportedPairs: Set<Set<UUID>> = []
         for booth in booths {
+            guard let boothBox = boundsByID[booth.id] else { continue }
             for other in obstacles where other.id != booth.id {
+                guard let otherBox = boundsByID[other.id],
+                      !areBoundsApart(boothBox, otherBox, byMoreThan: overlapToleranceM) else {
+                    continue
+                }
                 let pair: Set<UUID> = [booth.id, other.id]
                 guard !reportedPairs.contains(pair) else { continue }
                 if LayoutGeometry.overlapDepth(booth.placement, other.placement) > overlapToleranceM {
@@ -85,8 +96,12 @@ enum LayoutValidator {
         return issues
     }
 
-    private static func checkBoothOpenSides(in layout: Layout) -> [LayoutIssue] {
+    private static func checkBoothOpenSides(
+        in layout: Layout,
+        boundsByID: [UUID: BoundingBox]
+    ) -> [LayoutIssue] {
         var issues: [LayoutIssue] = []
+        let blockingObjects = layout.objects.filter(\.kind.blocksWalking)
         for booth in layout.objects where booth.kind == .booth {
             if booth.openSides.isEmpty {
                 issues.append(
@@ -100,8 +115,21 @@ enum LayoutValidator {
                 continue
             }
 
+            let boothBox = boundsByID[booth.id] ?? LayoutGeometry.bounds(of: booth.placement)
+            let nearby = blockingObjects.filter { candidate in
+                guard candidate.id != booth.id,
+                      let candidateBox = boundsByID[candidate.id] else {
+                    return false
+                }
+                return !areBoundsApart(
+                    boothBox,
+                    candidateBox,
+                    byMoreThan: OpenSideInference.probeDepthM + overlapToleranceM
+                )
+            }
+
             for side in OpenSides.ordered where booth.openSides.contains(side) {
-                if !OpenSideInference.isSideOpen(side, of: booth, in: layout) {
+                if !OpenSideInference.isSideOpen(side, of: booth, in: layout, candidates: nearby) {
                     issues.append(
                         LayoutIssue(
                             severity: .warning,
@@ -114,6 +142,17 @@ enum LayoutValidator {
             }
         }
         return issues
+    }
+
+    private static func areBoundsApart(
+        _ first: BoundingBox,
+        _ second: BoundingBox,
+        byMoreThan margin: Double
+    ) -> Bool {
+        first.maxX + margin < second.minX
+            || second.maxX + margin < first.minX
+            || first.maxY + margin < second.minY
+            || second.maxY + margin < first.minY
     }
 
     private static func checkHallDoors(in layout: Layout) -> [LayoutIssue] {

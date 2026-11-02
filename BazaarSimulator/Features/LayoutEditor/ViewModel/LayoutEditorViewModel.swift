@@ -33,7 +33,10 @@ final class LayoutEditorViewModel {
     var selectionID: UUID?
     var hoverID: UUID?
     var transform = CanvasTransform()
-    var inspectorDraft: InspectorDraft?
+    private(set) var issues: [LayoutIssue] = []
+    var inspectorDraft: InspectorDraft? {
+        didSet { refreshIssues() }
+    }
     var pendingAction: PendingNavigationAction?
 
     private var historiesByLayoutID: [UUID: LayoutEditHistory] = [:]
@@ -123,6 +126,7 @@ final class LayoutEditorViewModel {
         }
         session.setActiveLayoutID(layoutID, for: projectID)
         applySelection(nil)
+        refreshIssues()
     }
 
     func requestBack() {
@@ -142,11 +146,20 @@ final class LayoutEditorViewModel {
         }
     }
 
+    func refreshIssues() {
+        guard let previewLayout = layoutWithInspectorDraft else {
+            issues = []
+            return
+        }
+        issues = LayoutValidator.issues(in: previewLayout)
+    }
+
     func commitEdit(_ edit: LayoutEdit) {
         guard let layout = activeLayout else { return }
         let updated = LayoutEditing.apply(edit, to: layout)
         currentHistory.record(edit)
         session.updateLayout(updated, in: projectID)
+        refreshIssues()
     }
 
     func applyHistoryEdit(_ edit: LayoutEdit) {
@@ -159,5 +172,6 @@ final class LayoutEditorViewModel {
             selectionID = nil
             inspectorDraft = nil
         }
+        refreshIssues()
     }
 }

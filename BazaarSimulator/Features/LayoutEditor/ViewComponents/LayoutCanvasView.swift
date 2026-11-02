@@ -34,8 +34,13 @@ struct LayoutCanvasView: View {
     @State private var activeDragObjectID: UUID?
     @State private var activeDragDeltaWorld: SIMD2<Double> = .zero
     @State private var lastPanLocation: CGPoint?
-    @State private var lastHoverWorld: SIMD2<Double> = .zero
+    @State private var hoverTracker = HoverTracker()
+    @State private var lastHoverHit: UUID?
     @State private var hasFittedInitially = false
+
+    private final class HoverTracker {
+        var world: SIMD2<Double> = .zero
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -51,7 +56,8 @@ struct LayoutCanvasView: View {
                 }
             }
             .onHover { isHovering in
-                if !isHovering {
+                if !isHovering && lastHoverHit != nil {
+                    lastHoverHit = nil
                     onHover(nil)
                 }
             }
@@ -59,11 +65,17 @@ struct LayoutCanvasView: View {
                 switch phase {
                 case .active(let location):
                     let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
-                    lastHoverWorld = world
+                    hoverTracker.world = world
                     let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
-                    onHover(hit)
+                    if hit != lastHoverHit {
+                        lastHoverHit = hit
+                        onHover(hit)
+                    }
                 case .ended:
-                    onHover(nil)
+                    if lastHoverHit != nil {
+                        lastHoverHit = nil
+                        onHover(nil)
+                    }
                 }
             }
             .gesture(canvasGesture)
@@ -119,16 +131,16 @@ struct LayoutCanvasView: View {
                 }
             } else {
                 Button("Add Booth Here") {
-                    onContextAction(.addObject(kind: .booth, atWorld: lastHoverWorld))
+                    onContextAction(.addObject(kind: .booth, atWorld: hoverTracker.world))
                 }
                 Button("Add Table Here") {
-                    onContextAction(.addObject(kind: .table, atWorld: lastHoverWorld))
+                    onContextAction(.addObject(kind: .table, atWorld: hoverTracker.world))
                 }
                 Button("Add Fixture Here") {
-                    onContextAction(.addObject(kind: .fixture, atWorld: lastHoverWorld))
+                    onContextAction(.addObject(kind: .fixture, atWorld: hoverTracker.world))
                 }
                 Button("Add Rail Here") {
-                    onContextAction(.addObject(kind: .rail, atWorld: lastHoverWorld))
+                    onContextAction(.addObject(kind: .rail, atWorld: hoverTracker.world))
                 }
             }
         }

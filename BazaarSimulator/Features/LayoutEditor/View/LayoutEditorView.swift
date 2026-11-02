@@ -20,6 +20,7 @@ struct LayoutEditorView: View {
                 )
                 .onAppear {
                     canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                    viewModel.refreshIssues()
                 }
                 .onChange(of: proxy.size) { _, newSize in
                     canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))

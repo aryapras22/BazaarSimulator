@@ -52,20 +52,15 @@ extension LayoutEditorViewModel {
         if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
             return false
         }
-        return !currentIssues.contains {
+        return !issues.contains {
             $0.severity == .error && $0.objectIDs.contains(selected.id)
         }
-    }
-
-    var currentIssues: [LayoutIssue] {
-        guard let previewLayout = layoutWithInspectorDraft else { return [] }
-        return LayoutValidator.issues(in: previewLayout)
     }
 
     var canvasIssueSnapshot: CanvasIssueSnapshot {
         var warningIDs: Set<UUID> = []
         var blockedByBooth: [UUID: OpenSides] = [:]
-        for issue in currentIssues where issue.severity == .warning {
+        for issue in issues where issue.severity == .warning {
             switch issue.kind {
             case .overlappingObjects, .outsideFloor:
                 warningIDs.formUnion(issue.objectIDs)
@@ -84,7 +79,7 @@ extension LayoutEditorViewModel {
 
     var selectedTitleIssues: [String] {
         guard let selectedID = selectionID else { return [] }
-        return currentIssues.compactMap { issue in
+        return issues.compactMap { issue in
             guard issue.objectIDs.contains(selectedID) else { return nil }
             switch issue.kind {
             case .overlappingObjects, .outsideFloor:
@@ -97,7 +92,7 @@ extension LayoutEditorViewModel {
 
     var selectedOpenSideIssues: [String] {
         guard let selectedID = selectionID else { return [] }
-        return currentIssues.compactMap { issue in
+        return issues.compactMap { issue in
             guard issue.objectIDs.contains(selectedID) else { return nil }
             switch issue.kind {
             case .blockedOpenSide, .noOpenSides:
@@ -110,7 +105,7 @@ extension LayoutEditorViewModel {
 
     var flowBannerIssues: [String] {
         guard tab == .flow else { return [] }
-        return currentIssues.compactMap { issue in
+        return issues.compactMap { issue in
             switch issue.kind {
             case .missingHallDoorEntry, .missingHallDoorExit:
                 return issue.message
@@ -226,6 +221,7 @@ extension LayoutEditorViewModel {
         case .switchLayout(let layoutID):
             session.setActiveLayoutID(layoutID, for: projectID)
             applySelection(nil)
+            refreshIssues()
         case .navigateBack:
             onBack()
         case .performUndo:
