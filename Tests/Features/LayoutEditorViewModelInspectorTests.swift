@@ -107,4 +107,22 @@ struct LayoutEditorViewModelInspectorTests {
         )
         #expect(savedDoor.doorFlow?.direction == .entrance)
     }
+
+    @Test("Selecting an imported booth leaves Save disabled")
+    func selectingImportedBoothLeavesSaveDisabled() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "annyeong-market-layout")
+        let layout = MockLayoutMapper.layout(from: dto, legend: PreviewLayouts.sampleLegend)
+        let session = ProjectSession()
+        let project = session.createProject(named: "Annyeong")
+        session.setDraft(
+            ProjectDraft(name: "Annyeong", legend: PreviewLayouts.sampleLegend, layouts: [layout]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session, onBack: {})
+        let firstBooth = try #require(layout.objects.first { $0.kind == .booth })
+
+        viewModel.selectObject(firstBooth.id)
+
+        #expect(!viewModel.isSaveChangesEnabled)
+    }
 }

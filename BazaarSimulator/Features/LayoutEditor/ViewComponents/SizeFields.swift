@@ -10,6 +10,12 @@ struct SizeFields: View {
 
     @State private var widthText = ""
     @State private var lengthText = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case width
+        case length
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
@@ -27,12 +33,12 @@ struct SizeFields: View {
             HStack(spacing: Spacing.s) {
                 TextField("Width", text: $widthText)
                     .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !range.contains(width)))
+                    .focused($focusedField, equals: .width)
                     .onChange(of: widthText) { _, newValue in
-                        if let parsed = Double(newValue) {
-                            width = (parsed * 10.0).rounded() / 10.0
-                        } else {
-                            width = -1
+                        guard focusedField == .width, DimensionInput.changesValue(newValue, current: width) else {
+                            return
                         }
+                        width = DimensionInput.value(from: newValue) ?? -1
                     }
 
                 if !showsSingleDimension {
@@ -42,12 +48,12 @@ struct SizeFields: View {
 
                     TextField("Length", text: $lengthText)
                         .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !range.contains(length)))
+                        .focused($focusedField, equals: .length)
                         .onChange(of: lengthText) { _, newValue in
-                            if let parsed = Double(newValue) {
-                                length = (parsed * 10.0).rounded() / 10.0
-                            } else {
-                                length = -1
+                            guard focusedField == .length, DimensionInput.changesValue(newValue, current: length) else {
+                                return
                             }
+                            length = DimensionInput.value(from: newValue) ?? -1
                         }
                 }
 
@@ -60,26 +66,17 @@ struct SizeFields: View {
             syncTextFromValues()
         }
         .onChange(of: width) { _, newValue in
-            if newValue >= 0, Double(widthText) != newValue {
-                widthText = Self.format(newValue)
-            }
+            guard focusedField != .width, newValue >= 0 else { return }
+            widthText = DimensionInput.text(for: newValue)
         }
         .onChange(of: length) { _, newValue in
-            if newValue >= 0, Double(lengthText) != newValue {
-                lengthText = Self.format(newValue)
-            }
+            guard focusedField != .length, newValue >= 0 else { return }
+            lengthText = DimensionInput.text(for: newValue)
         }
     }
 
     private func syncTextFromValues() {
-        widthText = Self.format(width)
-        lengthText = Self.format(length)
-    }
-
-    private static func format(_ value: Double) -> String {
-        if abs(value.rounded() - value) < 1e-4 {
-            return String(Int(value.rounded()))
-        }
-        return String(format: "%.1f", value)
+        widthText = DimensionInput.text(for: width)
+        lengthText = DimensionInput.text(for: length)
     }
 }
