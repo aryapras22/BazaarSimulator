@@ -133,6 +133,12 @@ extension LayoutEditorViewModel {
     func fitToView(in viewSize: SIMD2<Double>) {
         guard let layout = activeLayout else { return }
         transform = CanvasTransform.fitting(layoutSize: layout.sizeM, in: viewSize)
+        hasFittedTransform = true
+    }
+
+    func fitIfNeeded(in viewSize: SIMD2<Double>) {
+        guard !hasFittedTransform else { return }
+        fitToView(in: viewSize)
     }
 
     func handleContextAction(_ action: CanvasContextAction) {

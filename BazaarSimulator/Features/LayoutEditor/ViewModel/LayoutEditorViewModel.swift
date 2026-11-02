@@ -34,6 +34,7 @@ final class LayoutEditorViewModel {
     var selectionID: UUID?
     var hoverID: UUID?
     var transform = CanvasTransform()
+    var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []
     var inspectorDraft: InspectorDraft? {
         didSet { refreshIssues() }
@@ -126,6 +127,7 @@ final class LayoutEditorViewModel {
             return
         }
         session.setActiveLayoutID(layoutID, for: projectID)
+        hasFittedTransform = false
         applySelection(nil)
         refreshIssues()
     }
@@ -187,6 +189,7 @@ final class LayoutEditorViewModel {
             applySelection(nil)
         case .switchLayout(let layoutID):
             session.setActiveLayoutID(layoutID, for: projectID)
+            hasFittedTransform = false
             applySelection(nil)
             refreshIssues()
         case .navigateBack:

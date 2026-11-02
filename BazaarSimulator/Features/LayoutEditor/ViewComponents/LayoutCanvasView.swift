@@ -41,74 +41,65 @@ struct LayoutCanvasView: View {
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
     @State private var lastMagnification: CGFloat = 1
-    @State private var hasFittedInitially = false
 
     private final class HoverTracker {
         var world: SIMD2<Double> = .zero
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            Canvas { context, size in
-                drawScene(in: &context, size: size)
+        Canvas { context, size in
+            drawScene(in: &context, size: size)
+        }
+        .background(Palette.background)
+        .contentShape(Rectangle())
+        .onHover { isHovering in
+            if !isHovering && lastHoverHit != nil {
+                lastHoverHit = nil
+                onHover(nil)
             }
-            .background(Palette.background)
-            .contentShape(Rectangle())
-            .onAppear {
-                if !hasFittedInitially {
-                    hasFittedInitially = true
-                    fitLayout(in: proxy.size)
+        }
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let location):
+                let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
+                hoverTracker.world = world
+                let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
+                if hit != lastHoverHit {
+                    lastHoverHit = hit
+                    onHover(hit)
                 }
-            }
-            .onHover { isHovering in
-                if !isHovering && lastHoverHit != nil {
+            case .ended:
+                if lastHoverHit != nil {
                     lastHoverHit = nil
                     onHover(nil)
                 }
             }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
-                    hoverTracker.world = world
-                    let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
-                    if hit != lastHoverHit {
-                        lastHoverHit = hit
-                        onHover(hit)
-                    }
-                case .ended:
-                    if lastHoverHit != nil {
-                        lastHoverHit = nil
-                        onHover(nil)
-                    }
+        }
+        .gesture(canvasGesture)
+        .simultaneousGesture(magnificationGesture)
+        .overlay {
+            CanvasScrollCatcher { delta, location, isPreciseScrolling, isCommandDown in
+                if !isPreciseScrolling || isCommandDown {
+                    let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
+                    transform = transform.zoomedForScroll(deltaY: Double(delta.height), around: anchor)
+                } else {
+                    let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
+                    transform = transform.panned(by: panDelta)
                 }
             }
-            .gesture(canvasGesture)
-            .simultaneousGesture(magnificationGesture)
-            .overlay {
-                CanvasScrollCatcher { delta, location, isPreciseScrolling, isCommandDown in
-                    if !isPreciseScrolling || isCommandDown {
-                        let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
-                        transform = transform.zoomedForScroll(deltaY: Double(delta.height), around: anchor)
-                    } else {
-                        let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
-                        transform = transform.panned(by: panDelta)
-                    }
-                }
-            }
-            .onKeyPress(.escape) {
-                if activeDragObjectID != nil {
-                    activeDragObjectID = nil
-                    activeDragDeltaWorld = .zero
-                    isDragCancelled = true
-                    return .handled
-                }
-                onSelect(nil)
+        }
+        .onKeyPress(.escape) {
+            if activeDragObjectID != nil {
+                activeDragObjectID = nil
+                activeDragDeltaWorld = .zero
+                isDragCancelled = true
                 return .handled
             }
-            .contextMenu {
-                contextMenuContent
-            }
+            onSelect(nil)
+            return .handled
+        }
+        .contextMenu {
+            contextMenuContent
         }
     }
 
@@ -152,11 +143,6 @@ struct LayoutCanvasView: View {
                 Button("Add Rail Here") { onContextAction(.addObject(kind: .rail, atWorld: hoverTracker.world)) }
             }
         }
-    }
-
-    private func fitLayout(in size: CGSize) {
-        let viewSize = SIMD2<Double>(Double(size.width), Double(size.height))
-        transform = CanvasTransform.fitting(layoutSize: snapshot.layout.sizeM, in: viewSize)
     }
 
     private func handleDragChanged(_ value: DragGesture.Value) {
@@ -280,7 +266,10 @@ struct LayoutCanvasView: View {
 }
 
 #Preview("Annyeong Floor Plan") {
-    @Previewable @State var transform = CanvasTransform()
+    @Previewable @State var transform = CanvasTransform.fitting(
+        layoutSize: PreviewLayouts.annyeong().sizeM,
+        in: SIMD2<Double>(900, 650)
+    )
     let layout = PreviewLayouts.annyeong()
     LayoutCanvasView(
         snapshot: CanvasDisplaySnapshot(
@@ -296,7 +285,10 @@ struct LayoutCanvasView: View {
 }
 
 #Preview("Beyond Flow") {
-    @Previewable @State var transform = CanvasTransform()
+    @Previewable @State var transform = CanvasTransform.fitting(
+        layoutSize: PreviewLayouts.beyond().sizeM,
+        in: SIMD2<Double>(900, 650)
+    )
     let layout = PreviewLayouts.beyond()
     LayoutCanvasView(
         snapshot: CanvasDisplaySnapshot(

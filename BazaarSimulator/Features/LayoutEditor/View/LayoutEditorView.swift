@@ -62,11 +62,15 @@ struct LayoutEditorView: View {
                 }
                 .onAppear {
                     canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                    viewModel.fitIfNeeded(in: canvasViewSize)
                     viewModel.refreshIssues()
                     isCanvasFocused = true
                 }
                 .onChange(of: proxy.size) { _, newSize in
                     canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+                }
+                .onChange(of: viewModel.activeLayoutID) { _, _ in
+                    viewModel.fitIfNeeded(in: canvasViewSize)
                 }
             }
 
