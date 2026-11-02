@@ -1,4 +1,5 @@
 import Foundation
+import simd
 import Testing
 @testable import BazaarSimulator
 
@@ -335,5 +336,36 @@ extension ProjectSetupViewModelTests {
         viewModel.continueToReview()
 
         #expect(session.draft(for: project.id)?.name == "Night Market")
+    }
+
+    @Test("Continue after Back keeps editor changes")
+    @MainActor
+    func continueAfterBackKeepsEditorChanges() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        viewModel.continueToReview()
+
+        var layout = try #require(session.draft(for: project.id)?.layouts.first)
+        let boothIndex = try #require(layout.objects.firstIndex { $0.kind == .booth })
+        let boothID = layout.objects[boothIndex].id
+        let newCenter = SIMD2<Double>(42, 42)
+        layout.objects[boothIndex].placement.center = newCenter
+        session.updateLayout(layout, in: project.id)
+
+        viewModel.continueToReview()
+
+        let updatedLayout = try #require(session.draft(for: project.id)?.layouts.first)
+        let updatedBooth = try #require(updatedLayout.objects.first { $0.id == boothID })
+        #expect(updatedBooth.placement.center == newCenter)
     }
 }

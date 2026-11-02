@@ -207,10 +207,16 @@ final class ProjectSetupViewModel {
             return
         }
 
+        let existingLayouts = session.draft(for: projectID)?.layouts ?? []
+        let finalLegend = Legend(entries: legendEntries)
         let draft = ProjectDraft(
             name: projectName.trimmingCharacters(in: .whitespacesAndNewlines),
-            legend: Legend(entries: legendEntries),
-            layouts: extractedLayouts.map(\.layout)
+            legend: finalLegend,
+            layouts: DraftLayoutMerger.merged(
+                imported: extractedLayouts.map(\.layout),
+                existing: existingLayouts,
+                legend: finalLegend
+            )
         )
 
         session.setDraft(draft, for: projectID)
