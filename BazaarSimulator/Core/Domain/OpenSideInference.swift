@@ -36,35 +36,55 @@ enum OpenSideInference {
         let sideLength = isHorizontalSide ? booth.placement.sizeM.x : booth.placement.sizeM.y
         guard sideLength > 1e-6 else { return false }
 
-        var blockedSpan = 0.0
+        var intervals: [(start: Double, end: Double)] = []
         for candidate in candidates where candidate.id != booth.id {
             guard candidate.kind.blocksWalking else { continue }
-            if LayoutGeometry.intersects(strip, candidate.placement) {
-                blockedSpan += overlappingSpanAlongSide(
-                    side: side,
-                    of: booth.placement,
-                    with: candidate.placement
-                )
+            if LayoutGeometry.intersects(strip, candidate.placement),
+               let interval = overlappingIntervalAlongSide(
+                   side: side,
+                   of: booth.placement,
+                   with: candidate.placement
+               ) {
+                intervals.append(interval)
             }
         }
 
-        return blockedSpan < sideLength - 0.5
+        let blockedSpan = mergedSpan(of: intervals)
+        let requiredFreeLength = min(0.5, sideLength * 0.5)
+        return blockedSpan < sideLength - requiredFreeLength
     }
 
-    private static func overlappingSpanAlongSide(
+    private static func overlappingIntervalAlongSide(
         side: OpenSides,
         of boothPlacement: Placement,
         with obstaclePlacement: Placement
-    ) -> Double {
+    ) -> (start: Double, end: Double)? {
         let isHorizontalSide = side == .top || side == .bottom
         let halfLength = (isHorizontalSide ? boothPlacement.sizeM.x : boothPlacement.sizeM.y) / 2.0
         let localCorners = LayoutGeometry.corners(of: obstaclePlacement).map {
             LayoutGeometry.toLocal(point: $0, in: boothPlacement)
         }
         let coords = localCorners.map { isHorizontalSide ? $0.x : $0.y }
-        guard let minCoord = coords.min(), let maxCoord = coords.max() else { return 0 }
+        guard let minCoord = coords.min(), let maxCoord = coords.max() else { return nil }
         let start = max(-halfLength, minCoord)
         let end = min(halfLength, maxCoord)
-        return max(0, end - start)
+        guard end > start else { return nil }
+        return (start, end)
+    }
+
+    private static func mergedSpan(of intervals: [(start: Double, end: Double)]) -> Double {
+        let sorted = intervals.sorted { $0.start < $1.start }
+        guard var current = sorted.first else { return 0 }
+        var total = 0.0
+        for next in sorted.dropFirst() {
+            if next.start <= current.end {
+                current.end = max(current.end, next.end)
+            } else {
+                total += current.end - current.start
+                current = next
+            }
+        }
+        total += current.end - current.start
+        return total
     }
 }

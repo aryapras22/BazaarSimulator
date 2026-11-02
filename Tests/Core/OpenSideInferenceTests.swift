@@ -140,4 +140,45 @@ struct OpenSideInferenceTests {
         #expect(!booths.isEmpty)
         #expect(booths.allSatisfy { !$0.openSides.isEmpty })
     }
+
+    @Test("A 0.5 m booth with free space is open")
+    func halfMetreBoothWithFreeSpaceIsOpen() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(0.5, 0.5))
+        )
+        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), hall: defaultHall, objects: [booth])
+
+        let sides = OpenSideInference.infer(for: booth, in: layout)
+
+        #expect(sides == .all)
+    }
+
+    @Test("Two overlapping obstacles on one side are counted once")
+    func twoOverlappingObstaclesCountedOnce() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let obstacleA = LayoutObject(
+            kind: .fixture,
+            label: "F1",
+            placement: Placement(center: SIMD2<Double>(9.5, 8.8), sizeM: SIMD2<Double>(1.0, 0.4))
+        )
+        let obstacleB = LayoutObject(
+            kind: .fixture,
+            label: "F2",
+            placement: Placement(center: SIMD2<Double>(9.5, 8.8), sizeM: SIMD2<Double>(1.0, 0.4))
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [booth, obstacleA, obstacleB]
+        )
+
+        #expect(OpenSideInference.isSideOpen(.top, of: booth, in: layout))
+    }
 }
