@@ -26,6 +26,24 @@ struct LayoutEditorView: View {
                 }
             }
 
+            if !viewModel.flowBannerIssues.isEmpty {
+                VStack(spacing: Spacing.xs) {
+                    ForEach(viewModel.flowBannerIssues, id: \.self) { banner in
+                        Text(banner)
+                            .font(Typography.body)
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, Spacing.m)
+                            .padding(.vertical, Spacing.xs + 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: Radius.s)
+                                    .fill(Palette.destructive)
+                            )
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, Spacing.l)
+            }
+
             if let selected = viewModel.selectedObject,
                viewModel.inspectorDraft != nil {
                 inspectorView(for: selected)
@@ -98,7 +116,8 @@ struct LayoutEditorView: View {
             legend: viewModel.legend,
             tab: viewModel.tab,
             selectionID: viewModel.selectionID,
-            hoverID: viewModel.hoverID
+            hoverID: viewModel.hoverID,
+            issues: viewModel.canvasIssueSnapshot
         )
     }
 
@@ -115,7 +134,9 @@ struct LayoutEditorView: View {
                 BoothInspector(
                     draft: draftBinding,
                     categories: viewModel.categoryOptions,
-                    sizeRange: viewModel.sizeRangeM
+                    sizeRange: viewModel.sizeRangeM,
+                    titleIssues: viewModel.selectedTitleIssues,
+                    openSideIssues: viewModel.selectedOpenSideIssues
                 )
             case .door:
                 DoorInspector(
@@ -128,7 +149,8 @@ struct LayoutEditorView: View {
                 GenericInspector(
                     draft: draftBinding,
                     fields: .forKind(selected.kind),
-                    sizeRange: viewModel.sizeRangeM
+                    sizeRange: viewModel.sizeRangeM,
+                    titleIssues: viewModel.selectedTitleIssues
                 )
             }
         } footer: {

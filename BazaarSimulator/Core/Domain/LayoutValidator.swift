@@ -1,0 +1,148 @@
+import Foundation
+import simd
+
+enum LayoutValidator {
+    static func issues(in layout: Layout) -> [LayoutIssue] {
+        var result: [LayoutIssue] = []
+        result.append(contentsOf: checkMinimumSizes(in: layout))
+        result.append(contentsOf: checkOverlaps(in: layout))
+        result.append(contentsOf: checkFloorBounds(in: layout))
+        result.append(contentsOf: checkBoothOpenSides(in: layout))
+        result.append(contentsOf: checkHallDoors(in: layout))
+        return result
+    }
+
+    private static func checkMinimumSizes(in layout: Layout) -> [LayoutIssue] {
+        var issues: [LayoutIssue] = []
+        for object in layout.objects where object.kind.isResizable {
+            let minDim = object.kind.minimumDimensionM
+            let isWidthTooSmall = object.placement.sizeM.x < minDim - 1e-6
+            let isLengthTooSmall = (object.kind != .pillar && object.kind != .door)
+                && object.placement.sizeM.y < minDim - 1e-6
+            if isWidthTooSmall || isLengthTooSmall {
+                issues.append(
+                    LayoutIssue(
+                        severity: .error,
+                        kind: .belowMinimumSize,
+                        objectIDs: [object.id],
+                        message: LayoutIssueText.belowMinimumSize
+                    )
+                )
+            }
+        }
+        return issues
+    }
+
+    private static func checkOverlaps(in layout: Layout) -> [LayoutIssue] {
+        var issues: [LayoutIssue] = []
+        let booths = layout.objects.filter { $0.kind == .booth }
+        let obstacles = layout.objects.filter { $0.kind.blocksWalking && $0.kind != .closedArea }
+
+        var reportedPairs: Set<Set<UUID>> = []
+        for booth in booths {
+            for other in obstacles where other.id != booth.id {
+                let pair: Set<UUID> = [booth.id, other.id]
+                guard !reportedPairs.contains(pair) else { continue }
+                if LayoutGeometry.intersects(booth.placement, other.placement) {
+                    reportedPairs.insert(pair)
+                    issues.append(
+                        LayoutIssue(
+                            severity: .warning,
+                            kind: .overlappingObjects,
+                            objectIDs: [booth.id, other.id],
+                            message: LayoutIssueText.overlappingObjects(booth.label, other.label)
+                        )
+                    )
+                }
+            }
+        }
+        return issues
+    }
+
+    private static func checkFloorBounds(in layout: Layout) -> [LayoutIssue] {
+        guard !layout.hall.isEmpty || !layout.lobby.isEmpty else { return [] }
+        var issues: [LayoutIssue] = []
+        for object in layout.objects where object.kind.isMovable {
+            if !LayoutGeometry.isPlacementInsideWalkableFloor(object.placement, in: layout) {
+                issues.append(
+                    LayoutIssue(
+                        severity: .warning,
+                        kind: .outsideFloor,
+                        objectIDs: [object.id],
+                        message: LayoutIssueText.outsideFloor(object.label)
+                    )
+                )
+            }
+        }
+        return issues
+    }
+
+    private static func checkBoothOpenSides(in layout: Layout) -> [LayoutIssue] {
+        var issues: [LayoutIssue] = []
+        for booth in layout.objects where booth.kind == .booth {
+            if booth.openSides.isEmpty {
+                issues.append(
+                    LayoutIssue(
+                        severity: .warning,
+                        kind: .noOpenSides,
+                        objectIDs: [booth.id],
+                        message: LayoutIssueText.noOpenSides
+                    )
+                )
+                continue
+            }
+
+            for side in OpenSides.ordered where booth.openSides.contains(side) {
+                if !OpenSideInference.isSideOpen(side, of: booth, in: layout) {
+                    issues.append(
+                        LayoutIssue(
+                            severity: .warning,
+                            kind: .blockedOpenSide(side: side),
+                            objectIDs: [booth.id],
+                            message: LayoutIssueText.blockedOpenSide(sideName(for: side))
+                        )
+                    )
+                }
+            }
+        }
+        return issues
+    }
+
+    private static func checkHallDoors(in layout: Layout) -> [LayoutIssue] {
+        let hallDoors = layout.objects.filter {
+            $0.kind == .door && $0.doorFlow?.connection == .hallToLobby
+        }
+        guard !hallDoors.isEmpty else { return [] }
+        let ids = hallDoors.map(\.id)
+        var issues: [LayoutIssue] = []
+
+        if !hallDoors.contains(where: { $0.doorFlow?.direction.allowsEntry == true }) {
+            issues.append(
+                LayoutIssue(
+                    severity: .warning,
+                    kind: .missingHallDoorEntry,
+                    objectIDs: ids,
+                    message: LayoutIssueText.missingHallDoorEntry
+                )
+            )
+        }
+        if !hallDoors.contains(where: { $0.doorFlow?.direction.allowsExit == true }) {
+            issues.append(
+                LayoutIssue(
+                    severity: .warning,
+                    kind: .missingHallDoorExit,
+                    objectIDs: ids,
+                    message: LayoutIssueText.missingHallDoorExit
+                )
+            )
+        }
+        return issues
+    }
+
+    private static func sideName(for side: OpenSides) -> String {
+        if side == .top { return "Top" }
+        if side == .right { return "Right" }
+        if side == .bottom { return "Bottom" }
+        return "Left"
+    }
+}

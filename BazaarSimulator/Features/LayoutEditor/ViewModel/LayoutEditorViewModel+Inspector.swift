@@ -52,7 +52,72 @@ extension LayoutEditorViewModel {
         if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
             return false
         }
-        return true
+        return !currentIssues.contains {
+            $0.severity == .error && $0.objectIDs.contains(selected.id)
+        }
+    }
+
+    var currentIssues: [LayoutIssue] {
+        guard let previewLayout = layoutWithInspectorDraft else { return [] }
+        return LayoutValidator.issues(in: previewLayout)
+    }
+
+    var canvasIssueSnapshot: CanvasIssueSnapshot {
+        var warningIDs: Set<UUID> = []
+        var blockedByBooth: [UUID: OpenSides] = [:]
+        for issue in currentIssues where issue.severity == .warning {
+            switch issue.kind {
+            case .overlappingObjects, .outsideFloor:
+                warningIDs.formUnion(issue.objectIDs)
+            case .blockedOpenSide(let side):
+                for id in issue.objectIDs {
+                    var sides = blockedByBooth[id] ?? []
+                    sides.insert(side)
+                    blockedByBooth[id] = sides
+                }
+            case .noOpenSides, .missingHallDoorEntry, .missingHallDoorExit, .belowMinimumSize:
+                break
+            }
+        }
+        return CanvasIssueSnapshot(warningObjectIDs: warningIDs, blockedSidesByBoothID: blockedByBooth)
+    }
+
+    var selectedTitleIssues: [String] {
+        guard let selectedID = selectionID else { return [] }
+        return currentIssues.compactMap { issue in
+            guard issue.objectIDs.contains(selectedID) else { return nil }
+            switch issue.kind {
+            case .overlappingObjects, .outsideFloor:
+                return issue.message
+            default:
+                return nil
+            }
+        }
+    }
+
+    var selectedOpenSideIssues: [String] {
+        guard let selectedID = selectionID else { return [] }
+        return currentIssues.compactMap { issue in
+            guard issue.objectIDs.contains(selectedID) else { return nil }
+            switch issue.kind {
+            case .blockedOpenSide, .noOpenSides:
+                return issue.message
+            default:
+                return nil
+            }
+        }
+    }
+
+    var flowBannerIssues: [String] {
+        guard tab == .flow else { return [] }
+        return currentIssues.compactMap { issue in
+            switch issue.kind {
+            case .missingHallDoorEntry, .missingHallDoorExit:
+                return issue.message
+            default:
+                return nil
+            }
+        }
     }
 
     var isSaveChangesEnabled: Bool {
