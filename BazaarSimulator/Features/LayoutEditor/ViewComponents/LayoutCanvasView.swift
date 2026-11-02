@@ -20,6 +20,7 @@ struct CanvasDisplaySnapshot: Sendable {
     var tab: EditorTab
     var selectionID: UUID?
     var hoverID: UUID?
+    var hasUnsavedChanges: Bool = false
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
 }
 
@@ -35,6 +36,7 @@ struct LayoutCanvasView: View {
     @State private var activeDragObjectID: UUID?
     @State private var activeDragDeltaWorld: SIMD2<Double> = .zero
     @State private var isDragCancelled = false
+    @State private var isDragSuppressed = false
     @State private var lastPanLocation: CGPoint?
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
@@ -166,7 +168,7 @@ struct LayoutCanvasView: View {
     }
 
     private func handleDragChanged(_ value: DragGesture.Value) {
-        guard !isDragCancelled else { return }
+        guard !isDragCancelled && !isDragSuppressed else { return }
         let distance = hypot(value.translation.width, value.translation.height)
         guard distance >= 2.0 else { return }
 
@@ -178,6 +180,10 @@ struct LayoutCanvasView: View {
                object.kind.isMovable {
                 if snapshot.selectionID != hitID {
                     onSelect(hitID)
+                    if snapshot.hasUnsavedChanges {
+                        isDragSuppressed = true
+                        return
+                    }
                 }
                 activeDragObjectID = hitID
             } else {
@@ -201,8 +207,9 @@ struct LayoutCanvasView: View {
     }
 
     private func handleDragEnded(_ value: DragGesture.Value) {
-        if isDragCancelled {
+        if isDragCancelled || isDragSuppressed {
             isDragCancelled = false
+            isDragSuppressed = false
             activeDragObjectID = nil
             activeDragDeltaWorld = .zero
             lastPanLocation = nil

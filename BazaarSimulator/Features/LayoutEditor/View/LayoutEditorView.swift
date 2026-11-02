@@ -121,6 +121,7 @@ struct LayoutEditorView: View {
             tab: viewModel.tab,
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
+            hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
             issues: viewModel.canvasIssueSnapshot
         )
     }
