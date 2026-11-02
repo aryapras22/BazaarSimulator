@@ -9,7 +9,46 @@ final class AppServices {
         importQueue: (any ImportQueueing)? = nil,
         projectSession: (any ProjectSessionProtocol)? = nil
     ) {
-        self.importQueue = importQueue ?? ScriptedImportQueue()
-        self.projectSession = projectSession ?? ProjectSession()
+        let queue = importQueue ?? ScriptedImportQueue()
+        let session = projectSession ?? ProjectSession()
+        self.importQueue = queue
+        self.projectSession = session
+
+        if importQueue == nil,
+           projectSession == nil,
+           let scriptedQueue = queue as? ScriptedImportQueue {
+            Self.seedMockProject(in: session, importQueue: scriptedQueue)
+        }
+    }
+
+    private static func seedMockProject(
+        in session: any ProjectSessionProtocol,
+        importQueue: ScriptedImportQueue
+    ) {
+        let project = session.createProject(named: "Annyeong Market")
+        let wasSynchronous = importQueue.isSynchronous
+        importQueue.isSynchronous = true
+        defer { importQueue.isSynchronous = wasSynchronous }
+
+        importQueue.add(
+            urls: [URL(fileURLWithPath: "/mock/legend.pdf")],
+            kind: .legend,
+            projectID: project.id
+        )
+        importQueue.add(
+            urls: [
+                URL(fileURLWithPath: "/mock/annyeong-market-layout.pdf"),
+                URL(fileURLWithPath: "/mock/beyond-market-layout.pdf")
+            ],
+            kind: .floorPlan,
+            projectID: project.id
+        )
+
+        let floorPlanFiles = importQueue.files(for: project.id).filter { $0.kind == .floorPlan }
+        let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id)?.layout }
+        let legend = importQueue.legend(for: project.id) ?? Legend()
+        let draft = ProjectDraft(name: project.name, legend: legend, layouts: layouts)
+        session.setDraft(draft, for: project.id)
+        session.selectProject(id: project.id)
     }
 }

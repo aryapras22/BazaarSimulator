@@ -47,4 +47,16 @@ struct ProjectScreenFactoryTests {
         #expect(first === second)
         #expect(first !== other)
     }
+
+    @Test("Default AppServices seeds a mock project and layouts from mock data")
+    func defaultAppServicesSeedsMockProjectAndLayouts() throws {
+        let services = AppServices()
+        let activeID = try #require(services.projectSession.activeProjectID)
+        let draft = try #require(services.projectSession.draft(for: activeID))
+
+        #expect(services.projectSession.projects.count == 1)
+        #expect(draft.layouts.count == 2)
+        #expect(!draft.layouts[0].objects.isEmpty)
+        #expect(!draft.layouts[1].objects.isEmpty)
+    }
 }
