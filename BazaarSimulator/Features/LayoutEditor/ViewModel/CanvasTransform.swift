@@ -4,6 +4,8 @@ import simd
 struct CanvasTransform: Hashable, Sendable {
     static let minScale: Double = 4.0
     static let maxScale: Double = 80.0
+    static let preciseScrollZoomBase = 1.0015
+    static let lineScrollZoomBase = 1.1
 
     var scale: Double
     var offset: SIMD2<Double>
@@ -45,9 +47,10 @@ struct CanvasTransform: Hashable, Sendable {
         return CanvasTransform(scale: newScale, offset: newOffset)
     }
 
-    func zoomedForScroll(deltaY: Double, around anchorView: SIMD2<Double>) -> CanvasTransform {
-        let factor = pow(1.0015, deltaY)
-        return zoomed(by: factor, around: anchorView)
+    func zoomedForScroll(deltaY: Double, isPrecise: Bool, around anchorView: SIMD2<Double>) -> CanvasTransform {
+        let base = isPrecise ? Self.preciseScrollZoomBase : Self.lineScrollZoomBase
+        let clampedDelta = isPrecise ? deltaY : min(max(deltaY, -10), 10)
+        return zoomed(by: pow(base, clampedDelta), around: anchorView)
     }
 
     func panned(by delta: SIMD2<Double>) -> CanvasTransform {

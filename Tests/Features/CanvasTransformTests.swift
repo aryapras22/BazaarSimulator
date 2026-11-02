@@ -58,10 +58,29 @@ struct CanvasTransformTests {
         let anchorView = SIMD2<Double>(240, 180)
         let worldBefore = initial.toWorld(anchorView)
 
-        let zoomed = initial.zoomedForScroll(deltaY: 120.0, around: anchorView)
-        let worldAfter = zoomed.toWorld(anchorView)
+        let zoomedPrecise = initial.zoomedForScroll(deltaY: 120.0, isPrecise: true, around: anchorView)
+        let zoomedLine = initial.zoomedForScroll(deltaY: 2.0, isPrecise: false, around: anchorView)
 
-        #expect(zoomed.scale > initial.scale)
-        #expect(simd_distance(worldBefore, worldAfter) < 1e-9)
+        #expect(zoomedPrecise.scale > initial.scale)
+        #expect(simd_distance(worldBefore, zoomedPrecise.toWorld(anchorView)) < 1e-9)
+        #expect(zoomedLine.scale > initial.scale)
+        #expect(simd_distance(worldBefore, zoomedLine.toWorld(anchorView)) < 1e-9)
+    }
+
+    @Test("One mouse-wheel line zooms by about 10 percent")
+    func oneMouseWheelLineZoomsByTenPercent() {
+        let start = CanvasTransform(scale: 10.0)
+        let result = start.zoomedForScroll(deltaY: 1, isPrecise: false, around: .zero)
+
+        #expect(abs(result.scale / start.scale - 1.1) < 1e-9)
+    }
+
+    @Test("A fast wheel spin is clamped")
+    func fastWheelSpinIsClamped() {
+        let start = CanvasTransform(scale: 10.0)
+        let spunFast = start.zoomedForScroll(deltaY: 50, isPrecise: false, around: .zero)
+        let clampedAtTen = start.zoomedForScroll(deltaY: 10, isPrecise: false, around: .zero)
+
+        #expect(abs(spunFast.scale - clampedAtTen.scale) < 1e-9)
     }
 }

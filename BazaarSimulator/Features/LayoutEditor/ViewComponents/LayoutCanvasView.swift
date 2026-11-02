@@ -81,7 +81,11 @@ struct LayoutCanvasView: View {
             CanvasScrollCatcher { delta, location, isPreciseScrolling, isCommandDown in
                 if !isPreciseScrolling || isCommandDown {
                     let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
-                    transform = transform.zoomedForScroll(deltaY: Double(delta.height), around: anchor)
+                    transform = transform.zoomedForScroll(
+                        deltaY: Double(delta.height),
+                        isPrecise: isPreciseScrolling,
+                        around: anchor
+                    )
                 } else {
                     let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
                     transform = transform.panned(by: panDelta)
