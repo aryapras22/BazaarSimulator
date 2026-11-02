@@ -328,12 +328,31 @@ protocol AnalysisServiceProtocol: Sendable {
 ### Cross-feature state
 The editor, parameters, overview, analysis, and simulation all work on the same project. That state lives in one injected object in `Core/Session/`.
 
-```less
+```swift
 @MainActor @Observable
 final class ProjectSession {
     var project: Project
     var activeLayoutID: Layout.ID?
     var selectedObjectID: UUID?
+}
+```
+
+Until `ProjectRepository` is added, `ProjectSessionProtocol` also holds the in-memory project list and setup drafts:
+
+```swift
+@MainActor
+protocol ProjectSessionProtocol: AnyObject {
+    var projects: [ProjectSummary] { get }
+    var activeProjectID: UUID? { get }
+    var activeProject: ProjectSummary? { get }
+
+    @discardableResult
+    func createProject(named name: String) -> ProjectSummary
+    func selectProject(id: UUID)
+    func renameProject(id: UUID, to name: String)
+
+    func draft(for projectID: UUID) -> ProjectDraft?
+    func setDraft(_ draft: ProjectDraft, for projectID: UUID)
 }
 ```
 
@@ -434,7 +453,7 @@ The Simulation view builds the 3D scene from the layout while the Preparing Layo
 * * *
 ## macOS specifics
 Window and navigation:
-*   One `WindowGroup` with a `NavigationSplitView`. The sidebar lists projects, has a search field at the bottom, and can be collapsed. The detail column is a `NavigationStack`: project setup, then review (the editor), then the project screen, which leads to the editor or the simulation. `AppRouter` in `App/Navigation/` owns the path.
+*   One `WindowGroup` with a `NavigationSplitView`. The sidebar lists projects, has a search field at the bottom, and can be collapsed. The detail column is a `NavigationStack`: project setup, then review (the editor), then the project screen, which leads to the editor or the simulation. `AppRouter` in `App/Navigation/` owns the active destination (`empty`, `setup(projectID:)`, `review(projectID:)`). `ProjectScreenFactory` in `App/Navigation/` builds and caches screen ViewModels (such as keeping one `ProjectSetupViewModel` per project for the life of the window).
 *   The project screen header has a back chevron, the project name, and the Parameters and Legend buttons. Both open as dialogs over the screen. Parameters edits a draft copy and has Cancel and Apply.
 *   The editor has an inspector panel on the right for the selected object, not a modal sheet. Its edits are held until Save Changes.
 *   The 3D view has a segmented control at the top (Density, Congestion, Footfall) and a compact playback overlay at the bottom (play and pause, clock, speed).
