@@ -45,6 +45,11 @@ struct CanvasTransform: Hashable, Sendable {
         return CanvasTransform(scale: newScale, offset: newOffset)
     }
 
+    func zoomedForScroll(deltaY: Double, around anchorView: SIMD2<Double>) -> CanvasTransform {
+        let factor = pow(1.0015, deltaY)
+        return zoomed(by: factor, around: anchorView)
+    }
+
     func panned(by delta: SIMD2<Double>) -> CanvasTransform {
         CanvasTransform(scale: scale, offset: offset + delta)
     }

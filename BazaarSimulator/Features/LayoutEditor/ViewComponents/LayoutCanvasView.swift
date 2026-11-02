@@ -40,6 +40,7 @@ struct LayoutCanvasView: View {
     @State private var lastPanLocation: CGPoint?
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
+    @State private var lastMagnification: CGFloat = 1
     @State private var hasFittedInitially = false
 
     private final class HoverTracker {
@@ -83,7 +84,18 @@ struct LayoutCanvasView: View {
                 }
             }
             .gesture(canvasGesture)
-            .simultaneousGesture(magnificationGesture(in: proxy.size))
+            .simultaneousGesture(magnificationGesture)
+            .overlay {
+                CanvasScrollCatcher { delta, location, isPreciseScrolling, isCommandDown in
+                    if !isPreciseScrolling || isCommandDown {
+                        let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
+                        transform = transform.zoomedForScroll(deltaY: Double(delta.height), around: anchor)
+                    } else {
+                        let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
+                        transform = transform.panned(by: panDelta)
+                    }
+                }
+            }
             .onKeyPress(.escape) {
                 if activeDragObjectID != nil {
                     activeDragObjectID = nil
@@ -102,23 +114,19 @@ struct LayoutCanvasView: View {
 
     private var canvasGesture: some Gesture {
         DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                handleDragChanged(value)
-            }
-            .onEnded { value in
-                handleDragEnded(value)
-            }
+            .onChanged { handleDragChanged($0) }
+            .onEnded { handleDragEnded($0) }
     }
 
-    private func magnificationGesture(in size: CGSize) -> some Gesture {
+    private var magnificationGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
-                let center = SIMD2<Double>(Double(size.width) / 2.0, Double(size.height) / 2.0)
-                let deltaFactor = Double(value.magnification)
-                if deltaFactor > 0.5 && deltaFactor < 2.0 {
-                    transform = transform.zoomed(by: 1.0 + (deltaFactor - 1.0) * 0.08, around: center)
-                }
+                let step = Double(value.magnification / lastMagnification)
+                lastMagnification = value.magnification
+                let anchor = SIMD2<Double>(value.startLocation.x, value.startLocation.y)
+                transform = transform.zoomed(by: step, around: anchor)
             }
+            .onEnded { _ in lastMagnification = 1 }
     }
 
     @ViewBuilder
@@ -129,35 +137,19 @@ struct LayoutCanvasView: View {
                let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
                target.kind.isMovable {
                 if target.kind.isRotatable {
-                    Button("Rotate 90°") {
-                        onContextAction(.rotate(hitID))
-                    }
+                    Button("Rotate 90°") { onContextAction(.rotate(hitID)) }
                 }
-                Button("Duplicate") {
-                    onContextAction(.duplicate(hitID))
-                }
+                Button("Duplicate") { onContextAction(.duplicate(hitID)) }
                 if target.kind == .booth {
-                    Button("Reset open sides") {
-                        onContextAction(.resetOpenSides(hitID))
-                    }
+                    Button("Reset open sides") { onContextAction(.resetOpenSides(hitID)) }
                 }
                 Divider()
-                Button("Delete", role: .destructive) {
-                    onContextAction(.delete(hitID))
-                }
+                Button("Delete", role: .destructive) { onContextAction(.delete(hitID)) }
             } else {
-                Button("Add Booth Here") {
-                    onContextAction(.addObject(kind: .booth, atWorld: hoverTracker.world))
-                }
-                Button("Add Table Here") {
-                    onContextAction(.addObject(kind: .table, atWorld: hoverTracker.world))
-                }
-                Button("Add Fixture Here") {
-                    onContextAction(.addObject(kind: .fixture, atWorld: hoverTracker.world))
-                }
-                Button("Add Rail Here") {
-                    onContextAction(.addObject(kind: .rail, atWorld: hoverTracker.world))
-                }
+                Button("Add Booth Here") { onContextAction(.addObject(kind: .booth, atWorld: hoverTracker.world)) }
+                Button("Add Table Here") { onContextAction(.addObject(kind: .table, atWorld: hoverTracker.world)) }
+                Button("Add Fixture Here") { onContextAction(.addObject(kind: .fixture, atWorld: hoverTracker.world)) }
+                Button("Add Rail Here") { onContextAction(.addObject(kind: .rail, atWorld: hoverTracker.world)) }
             }
         }
     }

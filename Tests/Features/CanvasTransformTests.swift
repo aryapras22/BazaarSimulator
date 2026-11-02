@@ -51,4 +51,17 @@ struct CanvasTransformTests {
         #expect(zoomedOut.scale == CanvasTransform.minScale)
         #expect(zoomedIn.scale == CanvasTransform.maxScale)
     }
+
+    @Test("Scroll zoom keeps the point under the pointer fixed")
+    func scrollZoomKeepsAnchorFixed() {
+        let initial = CanvasTransform(scale: 12.0, offset: SIMD2<Double>(40, 20))
+        let anchorView = SIMD2<Double>(240, 180)
+        let worldBefore = initial.toWorld(anchorView)
+
+        let zoomed = initial.zoomedForScroll(deltaY: 120.0, around: anchorView)
+        let worldAfter = zoomed.toWorld(anchorView)
+
+        #expect(zoomed.scale > initial.scale)
+        #expect(simd_distance(worldBefore, worldAfter) < 1e-9)
+    }
 }
