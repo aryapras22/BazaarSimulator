@@ -36,8 +36,12 @@ final class LayoutEditorViewModel {
     var transform = CanvasTransform()
     var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []
+    @ObservationIgnored private var isBatchingIssueRefresh = false
+
     var inspectorDraft: InspectorDraft? {
-        didSet { refreshIssues() }
+        didSet {
+            if !isBatchingIssueRefresh { refreshIssues() }
+        }
     }
     var pendingAction: PendingNavigationAction?
 
@@ -126,10 +130,11 @@ final class LayoutEditorViewModel {
             pendingAction = .switchLayout(layoutID)
             return
         }
-        session.setActiveLayoutID(layoutID, for: projectID)
-        hasFittedTransform = false
-        applySelection(nil)
-        refreshIssues()
+        withSingleIssueRefresh {
+            session.setActiveLayoutID(layoutID, for: projectID)
+            hasFittedTransform = false
+            applySelection(nil)
+        }
     }
 
     func requestBack() {
@@ -149,6 +154,16 @@ final class LayoutEditorViewModel {
         }
     }
 
+    func withSingleIssueRefresh(_ body: () -> Void) {
+        let wasBatching = isBatchingIssueRefresh
+        isBatchingIssueRefresh = true
+        body()
+        isBatchingIssueRefresh = wasBatching
+        if !wasBatching {
+            refreshIssues()
+        }
+    }
+
     func refreshIssues() {
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
@@ -162,20 +177,21 @@ final class LayoutEditorViewModel {
         let updated = LayoutEditing.apply(edit, to: layout)
         currentHistory.record(edit)
         session.updateLayout(updated, in: projectID)
-        refreshIssues()
+        if !isBatchingIssueRefresh { refreshIssues() }
     }
 
     func applyHistoryEdit(_ edit: LayoutEdit) {
         guard let layout = activeLayout else { return }
-        let updated = LayoutEditing.apply(edit, to: layout)
-        session.updateLayout(updated, in: projectID)
-        if let selected = selectedObject {
-            inspectorDraft = InspectorDraft(object: selected)
-        } else {
-            selectionID = nil
-            inspectorDraft = nil
+        withSingleIssueRefresh {
+            let updated = LayoutEditing.apply(edit, to: layout)
+            session.updateLayout(updated, in: projectID)
+            if let selected = selectedObject {
+                inspectorDraft = InspectorDraft(object: selected)
+            } else {
+                selectionID = nil
+                inspectorDraft = nil
+            }
         }
-        refreshIssues()
     }
 
     func executePendingAction() {
@@ -188,10 +204,11 @@ final class LayoutEditorViewModel {
             tab = newTab
             applySelection(nil)
         case .switchLayout(let layoutID):
-            session.setActiveLayoutID(layoutID, for: projectID)
-            hasFittedTransform = false
-            applySelection(nil)
-            refreshIssues()
+            withSingleIssueRefresh {
+                session.setActiveLayoutID(layoutID, for: projectID)
+                hasFittedTransform = false
+                applySelection(nil)
+            }
         case .navigateBack:
             onBack()
         case .performUndo:

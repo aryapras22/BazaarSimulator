@@ -34,8 +34,10 @@ extension LayoutEditorViewModel {
         guard let before = selectedObject, before.kind.isRotatable else { return }
         var after = before
         after.placement = before.placement.rotatedQuarterTurns(1)
-        commitEdit(.replace(before: before, after: after))
-        inspectorDraft?.rotationDegrees = after.placement.rotationDegrees
+        withSingleIssueRefresh {
+            commitEdit(.replace(before: before, after: after))
+            inspectorDraft?.rotationDegrees = after.placement.rotationDegrees
+        }
     }
 
     func deleteSelected() {
@@ -46,9 +48,11 @@ extension LayoutEditorViewModel {
         }
         let target = layout.objects[index]
         guard target.kind.isMovable else { return }
-        commitEdit(.delete(target, index: index))
-        self.selectionID = nil
-        inspectorDraft = nil
+        withSingleIssueRefresh {
+            commitEdit(.delete(target, index: index))
+            self.selectionID = nil
+            inspectorDraft = nil
+        }
     }
 
     func duplicateSelected() {
@@ -61,8 +65,10 @@ extension LayoutEditorViewModel {
         copy.id = UUID()
         copy.label = nextLabel(for: selected.kind, in: layout)
         copy.placement.center += SIMD2<Double>(Self.duplicateOffsetM, Self.duplicateOffsetM)
-        commitEdit(.insert(copy, index: layout.objects.count))
-        applySelection(copy.id)
+        withSingleIssueRefresh {
+            commitEdit(.insert(copy, index: layout.objects.count))
+            applySelection(copy.id)
+        }
     }
 
     func resetOpenSidesForSelected() {
@@ -73,10 +79,12 @@ extension LayoutEditorViewModel {
         }
         var after = before
         after.openSides = OpenSideInference.infer(for: before, in: layout)
-        if after != before {
-            commitEdit(.replace(before: before, after: after))
+        withSingleIssueRefresh {
+            if after != before {
+                commitEdit(.replace(before: before, after: after))
+            }
+            inspectorDraft?.openSides = after.openSides
         }
-        inspectorDraft?.openSides = after.openSides
     }
 
     func addObject(kind: LayoutObjectKind, at worldPoint: SIMD2<Double>) {
@@ -100,8 +108,10 @@ extension LayoutEditorViewModel {
         if kind == .booth {
             newObject.openSides = OpenSideInference.infer(for: newObject, in: layout)
         }
-        commitEdit(.insert(newObject, index: layout.objects.count))
-        applySelection(newObject.id)
+        withSingleIssueRefresh {
+            commitEdit(.insert(newObject, index: layout.objects.count))
+            applySelection(newObject.id)
+        }
     }
 
     func undo() {

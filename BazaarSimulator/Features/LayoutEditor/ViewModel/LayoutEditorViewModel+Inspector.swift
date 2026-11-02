@@ -158,10 +158,12 @@ extension LayoutEditorViewModel {
               let draft = inspectorDraft else {
             return
         }
-        let updated = draft.applied(to: selected)
-        commitEdit(.replace(before: selected, after: updated))
-        if let refreshed = selectedObject {
-            inspectorDraft = InspectorDraft(object: refreshed)
+        withSingleIssueRefresh {
+            let updated = draft.applied(to: selected)
+            commitEdit(.replace(before: selected, after: updated))
+            if let refreshed = selectedObject {
+                inspectorDraft = InspectorDraft(object: refreshed)
+            }
         }
     }
 
@@ -178,13 +180,17 @@ extension LayoutEditorViewModel {
             pendingAction = nil
             return
         }
-        saveInspectorChanges()
-        executePendingAction()
+        withSingleIssueRefresh {
+            saveInspectorChanges()
+            executePendingAction()
+        }
     }
 
     func confirmPendingActionWithDiscard() {
-        discardInspectorChanges()
-        executePendingAction()
+        withSingleIssueRefresh {
+            discardInspectorChanges()
+            executePendingAction()
+        }
     }
 
     func cancelPendingAction() {

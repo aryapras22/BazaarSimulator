@@ -210,4 +210,17 @@ struct LayoutEditorViewModelTests {
 
         #expect(viewModel.selectedObject?.label == "B6")
     }
+
+    @Test("Saving inspector changes updates issues for the saved layout")
+    func savingInspectorChangesUpdatesIssues() throws {
+        let context = Self.makeContext()
+        let booths = context.layout.objects.filter { $0.kind == .booth }
+        let boothA = try #require(booths.first)
+
+        context.viewModel.selectObject(boothA.id)
+        context.viewModel.inspectorDraft?.widthM = 12.0
+        context.viewModel.saveInspectorChanges()
+
+        #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
+    }
 }
