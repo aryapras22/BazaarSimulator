@@ -73,17 +73,16 @@ struct LayoutEditorViewModelInspectorTests {
     }
 
     @Test("Toggling the screen-right edge of a booth rotated 90 degrees toggles its own top side")
-    func toggleRotatedScreenEdgeMapsToLocalSide() throws {
-        let context = LayoutEditorViewModelTests.makeContext()
-        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+    func toggleRotatedScreenEdgeMapsToLocalSide() {
+        let initial: OpenSides = []
 
-        context.viewModel.selectObject(booth.id)
-        context.viewModel.inspectorDraft?.rotationDegrees = 90
-        context.viewModel.inspectorDraft?.openSides = []
+        let updated = initial.toggling(
+            screenSide: .right,
+            rotationDegrees: 90,
+            allowsMultiple: true
+        )
 
-        context.viewModel.toggleScreenOpenSide(.right)
-
-        #expect(context.viewModel.inspectorDraft?.openSides == .top)
+        #expect(updated == .top)
     }
 
     @Test("Use advice sets the draft direction and Save applies it")

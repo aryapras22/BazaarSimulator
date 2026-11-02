@@ -89,16 +89,11 @@ struct OpenSidesControl: View {
     }
 
     private func toggle(screenSide: OpenSides) {
-        let localSide = OpenSides.localSide(forScreenSide: screenSide, rotationDegrees: rotationDegrees)
-        if allowsMultiple {
-            if sides.contains(localSide) {
-                sides.remove(localSide)
-            } else {
-                sides.insert(localSide)
-            }
-        } else {
-            sides = localSide
-        }
+        sides = sides.toggling(
+            screenSide: screenSide,
+            rotationDegrees: rotationDegrees,
+            allowsMultiple: allowsMultiple
+        )
     }
 
     private func accessibilityLabel(for screenSide: OpenSides, isOpen: Bool) -> String {

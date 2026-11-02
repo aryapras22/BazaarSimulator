@@ -114,6 +114,10 @@ extension LayoutEditorViewModel {
     }
 
     func redo() {
+        if hasUnsavedInspectorChanges {
+            pendingAction = .performRedo
+            return
+        }
         guard let edit = currentHistory.redo() else { return }
         applyHistoryEdit(edit)
     }
@@ -158,13 +162,26 @@ extension LayoutEditorViewModel {
     }
 
     private func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
-        let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
         switch kind {
-        case .booth: return "B\(existingCount)"
-        case .table: return "T\(existingCount)"
-        case .fixture: return "Fixture \(existingCount)"
-        case .rail: return "Rail"
-        default: return "\(kind.displayName) \(existingCount)"
+        case .booth:
+            return nextPrefixedLabel(prefix: "B", kind: kind, in: layout)
+        case .table:
+            return nextPrefixedLabel(prefix: "T", kind: kind, in: layout)
+        case .fixture:
+            return nextPrefixedLabel(prefix: "Fixture ", kind: kind, in: layout)
+        case .rail:
+            return "Rail"
+        default:
+            let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
+            return "\(kind.displayName) \(existingCount)"
         }
+    }
+
+    private func nextPrefixedLabel(prefix: String, kind: LayoutObjectKind, in layout: Layout) -> String {
+        let highest = layout.objects
+            .filter { $0.kind == kind && $0.label.hasPrefix(prefix) }
+            .compactMap { Int($0.label.dropFirst(prefix.count)) }
+            .max() ?? 0
+        return "\(prefix)\(highest + 1)"
     }
 }

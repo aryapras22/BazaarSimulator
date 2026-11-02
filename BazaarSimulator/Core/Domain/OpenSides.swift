@@ -28,6 +28,18 @@ struct OpenSides: OptionSet, Codable, Hashable, Sendable {
         let localIndex = (index - turns + 4) % 4
         return ordered[localIndex]
     }
+
+    func toggling(screenSide: OpenSides, rotationDegrees: Int, allowsMultiple: Bool) -> OpenSides {
+        let localSide = Self.localSide(forScreenSide: screenSide, rotationDegrees: rotationDegrees)
+        guard allowsMultiple else { return localSide }
+        var updated = self
+        if updated.contains(localSide) {
+            updated.remove(localSide)
+        } else {
+            updated.insert(localSide)
+        }
+        return updated
+    }
 }
 
 typealias StageFace = OpenSides

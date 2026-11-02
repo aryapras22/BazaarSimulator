@@ -170,4 +170,44 @@ struct LayoutEditorViewModelTests {
         let remainingIDs = try #require(context.viewModel.activeLayout?.objects.map(\.id))
         #expect(remainingIDs.contains(boothB.id))
     }
+
+    @Test("Redo with unsaved changes asks first")
+    func redoWithUnsavedChangesAsksFirst() throws {
+        let context = Self.makeContext()
+        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+
+        context.viewModel.selectObject(booth.id)
+        context.viewModel.nudgeSelected(by: SIMD2<Double>(1, 0))
+        context.viewModel.undo()
+        #expect(context.viewModel.canRedo)
+
+        context.viewModel.inspectorDraft?.widthM = 4.0
+        context.viewModel.redo()
+
+        #expect(context.viewModel.pendingAction == .performRedo)
+    }
+
+    @Test("Duplicate labels never repeat")
+    func duplicateLabelsNeverRepeat() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+        let booths = (1...5).map { number in
+            LayoutObject(
+                kind: .booth,
+                label: "B\(number)",
+                placement: Placement(center: SIMD2<Double>(Double(number) * 3, 5), sizeM: SIMD2<Double>(2, 2))
+            )
+        }
+        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(25, 25), objects: booths)
+        session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+
+        viewModel.selectObject(booths[2].id)
+        viewModel.deleteSelected()
+
+        viewModel.selectObject(booths[0].id)
+        viewModel.duplicateSelected()
+
+        #expect(viewModel.selectedObject?.label == "B6")
+    }
 }

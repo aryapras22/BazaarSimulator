@@ -20,14 +20,15 @@ enum PendingNavigationAction: Sendable, Equatable {
     case switchLayout(UUID)
     case navigateBack
     case performUndo
+    case performRedo
 }
 
 @Observable
 @MainActor
 final class LayoutEditorViewModel {
     let projectID: UUID
-    let session: any ProjectSessionProtocol
-    let onBack: () -> Void
+    private let session: any ProjectSessionProtocol
+    private let onBack: () -> Void
 
     var tab: EditorTab = .floorPlan
     var selectionID: UUID?
@@ -173,5 +174,31 @@ final class LayoutEditorViewModel {
             inspectorDraft = nil
         }
         refreshIssues()
+    }
+
+    func executePendingAction() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+        switch action {
+        case .selectObject(let objectID):
+            applySelection(objectID)
+        case .switchTab(let newTab):
+            tab = newTab
+            applySelection(nil)
+        case .switchLayout(let layoutID):
+            session.setActiveLayoutID(layoutID, for: projectID)
+            applySelection(nil)
+            refreshIssues()
+        case .navigateBack:
+            onBack()
+        case .performUndo:
+            if let edit = currentHistory.undo() {
+                applyHistoryEdit(edit)
+            }
+        case .performRedo:
+            if let edit = currentHistory.redo() {
+                applyHistoryEdit(edit)
+            }
+        }
     }
 }

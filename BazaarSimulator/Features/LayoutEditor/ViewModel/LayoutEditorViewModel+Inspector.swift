@@ -191,50 +191,12 @@ extension LayoutEditorViewModel {
         pendingAction = nil
     }
 
-    func toggleScreenOpenSide(_ screenSide: OpenSides) {
-        guard var draft = inspectorDraft else { return }
-        let localSide = OpenSides.localSide(
-            forScreenSide: screenSide,
-            rotationDegrees: draft.rotationDegrees
-        )
-        if draft.kind.allowsMultipleOpenSides {
-            if draft.openSides.contains(localSide) {
-                draft.openSides.remove(localSide)
-            } else {
-                draft.openSides.insert(localSide)
-            }
-        } else {
-            draft.openSides = localSide
-        }
-        inspectorDraft = draft
-    }
-
-    private func executePendingAction() {
-        guard let action = pendingAction else { return }
-        pendingAction = nil
-        switch action {
-        case .selectObject(let objectID):
-            applySelection(objectID)
-        case .switchTab(let newTab):
-            tab = newTab
-            applySelection(nil)
-        case .switchLayout(let layoutID):
-            session.setActiveLayoutID(layoutID, for: projectID)
-            applySelection(nil)
-            refreshIssues()
-        case .navigateBack:
-            onBack()
-        case .performUndo:
-            if let edit = currentHistory.undo() {
-                applyHistoryEdit(edit)
-            }
-        }
-    }
-
     private func maxDoorWidthM(for door: LayoutObject) -> Double {
         guard let layout = activeLayout else { return 20.0 }
         if door.doorFlow?.connection == .hallToLobby,
-           let wall = layout.objects.first(where: { $0.kind == .wall && $0.label == "Lobby wall" }) {
+           let wall = layout.objects.first(where: {
+               $0.kind == .wall && LayoutGeometry.contains($0.placement, point: door.placement.center, tolerance: 0.5)
+           }) {
             return max(door.kind.minimumDimensionM, wall.placement.sizeM.x)
         }
         return max(door.kind.minimumDimensionM, max(layout.sizeM.x, layout.sizeM.y))
