@@ -225,7 +225,7 @@ struct LayoutCanvasView: View {
         case .booth:
             let boothState = BoothDrawState(
                 booth: object,
-                displayLabel: formatBoothLabel(object.label),
+                displayLabel: BoothLabelFormatter.display(object.label),
                 tab: snapshot.tab,
                 isSelected: isSelected,
                 isHovered: isHovered,
@@ -241,16 +241,6 @@ struct LayoutCanvasView: View {
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }
-    }
-
-    private func formatBoothLabel(_ raw: String) -> String {
-        guard let firstDigitIndex = raw.firstIndex(where: \.isNumber),
-              firstDigitIndex > raw.startIndex else {
-            return raw
-        }
-        let prefix = raw[..<firstDigitIndex]
-        let suffix = raw[firstDigitIndex...]
-        return prefix.hasSuffix("-") ? raw : "\(prefix)-\(suffix)"
     }
 }
 
