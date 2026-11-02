@@ -30,9 +30,11 @@ struct LayoutCanvasView: View {
     var onHover: (UUID?) -> Void = { _ in }
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
+    var onInteract: () -> Void = {}
 
     @State private var activeDragObjectID: UUID?
     @State private var activeDragDeltaWorld: SIMD2<Double> = .zero
+    @State private var isDragCancelled = false
     @State private var lastPanLocation: CGPoint?
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
@@ -80,6 +82,16 @@ struct LayoutCanvasView: View {
             }
             .gesture(canvasGesture)
             .simultaneousGesture(magnificationGesture(in: proxy.size))
+            .onKeyPress(.escape) {
+                if activeDragObjectID != nil {
+                    activeDragObjectID = nil
+                    activeDragDeltaWorld = .zero
+                    isDragCancelled = true
+                    return .handled
+                }
+                onSelect(nil)
+                return .handled
+            }
             .contextMenu {
                 contextMenuContent
             }
@@ -152,10 +164,12 @@ struct LayoutCanvasView: View {
     }
 
     private func handleDragChanged(_ value: DragGesture.Value) {
+        guard !isDragCancelled else { return }
         let distance = hypot(value.translation.width, value.translation.height)
         guard distance >= 2.0 else { return }
 
         if activeDragObjectID == nil && lastPanLocation == nil {
+            onInteract()
             let startWorld = transform.toWorld(SIMD2<Double>(value.startLocation.x, value.startLocation.y))
             if let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
                let object = snapshot.layout.objects.first(where: { $0.id == hitID }),
@@ -185,6 +199,13 @@ struct LayoutCanvasView: View {
     }
 
     private func handleDragEnded(_ value: DragGesture.Value) {
+        if isDragCancelled {
+            isDragCancelled = false
+            activeDragObjectID = nil
+            activeDragDeltaWorld = .zero
+            lastPanLocation = nil
+            return
+        }
         let distance = hypot(value.translation.width, value.translation.height)
         if let draggedID = activeDragObjectID {
             let isOptionDown = NSEvent.modifierFlags.contains(.option)
@@ -195,6 +216,7 @@ struct LayoutCanvasView: View {
         }
         lastPanLocation = nil
         if distance < 2.0 {
+            onInteract()
             let clickWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
             let hitID = LayoutHitTester.object(at: clickWorld, in: snapshot.layout, tab: snapshot.tab)
             onSelect(hitID)

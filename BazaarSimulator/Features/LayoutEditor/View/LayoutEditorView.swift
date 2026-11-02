@@ -4,6 +4,7 @@ import simd
 struct LayoutEditorView: View {
     @Bindable var viewModel: LayoutEditorViewModel
     @State private var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
+    @FocusState private var isCanvasFocused: Bool
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -16,11 +17,53 @@ struct LayoutEditorView: View {
                     onDragEnded: { id, delta, isOptionDown in
                         viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
                     },
-                    onContextAction: { viewModel.handleContextAction($0) }
+                    onContextAction: { viewModel.handleContextAction($0) },
+                    onInteract: { isCanvasFocused = true }
                 )
+                .focusable()
+                .focusEffectDisabled()
+                .focused($isCanvasFocused)
+                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                    viewModel.deleteSelected()
+                    return .handled
+                }
+                .onKeyPress(.upArrow, phases: .down) { press in
+                    let step = press.modifiers.contains(.shift)
+                        ? LayoutEditorViewModel.shiftNudgeStepM
+                        : LayoutEditorViewModel.gridSnapCellM
+                    viewModel.nudgeSelected(by: SIMD2<Double>(0, -step))
+                    return .handled
+                }
+                .onKeyPress(.downArrow, phases: .down) { press in
+                    let step = press.modifiers.contains(.shift)
+                        ? LayoutEditorViewModel.shiftNudgeStepM
+                        : LayoutEditorViewModel.gridSnapCellM
+                    viewModel.nudgeSelected(by: SIMD2<Double>(0, step))
+                    return .handled
+                }
+                .onKeyPress(.leftArrow, phases: .down) { press in
+                    let step = press.modifiers.contains(.shift)
+                        ? LayoutEditorViewModel.shiftNudgeStepM
+                        : LayoutEditorViewModel.gridSnapCellM
+                    viewModel.nudgeSelected(by: SIMD2<Double>(-step, 0))
+                    return .handled
+                }
+                .onKeyPress(.rightArrow, phases: .down) { press in
+                    let step = press.modifiers.contains(.shift)
+                        ? LayoutEditorViewModel.shiftNudgeStepM
+                        : LayoutEditorViewModel.gridSnapCellM
+                    viewModel.nudgeSelected(by: SIMD2<Double>(step, 0))
+                    return .handled
+                }
+                .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
+                    guard press.modifiers.isEmpty else { return .ignored }
+                    viewModel.rotateSelected()
+                    return .handled
+                }
                 .onAppear {
                     canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
                     viewModel.refreshIssues()
+                    isCanvasFocused = true
                 }
                 .onChange(of: proxy.size) { _, newSize in
                     canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
@@ -59,47 +102,6 @@ struct LayoutEditorView: View {
             editorToolbar
         }
         .focusedSceneValue(\.editorCommandActions, commandActions)
-        .onKeyPress(.escape) {
-            viewModel.selectObject(nil)
-            return .handled
-        }
-        .onKeyPress(.delete) {
-            viewModel.deleteSelected()
-            return .handled
-        }
-        .onKeyPress(.upArrow, phases: .down) { press in
-            let step = press.modifiers.contains(.shift)
-                ? LayoutEditorViewModel.shiftNudgeStepM
-                : LayoutEditorViewModel.gridSnapCellM
-            viewModel.nudgeSelected(by: SIMD2<Double>(0, -step))
-            return .handled
-        }
-        .onKeyPress(.downArrow, phases: .down) { press in
-            let step = press.modifiers.contains(.shift)
-                ? LayoutEditorViewModel.shiftNudgeStepM
-                : LayoutEditorViewModel.gridSnapCellM
-            viewModel.nudgeSelected(by: SIMD2<Double>(0, step))
-            return .handled
-        }
-        .onKeyPress(.leftArrow, phases: .down) { press in
-            let step = press.modifiers.contains(.shift)
-                ? LayoutEditorViewModel.shiftNudgeStepM
-                : LayoutEditorViewModel.gridSnapCellM
-            viewModel.nudgeSelected(by: SIMD2<Double>(-step, 0))
-            return .handled
-        }
-        .onKeyPress(.rightArrow, phases: .down) { press in
-            let step = press.modifiers.contains(.shift)
-                ? LayoutEditorViewModel.shiftNudgeStepM
-                : LayoutEditorViewModel.gridSnapCellM
-            viewModel.nudgeSelected(by: SIMD2<Double>(step, 0))
-            return .handled
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
-            guard press.modifiers.isEmpty else { return .ignored }
-            viewModel.rotateSelected()
-            return .handled
-        }
         .unsavedChangesDialog(
             isPresented: Binding(
                 get: { viewModel.pendingAction != nil },
