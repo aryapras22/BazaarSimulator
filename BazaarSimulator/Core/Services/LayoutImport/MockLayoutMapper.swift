@@ -118,7 +118,8 @@ enum MockLayoutMapper {
     }
 
     private static func mapInitialBooths(from booths: [BazaarBoothDTO], legend: Legend) -> [LayoutObject] {
-        booths.map { booth in
+        let categories = CategoryMatcher.defaultCategories(for: booths, in: legend)
+        return booths.map { booth in
             LayoutObject(
                 kind: .booth,
                 label: booth.id,
@@ -126,7 +127,7 @@ enum MockLayoutMapper {
                     center: SIMD2<Double>(booth.centerX, booth.centerY),
                     sizeM: SIMD2<Double>(booth.width, booth.height)
                 ),
-                categoryID: CategoryMatcher.entry(for: booth.type, in: legend),
+                categoryID: categories[booth.id],
                 reviewState: .detected
             )
         }
