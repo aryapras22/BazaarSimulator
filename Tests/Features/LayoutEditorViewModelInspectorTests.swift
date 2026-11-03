@@ -124,4 +124,48 @@ struct LayoutEditorViewModelInspectorTests {
 
         #expect(!viewModel.isSaveChangesEnabled)
     }
+
+    @Test("Selecting a blocked area fills the draft")
+    func selectingBlockedAreaFillsDraft() throws {
+        let (viewModel, area) = try makeAnnyeongContext()
+
+        viewModel.selectObject(area.id)
+
+        #expect(viewModel.inspectorDraft?.kind == .closedArea)
+        #expect(viewModel.inspectorTitle == "Blocked area")
+    }
+
+    @Test("Renaming a blocked area saves the label")
+    func renamingBlockedAreaSavesLabel() throws {
+        let (viewModel, area) = try makeAnnyeongContext()
+
+        viewModel.selectObject(area.id)
+        viewModel.inspectorDraft?.label = "Storage"
+        viewModel.saveInspectorChanges()
+
+        #expect(viewModel.selectedObject?.label == "Storage")
+    }
+
+    @Test("A blocked area narrower than 0.5 m cannot be saved")
+    func blockedAreaUnderMinimumCannotBeSaved() throws {
+        let (viewModel, area) = try makeAnnyeongContext()
+
+        viewModel.selectObject(area.id)
+        viewModel.inspectorDraft?.widthM = 0.3
+
+        #expect(!viewModel.isSaveChangesEnabled)
+    }
+
+    private func makeAnnyeongContext() throws -> (LayoutEditorViewModel, LayoutObject) {
+        let layout = PreviewLayouts.annyeong()
+        let session = ProjectSession()
+        let project = session.createProject(named: "Annyeong")
+        session.setDraft(
+            ProjectDraft(name: "Annyeong", legend: PreviewLayouts.sampleLegend, layouts: [layout]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session, onBack: {})
+        let area = try #require(layout.objects.first { $0.kind == .closedArea })
+        return (viewModel, area)
+    }
 }
