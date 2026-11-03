@@ -37,6 +37,10 @@ enum CanvasSceneRenderer {
             }
         }
 
+        if snapshot.tab == .floorPlan {
+            GroupOverlayRenderer.draw(snapshot.groupClusters, in: &context, transform: transform)
+        }
+
         MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
     }
 

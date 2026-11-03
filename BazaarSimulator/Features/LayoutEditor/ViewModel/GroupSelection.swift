@@ -8,4 +8,5 @@ struct GroupSelection: Equatable, Sendable {
 
     var kind: Kind
     var memberIDs: Set<UUID>
+    var clusters: [[UUID]]
 }

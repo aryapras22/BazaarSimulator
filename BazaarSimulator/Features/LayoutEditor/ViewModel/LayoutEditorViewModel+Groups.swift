@@ -98,7 +98,12 @@ extension LayoutEditorViewModel {
         applyMemberSelection(members, kind: .custom)
     }
 
+    private func selectedMembers(of ids: Set<UUID>) -> [LayoutObject] {
+        activeLayout?.objects.filter { ids.contains($0.id) } ?? []
+    }
+
     func applyGroupSelection(_ selection: GroupSelection?) {
+        hoveredGroup = nil
         selectionID = nil
         inspectorDraft = nil
         groupSelection = selection
@@ -109,7 +114,11 @@ extension LayoutEditorViewModel {
         switch members.count {
         case 0: applySelection(nil)
         case 1: applySelection(members.first)
-        default: applyGroupSelection(GroupSelection(kind: kind, memberIDs: members))
+        default:
+            let objects = selectedMembers(of: members)
+            applyGroupSelection(
+                GroupSelection(kind: kind, memberIDs: members, clusters: BoothGrouping.clusters(of: objects))
+            )
         }
     }
 }

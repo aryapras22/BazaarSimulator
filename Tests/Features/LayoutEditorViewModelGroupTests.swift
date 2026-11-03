@@ -129,4 +129,17 @@ struct LayoutEditorViewModelGroupTests {
         viewModel.undo()
         #expect(viewModel.activeLayout == context.layout)
     }
+
+    @Test("Groups list is visible when nothing is selected on floor plan")
+    func groupsListVisibilityAndRows() {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+
+        #expect(viewModel.isGroupsListVisible)
+        #expect(viewModel.nameGroupRows.map(\.title) == ["A", "B", "C", "F", "I"])
+        #expect(viewModel.sizeGroupRows.map(\.count) == [150, 42, 9, 8])
+
+        viewModel.selectTab(.flow)
+        #expect(!viewModel.isGroupsListVisible)
+    }
 }

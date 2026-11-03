@@ -74,6 +74,19 @@ extension LayoutEditorView {
         }
     }
 
+    func groupsListPanel() -> some View {
+        InspectorPanel(title: "Booth Groups") {
+            BoothGroupsList(
+                nameRows: viewModel.nameGroupRows,
+                sizeRows: viewModel.sizeGroupRows,
+                onHover: { viewModel.hoveredGroup = $0 },
+                onSelect: { viewModel.selectGroup($0) }
+            )
+        } footer: {
+            EmptyView()
+        }
+    }
+
     var groupDeleteDialogTitle: String {
         "Delete \(viewModel.pendingGroupDelete ?? 0) booths?"
     }

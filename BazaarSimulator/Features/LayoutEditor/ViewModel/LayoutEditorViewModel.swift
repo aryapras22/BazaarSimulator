@@ -160,6 +160,7 @@ final class LayoutEditorViewModel {
     }
 
     func applySelection(_ objectID: UUID?) {
+        hoveredGroup = nil
         groupSelection = nil
         groupDraft = nil
         selectionID = objectID

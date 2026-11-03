@@ -125,7 +125,6 @@ enum BoothRenderer {
         let dotView = transform.toView(dotWorld)
         let radius: CGFloat = 4.0
         let rect = CGRect(x: dotView.x - radius, y: dotView.y - radius, width: radius * 2, height: radius * 2)
-        let swiftUIColor = Color(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: 1.0)
-        context.fill(Path(ellipseIn: rect), with: .color(swiftUIColor))
+        context.fill(Path(ellipseIn: rect), with: .color(color.swiftUIColor))
     }
 }

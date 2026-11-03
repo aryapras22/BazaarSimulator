@@ -126,6 +126,11 @@ struct LayoutEditorView: View {
                     .padding(.top, Spacing.l)
                     .padding(.trailing, Spacing.l)
                     .padding(.bottom, Spacing.l)
+            } else if viewModel.isGroupsListVisible {
+                groupsListPanel()
+                    .padding(.top, Spacing.l)
+                    .padding(.trailing, Spacing.l)
+                    .padding(.bottom, Spacing.l)
             }
         }
         .frame(minWidth: 960, minHeight: 640)
@@ -163,6 +168,7 @@ struct LayoutEditorView: View {
             hoverID: viewModel.hoverID,
             groupMemberIDs: viewModel.groupMemberIDs,
             hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
+            groupClusters: viewModel.groupClusters,
             hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
             issues: viewModel.canvasIssueSnapshot
         )

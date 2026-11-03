@@ -22,6 +22,7 @@ struct CanvasDisplaySnapshot: Sendable {
     var hoverID: UUID?
     var groupMemberIDs: Set<UUID> = []
     var hoveredGroupMemberIDs: Set<UUID> = []
+    var groupClusters: [GroupClusterDisplay] = []
     var hasUnsavedChanges: Bool = false
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
 }

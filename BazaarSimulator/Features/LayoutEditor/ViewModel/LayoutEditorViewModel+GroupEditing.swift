@@ -5,7 +5,7 @@ extension LayoutEditorViewModel {
     private static let allowedRotations = [0, 90, 180, 270]
 
     var isInspectorPanelVisible: Bool {
-        (selectedObject != nil && inspectorDraft != nil) || groupSelection != nil
+        (selectedObject != nil && inspectorDraft != nil) || groupSelection != nil || isGroupsListVisible
     }
 
     var groupSizeRangeM: ClosedRange<Double> {
