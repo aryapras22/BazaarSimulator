@@ -12,6 +12,7 @@ enum LayoutValidator {
         var result: [LayoutIssue] = []
         result.append(contentsOf: checkMinimumSizes(in: layout))
         result.append(contentsOf: checkOverlaps(in: layout, boundsByID: boundsByID))
+        result.append(contentsOf: checkTablesInBlockedAreas(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkFloorBounds(in: layout))
         result.append(contentsOf: checkBoothOpenSides(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkHallDoors(in: layout))
@@ -45,7 +46,7 @@ enum LayoutValidator {
     ) -> [LayoutIssue] {
         var issues: [LayoutIssue] = []
         let booths = layout.objects.filter { $0.kind == .booth }
-        let obstacles = layout.objects.filter { $0.kind.blocksWalking && $0.kind != .closedArea }
+        let obstacles = layout.objects.filter { $0.kind.blocksWalking }
 
         var reportedPairs: Set<Set<UUID>> = []
         for booth in booths {
@@ -65,6 +66,36 @@ enum LayoutValidator {
                             kind: .overlappingObjects,
                             objectIDs: [booth.id, other.id],
                             message: LayoutIssueText.overlappingObjects(booth.label, other.label)
+                        )
+                    )
+                }
+            }
+        }
+        return issues
+    }
+
+    private static func checkTablesInBlockedAreas(
+        in layout: Layout,
+        boundsByID: [UUID: BoundingBox]
+    ) -> [LayoutIssue] {
+        var issues: [LayoutIssue] = []
+        let tables = layout.objects.filter { $0.kind == .table }
+        let blockedAreas = layout.objects.filter { $0.kind == .closedArea }
+
+        for table in tables {
+            guard let tableBox = boundsByID[table.id] else { continue }
+            for area in blockedAreas {
+                guard let areaBox = boundsByID[area.id],
+                      !areBoundsApart(tableBox, areaBox, byMoreThan: overlapToleranceM) else {
+                    continue
+                }
+                if LayoutGeometry.overlapDepth(table.placement, area.placement) > overlapToleranceM {
+                    issues.append(
+                        LayoutIssue(
+                            severity: .warning,
+                            kind: .overlappingObjects,
+                            objectIDs: [table.id, area.id],
+                            message: LayoutIssueText.overlappingObjects(table.label, area.label)
                         )
                     )
                 }
