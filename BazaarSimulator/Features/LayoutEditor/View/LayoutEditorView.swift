@@ -32,7 +32,8 @@ struct LayoutEditorView: View {
                     onInteract: { isCanvasFocused = true },
                     tool: viewModel.tool,
                     onDrawBlockedArea: { viewModel.addBlockedArea($0) },
-                    onCancelTool: { viewModel.selectTool(.select) }
+                    onCancelTool: { viewModel.selectTool(.select) },
+                    onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) }
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteCurrentSelection()

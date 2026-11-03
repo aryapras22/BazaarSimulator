@@ -23,6 +23,18 @@ extension LayoutEditorViewModel {
         commitEdit(.replace(before: before, after: after))
     }
 
+    func finishResizingObject(id: UUID, to placement: Placement) {
+        guard let current = activeLayout?.objects.first(where: { $0.id == id }),
+              current.kind.isResizable else { return }
+        var updated = current
+        updated.placement = placement
+        commitEdit(.replace(before: current, after: updated))
+        if selectionID == id {
+            inspectorDraft?.widthM = placement.sizeM.x
+            inspectorDraft?.lengthM = placement.sizeM.y
+        }
+    }
+
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
         guard let before = selectedObject, before.kind.isMovable else { return }
         var after = before

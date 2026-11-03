@@ -43,9 +43,12 @@ struct LayoutCanvasView: View {
     var tool: EditorTool = .select
     var onDrawBlockedArea: (Placement) -> Void = { _ in }
     var onCancelTool: () -> Void = {}
+    var onResizeEnded: (UUID, Placement) -> Void = { _, _ in }
 
     @State private var activeDragObjectID: UUID?
     @State private var activeDragDeltaWorld: SIMD2<Double> = .zero
+    @State private var activeResize: ActiveResize?
+    @State private var hoveredHandle: ResizeHandle?
     @State private var isDragCancelled = false
     @State private var isDragSuppressed = false
     @State private var lastPanLocation: CGPoint?
@@ -74,7 +77,8 @@ struct LayoutCanvasView: View {
                     pointerLocation: dragPointerLocation,
                     drawingStart: drawingStartWorld,
                     drawingCurrent: drawingCurrentWorld,
-                    isOptionDown: NSEvent.modifierFlags.contains(.option)
+                    isOptionDown: NSEvent.modifierFlags.contains(.option),
+                    resize: activeResize
                 )
             )
         }
@@ -83,6 +87,7 @@ struct LayoutCanvasView: View {
         .onHover { isHovering in
             guard !isHovering else { return }
             onPointerMove(nil)
+            hoveredHandle = nil
             if lastHoverHit != nil {
                 lastHoverHit = nil
                 onHover(nil)
@@ -94,13 +99,10 @@ struct LayoutCanvasView: View {
                 let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
                 hoverTracker.world = world
                 onPointerMove(world)
-                let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
-                if hit != lastHoverHit {
-                    lastHoverHit = hit
-                    onHover(hit)
-                }
+                updateHoverState(at: world)
             case .ended:
                 onPointerMove(nil)
+                hoveredHandle = nil
                 if lastHoverHit != nil {
                     lastHoverHit = nil
                     onHover(nil)
@@ -124,11 +126,16 @@ struct LayoutCanvasView: View {
                 }
             }
         }
-        .pointerStyle(tool == .blockedArea ? .rectSelection : .default)
+        .pointerStyle(canvasPointerStyle)
         .focusable()
         .focusEffectDisabled()
         .focused(isFocused)
         .onKeyPress(.escape) {
+            if activeResize != nil {
+                activeResize = nil
+                dragPointerLocation = nil
+                return .handled
+            }
             if drawingStartWorld != nil {
                 drawingStartWorld = nil
                 drawingCurrentWorld = nil
@@ -151,6 +158,16 @@ struct LayoutCanvasView: View {
         .contextMenu {
             contextMenuContent
         }
+    }
+
+    private var canvasPointerStyle: PointerStyle {
+        if let resize = activeResize {
+            return .frameResize(position: resize.handle.pointerPosition)
+        }
+        if let handle = hoveredHandle {
+            return .frameResize(position: handle.pointerPosition)
+        }
+        return tool == .blockedArea ? .rectSelection : .default
     }
 
     private var canvasGesture: some Gesture {
@@ -199,6 +216,26 @@ extension LayoutCanvasView {
         }
     }
 
+    private func updateHoverState(at world: SIMD2<Double>) {
+        if snapshot.tab == .floorPlan,
+           let selectedID = snapshot.selectionID,
+           let selected = snapshot.layout.objects.first(where: { $0.id == selectedID }),
+           selected.kind.hasResizeHandles {
+            hoveredHandle = PlacementResizing.hitTest(
+                placement: selected.placement,
+                pointerWorld: world,
+                pointsPerMetre: transform.scale
+            )
+        } else {
+            hoveredHandle = nil
+        }
+        let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
+        if hit != lastHoverHit {
+            lastHoverHit = hit
+            onHover(hit)
+        }
+    }
+
     private func handleDragChanged(_ value: DragGesture.Value) {
         guard !isDragCancelled && !isDragSuppressed else { return }
         let distance = hypot(value.translation.width, value.translation.height)
@@ -209,11 +246,24 @@ extension LayoutCanvasView {
             return
         }
 
-        if activeDragObjectID == nil && lastPanLocation == nil {
+        if activeDragObjectID == nil && lastPanLocation == nil && activeResize == nil {
             startDragOrPan(at: value.startLocation)
         }
 
-        if activeDragObjectID != nil {
+        if let resize = activeResize {
+            dragPointerLocation = value.location
+            let deltaWorld = SIMD2<Double>(
+                Double(value.translation.width) / transform.scale,
+                Double(value.translation.height) / transform.scale
+            )
+            let isOptionDown = NSEvent.modifierFlags.contains(.option)
+            activeResize?.preview = PlacementResizing.resized(
+                placement: resize.initialPlacement,
+                handle: resize.handle,
+                deltaWorld: deltaWorld,
+                snapped: !isOptionDown
+            )
+        } else if activeDragObjectID != nil {
             dragPointerLocation = value.location
             activeDragDeltaWorld = SIMD2<Double>(
                 Double(value.translation.width) / transform.scale,
@@ -241,6 +291,24 @@ extension LayoutCanvasView {
     private func startDragOrPan(at location: CGPoint) {
         onInteract()
         let startWorld = transform.toWorld(SIMD2<Double>(location.x, location.y))
+        if snapshot.tab == .floorPlan,
+           let selectedID = snapshot.selectionID,
+           let selected = snapshot.layout.objects.first(where: { $0.id == selectedID }),
+           selected.kind.hasResizeHandles,
+           let handle = PlacementResizing.hitTest(
+               placement: selected.placement,
+               pointerWorld: startWorld,
+               pointsPerMetre: transform.scale
+           ) {
+            activeResize = ActiveResize(
+                objectID: selectedID,
+                handle: handle,
+                initialPlacement: selected.placement,
+                preview: selected.placement
+            )
+            return
+        }
+
         guard let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
               let object = snapshot.layout.objects.first(where: { $0.id == hitID }),
               object.kind.isMovable else {
@@ -287,6 +355,13 @@ extension LayoutCanvasView {
             lastPanLocation = nil
             drawingStartWorld = nil
             drawingCurrentWorld = nil
+            activeResize = nil
+            return
+        }
+        if let resize = activeResize {
+            onResizeEnded(resize.objectID, resize.preview)
+            activeResize = nil
+            dragPointerLocation = nil
             return
         }
         if tool == .blockedArea {
@@ -321,69 +396,4 @@ extension LayoutCanvasView {
             handleClick(on: hitID)
         }
     }
-}
-
-#Preview("Annyeong Floor Plan") {
-    @Previewable @State var transform = CanvasTransform.fitting(
-        layoutSize: PreviewLayouts.annyeong().sizeM,
-        in: SIMD2<Double>(900, 650)
-    )
-    @Previewable @FocusState var isFocused: Bool
-    let layout = PreviewLayouts.annyeong()
-    LayoutCanvasView(
-        snapshot: CanvasDisplaySnapshot(
-            layout: layout,
-            legend: PreviewLayouts.sampleLegend,
-            tab: .floorPlan,
-            selectionID: layout.objects.first { $0.kind == .booth }?.id
-        ),
-        transform: $transform,
-        isFocused: $isFocused
-    )
-    .frame(width: 900, height: 650)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Beyond Flow") {
-    @Previewable @State var transform = CanvasTransform.fitting(
-        layoutSize: PreviewLayouts.beyond().sizeM,
-        in: SIMD2<Double>(900, 650)
-    )
-    @Previewable @FocusState var isFocused: Bool
-    let layout = PreviewLayouts.beyond()
-    LayoutCanvasView(
-        snapshot: CanvasDisplaySnapshot(
-            layout: layout,
-            legend: PreviewLayouts.sampleLegend,
-            tab: .flow,
-            selectionID: layout.objects.first { $0.kind == .door }?.id
-        ),
-        transform: $transform,
-        isFocused: $isFocused
-    )
-    .frame(width: 900, height: 650)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Validation Issue & Zoomed Labels") {
-    @Previewable @State var transform = CanvasTransform(scale: 20, offset: SIMD2<Double>(50, 50))
-    @Previewable @FocusState var isFocused: Bool
-    let layout = PreviewLayouts.smallMarket()
-    let boothID = layout.objects.first { $0.kind == .booth }?.id ?? UUID()
-    LayoutCanvasView(
-        snapshot: CanvasDisplaySnapshot(
-            layout: layout,
-            legend: PreviewLayouts.sampleLegend,
-            tab: .floorPlan,
-            selectionID: boothID,
-            issues: CanvasIssueSnapshot(
-                warningObjectIDs: [boothID],
-                blockedSidesByBoothID: [boothID: .right]
-            )
-        ),
-        transform: $transform,
-        isFocused: $isFocused
-    )
-    .frame(width: 900, height: 650)
-    .preferredColorScheme(.dark)
 }

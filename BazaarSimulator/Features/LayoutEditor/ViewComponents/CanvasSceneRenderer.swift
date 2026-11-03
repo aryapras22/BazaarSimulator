@@ -1,6 +1,13 @@
 import SwiftUI
 import simd
 
+struct ActiveResize: Equatable, Sendable {
+    var objectID: UUID
+    var handle: ResizeHandle
+    var initialPlacement: Placement
+    var preview: Placement
+}
+
 struct CanvasDragState {
     var objectID: UUID?
     var deltaWorld: SIMD2<Double>
@@ -8,6 +15,7 @@ struct CanvasDragState {
     var drawingStart: SIMD2<Double>?
     var drawingCurrent: SIMD2<Double>?
     var isOptionDown: Bool = false
+    var resize: ActiveResize?
 }
 
 enum CanvasSceneRenderer {
@@ -27,6 +35,8 @@ enum CanvasSceneRenderer {
         for var object in ordered {
             if object.id == drag.objectID {
                 object.placement.center += drag.deltaWorld
+            } else if object.id == drag.resize?.objectID {
+                object.placement = drag.resize!.preview
             }
             if object.id == snapshot.selectionID {
                 selectedObject = object
@@ -37,6 +47,14 @@ enum CanvasSceneRenderer {
             SelectionDimensionRenderer.drawDimensions(for: selectedObject, in: &context, transform: transform)
             if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
                 SelectionDimensionRenderer.drawDragOffset(drag.deltaWorld, near: pointerLocation, in: &context)
+            } else if drag.resize != nil, let pointerLocation = drag.pointerLocation {
+                let widthText = DimensionInput.text(for: selectedObject.placement.sizeM.x)
+                let lengthText = DimensionInput.text(for: selectedObject.placement.sizeM.y)
+                let sizeText = "\(widthText) × \(lengthText) m"
+                SelectionDimensionRenderer.drawSizeChip(sizeText, near: pointerLocation, in: &context)
+            }
+            if snapshot.tab == .floorPlan && selectedObject.kind.hasResizeHandles {
+                drawResizeHandles(for: selectedObject.placement, in: &context, transform: transform)
             }
         }
 
@@ -127,6 +145,21 @@ enum CanvasSceneRenderer {
             BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
+        }
+    }
+
+    private static func drawResizeHandles(
+        for placement: Placement,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        for handle in ResizeHandle.allCases {
+            let world = PlacementResizing.handlePosition(for: handle, in: placement)
+            let viewPt = transform.toView(world)
+            let rect = CGRect(x: viewPt.x - 4, y: viewPt.y - 4, width: 8, height: 8)
+            let path = Path(roundedRect: rect, cornerRadius: 2)
+            context.fill(path, with: .color(Palette.surface))
+            context.stroke(path, with: .color(Palette.canvasSelection), lineWidth: 1)
         }
     }
 }

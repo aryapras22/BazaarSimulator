@@ -58,4 +58,24 @@ struct LayoutEditorViewModelToolTests {
         context.viewModel.selectTab(.flow)
         #expect(context.viewModel.tool == .select)
     }
+
+    @Test("Finish resizing object updates placement and inspector draft")
+    func finishResizingObjectUpdatesPlacementAndDraft() throws {
+        let context = makeContext()
+        let placement = Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(4, 4))
+        context.viewModel.addBlockedArea(placement)
+        let area = try #require(context.viewModel.selectedObject)
+
+        let newPlacement = Placement(center: SIMD2<Double>(10.5, 10), sizeM: SIMD2<Double>(5, 4))
+        context.viewModel.finishResizingObject(id: area.id, to: newPlacement)
+
+        let updated = try #require(context.viewModel.selectedObject)
+        #expect(updated.placement == newPlacement)
+        #expect(context.viewModel.inspectorDraft?.widthM == 5.0)
+        #expect(context.viewModel.inspectorDraft?.lengthM == 4.0)
+
+        context.viewModel.undo()
+        let reverted = try #require(context.viewModel.selectedObject)
+        #expect(reverted.placement == placement)
+    }
 }
