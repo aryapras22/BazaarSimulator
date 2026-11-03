@@ -29,7 +29,10 @@ struct LayoutEditorView: View {
                         viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
                     },
                     onContextAction: { viewModel.handleContextAction($0) },
-                    onInteract: { isCanvasFocused = true }
+                    onInteract: { isCanvasFocused = true },
+                    tool: viewModel.tool,
+                    onDrawBlockedArea: { viewModel.addBlockedArea($0) },
+                    onCancelTool: { viewModel.selectTool(.select) }
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteCurrentSelection()
@@ -66,6 +69,16 @@ struct LayoutEditorView: View {
                 .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
                     guard press.modifiers.isEmpty else { return .ignored }
                     viewModel.rotateSelected()
+                    return .handled
+                }
+                .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { press in
+                    guard press.modifiers.isEmpty, viewModel.tab == .floorPlan else { return .ignored }
+                    viewModel.selectTool(.blockedArea)
+                    return .handled
+                }
+                .onKeyPress(characters: CharacterSet(charactersIn: "vV")) { press in
+                    guard press.modifiers.isEmpty, viewModel.tab == .floorPlan else { return .ignored }
+                    viewModel.selectTool(.select)
                     return .handled
                 }
                 .onAppear {
@@ -192,48 +205,6 @@ struct LayoutEditorView: View {
             zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
             fitToView: { viewModel.fitToView(in: canvasViewSize) }
         )
-    }
-
-    @ToolbarContentBuilder
-    private var editorToolbar: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            HStack(spacing: Spacing.m) {
-                Button {
-                    viewModel.requestBack()
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .accessibilityLabel("Back to Project Setup")
-
-                if viewModel.layouts.count > 1 {
-                    Menu {
-                        ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { index, item in
-                            Button("Layout \(index + 1) · \(item.name)") {
-                                viewModel.selectLayout(item.id)
-                            }
-                        }
-                    } label: {
-                        let activeIndex = viewModel.layouts.firstIndex {
-                            $0.id == viewModel.activeLayoutID
-                        } ?? 0
-                        let activeName = viewModel.activeLayout?.name ?? ""
-                        Text("Layout \(activeIndex + 1) · \(activeName)")
-                            .font(Typography.body)
-                    }
-                }
-            }
-        }
-
-        ToolbarItem(placement: .principal) {
-            SegmentedTabs(
-                selection: Binding(
-                    get: { viewModel.tab },
-                    set: { viewModel.selectTab($0) }
-                ),
-                tabs: EditorTab.allCases,
-                title: \.title
-            )
-        }
     }
 }
 

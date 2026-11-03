@@ -97,6 +97,7 @@ extension LayoutEditorViewModel {
         case .table: defaultSize = SIMD2<Double>(1.0, 1.0)
         case .fixture: defaultSize = SIMD2<Double>(2.0, 1.5)
         case .rail: defaultSize = SIMD2<Double>(2.0, 0.25)
+        case .closedArea: defaultSize = SIMD2<Double>(4.0, 4.0)
         default: defaultSize = SIMD2<Double>(2.0, 2.0)
         }
 
@@ -113,6 +114,36 @@ extension LayoutEditorViewModel {
         withSingleRefresh {
             commitEdit(.insert(newObject, index: layout.objects.count))
             applySelection(newObject.id)
+        }
+    }
+
+    func selectTool(_ newTool: EditorTool) {
+        guard newTool != tool else { return }
+        if hasUnsavedInspectorChanges {
+            pendingAction = .switchTool(newTool)
+            return
+        }
+        performSelectTool(newTool)
+    }
+
+    func performSelectTool(_ newTool: EditorTool) {
+        tool = newTool
+        if newTool == .blockedArea {
+            applySelection(nil)
+        }
+    }
+
+    func addBlockedArea(_ placement: Placement) {
+        guard let layout = activeLayout else { return }
+        let area = LayoutObject(
+            kind: .closedArea,
+            label: nextLabel(for: .closedArea, in: layout),
+            placement: placement
+        )
+        withSingleRefresh {
+            commitEdit(.insert(area, index: layout.objects.count))
+            applySelection(area.id)
+            tool = .select
         }
     }
 

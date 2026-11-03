@@ -40,6 +40,9 @@ struct LayoutCanvasView: View {
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
     var onInteract: () -> Void = {}
+    var tool: EditorTool = .select
+    var onDrawBlockedArea: (Placement) -> Void = { _ in }
+    var onCancelTool: () -> Void = {}
 
     @State private var activeDragObjectID: UUID?
     @State private var activeDragDeltaWorld: SIMD2<Double> = .zero
@@ -47,6 +50,8 @@ struct LayoutCanvasView: View {
     @State private var isDragSuppressed = false
     @State private var lastPanLocation: CGPoint?
     @State private var dragPointerLocation: CGPoint?
+    @State private var drawingStartWorld: SIMD2<Double>?
+    @State private var drawingCurrentWorld: SIMD2<Double>?
     @State private var clickSequence = ClickSequence()
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
@@ -66,7 +71,10 @@ struct LayoutCanvasView: View {
                 drag: CanvasDragState(
                     objectID: activeDragObjectID,
                     deltaWorld: activeDragDeltaWorld,
-                    pointerLocation: dragPointerLocation
+                    pointerLocation: dragPointerLocation,
+                    drawingStart: drawingStartWorld,
+                    drawingCurrent: drawingCurrentWorld,
+                    isOptionDown: NSEvent.modifierFlags.contains(.option)
                 )
             )
         }
@@ -116,10 +124,20 @@ struct LayoutCanvasView: View {
                 }
             }
         }
+        .pointerStyle(tool == .blockedArea ? .rectSelection : .default)
         .focusable()
         .focusEffectDisabled()
         .focused(isFocused)
         .onKeyPress(.escape) {
+            if drawingStartWorld != nil {
+                drawingStartWorld = nil
+                drawingCurrentWorld = nil
+                return .handled
+            }
+            if tool == .blockedArea {
+                onCancelTool()
+                return .handled
+            }
             if activeDragObjectID != nil {
                 activeDragObjectID = nil
                 activeDragDeltaWorld = .zero
@@ -151,14 +169,18 @@ struct LayoutCanvasView: View {
             }
             .onEnded { _ in lastMagnification = 1 }
     }
+}
 
+// MARK: - Interactions
+
+extension LayoutCanvasView {
     @ViewBuilder
     private var contextMenuContent: some View {
-        if snapshot.tab == .floorPlan {
+        if tool == .select && snapshot.tab == .floorPlan {
             let hitID = LayoutHitTester.object(at: hoverTracker.world, in: snapshot.layout, tab: snapshot.tab)
             if let hitID,
-               let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
-               target.kind.isMovable {
+                let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
+                target.kind.isMovable {
                 if target.kind.isRotatable {
                     Button("Rotate 90°") { onContextAction(.rotate(hitID)) }
                 }
@@ -182,27 +204,13 @@ struct LayoutCanvasView: View {
         let distance = hypot(value.translation.width, value.translation.height)
         guard distance >= 2.0 else { return }
 
+        if tool == .blockedArea && snapshot.tab == .floorPlan {
+            handleDrawingDragChanged(value)
+            return
+        }
+
         if activeDragObjectID == nil && lastPanLocation == nil {
-            onInteract()
-            let startWorld = transform.toWorld(SIMD2<Double>(value.startLocation.x, value.startLocation.y))
-            if let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
-               let object = snapshot.layout.objects.first(where: { $0.id == hitID }),
-               object.kind.isMovable {
-                if object.kind == .closedArea && snapshot.selectionID != hitID {
-                    lastPanLocation = value.startLocation
-                } else {
-                    if snapshot.selectionID != hitID {
-                        onSelect(hitID)
-                        if snapshot.hasUnsavedChanges {
-                            isDragSuppressed = true
-                            return
-                        }
-                    }
-                    activeDragObjectID = hitID
-                }
-            } else {
-                lastPanLocation = value.startLocation
-            }
+            startDragOrPan(at: value.startLocation)
         }
 
         if activeDragObjectID != nil {
@@ -218,6 +226,38 @@ struct LayoutCanvasView: View {
             )
             transform = transform.panned(by: delta)
             lastPanLocation = value.location
+        }
+    }
+
+    private func handleDrawingDragChanged(_ value: DragGesture.Value) {
+        let currentWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
+        if drawingStartWorld == nil {
+            onInteract()
+            drawingStartWorld = transform.toWorld(SIMD2<Double>(value.startLocation.x, value.startLocation.y))
+        }
+        drawingCurrentWorld = currentWorld
+    }
+
+    private func startDragOrPan(at location: CGPoint) {
+        onInteract()
+        let startWorld = transform.toWorld(SIMD2<Double>(location.x, location.y))
+        guard let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
+              let object = snapshot.layout.objects.first(where: { $0.id == hitID }),
+              object.kind.isMovable else {
+            lastPanLocation = location
+            return
+        }
+        if object.kind == .closedArea && snapshot.selectionID != hitID {
+            lastPanLocation = location
+        } else {
+            if snapshot.selectionID != hitID {
+                onSelect(hitID)
+                if snapshot.hasUnsavedChanges {
+                    isDragSuppressed = true
+                    return
+                }
+            }
+            activeDragObjectID = hitID
         }
     }
 
@@ -245,6 +285,23 @@ struct LayoutCanvasView: View {
             activeDragDeltaWorld = .zero
             dragPointerLocation = nil
             lastPanLocation = nil
+            drawingStartWorld = nil
+            drawingCurrentWorld = nil
+            return
+        }
+        if tool == .blockedArea {
+            if let start = drawingStartWorld, let current = drawingCurrentWorld {
+                let isOptionDown = NSEvent.modifierFlags.contains(.option)
+                if let placement = BlockedAreaDrawing.placement(
+                    from: start,
+                    to: current,
+                    snapped: !isOptionDown
+                ) {
+                    onDrawBlockedArea(placement)
+                }
+            }
+            drawingStartWorld = nil
+            drawingCurrentWorld = nil
             return
         }
         let distance = hypot(value.translation.width, value.translation.height)

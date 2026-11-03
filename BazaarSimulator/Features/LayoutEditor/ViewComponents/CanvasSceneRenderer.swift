@@ -5,6 +5,9 @@ struct CanvasDragState {
     var objectID: UUID?
     var deltaWorld: SIMD2<Double>
     var pointerLocation: CGPoint?
+    var drawingStart: SIMD2<Double>?
+    var drawingCurrent: SIMD2<Double>?
+    var isOptionDown: Bool = false
 }
 
 enum CanvasSceneRenderer {
@@ -41,7 +44,46 @@ enum CanvasSceneRenderer {
             GroupOverlayRenderer.draw(snapshot.groupClusters, in: &context, transform: transform)
         }
 
+        if let start = drag.drawingStart, let current = drag.drawingCurrent {
+            drawDrawingPreview(
+                start: start,
+                current: current,
+                snaps: !drag.isOptionDown,
+                in: &context,
+                transform: transform
+            )
+        }
+
         MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
+    }
+
+    private static func drawDrawingPreview(
+        start: SIMD2<Double>,
+        current: SIMD2<Double>,
+        snaps: Bool,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let placement = BlockedAreaDrawing.placement(from: start, to: current, snapped: snaps)
+        let preview = placement ?? BlockedAreaDrawing.previewPlacement(
+            from: start,
+            to: current,
+            snapped: snaps
+        )
+        let isBelowMinimum = placement == nil
+        let tempArea = LayoutObject(kind: .closedArea, label: "", placement: preview)
+        let state = ObjectDrawState(
+            object: tempArea,
+            tab: .floorPlan,
+            isSelected: !isBelowMinimum,
+            isHovered: false,
+            hasWarning: isBelowMinimum
+        )
+        BlockedAreaRenderer.draw(state, in: &context, transform: transform)
+
+        let pointerView = transform.toView(current)
+        let text = "\(DimensionInput.text(for: preview.sizeM.x)) × \(DimensionInput.text(for: preview.sizeM.y)) m"
+        SelectionDimensionRenderer.drawSizeChip(text, near: CGPoint(x: pointerView.x, y: pointerView.y), in: &context)
     }
 
     private static func drawObject(

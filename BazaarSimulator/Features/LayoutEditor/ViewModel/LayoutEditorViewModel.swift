@@ -18,6 +18,7 @@ enum PendingNavigationAction: Sendable, Equatable {
     case selectObject(UUID?)
     case selectGroup(BoothGroupKind)
     case toggleBooth(UUID)
+    case switchTool(EditorTool)
     case switchTab(EditorTab)
     case switchLayout(UUID)
     case navigateBack
@@ -33,6 +34,7 @@ final class LayoutEditorViewModel {
     private let onBack: () -> Void
 
     var tab: EditorTab = .floorPlan
+    var tool: EditorTool = .select
     var selectionID: UUID?
     var hoverID: UUID?
     var groupSelection: GroupSelection?
@@ -135,6 +137,7 @@ final class LayoutEditorViewModel {
             return
         }
         tab = newTab
+        tool = .select
         applySelection(nil)
     }
 
@@ -238,23 +241,33 @@ final class LayoutEditorViewModel {
             executeGroupAction(action)
         case .switchTab(let newTab):
             tab = newTab
+            tool = .select
             applySelection(nil)
+        case .switchTool(let newTool):
+            performSelectTool(newTool)
         case .switchLayout(let layoutID):
-            withSingleRefresh {
-                session.setActiveLayoutID(layoutID, for: projectID)
-                hasFittedTransform = false
-                applySelection(nil)
-            }
+            executeSwitchLayout(layoutID)
         case .navigateBack:
             onBack()
         case .performUndo:
-            if let edit = currentHistory.undo() {
-                applyHistoryEdit(edit)
-            }
+            executeHistoryAction(isUndo: true)
         case .performRedo:
-            if let edit = currentHistory.redo() {
-                applyHistoryEdit(edit)
-            }
+            executeHistoryAction(isUndo: false)
+        }
+    }
+
+    private func executeSwitchLayout(_ layoutID: UUID) {
+        withSingleRefresh {
+            session.setActiveLayoutID(layoutID, for: projectID)
+            hasFittedTransform = false
+            applySelection(nil)
+        }
+    }
+
+    private func executeHistoryAction(isUndo: Bool) {
+        let edit = isUndo ? currentHistory.undo() : currentHistory.redo()
+        if let edit {
+            applyHistoryEdit(edit)
         }
     }
 }

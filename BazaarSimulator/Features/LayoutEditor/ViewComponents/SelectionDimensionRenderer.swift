@@ -34,6 +34,14 @@ enum SelectionDimensionRenderer {
         in context: inout GraphicsContext
     ) {
         let text = "Δ \(signedText(delta.x)) m, \(signedText(delta.y)) m"
+        drawSizeChip(text, near: viewPoint, in: &context)
+    }
+
+    static func drawSizeChip(
+        _ text: String,
+        near viewPoint: CGPoint,
+        in context: inout GraphicsContext
+    ) {
         let origin = CGPoint(x: viewPoint.x + dragChipGapPt, y: viewPoint.y + dragChipGapPt)
         drawChip(text, topLeading: origin, in: &context)
     }
