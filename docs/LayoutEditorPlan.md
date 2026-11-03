@@ -191,9 +191,9 @@ The fake import queue uses this mapper: `ScriptedImportQueue` loads the two mock
 ### Categories
 The mock has `fnb` and `goods`; the legend has named entries with colors. `MockLayoutMapper` maps:
 *   `fnb` to the first legend entry whose name matches food (case-insensitive "food", "f&b", "fnb").
-*   `goods` to nothing (`categoryID = nil`), shown as "Unassigned" in the picker.
+*   `goods` booths to non-food legend entries per name group, cycling through the entries (see `LayoutEditorRulersAndGroupsPlan.md`).
 
-The rule is a small pure function `CategoryMatcher.entry(for type: String, in legend: Legend) -> LegendEntry.ID?` so it can be tested and later reused by the real mapper. See Design gaps for alternatives.
+The rule is implemented in `CategoryMatcher.defaultCategories(for:in:)` so it can be tested and later reused by the real mapper. See Design gaps for alternatives.
 
 ### Open sides
 `OpenSideInference.infer(for booth: LayoutObject, in layout: Layout) -> OpenSides`, pure, in `Core/Domain/`.
@@ -645,7 +645,7 @@ Conventional Commits, one logical change each, tests in the same commit as the b
 ## Out of scope
 
 *   Review mode marks. `LayoutObject.reviewState` is added and set to `.detected` by the mapper, but nothing shows or changes it yet. A "Confirm all" control and dashed outlines for unconfirmed objects come with the project screen work.
-*   Multi-select, marquee selection, group move.
+*   Marquee selection and group move.
 *   Editing the hall and lobby polygons, walls, and closed areas.
 *   Moving doors along walls.
 *   The project screen and layout cards (`ProjectOverview`).

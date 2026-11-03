@@ -769,6 +769,9 @@ struct Panel<Content: View>: View {
 | `MetricTile` | Headline values in the recommendation card | `Core/DesignSystem/Components/` |
 | `DropZone` | Legend and floor plan drop areas (both uses are in one feature) | `Features/ProjectSetup/ViewComponents/` |
 | `InspectorPanel` | Booth and door inspectors | `Features/LayoutEditor/ViewComponents/` |
+| `CanvasRulers` | Top and left ruler bands over the editor canvas | `Features/LayoutEditor/ViewComponents/` |
+| `CanvasScaleBar` | Measured scale bar at the bottom right of the canvas | `Features/LayoutEditor/ViewComponents/` |
+| `GroupInspector` | Batch inspector for booth groups and multi-selections | `Features/LayoutEditor/ViewComponents/` |
 | `VisitorTypeRow` | Slider rows in Parameters | `Features/Parameters/ViewComponents/` |
 | `LayoutCard` | Layout cards on the project screen | `Features/ProjectOverview/ViewComponents/` |
 
