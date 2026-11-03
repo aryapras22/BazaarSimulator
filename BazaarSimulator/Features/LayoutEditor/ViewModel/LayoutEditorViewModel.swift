@@ -50,7 +50,13 @@ final class LayoutEditorViewModel {
             if !isBatchingRefresh { refreshDerivedState() }
         }
     }
+    var groupDraft: GroupInspectorDraft? {
+        didSet {
+            if !isBatchingRefresh { refreshDerivedState() }
+        }
+    }
     var pendingAction: PendingNavigationAction?
+    var pendingGroupDelete: Int?
 
     private var historiesByLayoutID: [UUID: LayoutEditHistory] = [:]
 
@@ -101,6 +107,7 @@ final class LayoutEditorViewModel {
     var canRedo: Bool { currentHistory.canRedo }
 
     var hasUnsavedInspectorChanges: Bool {
+        if groupSelection != nil { return groupDraft?.hasChanges ?? false }
         guard let selectedObject, let inspectorDraft else { return false }
         return inspectorDraft.applied(to: selectedObject) != selectedObject
     }
@@ -154,6 +161,7 @@ final class LayoutEditorViewModel {
 
     func applySelection(_ objectID: UUID?) {
         groupSelection = nil
+        groupDraft = nil
         selectionID = objectID
         if let selected = selectedObject {
             inspectorDraft = InspectorDraft(object: selected)
@@ -209,6 +217,9 @@ final class LayoutEditorViewModel {
             session.updateLayout(updated, in: projectID)
             if let selected = selectedObject {
                 inspectorDraft = InspectorDraft(object: selected)
+            } else if let selection = groupSelection {
+                let remaining = selection.memberIDs.intersection(updated.objects.map(\.id))
+                applyMemberSelection(remaining, kind: selection.kind)
             } else {
                 selectionID = nil
                 inspectorDraft = nil

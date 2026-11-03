@@ -42,6 +42,7 @@ extension LayoutEditorViewModel {
     }
 
     var isInspectorDraftValid: Bool {
+        if groupSelection != nil { return isGroupDraftValid }
         guard let draft = inspectorDraft, let selected = selectedObject else { return false }
         let range = sizeRangeM
         guard range.contains(draft.widthM) else { return false }
@@ -126,6 +127,12 @@ extension LayoutEditorViewModel {
            let index = layout.objects.firstIndex(where: { $0.id == selected.id }) {
             layout.objects[index] = draft.applied(to: selected)
         }
+        if groupSelection != nil, let draft = groupDraft {
+            let memberIDs = Set(draft.memberIDs)
+            for index in layout.objects.indices where memberIDs.contains(layout.objects[index].id) {
+                layout.objects[index] = draft.applied(to: layout.objects[index])
+            }
+        }
         return layout
     }
 
@@ -153,6 +160,10 @@ extension LayoutEditorViewModel {
     }
 
     func saveInspectorChanges() {
+        if groupSelection != nil {
+            saveGroupChanges()
+            return
+        }
         guard isSaveChangesEnabled,
               let selected = selectedObject,
               let draft = inspectorDraft else {
@@ -168,7 +179,9 @@ extension LayoutEditorViewModel {
     }
 
     func discardInspectorChanges() {
-        if let selected = selectedObject {
+        if let draft = groupDraft, groupSelection != nil {
+            groupDraft = GroupInspectorDraft(memberIDs: draft.memberIDs)
+        } else if let selected = selectedObject {
             inspectorDraft = InspectorDraft(object: selected)
         } else {
             inspectorDraft = nil

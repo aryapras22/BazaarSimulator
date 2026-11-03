@@ -6,6 +6,7 @@ struct BoothInspector: View {
     let sizeRange: ClosedRange<Double>
     var titleIssues: [String] = []
     var openSideIssues: [String] = []
+    var groupActions: BoothGroupActions?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
@@ -20,6 +21,10 @@ struct BoothInspector: View {
             }
 
             categoryPicker
+
+            if let groupActions {
+                groupSection(groupActions)
+            }
 
             SizeFields(
                 width: $draft.widthM,
@@ -45,52 +50,37 @@ struct BoothInspector: View {
     }
 
     private var categoryPicker: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("Category")
+        CategoryPicker(
+            categories: categories,
+            title: categories.first { $0.id == draft.categoryID }?.name ?? "Unassigned",
+            isChecked: { $0.id == draft.categoryID },
+            onSelect: { draft.categoryID = $0 }
+        )
+    }
+
+    private func groupSection(_ actions: BoothGroupActions) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text("Group")
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textPrimary)
-
-            Menu {
-                ForEach(categories) { option in
-                    Button {
-                        draft.categoryID = option.id
-                    } label: {
-                        HStack {
-                            Text(option.name)
-                            if draft.categoryID == option.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text(selectedCategoryName)
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textPrimary)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Palette.textSecondary)
-                }
-                .padding(.horizontal, Spacing.s)
-                .padding(.vertical, Spacing.xs + 2)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .fill(Palette.fieldOnSurface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .stroke(Palette.fieldOnSurfaceBorder, lineWidth: 1)
-                )
-            }
-            .menuStyle(.borderlessButton)
+            groupButton(actions.nameTitle, action: actions.onSelectName)
+            groupButton(actions.sizeTitle, action: actions.onSelectSize)
         }
     }
 
-    private var selectedCategoryName: String {
-        categories.first { $0.id == draft.categoryID }?.name ?? "Unassigned"
+    private func groupButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(Typography.body)
+            .foregroundStyle(Palette.accentText)
     }
+}
+
+struct BoothGroupActions {
+    let nameTitle: String
+    let sizeTitle: String
+    let onSelectName: () -> Void
+    let onSelectSize: () -> Void
 }
 
 #Preview("Booth Inspector") {
@@ -115,7 +105,13 @@ struct BoothInspector: View {
         BoothInspector(
             draft: $draft,
             categories: options,
-            sizeRange: 0.5...50.0
+            sizeRange: 0.5...50.0,
+            groupActions: BoothGroupActions(
+                nameTitle: "Select group B · 30",
+                sizeTitle: "Select size 2 × 2 m · 91",
+                onSelectName: {},
+                onSelectSize: {}
+            )
         )
     } footer: {
         Button("Save Changes") {}

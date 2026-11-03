@@ -32,7 +32,7 @@ struct LayoutEditorView: View {
                     onInteract: { isCanvasFocused = true }
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    viewModel.deleteSelected()
+                    viewModel.deleteCurrentSelection()
                     return .handled
                 }
                 .onKeyPress(.upArrow, phases: .down) { press in
@@ -121,6 +121,11 @@ struct LayoutEditorView: View {
                     .padding(.top, Spacing.l)
                     .padding(.trailing, Spacing.l)
                     .padding(.bottom, Spacing.l)
+            } else if viewModel.groupSelection != nil {
+                groupInspectorView()
+                    .padding(.top, Spacing.l)
+                    .padding(.trailing, Spacing.l)
+                    .padding(.bottom, Spacing.l)
             }
         }
         .frame(minWidth: 960, minHeight: 640)
@@ -139,12 +144,14 @@ struct LayoutEditorView: View {
             onDiscard: { viewModel.confirmPendingActionWithDiscard() },
             onCancel: { viewModel.cancelPendingAction() }
         )
+        .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
+            Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
+        }
     }
 
     private var inspectorInset: CGFloat {
-        (viewModel.selectedObject != nil && viewModel.inspectorDraft != nil)
-            ? InspectorPanelMetrics.width + Spacing.l * 2
-            : 0
+        viewModel.isInspectorPanelVisible ? InspectorPanelMetrics.width + Spacing.l * 2 : 0
     }
 
     private var canvasSnapshot: CanvasDisplaySnapshot {
@@ -168,58 +175,17 @@ struct LayoutEditorView: View {
         return EditorCommandActions(
             canUndo: viewModel.canUndo,
             canRedo: viewModel.canRedo,
-            hasSelection: isMovable,
+            hasSelection: isMovable || viewModel.groupSelection != nil,
             canRotate: isRotatable,
             undo: { viewModel.undo() },
             redo: { viewModel.redo() },
-            deleteSelected: { viewModel.deleteSelected() },
+            deleteSelected: { viewModel.deleteCurrentSelection() },
             duplicateSelected: { viewModel.duplicateSelected() },
             rotateSelected: { viewModel.rotateSelected() },
             zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
             zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
             fitToView: { viewModel.fitToView(in: canvasViewSize) }
         )
-    }
-
-    @ViewBuilder
-    private func inspectorView(for selected: LayoutObject) -> some View {
-        let draftBinding = Binding<InspectorDraft>(
-            get: { viewModel.inspectorDraft ?? InspectorDraft(object: selected) },
-            set: { viewModel.inspectorDraft = $0 }
-        )
-
-        InspectorPanel(title: viewModel.inspectorTitle) {
-            switch selected.kind {
-            case .booth:
-                BoothInspector(
-                    draft: draftBinding,
-                    categories: viewModel.categoryOptions,
-                    sizeRange: viewModel.sizeRangeM,
-                    titleIssues: viewModel.selectedTitleIssues,
-                    openSideIssues: viewModel.selectedOpenSideIssues
-                )
-            case .door:
-                DoorInspector(
-                    draft: draftBinding,
-                    widthRange: viewModel.sizeRangeM,
-                    advice: viewModel.currentDoorAdvice,
-                    onUseAdvice: { viewModel.applyDoorAdvice() }
-                )
-            default:
-                GenericInspector(
-                    draft: draftBinding,
-                    fields: .forKind(selected.kind),
-                    sizeRange: viewModel.sizeRangeM,
-                    titleIssues: viewModel.selectedTitleIssues
-                )
-            }
-        } footer: {
-            Button("Save Changes") {
-                viewModel.saveInspectorChanges()
-            }
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(!viewModel.isSaveChangesEnabled)
-        }
     }
 
     @ToolbarContentBuilder

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RotationControl: View {
     @Binding var degrees: Int
+    var isMixed: Bool = false
 
     private static let options = [0, 90, 180, 270]
 
@@ -20,7 +21,7 @@ struct RotationControl: View {
                     }
                 } label: {
                     HStack {
-                        Text("\(degrees)°")
+                        Text(isMixed ? "Mixed" : "\(degrees)°")
                             .font(Typography.body)
                             .foregroundStyle(Palette.textPrimary)
                         Spacer()

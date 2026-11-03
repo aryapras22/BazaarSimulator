@@ -91,4 +91,42 @@ struct LayoutEditorViewModelGroupTests {
         #expect(context.viewModel.activeLayout == context.layout)
         #expect(!context.viewModel.canUndo)
     }
+
+    @Test("A group save changes every member as one undo step")
+    func groupSaveIsOneUndoStep() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "A5", in: context.layout)
+        let lifestyle = try #require(PreviewLayouts.sampleLegend.entries.last)
+        viewModel.selectGroup(containing: target.id, bySize: false)
+        viewModel.groupDraft?.category = .set(lifestyle.id)
+
+        viewModel.saveInspectorChanges()
+
+        let members = viewModel.selectedGroupMembers
+        #expect(members.count == 112)
+        #expect(members.allSatisfy { $0.categoryID == lifestyle.id })
+        viewModel.undo()
+        #expect(viewModel.activeLayout == context.layout)
+        #expect(!viewModel.canUndo)
+    }
+
+    @Test("Deleting a group asks for confirmation, then removes every member")
+    func groupDeleteConfirms() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "I1", in: context.layout)
+        viewModel.selectGroup(containing: target.id, bySize: false)
+
+        viewModel.deleteCurrentSelection()
+        #expect(viewModel.pendingGroupDelete == 9)
+        #expect(viewModel.activeLayout == context.layout)
+
+        viewModel.deleteGroupSelection()
+        #expect(viewModel.activeLayout?.objects.count == context.layout.objects.count - 9)
+        #expect(viewModel.groupSelection == nil)
+
+        viewModel.undo()
+        #expect(viewModel.activeLayout == context.layout)
+    }
 }

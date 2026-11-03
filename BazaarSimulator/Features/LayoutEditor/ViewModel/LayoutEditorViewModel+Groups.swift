@@ -26,6 +26,19 @@ extension LayoutEditorViewModel {
         return Set(group.memberIDs)
     }
 
+    func boothGroupActions(for booth: LayoutObject) -> BoothGroupActions? {
+        guard booth.kind == .booth else { return nil }
+        let nameKind = BoothGrouping.nameKind(for: booth)
+        let sizeKind = BoothGrouping.sizeKind(for: booth)
+        guard let nameGroup = boothGroup(nameKind), let sizeGroup = boothGroup(sizeKind) else { return nil }
+        return BoothGroupActions(
+            nameTitle: "Select group \(nameGroup.title) · \(nameGroup.memberIDs.count)",
+            sizeTitle: "Select size \(sizeGroup.title) · \(sizeGroup.memberIDs.count)",
+            onSelectName: { [weak self] in self?.selectGroup(nameKind) },
+            onSelectSize: { [weak self] in self?.selectGroup(sizeKind) }
+        )
+    }
+
     func boothGroup(_ kind: BoothGroupKind) -> BoothGroup? {
         switch kind {
         case .name: return nameGroups.first { $0.kind == kind }
@@ -89,9 +102,10 @@ extension LayoutEditorViewModel {
         selectionID = nil
         inspectorDraft = nil
         groupSelection = selection
+        groupDraft = selection.map { _ in GroupInspectorDraft(memberIDs: selectedGroupMembers.map(\.id)) }
     }
 
-    private func applyMemberSelection(_ members: Set<UUID>, kind: GroupSelection.Kind) {
+    func applyMemberSelection(_ members: Set<UUID>, kind: GroupSelection.Kind) {
         switch members.count {
         case 0: applySelection(nil)
         case 1: applySelection(members.first)

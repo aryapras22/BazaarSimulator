@@ -1,0 +1,99 @@
+import SwiftUI
+
+struct GroupInspector: View {
+    @Binding var draft: GroupInspectorDraft
+    let display: GroupInspectorDisplay
+    let categories: [CategoryOption]
+    let sizeRange: ClosedRange<Double>
+    let onResetOpenSides: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.l) {
+            if let warning = display.warningSummary {
+                Text(warning)
+                    .font(Typography.caption)
+                    .foregroundStyle(Palette.destructive)
+            }
+
+            CategoryPicker(
+                categories: categories,
+                title: categoryTitle,
+                isChecked: { option in
+                    if case .shared(let shared) = display.category { return shared == option.id }
+                    return false
+                },
+                onSelect: { draft.category = .set($0) }
+            )
+
+            GroupSizeFields(draft: $draft, width: display.width, length: display.length, range: sizeRange)
+
+            RotationControl(degrees: rotationBinding, isMixed: display.rotation == .mixed)
+
+            Button("Reset open sides for \(display.memberCount) booths", action: onResetOpenSides)
+                .buttonStyle(SecondaryButtonStyle())
+        }
+    }
+
+    private var categoryTitle: String {
+        guard case .shared(let shared) = display.category else { return "Mixed" }
+        return categories.first { $0.id == shared }?.name ?? "Unassigned"
+    }
+
+    private var rotationBinding: Binding<Int> {
+        Binding(
+            get: {
+                if case .shared(let degrees) = display.rotation { return degrees }
+                return 0
+            },
+            set: { draft.rotationDegrees = .set($0) }
+        )
+    }
+}
+
+#Preview("Group inspector: shared and mixed values") {
+    @Previewable @State var sharedDraft = GroupInspectorDraft(memberIDs: [])
+    @Previewable @State var mixedDraft = GroupInspectorDraft(memberIDs: [])
+    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
+        PreviewLayouts.sampleLegend.entries.map { CategoryOption(id: $0.id, name: $0.name, color: $0.color) }
+    HStack(alignment: .top, spacing: Spacing.l) {
+        InspectorPanel(title: "Group A · 112 booths") {
+            GroupInspector(
+                draft: $sharedDraft,
+                display: GroupInspectorDisplay(
+                    category: .shared(options[1].id),
+                    width: .shared(2.5),
+                    length: .shared(2.5),
+                    rotation: .shared(0),
+                    warningSummary: "3 booths have warnings",
+                    memberCount: 112
+                ),
+                categories: options,
+                sizeRange: 0.5...100,
+                onResetOpenSides: {}
+            )
+        } footer: {
+            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle())
+        }
+        InspectorPanel(title: "12 booths") {
+            GroupInspector(
+                draft: $mixedDraft,
+                display: GroupInspectorDisplay(
+                    category: .mixed,
+                    width: .mixed,
+                    length: .shared(2.5),
+                    rotation: .mixed,
+                    warningSummary: nil,
+                    memberCount: 12
+                ),
+                categories: options,
+                sizeRange: 0.5...100,
+                onResetOpenSides: {}
+            )
+        } footer: {
+            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle()).disabled(true)
+        }
+    }
+    .padding()
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
+}

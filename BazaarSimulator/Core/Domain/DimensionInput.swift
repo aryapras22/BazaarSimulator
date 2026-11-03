@@ -1,6 +1,10 @@
 import Foundation
 
 enum DimensionInput {
+    static func rounded(_ value: Double) -> Double {
+        (value * 100).rounded() / 100
+    }
+
     /// Up to two decimals, trailing zeros removed: 2.53 -> "2.53", 2.5 -> "2.5", 2.0 -> "2".
     static func text(for value: Double) -> String {
         let rounded = (value * 100).rounded() / 100
