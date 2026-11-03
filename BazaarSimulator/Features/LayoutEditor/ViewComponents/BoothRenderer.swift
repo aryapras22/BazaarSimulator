@@ -7,6 +7,8 @@ struct BoothDrawState: Sendable {
     let tab: EditorTab
     let isSelected: Bool
     let isHovered: Bool
+    let isGroupMember: Bool
+    let isHoveredGroupMember: Bool
     let hasObjectWarning: Bool
     let blockedSides: OpenSides
     let categoryColor: LegendColor?
@@ -48,6 +50,11 @@ enum BoothRenderer {
 
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
+        }
+
+        if state.tab == .floorPlan, state.isGroupMember || state.isHoveredGroupMember {
+            let opacity = state.isGroupMember ? 1.0 : 0.5
+            context.stroke(path, with: .color(Palette.highlight.opacity(opacity)), lineWidth: 2.0)
         }
 
         if state.isHovered, let categoryColor = state.categoryColor, state.tab == .floorPlan {

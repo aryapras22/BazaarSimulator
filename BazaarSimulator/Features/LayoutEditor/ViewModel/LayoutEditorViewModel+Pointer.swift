@@ -3,7 +3,17 @@ import simd
 
 extension LayoutEditorViewModel {
     var selectionBounds: BoundingBox? {
-        selectedObject.map { LayoutGeometry.bounds(of: $0.placement) }
+        let boxes = (selectedObject.map { [$0] } ?? selectedGroupMembers)
+            .map { LayoutGeometry.bounds(of: $0.placement) }
+        guard let first = boxes.first else { return nil }
+        return boxes.dropFirst().reduce(first) { union, box in
+            BoundingBox(
+                minX: min(union.minX, box.minX),
+                maxX: max(union.maxX, box.maxX),
+                minY: min(union.minY, box.minY),
+                maxY: max(union.maxY, box.maxY)
+            )
+        }
     }
 
     func pointerDescription(at world: SIMD2<Double>) -> String {

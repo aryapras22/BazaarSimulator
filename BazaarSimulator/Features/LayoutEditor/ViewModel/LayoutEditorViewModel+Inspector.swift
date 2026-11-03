@@ -158,7 +158,7 @@ extension LayoutEditorViewModel {
               let draft = inspectorDraft else {
             return
         }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             let updated = draft.applied(to: selected)
             commitEdit(.replace(before: selected, after: updated))
             if let refreshed = selectedObject {
@@ -180,14 +180,14 @@ extension LayoutEditorViewModel {
             pendingAction = nil
             return
         }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             saveInspectorChanges()
             executePendingAction()
         }
     }
 
     func confirmPendingActionWithDiscard() {
-        withSingleIssueRefresh {
+        withSingleRefresh {
             discardInspectorChanges()
             executePendingAction()
         }

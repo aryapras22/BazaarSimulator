@@ -16,6 +16,8 @@ struct DoorAdviceDisplay: Hashable, Sendable {
 
 enum PendingNavigationAction: Sendable, Equatable {
     case selectObject(UUID?)
+    case selectGroup(BoothGroupKind)
+    case toggleBooth(UUID)
     case switchTab(EditorTab)
     case switchLayout(UUID)
     case navigateBack
@@ -33,14 +35,19 @@ final class LayoutEditorViewModel {
     var tab: EditorTab = .floorPlan
     var selectionID: UUID?
     var hoverID: UUID?
+    var groupSelection: GroupSelection?
+    var hoveredGroup: BoothGroupKind?
     var transform = CanvasTransform()
     var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []
-    @ObservationIgnored private var isBatchingIssueRefresh = false
+    private(set) var nameGroups: [BoothGroup] = []
+    private(set) var sizeGroups: [BoothGroup] = []
+    @ObservationIgnored private var groupedObjects: [LayoutObject] = []
+    @ObservationIgnored private var isBatchingRefresh = false
 
     var inspectorDraft: InspectorDraft? {
         didSet {
-            if !isBatchingIssueRefresh { refreshIssues() }
+            if !isBatchingRefresh { refreshDerivedState() }
         }
     }
     var pendingAction: PendingNavigationAction?
@@ -106,7 +113,7 @@ final class LayoutEditorViewModel {
                 return
             }
         }
-        guard objectID != selectionID else { return }
+        guard objectID != selectionID || groupSelection != nil else { return }
         if hasUnsavedInspectorChanges {
             pendingAction = .selectObject(objectID)
             return
@@ -130,7 +137,7 @@ final class LayoutEditorViewModel {
             pendingAction = .switchLayout(layoutID)
             return
         }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             session.setActiveLayoutID(layoutID, for: projectID)
             hasFittedTransform = false
             applySelection(nil)
@@ -146,6 +153,7 @@ final class LayoutEditorViewModel {
     }
 
     func applySelection(_ objectID: UUID?) {
+        groupSelection = nil
         selectionID = objectID
         if let selected = selectedObject {
             inspectorDraft = InspectorDraft(object: selected)
@@ -154,17 +162,18 @@ final class LayoutEditorViewModel {
         }
     }
 
-    func withSingleIssueRefresh(_ body: () -> Void) {
-        let wasBatching = isBatchingIssueRefresh
-        isBatchingIssueRefresh = true
+    func withSingleRefresh(_ body: () -> Void) {
+        let wasBatching = isBatchingRefresh
+        isBatchingRefresh = true
         body()
-        isBatchingIssueRefresh = wasBatching
+        isBatchingRefresh = wasBatching
         if !wasBatching {
-            refreshIssues()
+            refreshDerivedState()
         }
     }
 
-    func refreshIssues() {
+    func refreshDerivedState() {
+        refreshGroups()
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
             return
@@ -172,17 +181,30 @@ final class LayoutEditorViewModel {
         issues = LayoutValidator.issues(in: previewLayout)
     }
 
+    private func refreshGroups() {
+        guard let layout = activeLayout else {
+            groupedObjects = []
+            nameGroups = []
+            sizeGroups = []
+            return
+        }
+        guard layout.objects != groupedObjects else { return }
+        groupedObjects = layout.objects
+        nameGroups = BoothGrouping.nameGroups(in: layout)
+        sizeGroups = BoothGrouping.sizeGroups(in: layout)
+    }
+
     func commitEdit(_ edit: LayoutEdit) {
         guard let layout = activeLayout else { return }
         let updated = LayoutEditing.apply(edit, to: layout)
         currentHistory.record(edit)
         session.updateLayout(updated, in: projectID)
-        if !isBatchingIssueRefresh { refreshIssues() }
+        if !isBatchingRefresh { refreshDerivedState() }
     }
 
     func applyHistoryEdit(_ edit: LayoutEdit) {
         guard let layout = activeLayout else { return }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             let updated = LayoutEditing.apply(edit, to: layout)
             session.updateLayout(updated, in: projectID)
             if let selected = selectedObject {
@@ -200,11 +222,13 @@ final class LayoutEditorViewModel {
         switch action {
         case .selectObject(let objectID):
             applySelection(objectID)
+        case .selectGroup, .toggleBooth:
+            executeGroupAction(action)
         case .switchTab(let newTab):
             tab = newTab
             applySelection(nil)
         case .switchLayout(let layoutID):
-            withSingleIssueRefresh {
+            withSingleRefresh {
                 session.setActiveLayoutID(layoutID, for: projectID)
                 hasFittedTransform = false
                 applySelection(nil)

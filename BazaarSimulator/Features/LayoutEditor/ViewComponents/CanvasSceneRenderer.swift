@@ -66,6 +66,8 @@ enum CanvasSceneRenderer {
                 tab: snapshot.tab,
                 isSelected: isSelected,
                 isHovered: isHovered,
+                isGroupMember: snapshot.groupMemberIDs.contains(object.id),
+                isHoveredGroupMember: snapshot.hoveredGroupMemberIDs.contains(object.id),
                 hasObjectWarning: hasWarning,
                 blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
                 categoryColor: object.categoryID.flatMap { colorsByID[$0] }

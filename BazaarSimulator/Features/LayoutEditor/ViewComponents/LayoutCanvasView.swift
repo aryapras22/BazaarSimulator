@@ -20,6 +20,8 @@ struct CanvasDisplaySnapshot: Sendable {
     var tab: EditorTab
     var selectionID: UUID?
     var hoverID: UUID?
+    var groupMemberIDs: Set<UUID> = []
+    var hoveredGroupMemberIDs: Set<UUID> = []
     var hasUnsavedChanges: Bool = false
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
 }
@@ -31,6 +33,8 @@ struct LayoutCanvasView: View {
     var excludedTrailingWidth: CGFloat = 0
     var onSelect: (UUID?) -> Void = { _ in }
     var onHover: (UUID?) -> Void = { _ in }
+    var onToggleSelection: (UUID) -> Void = { _ in }
+    var onDoubleClick: (UUID, Bool) -> Void = { _, _ in }
     var onPointerMove: (SIMD2<Double>?) -> Void = { _ in }
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
@@ -42,6 +46,7 @@ struct LayoutCanvasView: View {
     @State private var isDragSuppressed = false
     @State private var lastPanLocation: CGPoint?
     @State private var dragPointerLocation: CGPoint?
+    @State private var clickSequence = ClickSequence()
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
     @State private var lastMagnification: CGFloat = 1
@@ -211,6 +216,22 @@ struct LayoutCanvasView: View {
         }
     }
 
+    private func handleClick(on hitID: UUID?) {
+        let modifiers = NSEvent.modifierFlags
+        let isDouble = clickSequence.register(
+            id: hitID,
+            at: ProcessInfo.processInfo.systemUptime,
+            interval: NSEvent.doubleClickInterval
+        )
+        if modifiers.contains(.shift), let hitID {
+            onToggleSelection(hitID)
+        } else if isDouble, let hitID {
+            onDoubleClick(hitID, modifiers.contains(.option))
+        } else {
+            onSelect(hitID)
+        }
+    }
+
     private func handleDragEnded(_ value: DragGesture.Value) {
         if isDragCancelled || isDragSuppressed {
             isDragCancelled = false
@@ -235,7 +256,7 @@ struct LayoutCanvasView: View {
             onInteract()
             let clickWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
             let hitID = LayoutHitTester.object(at: clickWorld, in: snapshot.layout, tab: snapshot.tab)
-            onSelect(hitID)
+            handleClick(on: hitID)
         }
     }
 }

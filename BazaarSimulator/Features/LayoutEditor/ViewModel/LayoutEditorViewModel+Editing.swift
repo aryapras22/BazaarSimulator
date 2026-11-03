@@ -34,7 +34,7 @@ extension LayoutEditorViewModel {
         guard let before = selectedObject, before.kind.isRotatable else { return }
         var after = before
         after.placement = before.placement.rotatedQuarterTurns(1)
-        withSingleIssueRefresh {
+        withSingleRefresh {
             commitEdit(.replace(before: before, after: after))
             inspectorDraft?.rotationDegrees = after.placement.rotationDegrees
         }
@@ -48,7 +48,7 @@ extension LayoutEditorViewModel {
         }
         let target = layout.objects[index]
         guard target.kind.isMovable else { return }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             commitEdit(.delete(target, index: index))
             self.selectionID = nil
             inspectorDraft = nil
@@ -65,7 +65,7 @@ extension LayoutEditorViewModel {
         copy.id = UUID()
         copy.label = nextLabel(for: selected.kind, in: layout)
         copy.placement.center += SIMD2<Double>(Self.duplicateOffsetM, Self.duplicateOffsetM)
-        withSingleIssueRefresh {
+        withSingleRefresh {
             commitEdit(.insert(copy, index: layout.objects.count))
             applySelection(copy.id)
         }
@@ -79,7 +79,7 @@ extension LayoutEditorViewModel {
         }
         var after = before
         after.openSides = OpenSideInference.infer(for: before, in: layout)
-        withSingleIssueRefresh {
+        withSingleRefresh {
             if after != before {
                 commitEdit(.replace(before: before, after: after))
             }
@@ -108,7 +108,7 @@ extension LayoutEditorViewModel {
         if kind == .booth {
             newObject.openSides = OpenSideInference.infer(for: newObject, in: layout)
         }
-        withSingleIssueRefresh {
+        withSingleRefresh {
             commitEdit(.insert(newObject, index: layout.objects.count))
             applySelection(newObject.id)
         }

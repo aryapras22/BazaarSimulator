@@ -1,0 +1,101 @@
+import Foundation
+import simd
+
+extension LayoutEditorViewModel {
+    var selectedGroupMembers: [LayoutObject] {
+        guard let groupSelection, let activeLayout else { return [] }
+        return activeLayout.objects.filter { groupSelection.memberIDs.contains($0.id) }
+    }
+
+    var groupSelectionTitle: String {
+        guard let groupSelection else { return "" }
+        let count = "\(groupSelection.memberIDs.count) booths"
+        switch groupSelection.kind {
+        case .group(.name(let prefix)): return "Group \(prefix) · \(count)"
+        case .group(.size(let key)): return "Size \(key.title) · \(count)"
+        case .custom: return count
+        }
+    }
+
+    var groupMemberIDs: Set<UUID> {
+        groupSelection?.memberIDs ?? []
+    }
+
+    var hoveredGroupMemberIDs: Set<UUID> {
+        guard let hoveredGroup, let group = boothGroup(hoveredGroup) else { return [] }
+        return Set(group.memberIDs)
+    }
+
+    func boothGroup(_ kind: BoothGroupKind) -> BoothGroup? {
+        switch kind {
+        case .name: return nameGroups.first { $0.kind == kind }
+        case .size: return sizeGroups.first { $0.kind == kind }
+        }
+    }
+
+    func selectGroup(_ kind: BoothGroupKind) {
+        guard tab == .floorPlan, boothGroup(kind) != nil else { return }
+        if hasUnsavedInspectorChanges {
+            pendingAction = .selectGroup(kind)
+            return
+        }
+        performSelectGroup(kind)
+    }
+
+    func selectGroup(containing boothID: UUID, bySize: Bool) {
+        guard let booth = activeLayout?.objects.first(where: { $0.id == boothID && $0.kind == .booth }) else { return }
+        selectGroup(bySize ? BoothGrouping.sizeKind(for: booth) : BoothGrouping.nameKind(for: booth))
+    }
+
+    func toggleBoothInSelection(_ boothID: UUID) {
+        guard tab == .floorPlan,
+              activeLayout?.objects.contains(where: { $0.id == boothID && $0.kind == .booth }) == true else {
+            return
+        }
+        if hasUnsavedInspectorChanges {
+            pendingAction = .toggleBooth(boothID)
+            return
+        }
+        performToggleBooth(boothID)
+    }
+
+    func executeGroupAction(_ action: PendingNavigationAction) {
+        switch action {
+        case .selectGroup(let kind): performSelectGroup(kind)
+        case .toggleBooth(let boothID): performToggleBooth(boothID)
+        default: break
+        }
+    }
+
+    private func performSelectGroup(_ kind: BoothGroupKind) {
+        guard let group = boothGroup(kind) else { return }
+        applyMemberSelection(Set(group.memberIDs), kind: .group(kind))
+    }
+
+    private func performToggleBooth(_ boothID: UUID) {
+        var members = groupSelection?.memberIDs ?? []
+        if groupSelection == nil, let selectedObject, selectedObject.kind == .booth {
+            members = [selectedObject.id]
+        }
+        if members.contains(boothID) {
+            members.remove(boothID)
+        } else {
+            members.insert(boothID)
+        }
+        applyMemberSelection(members, kind: .custom)
+    }
+
+    func applyGroupSelection(_ selection: GroupSelection?) {
+        selectionID = nil
+        inspectorDraft = nil
+        groupSelection = selection
+    }
+
+    private func applyMemberSelection(_ members: Set<UUID>, kind: GroupSelection.Kind) {
+        switch members.count {
+        case 0: applySelection(nil)
+        case 1: applySelection(members.first)
+        default: applyGroupSelection(GroupSelection(kind: kind, memberIDs: members))
+        }
+    }
+}

@@ -17,6 +17,10 @@ struct LayoutEditorView: View {
                     excludedTrailingWidth: inspectorInset,
                     onSelect: { viewModel.selectObject($0) },
                     onHover: { viewModel.hoverID = $0 },
+                    onToggleSelection: { viewModel.toggleBoothInSelection($0) },
+                    onDoubleClick: { id, isOptionDown in
+                        viewModel.selectGroup(containing: id, bySize: isOptionDown)
+                    },
                     onPointerMove: { world in
                         pointer.world = world
                         pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
@@ -67,7 +71,7 @@ struct LayoutEditorView: View {
                 .onAppear {
                     canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
                     viewModel.fitIfNeeded(in: canvasViewSize)
-                    viewModel.refreshIssues()
+                    viewModel.refreshDerivedState()
                     isCanvasFocused = true
                 }
                 .onChange(of: proxy.size) { _, newSize in
@@ -150,6 +154,8 @@ struct LayoutEditorView: View {
             tab: viewModel.tab,
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
+            groupMemberIDs: viewModel.groupMemberIDs,
+            hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
             hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
             issues: viewModel.canvasIssueSnapshot
         )
