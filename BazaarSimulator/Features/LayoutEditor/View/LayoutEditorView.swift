@@ -4,6 +4,7 @@ import simd
 struct LayoutEditorView: View {
     @Bindable var viewModel: LayoutEditorViewModel
     @State private var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
+    @State private var pointer = CanvasPointer()
     @FocusState private var isCanvasFocused: Bool
 
     var body: some View {
@@ -13,11 +14,13 @@ struct LayoutEditorView: View {
                     snapshot: canvasSnapshot,
                     transform: $viewModel.transform,
                     isFocused: $isCanvasFocused,
-                    excludedTrailingWidth: (viewModel.selectedObject != nil && viewModel.inspectorDraft != nil)
-                        ? InspectorPanelMetrics.width + Spacing.l * 2
-                        : 0,
+                    excludedTrailingWidth: inspectorInset,
                     onSelect: { viewModel.selectObject($0) },
                     onHover: { viewModel.hoverID = $0 },
+                    onPointerMove: { world in
+                        pointer.world = world
+                        pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
+                    },
                     onDragEnded: { id, delta, isOptionDown in
                         viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
                     },
@@ -75,6 +78,21 @@ struct LayoutEditorView: View {
                 }
             }
 
+            CanvasRulers(
+                transform: viewModel.transform,
+                pointer: pointer,
+                selectionBounds: viewModel.selectionBounds
+            )
+
+            CanvasOverlays(
+                pointer: pointer,
+                pointsPerMetre: viewModel.transform.scale,
+                trailingInset: inspectorInset,
+                onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
+                onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
+                onFit: { viewModel.fitToView(in: canvasViewSize) }
+            )
+
             if !viewModel.flowBannerIssues.isEmpty {
                 VStack(spacing: Spacing.xs) {
                     ForEach(viewModel.flowBannerIssues, id: \.self) { banner in
@@ -117,6 +135,12 @@ struct LayoutEditorView: View {
             onDiscard: { viewModel.confirmPendingActionWithDiscard() },
             onCancel: { viewModel.cancelPendingAction() }
         )
+    }
+
+    private var inspectorInset: CGFloat {
+        (viewModel.selectedObject != nil && viewModel.inspectorDraft != nil)
+            ? InspectorPanelMetrics.width + Spacing.l * 2
+            : 0
     }
 
     private var canvasSnapshot: CanvasDisplaySnapshot {

@@ -26,7 +26,7 @@ struct CanvasTransform: Hashable, Sendable {
     static func fitting(
         layoutSize: SIMD2<Double>,
         in viewSize: SIMD2<Double>,
-        padding: Double = 40.0
+        padding: Double = 56.0
     ) -> CanvasTransform {
         guard layoutSize.x > 0, layoutSize.y > 0, viewSize.x > 0, viewSize.y > 0 else {
             return CanvasTransform()

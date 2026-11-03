@@ -31,6 +31,7 @@ struct LayoutCanvasView: View {
     var excludedTrailingWidth: CGFloat = 0
     var onSelect: (UUID?) -> Void = { _ in }
     var onHover: (UUID?) -> Void = { _ in }
+    var onPointerMove: (SIMD2<Double>?) -> Void = { _ in }
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
     var onInteract: () -> Void = {}
@@ -55,7 +56,9 @@ struct LayoutCanvasView: View {
         .background(Palette.background)
         .contentShape(Rectangle())
         .onHover { isHovering in
-            if !isHovering && lastHoverHit != nil {
+            guard !isHovering else { return }
+            onPointerMove(nil)
+            if lastHoverHit != nil {
                 lastHoverHit = nil
                 onHover(nil)
             }
@@ -65,12 +68,14 @@ struct LayoutCanvasView: View {
             case .active(let location):
                 let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
                 hoverTracker.world = world
+                onPointerMove(world)
                 let hit = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
                 if hit != lastHoverHit {
                     lastHoverHit = hit
                     onHover(hit)
                 }
             case .ended:
+                onPointerMove(nil)
                 if lastHoverHit != nil {
                     lastHoverHit = nil
                     onHover(nil)
