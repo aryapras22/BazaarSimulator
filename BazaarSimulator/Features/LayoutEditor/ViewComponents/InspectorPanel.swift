@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum InspectorPanelMetrics {
+    /// Fixed width of the floating inspector panel, in points.
+    static let width: CGFloat = 340
+}
+
 struct InspectorPanel<Content: View, Footer: View>: View {
     let title: String
     @ViewBuilder var content: () -> Content
@@ -22,7 +27,7 @@ struct InspectorPanel<Content: View, Footer: View>: View {
             footer()
         }
         .padding(Spacing.xl)
-        .frame(width: InspectorPanel<EmptyView, EmptyView>.width)
+        .frame(width: InspectorPanelMetrics.width)
         .background(
             RoundedRectangle(cornerRadius: Radius.xl)
                 .fill(Palette.surface)
@@ -32,10 +37,6 @@ struct InspectorPanel<Content: View, Footer: View>: View {
                 .stroke(Palette.surfaceBorder, lineWidth: 1)
         )
     }
-}
-
-extension InspectorPanel where Content == EmptyView, Footer == EmptyView {
-    static let width: CGFloat = 340
 }
 
 struct InspectorSaveButtonStyle: ButtonStyle {

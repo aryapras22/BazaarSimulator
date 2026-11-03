@@ -14,7 +14,7 @@ struct LayoutEditorView: View {
                     transform: $viewModel.transform,
                     isFocused: $isCanvasFocused,
                     excludedTrailingWidth: (viewModel.selectedObject != nil && viewModel.inspectorDraft != nil)
-                        ? InspectorPanel.width + Spacing.l * 2
+                        ? InspectorPanelMetrics.width + Spacing.l * 2
                         : 0,
                     onSelect: { viewModel.selectObject($0) },
                     onHover: { viewModel.hoverID = $0 },
