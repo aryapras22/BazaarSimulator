@@ -2,15 +2,28 @@ import SwiftUI
 import simd
 
 enum FloorRenderer {
+    private struct GridColors {
+        let minor: Color
+        let major: Color
+    }
+
+    private static let hatchSpacingM = 0.8
+    private static let hatchFillOpacity = 0.25
+
     static func draw(
         in context: inout GraphicsContext,
         size: CGSize,
         transform: CanvasTransform,
         layout: Layout
     ) {
-        drawGrid(in: &context, size: size, transform: transform, layoutSize: layout.sizeM)
+        let rulerScale = RulerScale(pointsPerMetre: transform.scale)
+        drawGrid(
+            in: &context, size: size, transform: transform, scale: rulerScale,
+            colors: GridColors(minor: Palette.canvasGridLine.opacity(0.6), major: Palette.canvasGridLine)
+        )
         drawPolygon(layout.hall, in: &context, transform: transform)
         drawPolygon(layout.lobby, in: &context, transform: transform)
+        drawGridOnFloor(in: &context, size: size, transform: transform, scale: rulerScale, layout: layout)
         drawClosedAreas(in: &context, transform: transform, objects: layout.objects)
         drawZones(layout.zones, in: &context, transform: transform)
     }
@@ -32,23 +45,23 @@ enum FloorRenderer {
         in context: inout GraphicsContext,
         size: CGSize,
         transform: CanvasTransform,
-        layoutSize: SIMD2<Double>
+        scale: RulerScale,
+        colors: GridColors
     ) {
         let topLeftWorld = transform.toWorld(.zero)
         let bottomRightWorld = transform.toWorld(SIMD2<Double>(Double(size.width), Double(size.height)))
-        let startX = Int(floor(min(0, topLeftWorld.x) / 5.0)) * 5
-        let endX = Int(ceil(max(layoutSize.x, bottomRightWorld.x) / 5.0)) * 5
-        let startY = Int(floor(min(0, topLeftWorld.y) / 5.0)) * 5
-        let endY = Int(ceil(max(layoutSize.y, bottomRightWorld.y) / 5.0)) * 5
-
-        let showMinor = transform.scale >= 12.0
+        let minor = scale.gridMinorM
         var minorPath = Path()
         var majorPath = Path()
 
-        let step = showMinor ? 1 : 5
-        for worldX in stride(from: startX, through: endX, by: step) {
-            let viewX = transform.toView(SIMD2<Double>(Double(worldX), 0)).x
-            if worldX % 5 == 0 {
+        func isMajor(_ value: Double) -> Bool {
+            abs(remainder(value, scale.gridMajorM)) < 1e-6
+        }
+
+        for index in Int(floor(topLeftWorld.x / minor))...Int(ceil(bottomRightWorld.x / minor)) {
+            let worldX = Double(index) * minor
+            let viewX = transform.toView(SIMD2<Double>(worldX, 0)).x
+            if isMajor(worldX) {
                 majorPath.move(to: CGPoint(x: viewX, y: 0))
                 majorPath.addLine(to: CGPoint(x: viewX, y: size.height))
             } else {
@@ -57,9 +70,10 @@ enum FloorRenderer {
             }
         }
 
-        for worldY in stride(from: startY, through: endY, by: step) {
-            let viewY = transform.toView(SIMD2<Double>(0, Double(worldY))).y
-            if worldY % 5 == 0 {
+        for index in Int(floor(topLeftWorld.y / minor))...Int(ceil(bottomRightWorld.y / minor)) {
+            let worldY = Double(index) * minor
+            let viewY = transform.toView(SIMD2<Double>(0, worldY)).y
+            if isMajor(worldY) {
                 majorPath.move(to: CGPoint(x: 0, y: viewY))
                 majorPath.addLine(to: CGPoint(x: size.width, y: viewY))
             } else {
@@ -68,10 +82,25 @@ enum FloorRenderer {
             }
         }
 
-        if showMinor {
-            context.stroke(minorPath, with: .color(Palette.canvasGridLine.opacity(0.6)), lineWidth: 0.5)
-        }
-        context.stroke(majorPath, with: .color(Palette.canvasGridLine), lineWidth: 1.0)
+        context.stroke(minorPath, with: .color(colors.minor), lineWidth: 0.5)
+        context.stroke(majorPath, with: .color(colors.major), lineWidth: 1.0)
+    }
+
+    private static func drawGridOnFloor(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        transform: CanvasTransform,
+        scale: RulerScale,
+        layout: Layout
+    ) {
+        var floorPath = polygonPath(for: layout.hall, transform: transform)
+        floorPath.addPath(polygonPath(for: layout.lobby, transform: transform))
+        var clipped = context
+        clipped.clip(to: floorPath)
+        drawGrid(
+            in: &clipped, size: size, transform: transform, scale: scale,
+            colors: GridColors(minor: Palette.canvasGridOnFloor, major: Palette.canvasGridOnFloorMajor)
+        )
     }
 
     private static func drawPolygon(
@@ -94,13 +123,29 @@ enum FloorRenderer {
         for object in objects where object.kind == .closedArea {
             let corners = LayoutGeometry.corners(of: object.placement)
             let path = polygonPath(for: corners, transform: transform)
-            context.fill(path, with: .color(Palette.canvasFlowFill.opacity(0.45)))
-            context.stroke(
-                path,
-                with: .color(Palette.canvasLine.opacity(0.6)),
-                style: StrokeStyle(lineWidth: 1, dash: [4, 3])
+            context.fill(path, with: .color(Palette.canvasFlowFill.opacity(hatchFillOpacity)))
+            var clipped = context
+            clipped.clip(to: path)
+            clipped.stroke(
+                hatchPath(over: LayoutGeometry.bounds(of: object.placement), transform: transform),
+                with: .color(Palette.canvasHatch),
+                lineWidth: 1
             )
         }
+    }
+
+    private static func hatchPath(over bounds: BoundingBox, transform: CanvasTransform) -> Path {
+        var path = Path()
+        let firstIndex = Int(floor((bounds.minX - bounds.maxY) / hatchSpacingM))
+        let lastIndex = Int(ceil((bounds.maxX - bounds.minY) / hatchSpacingM))
+        for index in firstIndex...lastIndex {
+            let offset = Double(index) * hatchSpacingM
+            let start = transform.toView(SIMD2<Double>(bounds.minX, bounds.minX - offset))
+            let end = transform.toView(SIMD2<Double>(bounds.maxX, bounds.maxX - offset))
+            path.move(to: CGPoint(x: start.x, y: start.y))
+            path.addLine(to: CGPoint(x: end.x, y: end.y))
+        }
+        return path
     }
 
     private static func drawZones(

@@ -33,6 +33,10 @@ enum Palette {
     static let canvasGridLine = Color(hex: 0x071327)
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
+    static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)
+    static let canvasGridOnFloorMajor = Color(hex: 0x1F4E86, alpha: 0.18)
+    static let canvasHatch = Color(hex: 0x1F4E86, alpha: 0.35)
+    static let rulerMarker = accent
     static let canvasLineGlow = Color(hex: 0x2F6BB1, alpha: 0.4)
     static let canvasBoothFill = Color(hex: 0xF6F6F6)
     static let canvasOpenSide = Color(hex: 0xFFBCB0)
