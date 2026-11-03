@@ -188,14 +188,18 @@ struct LayoutCanvasView: View {
             if let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
                let object = snapshot.layout.objects.first(where: { $0.id == hitID }),
                object.kind.isMovable {
-                if snapshot.selectionID != hitID {
-                    onSelect(hitID)
-                    if snapshot.hasUnsavedChanges {
-                        isDragSuppressed = true
-                        return
+                if object.kind == .closedArea && snapshot.selectionID != hitID {
+                    lastPanLocation = value.startLocation
+                } else {
+                    if snapshot.selectionID != hitID {
+                        onSelect(hitID)
+                        if snapshot.hasUnsavedChanges {
+                            isDragSuppressed = true
+                            return
+                        }
                     }
+                    activeDragObjectID = hitID
                 }
-                activeDragObjectID = hitID
             } else {
                 lastPanLocation = value.startLocation
             }

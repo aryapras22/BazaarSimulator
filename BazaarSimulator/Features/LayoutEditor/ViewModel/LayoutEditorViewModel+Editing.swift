@@ -189,6 +189,8 @@ extension LayoutEditorViewModel {
             return nextPrefixedLabel(prefix: "Fixture ", kind: kind, in: layout)
         case .rail:
             return "Rail"
+        case .closedArea:
+            return "Blocked area"
         default:
             let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
             return "\(kind.displayName) \(existingCount)"

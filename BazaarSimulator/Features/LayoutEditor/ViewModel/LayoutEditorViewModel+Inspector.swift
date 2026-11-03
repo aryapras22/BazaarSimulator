@@ -20,13 +20,13 @@ extension LayoutEditorViewModel {
             return "Table \(draftLabel)"
         case .door:
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
-        case .fixture, .audienceArea:
+        case .fixture, .audienceArea, .closedArea:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
         case .stage:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? "Stage" : trimmed
-        case .wall, .rail, .block, .pillar, .closedArea:
+        case .wall, .rail, .block, .pillar:
             return selected.kind.displayName
         }
     }

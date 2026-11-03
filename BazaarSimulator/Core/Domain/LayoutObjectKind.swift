@@ -30,7 +30,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .fixture: return "Fixture"
         case .stage: return "Stage"
         case .audienceArea: return "Audience area"
-        case .closedArea: return "Closed area"
+        case .closedArea: return "Blocked area"
         }
     }
 
@@ -43,21 +43,18 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var isMovable: Bool {
         switch self {
-        case .door, .closedArea: return false
+        case .door: return false
         default: return true
         }
     }
 
     var isResizable: Bool {
-        switch self {
-        case .closedArea: return false
-        default: return true
-        }
+        true
     }
 
     var isRotatable: Bool {
         switch self {
-        case .door, .pillar, .closedArea: return false
+        case .door, .pillar: return false
         default: return true
         }
     }
@@ -83,21 +80,25 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var canBeAdded: Bool {
         switch self {
-        case .booth, .table, .rail, .fixture: return true
+        case .booth, .table, .rail, .fixture, .closedArea: return true
         default: return false
         }
     }
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .table, .fixture, .stage, .audienceArea: return 0.5
+        case .booth, .table, .fixture, .stage, .audienceArea, .closedArea: return 0.5
         case .door: return 0.8
-        case .wall, .rail, .block, .pillar, .closedArea: return 0.1
+        case .wall, .rail, .block, .pillar: return 0.1
         }
     }
 
     var isSelectable: Bool {
         isMovable || isResizable
+    }
+
+    var hasResizeHandles: Bool {
+        self == .closedArea
     }
 
     var isStructural: Bool {

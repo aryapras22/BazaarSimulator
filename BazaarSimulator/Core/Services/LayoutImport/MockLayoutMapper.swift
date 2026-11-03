@@ -236,7 +236,7 @@ enum MockLayoutMapper {
         closedAreas.map { rect in
             LayoutObject(
                 kind: .closedArea,
-                label: "Closed area",
+                label: "Blocked area",
                 placement: placement(from: rect),
                 reviewState: .detected
             )
