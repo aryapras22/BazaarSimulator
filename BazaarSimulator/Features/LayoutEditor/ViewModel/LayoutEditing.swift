@@ -13,6 +13,8 @@ enum LayoutEditing {
             updated.objects.insert(object, at: clamped)
         case let .delete(object, _):
             updated.objects.removeAll { $0.id == object.id }
+        case let .batch(edits):
+            updated = edits.reduce(layout) { apply($1, to: $0) }
         }
         return updated
     }
@@ -25,6 +27,8 @@ enum LayoutEditing {
             return .delete(object, index: index)
         case let .delete(object, index):
             return .insert(object, index: index)
+        case let .batch(edits):
+            return .batch(edits.reversed().map(inverse(of:)))
         }
     }
 }

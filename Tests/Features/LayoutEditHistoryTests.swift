@@ -70,4 +70,30 @@ struct LayoutEditHistoryTests {
             Issue.record("Expected oldest kept insert edit")
         }
     }
+
+    @Test("A batch is one undo step")
+    func batchIsOneUndoStep() {
+        let boothA = LayoutObject(
+            kind: .booth,
+            label: "A1",
+            placement: Placement(center: SIMD2<Double>(4, 4), sizeM: SIMD2<Double>(2, 2))
+        )
+        let boothB = LayoutObject(
+            kind: .booth,
+            label: "A2",
+            placement: Placement(center: SIMD2<Double>(8, 4), sizeM: SIMD2<Double>(2, 2))
+        )
+        var layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [boothA, boothB])
+        let batch = LayoutEdit.batch([.delete(boothB, index: 1), .delete(boothA, index: 0)])
+        var history = LayoutEditHistory()
+
+        layout = LayoutEditing.apply(batch, to: layout)
+        history.record(batch)
+        if let undoEdit = history.undo() {
+            layout = LayoutEditing.apply(undoEdit, to: layout)
+        }
+
+        #expect(layout.objects.map(\.label) == ["A1", "A2"])
+        #expect(!history.canUndo)
+    }
 }
