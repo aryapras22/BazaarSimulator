@@ -21,7 +21,7 @@ enum CanvasSceneRenderer {
         let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
 
         var selectedObject: LayoutObject?
-        for var object in ordered where object.kind != .closedArea {
+        for var object in ordered {
             if object.id == drag.objectID {
                 object.placement.center += drag.deltaWorld
             }
@@ -81,6 +81,8 @@ enum CanvasSceneRenderer {
             SeatingRenderer.draw(objectState, in: &context, transform: transform)
         case .door:
             DoorRenderer.draw(objectState, in: &context, transform: transform)
+        case .closedArea:
+            BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }

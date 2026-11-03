@@ -7,9 +7,6 @@ enum FloorRenderer {
         let major: Color
     }
 
-    private static let hatchSpacingM = 0.8
-    private static let hatchFillOpacity = 0.25
-
     static func draw(
         in context: inout GraphicsContext,
         size: CGSize,
@@ -24,7 +21,6 @@ enum FloorRenderer {
         drawPolygon(layout.hall, in: &context, transform: transform)
         drawPolygon(layout.lobby, in: &context, transform: transform)
         drawGridOnFloor(in: &context, size: size, transform: transform, scale: rulerScale, layout: layout)
-        drawClosedAreas(in: &context, transform: transform, objects: layout.objects)
         drawZones(layout.zones, in: &context, transform: transform)
     }
 
@@ -113,39 +109,6 @@ enum FloorRenderer {
         context.fill(path, with: .color(Palette.canvasFloor))
         context.stroke(path, with: .color(Palette.canvasLineGlow), lineWidth: 4.0)
         context.stroke(path, with: .color(Palette.canvasLine), lineWidth: 1.5)
-    }
-
-    private static func drawClosedAreas(
-        in context: inout GraphicsContext,
-        transform: CanvasTransform,
-        objects: [LayoutObject]
-    ) {
-        for object in objects where object.kind == .closedArea {
-            let corners = LayoutGeometry.corners(of: object.placement)
-            let path = polygonPath(for: corners, transform: transform)
-            context.fill(path, with: .color(Palette.canvasFlowFill.opacity(hatchFillOpacity)))
-            var clipped = context
-            clipped.clip(to: path)
-            clipped.stroke(
-                hatchPath(over: LayoutGeometry.bounds(of: object.placement), transform: transform),
-                with: .color(Palette.canvasHatch),
-                lineWidth: 1
-            )
-        }
-    }
-
-    private static func hatchPath(over bounds: BoundingBox, transform: CanvasTransform) -> Path {
-        var path = Path()
-        let firstIndex = Int(floor((bounds.minX - bounds.maxY) / hatchSpacingM))
-        let lastIndex = Int(ceil((bounds.maxX - bounds.minY) / hatchSpacingM))
-        for index in firstIndex...lastIndex {
-            let offset = Double(index) * hatchSpacingM
-            let start = transform.toView(SIMD2<Double>(bounds.minX, bounds.minX - offset))
-            let end = transform.toView(SIMD2<Double>(bounds.maxX, bounds.maxX - offset))
-            path.move(to: CGPoint(x: start.x, y: start.y))
-            path.addLine(to: CGPoint(x: end.x, y: end.y))
-        }
-        return path
     }
 
     private static func drawZones(
