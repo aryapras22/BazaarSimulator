@@ -41,6 +41,7 @@ struct LayoutCanvasView: View {
     @State private var isDragCancelled = false
     @State private var isDragSuppressed = false
     @State private var lastPanLocation: CGPoint?
+    @State private var dragPointerLocation: CGPoint?
     @State private var hoverTracker = HoverTracker()
     @State private var lastHoverHit: UUID?
     @State private var lastMagnification: CGFloat = 1
@@ -51,7 +52,17 @@ struct LayoutCanvasView: View {
 
     var body: some View {
         Canvas { context, size in
-            drawScene(in: &context, size: size)
+            CanvasSceneRenderer.draw(
+                in: &context,
+                size: size,
+                snapshot: snapshot,
+                transform: transform,
+                drag: CanvasDragState(
+                    objectID: activeDragObjectID,
+                    deltaWorld: activeDragDeltaWorld,
+                    pointerLocation: dragPointerLocation
+                )
+            )
         }
         .background(Palette.background)
         .contentShape(Rectangle())
@@ -106,6 +117,7 @@ struct LayoutCanvasView: View {
             if activeDragObjectID != nil {
                 activeDragObjectID = nil
                 activeDragDeltaWorld = .zero
+                dragPointerLocation = nil
                 isDragCancelled = true
                 return .handled
             }
@@ -184,6 +196,7 @@ struct LayoutCanvasView: View {
         }
 
         if activeDragObjectID != nil {
+            dragPointerLocation = value.location
             activeDragDeltaWorld = SIMD2<Double>(
                 Double(value.translation.width) / transform.scale,
                 Double(value.translation.height) / transform.scale
@@ -204,6 +217,7 @@ struct LayoutCanvasView: View {
             isDragSuppressed = false
             activeDragObjectID = nil
             activeDragDeltaWorld = .zero
+            dragPointerLocation = nil
             lastPanLocation = nil
             return
         }
@@ -213,6 +227,7 @@ struct LayoutCanvasView: View {
             onDragEnded(draggedID, activeDragDeltaWorld, isOptionDown)
             activeDragObjectID = nil
             activeDragDeltaWorld = .zero
+            dragPointerLocation = nil
             return
         }
         lastPanLocation = nil
@@ -221,60 +236,6 @@ struct LayoutCanvasView: View {
             let clickWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
             let hitID = LayoutHitTester.object(at: clickWorld, in: snapshot.layout, tab: snapshot.tab)
             onSelect(hitID)
-        }
-    }
-
-    private func drawScene(in context: inout GraphicsContext, size: CGSize) {
-        FloorRenderer.draw(in: &context, size: size, transform: transform, layout: snapshot.layout)
-
-        let colorsByID = Dictionary(uniqueKeysWithValues: snapshot.legend.entries.map { ($0.id, $0.color) })
-        let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
-
-        for var object in ordered where object.kind != .closedArea {
-            if object.id == activeDragObjectID {
-                object.placement.center += activeDragDeltaWorld
-            }
-            drawObject(object, colorsByID: colorsByID, in: &context)
-        }
-
-        MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
-    }
-
-    private func drawObject(
-        _ object: LayoutObject,
-        colorsByID: [UUID: LegendColor],
-        in context: inout GraphicsContext
-    ) {
-        let isSelected = object.id == snapshot.selectionID
-        let isHovered = object.id == snapshot.hoverID
-        let hasWarning = snapshot.issues.warningObjectIDs.contains(object.id)
-        let objectState = ObjectDrawState(
-            object: object,
-            tab: snapshot.tab,
-            isSelected: isSelected,
-            isHovered: isHovered,
-            hasWarning: hasWarning
-        )
-
-        switch object.kind {
-        case .booth:
-            let boothState = BoothDrawState(
-                booth: object,
-                displayLabel: BoothLabelFormatter.display(object.label),
-                tab: snapshot.tab,
-                isSelected: isSelected,
-                isHovered: isHovered,
-                hasObjectWarning: hasWarning,
-                blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
-                categoryColor: object.categoryID.flatMap { colorsByID[$0] }
-            )
-            BoothRenderer.draw(boothState, in: &context, transform: transform)
-        case .table:
-            SeatingRenderer.draw(objectState, in: &context, transform: transform)
-        case .door:
-            DoorRenderer.draw(objectState, in: &context, transform: transform)
-        default:
-            ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }
     }
 }

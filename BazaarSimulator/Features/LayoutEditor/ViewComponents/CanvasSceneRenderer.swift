@@ -1,0 +1,82 @@
+import SwiftUI
+import simd
+
+struct CanvasDragState {
+    var objectID: UUID?
+    var deltaWorld: SIMD2<Double>
+    var pointerLocation: CGPoint?
+}
+
+enum CanvasSceneRenderer {
+    static func draw(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        snapshot: CanvasDisplaySnapshot,
+        transform: CanvasTransform,
+        drag: CanvasDragState
+    ) {
+        FloorRenderer.draw(in: &context, size: size, transform: transform, layout: snapshot.layout)
+
+        let colorsByID = Dictionary(uniqueKeysWithValues: snapshot.legend.entries.map { ($0.id, $0.color) })
+        let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
+
+        var selectedObject: LayoutObject?
+        for var object in ordered where object.kind != .closedArea {
+            if object.id == drag.objectID {
+                object.placement.center += drag.deltaWorld
+            }
+            if object.id == snapshot.selectionID {
+                selectedObject = object
+            }
+            drawObject(object, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
+        }
+        if let selectedObject {
+            SelectionDimensionRenderer.drawDimensions(for: selectedObject, in: &context, transform: transform)
+            if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
+                SelectionDimensionRenderer.drawDragOffset(drag.deltaWorld, near: pointerLocation, in: &context)
+            }
+        }
+
+        MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
+    }
+
+    private static func drawObject(
+        _ object: LayoutObject,
+        snapshot: CanvasDisplaySnapshot,
+        colorsByID: [UUID: LegendColor],
+        transform: CanvasTransform,
+        in context: inout GraphicsContext
+    ) {
+        let isSelected = object.id == snapshot.selectionID
+        let isHovered = object.id == snapshot.hoverID
+        let hasWarning = snapshot.issues.warningObjectIDs.contains(object.id)
+        let objectState = ObjectDrawState(
+            object: object,
+            tab: snapshot.tab,
+            isSelected: isSelected,
+            isHovered: isHovered,
+            hasWarning: hasWarning
+        )
+
+        switch object.kind {
+        case .booth:
+            let boothState = BoothDrawState(
+                booth: object,
+                displayLabel: BoothLabelFormatter.display(object.label),
+                tab: snapshot.tab,
+                isSelected: isSelected,
+                isHovered: isHovered,
+                hasObjectWarning: hasWarning,
+                blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
+                categoryColor: object.categoryID.flatMap { colorsByID[$0] }
+            )
+            BoothRenderer.draw(boothState, in: &context, transform: transform)
+        case .table:
+            SeatingRenderer.draw(objectState, in: &context, transform: transform)
+        case .door:
+            DoorRenderer.draw(objectState, in: &context, transform: transform)
+        default:
+            ObstacleRenderer.draw(objectState, in: &context, transform: transform)
+        }
+    }
+}
