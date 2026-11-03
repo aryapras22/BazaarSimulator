@@ -1,0 +1,162 @@
+import Foundation
+import simd
+import Testing
+@testable import BazaarSimulator
+
+@Suite
+@MainActor
+struct LayoutEditorViewModelGroupTests {
+    struct TestContext {
+        let viewModel: LayoutEditorViewModel
+        let layout: Layout
+    }
+
+    static func makeContext() -> TestContext {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Annyeong")
+        let layout = PreviewLayouts.annyeong()
+        session.setDraft(
+            ProjectDraft(name: "Annyeong", legend: PreviewLayouts.sampleLegend, layouts: [layout]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.refreshDerivedState()
+        return TestContext(viewModel: viewModel, layout: layout)
+    }
+
+    private func booth(labelled label: String, in layout: Layout) throws -> LayoutObject {
+        try #require(layout.objects.first { $0.label == label })
+    }
+
+    @Test("Double-click selects the name group and Option-double-click the size group")
+    func doubleClickSelectsGroups() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+        #expect(context.viewModel.groupSelectionTitle == "Group A · 112 booths")
+
+        context.viewModel.selectGroup(containing: target.id, bySize: true)
+        #expect(context.viewModel.groupSelectionTitle == "Size 2.5 × 2.5 m · 150 booths")
+        #expect(context.viewModel.selectionID == nil)
+    }
+
+    @Test("Shift-click builds a custom selection and a second Shift-click removes a member")
+    func shiftClickTogglesMembers() throws {
+        let context = Self.makeContext()
+        let ids = try ["A1", "A2", "A3"].map { try booth(labelled: $0, in: context.layout).id }
+
+        ids.forEach { context.viewModel.toggleBoothInSelection($0) }
+        #expect(context.viewModel.groupSelectionTitle == "3 booths")
+
+        context.viewModel.toggleBoothInSelection(ids[0])
+        #expect(context.viewModel.groupSelectionTitle == "2 booths")
+
+        context.viewModel.toggleBoothInSelection(ids[1])
+        #expect(context.viewModel.selectionID == ids[2])
+        #expect(context.viewModel.groupSelection == nil)
+    }
+
+    @Test("Selecting one booth after a group replaces the group selection")
+    func singleSelectionReplacesGroup() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+
+        context.viewModel.selectObject(target.id)
+
+        #expect(context.viewModel.groupSelection == nil)
+        #expect(context.viewModel.selectionID == target.id)
+    }
+
+    @Test("Clearing the selection leaves no group selected")
+    func clearingSelectionClearsGroup() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+
+        context.viewModel.selectObject(nil)
+
+        #expect(context.viewModel.groupSelection == nil)
+    }
+
+    @Test("An arrow key nudge with a group selected moves nothing")
+    func nudgeWithGroupSelectedMovesNothing() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+
+        context.viewModel.nudgeSelected(by: SIMD2<Double>(1, 0))
+
+        #expect(context.viewModel.activeLayout == context.layout)
+        #expect(!context.viewModel.canUndo)
+    }
+
+    @Test("A group save changes every member as one undo step")
+    func groupSaveIsOneUndoStep() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "A5", in: context.layout)
+        let lifestyle = try #require(PreviewLayouts.sampleLegend.entries.last)
+        viewModel.selectGroup(containing: target.id, bySize: false)
+        viewModel.groupDraft?.category = .set(lifestyle.id)
+
+        viewModel.saveInspectorChanges()
+
+        let members = viewModel.selectedGroupMembers
+        #expect(members.count == 112)
+        #expect(members.allSatisfy { $0.categoryID == lifestyle.id })
+        viewModel.undo()
+        #expect(viewModel.activeLayout == context.layout)
+        #expect(!viewModel.canUndo)
+    }
+
+    @Test("Deleting a group asks for confirmation, then removes every member")
+    func groupDeleteConfirms() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "I1", in: context.layout)
+        viewModel.selectGroup(containing: target.id, bySize: false)
+
+        viewModel.deleteCurrentSelection()
+        #expect(viewModel.pendingGroupDelete == 9)
+        #expect(viewModel.activeLayout == context.layout)
+
+        viewModel.deleteGroupSelection()
+        #expect(viewModel.activeLayout?.objects.count == context.layout.objects.count - 9)
+        #expect(viewModel.groupSelection == nil)
+
+        viewModel.undo()
+        #expect(viewModel.activeLayout == context.layout)
+    }
+
+    @Test("Groups list is visible when nothing is selected on floor plan")
+    func groupsListVisibilityAndRows() {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+
+        #expect(viewModel.isGroupsListVisible)
+        #expect(viewModel.nameGroupRows.map(\.title) == ["A", "B", "C", "F", "I"])
+        #expect(viewModel.sizeGroupRows.map(\.count) == [150, 42, 9, 8])
+
+        viewModel.selectTab(.flow)
+        #expect(!viewModel.isGroupsListVisible)
+    }
+
+    @Test("Duplicating a booth keeps its prefix, adding booths uses prefix N")
+    func boothDuplicationAndAdditionLabels() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "A5", in: context.layout)
+
+        viewModel.selectObject(target.id)
+        viewModel.duplicateSelected()
+        #expect(viewModel.selectedObject?.label == "A113")
+
+        viewModel.addObject(kind: .booth, at: SIMD2<Double>(10, 10))
+        #expect(viewModel.selectedObject?.label == "N1")
+
+        viewModel.addObject(kind: .booth, at: SIMD2<Double>(14, 10))
+        #expect(viewModel.selectedObject?.label == "N2")
+    }
+}

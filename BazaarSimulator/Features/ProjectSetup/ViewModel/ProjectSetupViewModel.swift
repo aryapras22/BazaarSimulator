@@ -201,16 +201,22 @@ final class ProjectSetupViewModel {
     func continueToReview() {
         guard isContinueEnabled else { return }
 
-        let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
-        guard layouts.count == floorPlanFiles.count else {
+        let extractedLayouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
+        guard extractedLayouts.count == floorPlanFiles.count else {
             bannerMessage = "Some floor plans could not be read"
             return
         }
 
+        let existingLayouts = session.draft(for: projectID)?.layouts ?? []
+        let finalLegend = Legend(entries: legendEntries)
         let draft = ProjectDraft(
             name: projectName.trimmingCharacters(in: .whitespacesAndNewlines),
-            legend: Legend(entries: legendEntries),
-            layouts: layouts
+            legend: finalLegend,
+            layouts: DraftLayoutMerger.merged(
+                imported: extractedLayouts.map(\.layout),
+                existing: existingLayouts,
+                legend: finalLegend
+            )
         )
 
         session.setDraft(draft, for: projectID)

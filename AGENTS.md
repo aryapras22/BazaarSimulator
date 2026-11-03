@@ -11,6 +11,8 @@ Read these before changing code. They override anything inferred from the existi
 
 If a change alters a rule or structure described in either document, update the document in the same change.
 
+For Apple UI APIs (Liquid Glass, glass button styles, toolbars, concentric shapes, and the SwiftUI 27 changes), read `docs/reference/apple-swiftui-27/README.md` before writing UI code. Check each API's platform and version there; the app targets macOS 27.
+
 ## Rules to keep in mind
 
 - Views talk only to their own ViewModel. ViewModels use services, repositories, the engine, and `ProjectSession` through protocols, injected through `init`.

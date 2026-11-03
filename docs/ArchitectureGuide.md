@@ -31,7 +31,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | ---| --- |
 | Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. The empty state reads "Add project to get started" |
 | Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
-| Layout editor | Floor Plan tab: place and edit booths, tables, walls, and other items. The inspector sets category, size, rotation, and open sides, and applies on Save Changes. Flow tab: set each door's direction and angle, with a tip callout. The same editor is used to review detected objects |
+| Layout editor | Floor Plan tab: place and edit booths, tables, walls, and other items. The inspector sets category, size, rotation, and open sides, and applies on Save Changes. Flow tab: set each door's direction and width, with a tip callout. The same editor is used to review detected objects |
 | Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, peak hours, bazaar type, visitor type mix, group size. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Analysis | Below the cards. Tabs for Crowd Density, Flow Rate, Congestion, and Duration. Each tab shows a recommendation ("Our choice"), a comparison table, and a chart over the day |
@@ -216,7 +216,7 @@ struct LayoutObject: Codable, Identifiable, Sendable {
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
     var openSides: OpenSides = []    // booths: the sides visitors can use
-    var doorFlow: DoorFlow?          // doors: direction and angle (Flow tab)
+    var doorFlow: DoorFlow?          // doors: direction and connection (Flow tab)
 }
 
 struct Placement: Codable, Sendable {
@@ -353,6 +353,11 @@ protocol ProjectSessionProtocol: AnyObject {
 
     func draft(for projectID: UUID) -> ProjectDraft?
     func setDraft(_ draft: ProjectDraft, for projectID: UUID)
+
+    func layout(id: Layout.ID, in projectID: UUID) -> Layout?
+    func updateLayout(_ layout: Layout, in projectID: UUID)
+    func activeLayoutID(for projectID: UUID) -> Layout.ID?
+    func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID)
 }
 ```
 
@@ -764,6 +769,9 @@ struct Panel<Content: View>: View {
 | `MetricTile` | Headline values in the recommendation card | `Core/DesignSystem/Components/` |
 | `DropZone` | Legend and floor plan drop areas (both uses are in one feature) | `Features/ProjectSetup/ViewComponents/` |
 | `InspectorPanel` | Booth and door inspectors | `Features/LayoutEditor/ViewComponents/` |
+| `CanvasRulers` | Top and left ruler bands over the editor canvas | `Features/LayoutEditor/ViewComponents/` |
+| `CanvasScaleBar` | Measured scale bar at the bottom right of the canvas | `Features/LayoutEditor/ViewComponents/` |
+| `GroupInspector` | Batch inspector for booth groups and multi-selections | `Features/LayoutEditor/ViewComponents/` |
 | `VisitorTypeRow` | Slider rows in Parameters | `Features/Parameters/ViewComponents/` |
 | `LayoutCard` | Layout cards on the project screen | `Features/ProjectOverview/ViewComponents/` |
 
