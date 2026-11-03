@@ -142,4 +142,21 @@ struct LayoutEditorViewModelGroupTests {
         viewModel.selectTab(.flow)
         #expect(!viewModel.isGroupsListVisible)
     }
+
+    @Test("Duplicating a booth keeps its prefix, adding booths uses prefix N")
+    func boothDuplicationAndAdditionLabels() throws {
+        let context = Self.makeContext()
+        let viewModel = context.viewModel
+        let target = try booth(labelled: "A5", in: context.layout)
+
+        viewModel.selectObject(target.id)
+        viewModel.duplicateSelected()
+        #expect(viewModel.selectedObject?.label == "A113")
+
+        viewModel.addObject(kind: .booth, at: SIMD2<Double>(10, 10))
+        #expect(viewModel.selectedObject?.label == "N1")
+
+        viewModel.addObject(kind: .booth, at: SIMD2<Double>(14, 10))
+        #expect(viewModel.selectedObject?.label == "N2")
+    }
 }

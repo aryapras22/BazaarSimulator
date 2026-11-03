@@ -63,7 +63,9 @@ extension LayoutEditorViewModel {
         }
         var copy = selected
         copy.id = UUID()
-        copy.label = nextLabel(for: selected.kind, in: layout)
+        copy.label = selected.kind == .booth
+            ? nextPrefixedLabel(prefix: BoothGrouping.namePrefix(of: selected.label), kind: .booth, in: layout)
+            : nextLabel(for: selected.kind, in: layout)
         copy.placement.center += SIMD2<Double>(Self.duplicateOffsetM, Self.duplicateOffsetM)
         withSingleRefresh {
             commitEdit(.insert(copy, index: layout.objects.count))
@@ -180,7 +182,7 @@ extension LayoutEditorViewModel {
     private func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
         switch kind {
         case .booth:
-            return nextPrefixedLabel(prefix: "B", kind: kind, in: layout)
+            return nextPrefixedLabel(prefix: "N", kind: kind, in: layout)
         case .table:
             return nextPrefixedLabel(prefix: "T", kind: kind, in: layout)
         case .fixture:
