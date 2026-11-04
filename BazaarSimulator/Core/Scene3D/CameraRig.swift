@@ -36,6 +36,7 @@ struct CameraRig: Equatable, Sendable {
     static let maxPolar: Double = Double.pi / 2.0 - 0.02
     /// Puts world -z at the top of the screen, the same way the 2D canvas puts world -y at the top.
     static let planAzimuth = Double.pi / 2.0
+    static let eyeFieldOfViewDegrees: Double = 70
 
     private(set) var pose: CameraPose
     private(set) var eye: EyePose?
@@ -58,6 +59,20 @@ struct CameraRig: Equatable, Sendable {
             sin(pose.azimuth) * sin(pose.polar)
         ) * pose.distance
         return pose.target + sphericalOffset
+    }
+
+    var lookAtPoint: SIMD3<Double> {
+        guard let eye else { return pose.target }
+        let forward = SIMD3<Double>(
+            -sin(eye.yaw) * cos(eye.pitch),
+            sin(eye.pitch),
+            -cos(eye.yaw) * cos(eye.pitch)
+        )
+        return eye.position + forward
+    }
+
+    var activeFieldOfViewDegrees: Double {
+        eye == nil ? pose.fieldOfViewDegrees : Self.eyeFieldOfViewDegrees
     }
 
     static func pose(for preset: ViewPreset, framing bounds: BoundingBox, aspect: Double) -> CameraPose {

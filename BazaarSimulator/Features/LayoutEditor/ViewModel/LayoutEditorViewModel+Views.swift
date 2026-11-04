@@ -154,12 +154,13 @@ extension LayoutEditorViewModel {
     }
 
     func handle3DZoom(delta: Double, viewPoint: CGPoint, viewSize: CGSize) {
+        guard cameraRig.eye == nil else { return }
         let floorPoint = CameraRay.floorPoint(
             viewPoint: SIMD2(Double(viewPoint.x), Double(viewPoint.y)),
             viewSize: SIMD2(Double(viewSize.width), Double(viewSize.height)),
             cameraPosition: cameraRig.cameraPosition,
-            lookAt: cameraRig.pose.target,
-            fieldOfViewDegrees: cameraRig.pose.fieldOfViewDegrees
+            lookAt: cameraRig.lookAtPoint,
+            fieldOfViewDegrees: cameraRig.activeFieldOfViewDegrees
         )
         cameraRig.zoom(delta: delta, toward: floorPoint)
     }
@@ -192,8 +193,8 @@ extension LayoutEditorViewModel {
             viewPoint: SIMD2(Double(viewPoint.x), Double(viewPoint.y)),
             viewSize: SIMD2(Double(viewSize.width), Double(viewSize.height)),
             cameraPosition: cameraRig.cameraPosition,
-            lookAt: cameraRig.pose.target,
-            fieldOfViewDegrees: cameraRig.pose.fieldOfViewDegrees
+            lookAt: cameraRig.lookAtPoint,
+            fieldOfViewDegrees: cameraRig.activeFieldOfViewDegrees
         )
         guard let floorPoint, let layout = activeLayout else {
             selectObject(nil)
