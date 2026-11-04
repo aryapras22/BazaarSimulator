@@ -82,4 +82,21 @@ struct DoorHostingTests {
         #expect(abs(placement!.sizeM.x - 2.0) < 1e-4)
         #expect(abs(placement!.sizeM.y - 0.3) < 1e-4) // thickness + 0.1
     }
+
+    @Test("A long hall edge gives each door the connection at its own position", arguments: [
+        (15.0, DoorConnection.hallToLobby),
+        (25.0, DoorConnection.hallToOutside)
+    ])
+    func connectionFollowsDoorPosition(doorX: Double, expected: DoorConnection) throws {
+        let layout = Layout(
+            name: "Partial lobby",
+            sizeM: SIMD2<Double>(30, 26),
+            hall: [SIMD2<Double>(0, 0), SIMD2<Double>(30, 0), SIMD2<Double>(30, 20), SIMD2<Double>(0, 20)],
+            lobby: [SIMD2<Double>(10, -6), SIMD2<Double>(20, -6), SIMD2<Double>(20, 0), SIMD2<Double>(10, 0)]
+        )
+        let point = SIMD2<Double>(doorX, 0)
+        let host = try #require(DoorHosting.nearestHost(to: point, in: layout))
+
+        #expect(DoorHosting.connection(for: point, on: host, in: layout) == expected)
+    }
 }

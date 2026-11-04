@@ -23,6 +23,7 @@ extension LayoutEditorViewModel {
                ) {
                 var after = before
                 after.placement = newPlacement
+                after.doorFlow?.connection = DoorHosting.connection(for: newPlacement.center, on: host, in: layout)
                 guard after != before else { return }
                 commitEdit(.replace(before: before, after: after))
             }

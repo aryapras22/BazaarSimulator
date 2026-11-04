@@ -6,6 +6,7 @@ struct DoorHost: Equatable, Sendable {
     let end: SIMD2<Double>
     let connection: DoorConnection
     let thicknessM: Double
+    var isHallEdge = false
 }
 
 enum DoorHosting {
@@ -60,7 +61,15 @@ enum DoorHosting {
             let midpoint = (start + end) / 2.0
             let touchesLobby = !layout.lobby.isEmpty && distanceToPolygon(midpoint, polygon: layout.lobby) <= 0.5
             let connection: DoorConnection = touchesLobby ? .hallToLobby : .hallToOutside
-            result.append(DoorHost(start: start, end: end, connection: connection, thicknessM: defaultThicknessM))
+            result.append(
+                DoorHost(
+                    start: start,
+                    end: end,
+                    connection: connection,
+                    thicknessM: defaultThicknessM,
+                    isHallEdge: true
+                )
+            )
         }
         return result
     }
@@ -81,6 +90,14 @@ enum DoorHosting {
             }
         }
         return result
+    }
+
+    /// A hall edge can touch the lobby along only part of its length, so the connection
+    /// follows the door's own position there. Wall and lobby hosts keep their own connection.
+    static func connection(for point: SIMD2<Double>, on host: DoorHost, in layout: Layout) -> DoorConnection {
+        guard host.isHallEdge else { return host.connection }
+        let touchesLobby = !layout.lobby.isEmpty && distanceToPolygon(point, polygon: layout.lobby) <= 0.5
+        return touchesLobby ? .hallToLobby : .hallToOutside
     }
 
     static func nearestHost(
