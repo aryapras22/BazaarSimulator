@@ -28,6 +28,16 @@ enum LayoutHitTester {
     }
 
     private static func hits(_ object: LayoutObject, at world: SIMD2<Double>) -> Bool {
+        if let catalogID = object.catalogID,
+           let item = ObjectCatalog.item(catalogID),
+           item.footprint == .circle {
+            return LayoutGeometry.containsCircle(
+                center: object.placement.center,
+                diameter: object.placement.sizeM.x,
+                point: world
+            )
+        }
+
         switch object.kind {
         case .pillar:
             return LayoutGeometry.containsCircle(

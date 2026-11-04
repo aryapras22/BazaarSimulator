@@ -53,6 +53,10 @@ extension LayoutEditorViewModel {
         if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
             return false
         }
+        let heightKinds: Set<LayoutObjectKind> = [.wall, .rail, .block, .booth, .stage, .fixture]
+        if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
+            return false
+        }
         return !issues.contains {
             $0.severity == .error && $0.objectIDs.contains(selected.id)
         }

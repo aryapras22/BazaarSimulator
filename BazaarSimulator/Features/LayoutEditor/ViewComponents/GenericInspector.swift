@@ -7,19 +7,20 @@ struct InspectorFields: Sendable {
     var sizeDetailText: String?
     var showsRotation: Bool
     var showsStageFront: Bool
+    var showsHeight: Bool
 
     static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
         switch kind {
         case .table:
             return InspectorFields(showsRotation: true)
         case .fixture:
-            return InspectorFields(showsLabel: true, showsRotation: true)
+            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true)
         case .stage:
-            return InspectorFields(showsRotation: true, showsStageFront: true)
+            return InspectorFields(showsRotation: true, showsStageFront: true, showsHeight: true)
         case .audienceArea:
             return InspectorFields(showsLabel: true)
         case .wall, .rail, .block:
-            return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true)
+            return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .pillar:
             return InspectorFields(showsSingleDimension: true, primarySizeTitle: "Diameter", sizeDetailText: nil)
         case .closedArea:
@@ -35,7 +36,8 @@ struct InspectorFields: Sendable {
         primarySizeTitle: String = "Size",
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
-        showsStageFront: Bool = false
+        showsStageFront: Bool = false,
+        showsHeight: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -43,6 +45,7 @@ struct InspectorFields: Sendable {
         self.sizeDetailText = sizeDetailText
         self.showsRotation = showsRotation
         self.showsStageFront = showsStageFront
+        self.showsHeight = showsHeight
     }
 }
 
@@ -86,6 +89,10 @@ struct GenericInspector: View {
 
             if fields.showsRotation {
                 RotationControl(degrees: $draft.rotationDegrees)
+            }
+
+            if fields.showsHeight {
+                HeightField(height: $draft.heightM)
             }
 
             if fields.showsStageFront {

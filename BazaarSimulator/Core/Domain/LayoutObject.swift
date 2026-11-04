@@ -14,6 +14,8 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
     var openSides: OpenSides
     var doorFlow: DoorFlow?
     var reviewState: ReviewState
+    var catalogID: String?
+    var heightM: Double?
 
     init(
         id: UUID = UUID(),
@@ -23,7 +25,9 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         categoryID: LegendEntry.ID? = nil,
         openSides: OpenSides = [],
         doorFlow: DoorFlow? = nil,
-        reviewState: ReviewState = .confirmed
+        reviewState: ReviewState = .confirmed,
+        catalogID: String? = nil,
+        heightM: Double? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -33,5 +37,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.openSides = openSides
         self.doorFlow = doorFlow
         self.reviewState = reviewState
+        self.catalogID = catalogID
+        self.heightM = heightM
     }
 }
