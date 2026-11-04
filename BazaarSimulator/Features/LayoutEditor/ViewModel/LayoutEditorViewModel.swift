@@ -45,6 +45,7 @@ final class LayoutEditorViewModel {
     private(set) var cachedBoothTemplates: [BoothTemplate] = []
     var placementRotationDegrees: Int = 0
     var placementPreview: PlacementCandidate?
+    var wallDrawing: WallDrawing?
     var transform = CanvasTransform()
     var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []

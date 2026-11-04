@@ -18,6 +18,8 @@ struct CanvasDragState {
     var resize: ActiveResize?
     var placementCandidate: PlacementCandidate?
     var placingSource: LibraryRowDisplay.Source?
+    var wallDrawing: WallDrawing?
+    var wallCurrentPointer: SIMD2<Double>?
 }
 
 enum CanvasSceneRenderer {
@@ -68,6 +70,17 @@ enum CanvasSceneRenderer {
                 candidate: candidate,
                 source: source,
                 legend: snapshot.legend,
+                in: &context,
+                transform: transform
+            )
+        }
+
+        if let wallDrawing = drag.wallDrawing {
+            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
+            WallDrawingRenderer.draw(
+                drawing: wallDrawing,
+                currentPointer: drag.wallCurrentPointer,
+                lockAngle: isShiftDown,
                 in: &context,
                 transform: transform
             )

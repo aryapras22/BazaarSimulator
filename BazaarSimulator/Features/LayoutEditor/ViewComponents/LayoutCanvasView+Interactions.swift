@@ -145,17 +145,26 @@ extension LayoutCanvasView {
     }
 
     func handleClick(on hitID: UUID?) {
-        if case .place = tool {
-            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
-            onCommitPlacement(!isShiftDown)
-            return
-        }
         let modifiers = NSEvent.modifierFlags
         let isDouble = clickSequence.register(
             id: hitID,
             at: ProcessInfo.processInfo.systemUptime,
             interval: NSEvent.doubleClickInterval
         )
+        if case .drawWall = tool {
+            if isDouble {
+                onWallDoubleClick()
+            } else {
+                let isShiftDown = modifiers.contains(.shift)
+                onWallClick(isShiftDown)
+            }
+            return
+        }
+        if case .place = tool {
+            let isShiftDown = modifiers.contains(.shift)
+            onCommitPlacement(!isShiftDown)
+            return
+        }
         if modifiers.contains(.shift), let hitID {
             onToggleSelection(hitID)
         } else if isDouble, let hitID {

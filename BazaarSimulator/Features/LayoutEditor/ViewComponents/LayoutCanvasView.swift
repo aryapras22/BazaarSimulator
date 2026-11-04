@@ -47,6 +47,13 @@ struct LayoutCanvasView: View {
     var onDropLibraryItem: (String, SIMD2<Double>) -> Void = { _, _ in }
     var onCommitPlacement: (Bool) -> Void = { _ in }
     var pointer: CanvasPointer?
+    var wallDrawing: WallDrawing?
+    var onWallClick: (Bool) -> Void = { _ in }
+    var onWallDoubleClick: () -> Void = {}
+    var onWallKey: (Character) -> Bool = { _ in false }
+    var onWallReturn: () -> Bool = { false }
+    var onWallBackspace: () -> Bool = { false }
+    var onWallFinish: () -> Void = {}
 
     @State var activeDragObjectID: UUID?
     @State var activeDragDeltaWorld: SIMD2<Double> = .zero
@@ -83,7 +90,9 @@ struct LayoutCanvasView: View {
                     isOptionDown: NSEvent.modifierFlags.contains(.option),
                     resize: activeResize,
                     placementCandidate: pointer?.placementCandidate,
-                    placingSource: pointer?.placingSource
+                    placingSource: pointer?.placingSource,
+                    wallDrawing: wallDrawing,
+                    wallCurrentPointer: pointer?.wallCurrentPointer
                 )
             )
         }
@@ -147,6 +156,10 @@ struct LayoutCanvasView: View {
                 dragPointerLocation = nil
                 return .handled
             }
+            if case .drawWall = tool {
+                onWallFinish()
+                return .handled
+            }
             if drawingStartWorld != nil {
                 drawingStartWorld = nil
                 drawingCurrentWorld = nil
@@ -166,6 +179,24 @@ struct LayoutCanvasView: View {
             onSelect(nil)
             return .handled
         }
+        .onKeyPress(.return) {
+            if case .drawWall = tool, onWallReturn() {
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+            if case .drawWall = tool, onWallBackspace() {
+                return .handled
+            }
+            return .ignored
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "0123456789.")) { press in
+            if case .drawWall = tool, let char = press.characters.first, onWallKey(char) {
+                return .handled
+            }
+            return .ignored
+        }
         .contextMenu {
             contextMenuContent
         }
@@ -178,8 +209,11 @@ struct LayoutCanvasView: View {
         if let handle = hoveredHandle {
             return .frameResize(position: handle.pointerPosition)
         }
-        if case .place = tool {
+        switch tool {
+        case .place, .drawWall:
             return .rectSelection
+        default:
+            break
         }
         return tool == .blockedArea ? .rectSelection : .default
     }

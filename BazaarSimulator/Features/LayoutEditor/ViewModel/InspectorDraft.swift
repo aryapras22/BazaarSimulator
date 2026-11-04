@@ -49,7 +49,9 @@ struct InspectorDraft: Sendable, Equatable {
         } else {
             updated.placement.sizeM = .init(widthM, lengthM)
         }
-        updated.placement.rotationDegrees = rotationDegrees
+        if updated.placement.rotationDegrees != rotationDegrees {
+            updated.placement.rotationDegrees = rotationDegrees
+        }
         updated.categoryID = categoryID
         updated.openSides = openSides
         updated.heightM = heightM

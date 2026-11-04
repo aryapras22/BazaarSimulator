@@ -143,6 +143,7 @@ extension LayoutEditorViewModel {
         tool = newTool
         placementRotationDegrees = 0
         placementPreview = nil
+        wallDrawing = nil
         if newTool == .blockedArea || newTool != .select {
             applySelection(nil)
         }
