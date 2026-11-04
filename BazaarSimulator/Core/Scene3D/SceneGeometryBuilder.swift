@@ -139,7 +139,8 @@ nonisolated enum SceneGeometryBuilder {
                 role: .accent
             ).rotated(by: rotation).translated(by: worldOffset)
             appendPrimitive(arrowBox, key: SceneMaterialKey(role: .accent, tint: nil), into: &meshes)
-        } else if let catalogID = object.catalogID {
+        } else {
+            let catalogID = object.catalogID ?? "door"
             let height = object.heightM ?? 2.1
             let primitives = ObjectShapes.shape(for: catalogID, size: object.placement.sizeM, height: height)
             for prim in primitives {
