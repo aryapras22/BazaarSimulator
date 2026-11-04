@@ -119,17 +119,27 @@ extension LayoutEditorViewModel {
         transform = CanvasTransform(scale: scale, offset: offset)
     }
 
+    func rebuildSceneGeometryDebounced() {
+        guard viewPreset != .plan else { return }
+        sceneRebuildTask?.cancel()
+        sceneRebuildTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(80))
+            guard !Task.isCancelled else { return }
+            self?.rebuildSceneGeometry()
+        }
+    }
+
     func rebuildSceneGeometry() {
-        guard let layout = activeLayout else { return }
+        guard let layout = layoutWithInspectorDraft else { return }
+        sceneGeometryGeneration += 1
+        let generation = sceneGeometryGeneration
         let currentLegend = legend
         let currentTab = tab.objectTab
-        Task.detached(priority: .userInitiated) {
-            let geometry = SceneGeometryBuilder.build(
-                layout: layout,
-                legend: currentLegend,
-                tab: currentTab
-            )
+        Task.detached(priority: .userInitiated) { [weak self] in
+            var geometry = SceneGeometryBuilder.build(layout: layout, legend: currentLegend, tab: currentTab)
+            geometry.version = generation
             await MainActor.run {
+                guard let self, generation == self.sceneGeometryGeneration else { return }
                 self.sceneGeometry = geometry
             }
         }

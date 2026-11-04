@@ -19,7 +19,59 @@ struct LayoutEditorViewModelViewsTests {
         return viewModel
     }
 
-    @Test("Switching presets preserves selection")
+    private static func geometry(
+        of viewModel: LayoutEditorViewModel,
+        newerThan version: Int
+    ) async -> SceneGeometry? {
+        for _ in 0..<300 {
+            if let geometry = viewModel.sceneGeometry, geometry.version > version {
+                return geometry
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return nil
+    }
+
+    private static func panelCentroidX(_ geometry: SceneGeometry) -> Float {
+        let positions = geometry.meshes[SceneMaterialKey(role: .panel, tint: nil)]?.positions ?? []
+        return positions.map(\.x).reduce(0, +) / Float(max(positions.count, 1))
+    }
+
+    @Test("Moving a booth in 3D rebuilds the scene with a newer version")
+    func movingBoothRebuildsScene() async {
+        let viewModel = Self.makeViewModel()
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: CGSize(width: 800, height: 600))
+        guard let before = await Self.geometry(of: viewModel, newerThan: 0),
+              let booth = viewModel.activeLayout?.objects.first(where: { $0.kind == .booth }) else {
+            Issue.record("No initial geometry")
+            return
+        }
+
+        viewModel.finishDraggingObject(id: booth.id, deltaWorld: SIMD2<Double>(3, 0))
+        guard let after = await Self.geometry(of: viewModel, newerThan: before.version) else {
+            Issue.record("Scene was not rebuilt after the move")
+            return
+        }
+
+        #expect(after.version > before.version)
+        #expect(Self.panelCentroidX(after) > Self.panelCentroidX(before))
+    }
+
+    @Test("Back-to-back rebuilds keep only the newest geometry")
+    func backToBackRebuildsKeepNewest() async {
+        let viewModel = Self.makeViewModel()
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: CGSize(width: 800, height: 600))
+
+        viewModel.rebuildSceneGeometry()
+        viewModel.rebuildSceneGeometry()
+        viewModel.rebuildSceneGeometry()
+        let latest = viewModel.sceneGeometryGeneration
+        _ = await Self.geometry(of: viewModel, newerThan: latest - 1)
+        try? await Task.sleep(for: .milliseconds(100))
+
+        #expect(viewModel.sceneGeometry?.version == latest)
+    }
+
     func switchPresetsPreservesSelection() {
         let viewModel = Self.makeViewModel()
         let booth = viewModel.activeLayout?.objects.first { $0.kind == .booth }

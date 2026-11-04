@@ -54,6 +54,8 @@ final class LayoutEditorViewModel {
     )
     var isTransitioningToPlan = false
     var sceneGeometry: SceneGeometry?
+    @ObservationIgnored var sceneRebuildTask: Task<Void, Never>?
+    @ObservationIgnored var sceneGeometryGeneration = 0
     private(set) var issues: [LayoutIssue] = []
     private(set) var nameGroups: [BoothGroup] = []
     private(set) var sizeGroups: [BoothGroup] = []
@@ -208,11 +210,6 @@ final class LayoutEditorViewModel {
         }
         issues = LayoutValidator.issues(in: previewLayout)
         rebuildSceneGeometryDebounced()
-    }
-
-    func rebuildSceneGeometryDebounced() {
-        guard viewPreset != .plan else { return }
-        rebuildSceneGeometry()
     }
 
     private func refreshGroups() {

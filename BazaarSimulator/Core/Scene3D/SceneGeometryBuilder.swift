@@ -7,6 +7,7 @@ struct SceneMaterialKey: Hashable, Sendable {
 }
 
 struct SceneGeometry: Sendable {
+    var version: Int = 0
     var meshes: [SceneMaterialKey: TriangleMesh]
 }
 
