@@ -43,6 +43,8 @@ final class LayoutEditorViewModel {
     var libraryCategory: CatalogCategory?
     var inspectorPanelTab: InspectorPanelTab = .library
     private(set) var cachedBoothTemplates: [BoothTemplate] = []
+    var placementRotationDegrees: Int = 0
+    var placementPreview: PlacementCandidate?
     var transform = CanvasTransform()
     var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []

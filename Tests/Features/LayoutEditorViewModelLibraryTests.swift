@@ -89,4 +89,62 @@ struct LayoutEditorViewModelLibraryTests {
         viewModel.startPlacing(blockedRow)
         #expect(viewModel.tool == .blockedArea)
     }
+
+    @Test("Template placement creates booth with size, category, inferred sides, and label N1")
+    func templatePlacementCreatesBooth() throws {
+        let viewModel = Self.makeViewModel()
+        let templateRow = try #require(viewModel.libraryRows.first { $0.category == .project })
+        viewModel.startPlacing(templateRow)
+
+        viewModel.updatePlacementPreview(at: SIMD2<Double>(10, 10), free: false)
+        let candidate = try #require(viewModel.placementPreview)
+        #expect(candidate.isValid)
+
+        let initialCount = viewModel.activeLayout?.objects.count ?? 0
+        viewModel.commitPlacement(keepTool: true)
+
+        let newCount = viewModel.activeLayout?.objects.count ?? 0
+        #expect(newCount == initialCount + 1)
+
+        let selectedID = try #require(viewModel.selectionID)
+        let placedBooth = try #require(viewModel.activeLayout?.objects.first { $0.id == selectedID })
+        #expect(placedBooth.label == "N1")
+        #expect(placedBooth.kind == .booth)
+        #expect(!placedBooth.openSides.isEmpty)
+
+        if case .template(let template) = templateRow.source {
+            #expect(placedBooth.categoryID == template.categoryID)
+            #expect(placedBooth.placement.sizeM.x == template.sizeKey.shortM)
+            #expect(placedBooth.placement.sizeM.y == template.sizeKey.longM)
+        }
+
+        #expect(viewModel.tool != .select)
+    }
+
+    @Test("Placing is one undo step")
+    func placingIsOneUndoStep() throws {
+        let viewModel = Self.makeViewModel()
+        let templateRow = try #require(viewModel.libraryRows.first { $0.category == .project })
+        viewModel.startPlacing(templateRow)
+        viewModel.updatePlacementPreview(at: SIMD2<Double>(10, 10), free: false)
+
+        let initialCount = viewModel.activeLayout?.objects.count ?? 0
+        viewModel.commitPlacement(keepTool: true)
+        #expect(viewModel.activeLayout?.objects.count == initialCount + 1)
+        #expect(viewModel.canUndo)
+
+        viewModel.undo()
+        #expect(viewModel.activeLayout?.objects.count == initialCount)
+    }
+
+    @Test("Shift-click returns to select tool")
+    func shiftClickReturnsToSelect() throws {
+        let viewModel = Self.makeViewModel()
+        let templateRow = try #require(viewModel.libraryRows.first { $0.category == .project })
+        viewModel.startPlacing(templateRow)
+        viewModel.updatePlacementPreview(at: SIMD2<Double>(10, 10), free: false)
+
+        viewModel.commitPlacement(keepTool: false)
+        #expect(viewModel.tool == .select)
+    }
 }

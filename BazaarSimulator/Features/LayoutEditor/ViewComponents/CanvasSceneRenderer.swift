@@ -16,6 +16,8 @@ struct CanvasDragState {
     var drawingCurrent: SIMD2<Double>?
     var isOptionDown: Bool = false
     var resize: ActiveResize?
+    var placementCandidate: PlacementCandidate?
+    var placingSource: LibraryRowDisplay.Source?
 }
 
 enum CanvasSceneRenderer {
@@ -44,18 +46,7 @@ enum CanvasSceneRenderer {
             drawObject(object, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
         }
         if let selectedObject {
-            SelectionDimensionRenderer.drawDimensions(for: selectedObject, in: &context, transform: transform)
-            if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
-                SelectionDimensionRenderer.drawDragOffset(drag.deltaWorld, near: pointerLocation, in: &context)
-            } else if drag.resize != nil, let pointerLocation = drag.pointerLocation {
-                let widthText = DimensionInput.text(for: selectedObject.placement.sizeM.x)
-                let lengthText = DimensionInput.text(for: selectedObject.placement.sizeM.y)
-                let sizeText = "\(widthText) × \(lengthText) m"
-                SelectionDimensionRenderer.drawSizeChip(sizeText, near: pointerLocation, in: &context)
-            }
-            if snapshot.tab == .floorPlan && selectedObject.kind.hasResizeHandles {
-                drawResizeHandles(for: selectedObject.placement, in: &context, transform: transform)
-            }
+            drawSelectionDetails(selectedObject, drag: drag, tab: snapshot.tab, in: &context, transform: transform)
         }
 
         if snapshot.tab == .floorPlan {
@@ -67,6 +58,16 @@ enum CanvasSceneRenderer {
                 start: start,
                 current: current,
                 snaps: !drag.isOptionDown,
+                in: &context,
+                transform: transform
+            )
+        }
+
+        if let candidate = drag.placementCandidate, let source = drag.placingSource {
+            PlacementPreviewRenderer.draw(
+                candidate: candidate,
+                source: source,
+                legend: snapshot.legend,
                 in: &context,
                 transform: transform
             )
@@ -102,6 +103,27 @@ enum CanvasSceneRenderer {
         let pointerView = transform.toView(current)
         let text = "\(DimensionInput.text(for: preview.sizeM.x)) × \(DimensionInput.text(for: preview.sizeM.y)) m"
         SelectionDimensionRenderer.drawSizeChip(text, near: CGPoint(x: pointerView.x, y: pointerView.y), in: &context)
+    }
+
+    private static func drawSelectionDetails(
+        _ selectedObject: LayoutObject,
+        drag: CanvasDragState,
+        tab: EditorTab,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        SelectionDimensionRenderer.drawDimensions(for: selectedObject, in: &context, transform: transform)
+        if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
+            SelectionDimensionRenderer.drawDragOffset(drag.deltaWorld, near: pointerLocation, in: &context)
+        } else if drag.resize != nil, let pointerLocation = drag.pointerLocation {
+            let widthText = DimensionInput.text(for: selectedObject.placement.sizeM.x)
+            let lengthText = DimensionInput.text(for: selectedObject.placement.sizeM.y)
+            let sizeText = "\(widthText) × \(lengthText) m"
+            SelectionDimensionRenderer.drawSizeChip(sizeText, near: pointerLocation, in: &context)
+        }
+        if tab == .floorPlan && selectedObject.kind.hasResizeHandles {
+            drawResizeHandles(for: selectedObject.placement, in: &context, transform: transform)
+        }
     }
 
     private static func drawObject(
