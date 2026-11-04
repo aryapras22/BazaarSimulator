@@ -115,7 +115,7 @@ final class SceneHolder {
     private let staticRoot = Entity()
     private let outlineRoot = Entity()
 
-    private var lastGeometryMeshCount: Int = -1
+    private var lastGeometryVersion: Int = -1
     private var lastOutlines: [BoundingBox3D] = []
     private var updateSubscription: EventSubscription?
 
@@ -179,20 +179,19 @@ final class SceneHolder {
     private func updateGeometry(_ geometry: SceneGeometry?) {
         guard let geometry else {
             staticRoot.children.removeAll()
-            lastGeometryMeshCount = -1
+            lastGeometryVersion = -1
             return
         }
-        if geometry.meshes.count != lastGeometryMeshCount {
+        guard geometry.version != lastGeometryVersion else { return }
+        do {
+            let entities = try SceneMeshFactory.entities(for: geometry)
             staticRoot.children.removeAll()
-            do {
-                let entities = try SceneMeshFactory.entities(for: geometry)
-                for entity in entities {
-                    staticRoot.addChild(entity)
-                }
-                lastGeometryMeshCount = geometry.meshes.count
-            } catch {
-                // Ignore failure
+            for entity in entities {
+                staticRoot.addChild(entity)
             }
+            lastGeometryVersion = geometry.version
+        } catch {
+            assertionFailure("Scene mesh build failed: \(error)")
         }
     }
 
