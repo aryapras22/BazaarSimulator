@@ -149,15 +149,11 @@ final class SceneHolder {
 
     private func updateCamera(pose: CameraPose, eye: EyePose?) {
         if let eye {
-            cameraEntity.camera.fieldOfViewInDegrees = 70
-            let eyePos = SIMD3<Float>(Float(eye.position.x), Float(eye.position.y), Float(eye.position.z))
+            cameraEntity.camera.fieldOfViewInDegrees = Float(CameraRig.eyeFieldOfViewDegrees)
+            let eyePos = SIMD3<Float>(eye.position)
             cameraEntity.position = eyePos
-            let forward = SIMD3<Float>(
-                Float(-sin(eye.yaw) * cos(eye.pitch)),
-                Float(sin(eye.pitch)),
-                Float(-cos(eye.yaw) * cos(eye.pitch))
-            )
-            cameraEntity.look(at: eyePos + forward, from: eyePos, relativeTo: nil)
+            let lookAt = CameraRig(pose: pose, eye: eye).lookAtPoint
+            cameraEntity.look(at: SIMD3<Float>(lookAt), from: eyePos, relativeTo: nil)
         } else {
             cameraEntity.camera.fieldOfViewInDegrees = Float(pose.fieldOfViewDegrees)
             let target = SIMD3<Float>(Float(pose.target.x), Float(pose.target.y), Float(pose.target.z))
