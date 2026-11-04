@@ -33,7 +33,8 @@ struct LayoutEditorView: View {
                     tool: viewModel.tool,
                     onDrawBlockedArea: { viewModel.addBlockedArea($0) },
                     onCancelTool: { viewModel.selectTool(.select) },
-                    onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) }
+                    onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
+                    onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) }
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteCurrentSelection()

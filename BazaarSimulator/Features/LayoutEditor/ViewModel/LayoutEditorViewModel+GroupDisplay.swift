@@ -3,7 +3,7 @@ import simd
 
 extension LayoutEditorViewModel {
     var isGroupsListVisible: Bool {
-        tab == .floorPlan && selectionID == nil && groupSelection == nil && !nameGroups.isEmpty
+        tab == .floorPlan && selectionID == nil && groupSelection == nil
     }
 
     var nameGroupRows: [BoothGroupRowDisplay] { rows(for: nameGroups) }

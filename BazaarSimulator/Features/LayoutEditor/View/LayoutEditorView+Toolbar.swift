@@ -45,7 +45,7 @@ extension LayoutEditorView {
         if viewModel.tab == .floorPlan {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: Spacing.xs) {
-                    ForEach(EditorTool.allCases, id: \.self) { tool in
+                    ForEach(EditorTool.primaryTools, id: \.self) { tool in
                         Button {
                             viewModel.selectTool(tool)
                         } label: {
