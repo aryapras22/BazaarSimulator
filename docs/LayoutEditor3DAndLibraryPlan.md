@@ -55,10 +55,11 @@ Not taken: CROWD's walls are the plan's primary data, with rooms derived from th
 | Plan | Today's 2D canvas | Everything the editor does today |
 | 3D | Perspective from the south-east corner, 40 degrees off the front axis, polar 58 degrees (CROWD's iso uses 1.02 rad), framed on the layout | Drag orbits, Shift-drag pans, wheel and pinch zoom toward the pointer, click selects |
 | Front | Perspective from the entrance side (the lobby, +y in plan), polar 77 degrees (CROWD's front uses 1.35 rad) | Same as 3D |
-| Eye | 1.6 m above the floor, starting at the first spawn marker looking into the hall, 70 degree field of view | Drag looks around, arrow keys walk 0.5 m (Shift 2 m), click selects; position stays inside the layout bounds |
+| Eye | 1.6 m above the floor, starting at the first spawn marker looking into the hall, 70 degree field of view | Drag looks around, arrow keys walk 0.5 m (Shift 2 m), click selects along the eye's line of sight, scroll does nothing; position stays inside the combined bounds of the hall and lobby, since the spawn marker is usually in the lobby |
 
 *   The preset picker is a `SegmentedTabs` in the toolbar next to Floor Plan and Flow, or a second row under it if the toolbar runs out of room. Keys: 1 Plan, 2 3D, 3 Front, 4 Eye on the focused view, with no menu shortcuts (bare keys in menus steal text input).
 *   Switching from Plan to a 3D preset starts the camera straight above the layout at the framing the canvas had, then tweens to the preset; switching back tweens to straight down and hands the framing to the canvas. Under Reduce Motion the change is instant.
+*   Wheel and pinch zoom use the canvas scroll bases (`CanvasTransform.lineScrollZoomBase` and `preciseScrollZoomBase`), so one wheel notch is about 10% in both views and scrolling the same way zooms the same way.
 *   Floor Plan and Flow tabs still apply in 3D: Flow colors booths pale and highlights doors with their direction, as in 2D.
 *   The blocked-area tool and every placement tool switch the view to Plan when chosen.
 
@@ -68,7 +69,7 @@ Not taken: CROWD's walls are the plan's primary data, with rooms derived from th
 | --- | --- |
 | Floor | Hall and lobby polygons as a floor slab, `canvasFloor` color, with the grid from `RulerScale` |
 | Perimeter | Walls 3.0 m along the hall and lobby polygon edges, cut where doors sit, with a lintel at 2.1 m over each door |
-| Wall objects | Boxes at their placement, wall 3.0 m, rail 1.0 m, block 1.2 m |
+| Wall objects | Boxes at their placement, wall 3.0 m, rail 1.0 m, block 1.2 m. Walls are cut around their doors the same way perimeter edges are, at the wall's own thickness, with the lintel at the door's height |
 | Booth | Back and side panels 2.4 m on closed sides, a counter 1.0 m on open sides, a 0.4 m fascia band at 2.4 m on the open side carrying the booth label, tinted with the booth's category color |
 | Table | Catalog shape (round top on a pedestal, four chairs) |
 | Stage | 0.8 m platform with steps on its front side |
@@ -85,8 +86,8 @@ Colors come from new `Palette` tokens for 3D (`sceneFloor`, `sceneWall`, `sceneP
 ### Building the scene
 
 *   A pure step, `SceneGeometryBuilder`, turns a `Layout` plus the legend into triangle meshes grouped by material role (positions, normals, indices). It runs off the main actor. A second step makes RealityKit `MeshResource`s on the main actor, one entity per material role, so the whole static layout is a handful of draw calls.
-*   The scene rebuilds when the active layout changes, debounced by 150 ms. Selection and hover outlines are separate small entities updated immediately.
-*   Mapping: plan `(x, y)` in metres becomes world `(x, height, y)`. Looking straight down with the camera's up vector toward -z shows the plan the same way the canvas does.
+*   The scene rebuilds when the active layout or the inspector draft changes, debounced by 80 ms. Each build carries a version, and a build that finishes after a newer one has started is dropped. Selection and hover outlines are separate small entities updated immediately.
+*   Mapping: plan `(x, y)` in metres becomes world `(x, height, y)`. Looking straight down with the camera's up vector toward -z shows the plan the same way the canvas does, because the canvas puts world -y at the top of the screen. Plan therefore uses azimuth π/2 (`CameraRig.planAzimuth`), which offsets the camera toward +z; azimuth 0 turned the view a quarter turn and disagreed with the floor picker.
 
 ### Picking in 3D
 
@@ -138,6 +139,7 @@ Following CROWD's placement tool:
 *   The item previews under the pointer at full size, translucent, with its dimensions.
 *   Within 1.2 m of a wall object or a hall or lobby edge, the item turns its front away from the wall and sits against it. Booth templates also snap flush against a neighbouring booth's side, so rows can be extended by clicking.
 *   R rotates by 90 degrees, Option places freely (no grid, no wall pull), Escape ends placing, a click places one and keeps the tool active for the next (CROWD's behavior), Shift-click places one and returns to Select.
+*   Overlapping a booth or wall by more than 0.1 m is a warning, not a block: the preview names the object it overlaps and can still be placed, and `LayoutValidator` reports the overlap after the drop. Booths snapped flush do not trigger it. Hall and lobby edges are treated as 0.2 m thick when snapping, matching the walls drawn in 3D.
 *   Each placement is one undo step.
 * * *
 ## 3. Walls and doors from the library
@@ -152,7 +154,7 @@ Following CROWD's placement tool:
 ### Doors
 
 *   Door, Double door, and Gate place onto a host: a `wall` object or a hall or lobby polygon edge within 1.2 m of the pointer. The preview slides along the host and turns with it; there is no placement away from a host (the preview turns red).
-*   The door's connection follows the host: the wall between hall and lobby gives `hallToLobby`, a lobby edge gives `lobbyToOutside`, a hall outer edge gives the new `hallToOutside` (for emergency and side exits).
+*   The door's connection follows the host: the wall between hall and lobby gives `hallToLobby`, a lobby edge gives `lobbyToOutside`, a hall outer edge gives the new `hallToOutside` (for emergency and side exits). On a hall edge the connection is decided per door from its own position, since one edge can touch the lobby along only part of its length; it is set again when the door is dragged.
 *   Direction starts as Both. The Flow tab and its door advice work on new doors unchanged.
 *   Existing and new doors become draggable along their host: dragging projects onto the host edge and stops at its ends. Today doors cannot move at all.
 * * *
