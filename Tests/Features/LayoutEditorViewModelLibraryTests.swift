@@ -147,4 +147,29 @@ struct LayoutEditorViewModelLibraryTests {
         viewModel.commitPlacement(keepTool: false)
         #expect(viewModel.tool == .select)
     }
+
+    @Test("Moving a booth leaves the booth templates unchanged")
+    func movingBoothKeepsTemplates() throws {
+        let viewModel = Self.makeViewModel()
+        let booth = try #require(viewModel.activeLayout?.objects.first { $0.kind == .booth })
+        let before = viewModel.cachedBoothTemplates
+
+        viewModel.finishDraggingObject(id: booth.id, deltaWorld: SIMD2<Double>(2, 0))
+
+        #expect(viewModel.cachedBoothTemplates == before)
+    }
+
+    @Test("Changing a booth's category updates the template counts")
+    func changingCategoryUpdatesTemplates() throws {
+        let viewModel = Self.makeViewModel()
+        let booth = try #require(viewModel.activeLayout?.objects.first { $0.kind == .booth })
+        let otherCategory = try #require(PreviewLayouts.sampleLegend.entries.first { $0.id != booth.categoryID })
+        let before = viewModel.cachedBoothTemplates
+        var recategorized = booth
+        recategorized.categoryID = otherCategory.id
+
+        viewModel.commitEdit(.replace(before: booth, after: recategorized))
+
+        #expect(viewModel.cachedBoothTemplates != before)
+    }
 }

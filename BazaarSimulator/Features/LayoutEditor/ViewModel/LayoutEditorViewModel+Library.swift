@@ -2,6 +2,26 @@ import Foundation
 import simd
 
 extension LayoutEditorViewModel {
+    func refreshTemplates() {
+        let key = boothTemplateKey()
+        guard key != templateKey else { return }
+        templateKey = key
+        cachedBoothTemplates = BoothTemplates.templates(layouts: layouts, legend: legend)
+    }
+
+    /// Hashes only what `BoothTemplates` reads, so moving a booth leaves the key unchanged.
+    private func boothTemplateKey() -> Int {
+        var hasher = Hasher()
+        for layout in layouts {
+            for object in layout.objects where object.kind == .booth {
+                hasher.combine(object.categoryID)
+                hasher.combine(BoothGrouping.sizeKey(of: object.placement))
+            }
+        }
+        hasher.combine(legend.entries.map(\.id))
+        return hasher.finalize()
+    }
+
     var libraryRows: [LibraryRowDisplay] {
         var rows: [LibraryRowDisplay] = []
 
