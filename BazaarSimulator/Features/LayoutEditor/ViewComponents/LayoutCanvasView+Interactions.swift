@@ -140,7 +140,11 @@ extension LayoutCanvasView {
     private func updateObjectDrag(startLocation: CGPoint, currentLocation: CGPoint) {
         let currentWorld = transform.toWorld(SIMD2<Double>(currentLocation.x, currentLocation.y))
         let startWorld = transform.toWorld(SIMD2<Double>(startLocation.x, startLocation.y))
-        activeDragDeltaWorld = currentWorld - startWorld
+        var rawDelta = currentWorld - startWorld
+        if let activeDragObjectID, let constrainDelta {
+            rawDelta = constrainDelta(activeDragObjectID, rawDelta)
+        }
+        activeDragDeltaWorld = rawDelta
         dragPointerLocation = currentLocation
     }
 
@@ -158,6 +162,11 @@ extension LayoutCanvasView {
                 let isShiftDown = modifiers.contains(.shift)
                 onWallClick(isShiftDown)
             }
+            return
+        }
+        if case .placeDoor(let itemID) = tool {
+            let isShiftDown = modifiers.contains(.shift)
+            onCommitDoorPlacement(!isShiftDown, itemID)
             return
         }
         if case .place = tool {

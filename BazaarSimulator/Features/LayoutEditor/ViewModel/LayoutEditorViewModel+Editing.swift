@@ -9,11 +9,25 @@ extension LayoutEditorViewModel {
     func finishDraggingObject(id: UUID, deltaWorld: SIMD2<Double>, freeMove: Bool = false) {
         guard let layout = activeLayout,
               let before = layout.objects.first(where: { $0.id == id }),
-              before.kind.isMovable,
-              before.kind != .door else {
+              before.kind.isMovable else {
             return
         }
         guard simd_length(deltaWorld) > 1e-4 else { return }
+
+        if before.kind == .door {
+            if let host = DoorHosting.nearestHost(to: before.placement.center, in: layout, reach: 0.3),
+               let newPlacement = DoorHosting.placement(
+                   width: before.placement.sizeM.x,
+                   on: host,
+                   near: before.placement.center + deltaWorld
+               ) {
+                var after = before
+                after.placement = newPlacement
+                guard after != before else { return }
+                commitEdit(.replace(before: before, after: after))
+            }
+            return
+        }
 
         var after = before
         after.placement.center += deltaWorld
@@ -37,7 +51,24 @@ extension LayoutEditorViewModel {
     }
 
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
-        guard let before = selectedObject, before.kind.isMovable, before.kind != .door else { return }
+        guard let before = selectedObject, before.kind.isMovable, let layout = activeLayout else { return }
+        if before.kind == .door {
+            if let host = DoorHosting.nearestHost(to: before.placement.center, in: layout, reach: 0.3),
+               let newPlacement = DoorHosting.placement(
+                   width: before.placement.sizeM.x,
+                   on: host,
+                   near: before.placement.center + deltaWorld
+               ) {
+                var after = before
+                after.placement = newPlacement
+                guard after != before else { return }
+                withSingleRefresh {
+                    commitEdit(.replace(before: before, after: after))
+                    applySelection(after.id)
+                }
+            }
+            return
+        }
         var after = before
         after.placement.center += deltaWorld
         commitEdit(.replace(before: before, after: after))

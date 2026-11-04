@@ -29,6 +29,10 @@ struct LayoutEditorView: View {
                             viewModel.updatePlacementPreview(at: world, free: isOptionDown)
                             pointer.placementCandidate = viewModel.placementPreview
                             pointer.placingSource = source
+                        } else if case .placeDoor(let itemID) = viewModel.tool, let world {
+                            viewModel.updateDoorPlacementPreview(at: world, itemID: itemID)
+                            pointer.placementCandidate = viewModel.placementPreview
+                            pointer.placingSource = .catalog(itemID)
                         } else if case .drawWall = viewModel.tool, let world {
                             let isShiftDown = NSEvent.modifierFlags.contains(.shift)
                             pointer.wallCurrentPointer = viewModel.handleWallPointerMove(
@@ -52,6 +56,12 @@ struct LayoutEditorView: View {
                     onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
                     onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
                     onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
+                    onCommitDoorPlacement: { keepTool, itemID in
+                        viewModel.commitDoorPlacement(keepTool: keepTool, itemID: itemID)
+                    },
+                    constrainDelta: { id, delta in
+                        viewModel.constrainDragDelta(id: id, delta: delta)
+                    },
                     pointer: pointer,
                     wallDrawing: viewModel.wallDrawing,
                     onWallClick: { isShiftDown in
@@ -212,7 +222,9 @@ struct LayoutEditorView: View {
             Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
         }
     }
+}
 
+extension LayoutEditorView {
     private var inspectorInset: CGFloat {
         viewModel.isInspectorPanelVisible ? InspectorPanelMetrics.width + Spacing.l * 2 : 0
     }
