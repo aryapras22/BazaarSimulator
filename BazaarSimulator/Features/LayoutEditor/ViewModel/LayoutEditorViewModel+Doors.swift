@@ -42,7 +42,10 @@ extension LayoutEditorViewModel {
             kind: .door,
             label: label,
             placement: candidate.placement,
-            doorFlow: DoorFlow(direction: .both, connection: host.connection),
+            doorFlow: DoorFlow(
+                direction: .both,
+                connection: DoorHosting.connection(for: candidate.placement.center, on: host, in: layout)
+            ),
             catalogID: itemID,
             heightM: height
         )
