@@ -3,7 +3,7 @@ import simd
 
 struct LayoutEditorView: View {
     @Bindable var viewModel: LayoutEditorViewModel
-    @State private var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
+    @State var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
     @State private var pointer = CanvasPointer()
     @FocusState private var isCanvasFocused: Bool
 
@@ -49,7 +49,11 @@ struct LayoutEditorView: View {
                         viewModel.fitToView(in: canvasViewSize)
                     } else {
                         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                        viewModel.selectViewPreset(viewModel.viewPreset, reduceMotion: reduceMotion)
+                        viewModel.selectViewPreset(
+                            viewModel.viewPreset,
+                            reduceMotion: reduceMotion,
+                            viewSize: canvasSize
+                        )
                     }
                 }
             )
@@ -118,6 +122,10 @@ extension LayoutEditorView {
         viewModel.isInspectorPanelVisible ? InspectorPanelMetrics.width + Spacing.l * 2 : 0
     }
 
+    var canvasSize: CGSize {
+        CGSize(width: canvasViewSize.x, height: canvasViewSize.y)
+    }
+
     private var canvasSnapshot: CanvasDisplaySnapshot {
         CanvasDisplaySnapshot(
             layout: viewModel.activeLayout ?? Layout(name: "", sizeM: SIMD2<Double>(20, 20)),
@@ -170,6 +178,9 @@ extension LayoutEditorView {
             onClick: { point, size in viewModel.handle3DClick(viewPoint: point, viewSize: size) },
             onFrame: { delta in viewModel.advanceCamera(by: delta, viewSize: proxy.size) }
         )
+        .onChange(of: proxy.size) { _, newSize in
+            canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+        }
         .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in
             switchPreset(.plan)
             return .handled
@@ -190,7 +201,7 @@ extension LayoutEditorView {
 
     private func switchPreset(_ preset: ViewPreset) {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion)
+        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
     }
 
     @ViewBuilder
