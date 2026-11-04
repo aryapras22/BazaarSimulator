@@ -89,14 +89,33 @@ struct SceneGeometryBuilderTests {
 
         let mesh = geometry.meshes[SceneMaterialKey(role: .wall, tint: nil)] ?? TriangleMesh()
         // A box only has vertices at its corners, so look for faces that cross the door center instead.
+        // The door's own frame lintel sits just under the wall lintel, so only faces reaching 1 m count.
         let facesAcrossDoorway = stride(from: 0, to: mesh.indices.count, by: 3).filter { start in
             let corners = mesh.indices[start..<start + 3].map { mesh.positions[Int($0)] }
             let xValues = corners.map(\.x)
             return corners.allSatisfy { abs($0.z) < 0.5 }
                 && (xValues.min() ?? 0) < 5.0 && (xValues.max() ?? 0) > 5.0
-                && Double(corners.map(\.y).min() ?? 0) < PerimeterWalls.lintelM - 0.01
+                && (corners.map(\.y).min() ?? 0) < 1.0
         }
         #expect(mesh.triangleCount > 0)
         #expect(facesAcrossDoorway.isEmpty)
+    }
+
+    @Test("A door without a catalog id still draws the default door")
+    func doorWithoutCatalogIDIsDrawn() {
+        let door = LayoutObject(
+            kind: .door,
+            label: "D1",
+            placement: Placement(center: SIMD2<Double>(5, 0), sizeM: SIMD2<Double>(1.2, 0.3))
+        )
+        let layout = Layout(name: "Door", sizeM: SIMD2<Double>(10, 10), objects: [door])
+
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+
+        let nonAccentTriangles = geometry.meshes
+            .filter { $0.key.role != .accent && $0.key.role != .floor }
+            .map(\.value.triangleCount)
+            .reduce(0, +)
+        #expect(nonAccentTriangles > 0)
     }
 }
