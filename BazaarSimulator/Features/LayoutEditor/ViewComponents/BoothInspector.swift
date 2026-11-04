@@ -32,6 +32,8 @@ struct BoothInspector: View {
                 range: sizeRange
             )
 
+            HeightField(height: $draft.heightM)
+
             RotationControl(degrees: $draft.rotationDegrees)
 
             VStack(alignment: .leading, spacing: Spacing.xs) {

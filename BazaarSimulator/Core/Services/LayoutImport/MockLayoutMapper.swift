@@ -132,7 +132,9 @@ enum MockLayoutMapper {
             )
         }
     }
+}
 
+extension MockLayoutMapper {
     private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
         tables.enumerated().map { index, table in
             LayoutObject(
@@ -142,7 +144,8 @@ enum MockLayoutMapper {
                     center: SIMD2<Double>(table.centerX, table.centerY),
                     sizeM: SIMD2<Double>(table.width, table.height)
                 ),
-                reviewState: .detected
+                reviewState: .detected,
+                catalogID: "table-round-4"
             )
         }
     }
@@ -154,7 +157,8 @@ enum MockLayoutMapper {
             label: "Stage",
             placement: stagePlacement,
             openSides: stageFace(from: stage.face),
-            reviewState: .detected
+            reviewState: .detected,
+            catalogID: "stage"
         )
     }
 
@@ -186,7 +190,8 @@ enum MockLayoutMapper {
                     center: SIMD2<Double>(column.posX, column.posY),
                     sizeM: SIMD2<Double>(column.diameter, column.diameter)
                 ),
-                reviewState: .detected
+                reviewState: .detected,
+                catalogID: "pillar-round"
             )
         }
     }
@@ -223,13 +228,32 @@ enum MockLayoutMapper {
                 minY: fixture.minY,
                 maxY: fixture.maxY
             )
+            let catalogID = fixtureCatalogID(for: fixture.label, kind: kind)
             return LayoutObject(
                 kind: kind,
                 label: fixture.label,
                 placement: fixturePlacement,
-                reviewState: .detected
+                reviewState: .detected,
+                catalogID: catalogID
             )
         }
+    }
+
+    private static func fixtureCatalogID(for label: String, kind: LayoutObjectKind) -> String? {
+        let upper = label.uppercased()
+        if kind == .stage || upper.contains("EXT") {
+            return "stage-extension"
+        }
+        if upper.contains("DECOR") {
+            return "planter"
+        }
+        if upper.contains("DOORPRIZE") {
+            return "display-case"
+        }
+        if upper.contains("CLAW") {
+            return "claw-machine"
+        }
+        return nil
     }
 
     private static func mapClosedAreas(from closedAreas: [BazaarRectDTO]) -> [LayoutObject] {

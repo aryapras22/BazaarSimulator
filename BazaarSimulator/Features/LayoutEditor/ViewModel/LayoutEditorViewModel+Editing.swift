@@ -9,7 +9,8 @@ extension LayoutEditorViewModel {
     func finishDraggingObject(id: UUID, deltaWorld: SIMD2<Double>, freeMove: Bool = false) {
         guard let layout = activeLayout,
               let before = layout.objects.first(where: { $0.id == id }),
-              before.kind.isMovable else {
+              before.kind.isMovable,
+              before.kind != .door else {
             return
         }
         guard simd_length(deltaWorld) > 1e-4 else { return }
@@ -36,7 +37,7 @@ extension LayoutEditorViewModel {
     }
 
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
-        guard let before = selectedObject, before.kind.isMovable else { return }
+        guard let before = selectedObject, before.kind.isMovable, before.kind != .door else { return }
         var after = before
         after.placement.center += deltaWorld
         commitEdit(.replace(before: before, after: after))

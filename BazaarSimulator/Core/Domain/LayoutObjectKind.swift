@@ -42,10 +42,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var isMovable: Bool {
-        switch self {
-        case .door: return false
-        default: return true
-        }
+        true
     }
 
     var isResizable: Bool {
@@ -80,8 +77,10 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var canBeAdded: Bool {
         switch self {
-        case .booth, .table, .rail, .fixture, .closedArea: return true
-        default: return false
+        case .booth, .table, .rail, .fixture, .closedArea, .wall, .block, .pillar, .stage, .door:
+            return true
+        default:
+            return false
         }
     }
 
