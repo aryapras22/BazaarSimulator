@@ -42,7 +42,7 @@ final class LayoutEditorViewModel {
     var librarySearch: String = ""
     var libraryCategory: CatalogCategory?
     var inspectorPanelTab: InspectorPanelTab = .library
-    private(set) var cachedBoothTemplates: [BoothTemplate] = []
+    var cachedBoothTemplates: [BoothTemplate] = []
     var placementRotationDegrees: Int = 0
     var placementPreview: PlacementCandidate?
     var wallDrawing: WallDrawing?
@@ -61,6 +61,7 @@ final class LayoutEditorViewModel {
     private(set) var sizeGroups: [BoothGroup] = []
     @ObservationIgnored private var groupedObjects: [LayoutObject] = []
     @ObservationIgnored private var isBatchingRefresh = false
+    @ObservationIgnored var templateKey: Int?
 
     var inspectorDraft: InspectorDraft? {
         didSet {
@@ -223,10 +224,6 @@ final class LayoutEditorViewModel {
         groupedObjects = layout.objects
         nameGroups = BoothGrouping.nameGroups(in: layout)
         sizeGroups = BoothGrouping.sizeGroups(in: layout)
-    }
-
-    private func refreshTemplates() {
-        cachedBoothTemplates = BoothTemplates.templates(layouts: layouts, legend: legend)
     }
 
     func commitEdit(_ edit: LayoutEdit) {
