@@ -203,4 +203,25 @@ struct LayoutEditorViewModelViewsTests {
         #expect(simd_length(worldAfter - worldBefore) < 0.01)
         #expect(abs(viewModel.transform.scale / scaleBefore - 1) < 0.01)
     }
+
+    @Test("The first step from a lobby spawn stays in the lobby")
+    func firstStepFromLobbySpawnDoesNotJump() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Lobby")
+        let layout = Layout(
+            name: "Lobby",
+            sizeM: SIMD2<Double>(20, 26),
+            hall: [SIMD2<Double>(0, 0), SIMD2<Double>(20, 0), SIMD2<Double>(20, 20), SIMD2<Double>(0, 20)],
+            lobby: [SIMD2<Double>(0, 20), SIMD2<Double>(20, 20), SIMD2<Double>(20, 26), SIMD2<Double>(0, 26)],
+            markers: [LayoutMarker(kind: .spawn, label: "Spawn", position: SIMD2<Double>(10, 24))]
+        )
+        session.setDraft(ProjectDraft(name: "Lobby", legend: Legend(), layouts: [layout]), for: project.id)
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
+
+        viewModel.handle3DWalk(forward: 0.5, right: 0)
+
+        let eyeZ = viewModel.cameraRig.eye?.position.z ?? 0
+        #expect(abs(eyeZ - 24) < 0.6)
+    }
 }

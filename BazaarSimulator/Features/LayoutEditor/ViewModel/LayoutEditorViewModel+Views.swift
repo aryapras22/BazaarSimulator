@@ -171,16 +171,21 @@ extension LayoutEditorViewModel {
         cameraRig.eyeLook(deltaX: Double(delta.width), deltaY: Double(delta.height))
     }
 
-    func handle3DWalk(forward: Double, right: Double) {
-        let bounds = activeLayout.map { LayoutGeometry.bounds(of: $0.hall) }
+    /// The spawn marker usually sits in the lobby, so walking is bounded by the hall and lobby together.
+    private var walkableBounds: BoundingBox {
+        activeLayout.map { LayoutGeometry.bounds(of: $0.hall + $0.lobby) }
             ?? BoundingBox(minX: 0, maxX: 40, minY: 0, maxY: 30)
-        cameraRig.eyeWalk(forward: forward, right: right, in: bounds)
+    }
+
+    func handle3DWalk(forward: Double, right: Double) {
+        cameraRig.eyeWalk(forward: forward, right: right, in: walkableBounds)
     }
 
     func enterEyeView(in bounds: BoundingBox) {
         let hallCenter = SIMD2<Double>((bounds.minX + bounds.maxX) / 2.0, (bounds.minY + bounds.maxY) / 2.0)
+        let walkable = walkableBounds
         let spawnPos = activeLayout?.markers.first(where: { $0.kind == .spawn })?.position
-            ?? SIMD2<Double>(hallCenter.x, bounds.maxY - 2.0)
+            ?? SIMD2<Double>((walkable.minX + walkable.maxX) / 2.0, walkable.maxY - 2.0)
         let eyePos = SIMD3<Double>(spawnPos.x, 1.6, spawnPos.y)
 
         let toCenterX = hallCenter.x - spawnPos.x
