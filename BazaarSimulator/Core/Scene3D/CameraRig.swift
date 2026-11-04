@@ -34,6 +34,8 @@ struct CameraRig: Equatable, Sendable {
     static let maxDistance: Double = 400.0
     static let minPolar: Double = 0.0001
     static let maxPolar: Double = Double.pi / 2.0 - 0.02
+    /// Puts world -z at the top of the screen, the same way the 2D canvas puts world -y at the top.
+    static let planAzimuth = Double.pi / 2.0
 
     private(set) var pose: CameraPose
     private(set) var eye: EyePose?
@@ -77,7 +79,7 @@ struct CameraRig: Equatable, Sendable {
         let polar: Double
         switch preset {
         case .plan:
-            azimuth = 0.0
+            azimuth = planAzimuth
             polar = minPolar
         case .threeD:
             azimuth = Double.pi / 2.0 - 0.70

@@ -44,4 +44,33 @@ struct CameraRayTests {
 
         #expect(hit == nil)
     }
+
+    @Test("Plan pose picking matches the canvas orientation")
+    func planPosePickingMatchesCanvas() throws {
+        let rig = CameraRig(pose: CameraPose(
+            target: SIMD3<Double>(10, 0, 10),
+            azimuth: CameraRig.planAzimuth,
+            polar: CameraRig.minPolar,
+            distance: 20,
+            fieldOfViewDegrees: 46
+        ))
+        let viewSize = SIMD2<Double>(800, 600)
+        func pick(_ point: SIMD2<Double>) -> SIMD2<Double>? {
+            CameraRay.floorPoint(
+                viewPoint: point,
+                viewSize: viewSize,
+                cameraPosition: rig.cameraPosition,
+                lookAt: rig.pose.target,
+                fieldOfViewDegrees: rig.pose.fieldOfViewDegrees
+            )
+        }
+
+        let above = try #require(pick(SIMD2<Double>(400, 100)))
+        let right = try #require(pick(SIMD2<Double>(700, 300)))
+
+        #expect(above.y < 10)
+        #expect(abs(above.x - 10) < 0.01)
+        #expect(right.x > 10)
+        #expect(abs(right.y - 10) < 0.01)
+    }
 }

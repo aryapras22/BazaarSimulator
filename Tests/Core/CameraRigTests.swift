@@ -11,7 +11,7 @@ struct CameraRigTests {
     func presetPolarAndAzimuth() {
         let planPose = CameraRig.pose(for: .plan, framing: sampleBounds, aspect: 1.5)
         #expect(planPose.polar == CameraRig.minPolar)
-        #expect(planPose.azimuth == 0.0)
+        #expect(planPose.azimuth == CameraRig.planAzimuth)
 
         let threeDPose = CameraRig.pose(for: .threeD, framing: sampleBounds, aspect: 1.5)
         #expect(abs(threeDPose.polar - 1.02) < 1e-4)
@@ -86,5 +86,17 @@ struct CameraRigTests {
         // Walk backwards 200m
         rig.eyeWalk(forward: -200.0, right: 0.0, in: sampleBounds)
         #expect(rig.eye?.position.z == sampleBounds.maxY)
+    }
+
+    @Test("Plan camera looks down with world -z at the top of the screen")
+    func planCameraFacesNegativeZ() {
+        let pose = CameraRig.pose(for: .plan, framing: sampleBounds, aspect: 1.5)
+        let rig = CameraRig(pose: pose)
+
+        let viewDirection = normalize(pose.target - rig.cameraPosition)
+        let horizontal = normalize(SIMD2<Double>(viewDirection.x, viewDirection.z))
+
+        #expect(abs(horizontal.x) < 1e-6)
+        #expect(horizontal.y < 0)
     }
 }
