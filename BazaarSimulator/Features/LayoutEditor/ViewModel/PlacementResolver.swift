@@ -239,6 +239,15 @@ enum PlacementResolver {
             return (false, "Overlaps blocked area")
         }
 
+        // A warning, not a block: LayoutValidator already reports booth and wall overlaps after the drop.
+        let overlapped = layout.objects.first { other in
+            (other.kind == .booth || other.kind == .wall)
+                && LayoutGeometry.overlapDepth(placement, other.placement) > 0.1
+        }
+        if let overlapped {
+            return (true, "Overlaps \(overlapped.label)")
+        }
+
         return (true, nil)
     }
 }
