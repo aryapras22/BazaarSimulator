@@ -82,4 +82,53 @@ struct LayoutEditorViewModelViewsTests {
         #expect(abs(outline.center.z - targetBooth.placement.center.y) < 1e-4)
         #expect(abs(outline.size.x - targetBooth.placement.sizeM.x) < 1e-4)
     }
+
+    @Test("Eye view walk and clamping")
+    func eyeViewWalkAndClamping() {
+        let viewModel = Self.makeViewModel()
+        viewModel.selectViewPreset(.eye, reduceMotion: true)
+
+        #expect(viewModel.cameraRig.eye != nil)
+        #expect(viewModel.cameraRig.eye?.position.y == 1.6)
+
+        let initialZ = viewModel.cameraRig.eye?.position.z ?? 0
+        viewModel.handle3DWalk(forward: 10.0, right: 0)
+        let newZ = viewModel.cameraRig.eye?.position.z ?? 0
+        #expect(newZ != initialZ)
+
+        // Walk huge distance to hit bounds clamp
+        viewModel.handle3DWalk(forward: 1000.0, right: 0)
+        let clampedZ = viewModel.cameraRig.eye?.position.z ?? 0
+        viewModel.handle3DWalk(forward: 1000.0, right: 0)
+        #expect(viewModel.cameraRig.eye?.position.z == clampedZ)
+    }
+
+    @Test("Eye view pitch is clamped to +/- 60 degrees")
+    func eyeViewPitchClamp() {
+        let viewModel = Self.makeViewModel()
+        viewModel.selectViewPreset(.eye, reduceMotion: true)
+
+        // Look way up
+        viewModel.handle3DLook(delta: CGSize(width: 0, height: -10000))
+        let maxPitch = Double.pi / 3.0
+        #expect(abs((viewModel.cameraRig.eye?.pitch ?? 0) - maxPitch) < 1e-4)
+
+        // Look way down
+        viewModel.handle3DLook(delta: CGSize(width: 0, height: 10000))
+        #expect(abs((viewModel.cameraRig.eye?.pitch ?? 0) - (-maxPitch)) < 1e-4)
+    }
+
+    @Test("Leaving eye preset restores orbit camera")
+    func leavingEyeRestoresOrbit() {
+        let viewModel = Self.makeViewModel()
+        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        let orbitPose = viewModel.cameraRig.pose
+
+        viewModel.selectViewPreset(.eye, reduceMotion: true)
+        #expect(viewModel.cameraRig.eye != nil)
+
+        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        #expect(viewModel.cameraRig.eye == nil)
+        #expect(abs(viewModel.cameraRig.pose.polar - orbitPose.polar) < 1e-4)
+    }
 }

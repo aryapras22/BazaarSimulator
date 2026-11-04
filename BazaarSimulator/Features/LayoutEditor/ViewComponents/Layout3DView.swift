@@ -60,20 +60,44 @@ struct Layout3DView: View {
             .onTapGesture { point in
                 onClick(point, proxy.size)
             }
-            .onKeyPress(.upArrow) {
-                onWalk(0.5, 0.0)
+            .onKeyPress(.upArrow, phases: .down) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(step, 0.0)
                 return .handled
             }
-            .onKeyPress(.downArrow) {
-                onWalk(-0.5, 0.0)
+            .onKeyPress(.downArrow, phases: .down) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(-step, 0.0)
                 return .handled
             }
-            .onKeyPress(.leftArrow) {
-                onWalk(0.0, -0.5)
+            .onKeyPress(.leftArrow, phases: .down) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(0.0, -step)
                 return .handled
             }
-            .onKeyPress(.rightArrow) {
-                onWalk(0.0, 0.5)
+            .onKeyPress(.rightArrow, phases: .down) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(0.0, step)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "wW")) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(step, 0.0)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "sS")) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(-step, 0.0)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "aA")) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(0.0, -step)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { press in
+                let step = press.modifiers.contains(.shift) ? 2.0 : 0.5
+                onWalk(0.0, step)
                 return .handled
             }
             .focusable()
