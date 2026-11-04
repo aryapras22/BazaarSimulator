@@ -49,7 +49,7 @@ extension LayoutEditorViewModel {
         let distance = (Double(viewSize.height) / transform.scale / 2.0) / tan(fovRad / 2.0)
         let initialPose = CameraPose(
             target: SIMD3<Double>(centerWorld.x, 0, centerWorld.y),
-            azimuth: 0.0,
+            azimuth: CameraRig.planAzimuth,
             polar: CameraRig.minPolar,
             distance: distance,
             fieldOfViewDegrees: 46.0
@@ -69,7 +69,7 @@ extension LayoutEditorViewModel {
     private func transitionToPlan(viewSize: CGSize, reduceMotion: Bool) {
         let targetPose = CameraPose(
             target: cameraRig.pose.target,
-            azimuth: 0.0,
+            azimuth: CameraRig.planAzimuth,
             polar: CameraRig.minPolar,
             distance: cameraRig.pose.distance,
             fieldOfViewDegrees: 46.0
