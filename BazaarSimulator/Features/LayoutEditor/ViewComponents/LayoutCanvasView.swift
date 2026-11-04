@@ -46,6 +46,8 @@ struct LayoutCanvasView: View {
     var onResizeEnded: (UUID, Placement) -> Void = { _, _ in }
     var onDropLibraryItem: (String, SIMD2<Double>) -> Void = { _, _ in }
     var onCommitPlacement: (Bool) -> Void = { _ in }
+    var onCommitDoorPlacement: (Bool, String) -> Void = { _, _ in }
+    var constrainDelta: ((UUID, SIMD2<Double>) -> SIMD2<Double>)?
     var pointer: CanvasPointer?
     var wallDrawing: WallDrawing?
     var onWallClick: (Bool) -> Void = { _ in }
