@@ -10,7 +10,7 @@ struct SceneGeometry: Sendable {
     var meshes: [SceneMaterialKey: TriangleMesh]
 }
 
-enum SceneGeometryBuilder {
+nonisolated enum SceneGeometryBuilder {
     static func build(
         layout: Layout,
         legend: Legend,

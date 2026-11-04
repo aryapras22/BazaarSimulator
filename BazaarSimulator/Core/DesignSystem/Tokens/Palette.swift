@@ -59,6 +59,15 @@ enum Palette {
     static let segmentedSelected = Color(hex: 0x3A485E)
     static let primaryDisabledOnSurface = Color(hex: 0x50313B)
     static let primaryDisabledOnSurfaceText = Color(hex: 0xA7999D)
+
+    static let sceneFloor = Color(hex: 0xEEF2F6)
+    static let sceneWall = Color(hex: 0xCAD5E2)
+    static let scenePanel = Color(hex: 0xE8ECF2)
+    static let sceneCounter = Color(hex: 0xCBD5E1)
+    static let sceneSlab = Color(hex: 0x94A3B8)
+    static let scenePillar = Color(hex: 0xCBD5E1)
+    static let scenePlant = Color(hex: 0x22C55E)
+    static let sceneSign = Color(hex: 0x3B82F6)
 }
 
 extension Color {
