@@ -87,7 +87,174 @@ extension LayoutEditorViewModel {
         }
     }
 
+    func rotatePlacement() {
+        placementRotationDegrees = (placementRotationDegrees + 90) % 360
+        if let currentCandidate = placementPreview {
+            updatePlacementPreview(at: currentCandidate.placement.center, free: false)
+        }
+    }
+
+    func updatePlacementPreview(at world: SIMD2<Double>, free: Bool) {
+        guard case .place(let source) = tool, let layout = activeLayout else {
+            placementPreview = nil
+            return
+        }
+
+        let kind: LayoutObjectKind
+        let size: SIMD2<Double>
+        switch source {
+        case .template(let template):
+            kind = .booth
+            size = SIMD2<Double>(template.sizeKey.shortM, template.sizeKey.longM)
+        case .catalog(let itemID):
+            guard let item = ObjectCatalog.item(itemID) else {
+                placementPreview = nil
+                return
+            }
+            kind = item.kind
+            size = item.sizeM
+        }
+
+        placementPreview = PlacementResolver.resolve(
+            size: size,
+            at: world,
+            extraRotationDegrees: placementRotationDegrees,
+            kind: kind,
+            in: layout,
+            free: free
+        )
+    }
+
+    func commitPlacement(keepTool: Bool) {
+        guard let candidate = placementPreview,
+              candidate.isValid,
+              let layout = activeLayout,
+              case .place(let source) = tool else { return }
+
+        withSingleRefresh {
+            switch source {
+            case .template(let template):
+                commitTemplatePlacement(candidate: candidate, template: template, in: layout)
+            case .catalog(let itemID):
+                commitCatalogPlacement(candidate: candidate, itemID: itemID, in: layout)
+            }
+        }
+
+        if !keepTool {
+            selectTool(.select)
+        } else {
+            updatePlacementPreview(at: candidate.placement.center, free: false)
+        }
+    }
+
+    private func commitTemplatePlacement(
+        candidate: PlacementCandidate,
+        template: BoothTemplate,
+        in layout: Layout
+    ) {
+        let objectID = UUID()
+        let label = nextLabel(for: .booth, in: layout)
+        var booth = LayoutObject(
+            id: objectID,
+            kind: .booth,
+            label: label,
+            placement: candidate.placement,
+            categoryID: template.categoryID,
+            heightM: BoothShape.panelHeightM
+        )
+        booth.openSides = OpenSideInference.infer(for: booth, in: layout)
+        commitEdit(.insert(booth, index: layout.objects.count))
+        applySelection(objectID)
+    }
+
+    private func commitCatalogPlacement(
+        candidate: PlacementCandidate,
+        itemID: String,
+        in layout: Layout
+    ) {
+        let item = ObjectCatalog.item(itemID)
+        let kind = item?.kind ?? .fixture
+        let label = (kind == .fixture && item != nil)
+            ? item!.name
+            : nextLabel(for: kind, in: layout)
+        let object = LayoutObject(
+            id: UUID(),
+            kind: kind,
+            label: label,
+            placement: candidate.placement,
+            catalogID: itemID,
+            heightM: item?.heightM
+        )
+        commitEdit(.insert(object, index: layout.objects.count))
+        applySelection(object.id)
+    }
+
     func placeLibraryItem(id: String, at world: SIMD2<Double>) {
-        // Will be expanded in Step 5
+        guard let layout = activeLayout else { return }
+        let templatePrefix = "template:"
+        let catalogPrefix = "catalog:"
+
+        if id.hasPrefix(templatePrefix) || cachedBoothTemplates.contains(where: { $0.id == id }) {
+            let templateID = id.hasPrefix(templatePrefix) ? String(id.dropFirst(templatePrefix.count)) : id
+            placeDroppedTemplate(templateID: templateID, at: world, in: layout)
+        } else {
+            let itemID = id.hasPrefix(catalogPrefix) ? String(id.dropFirst(catalogPrefix.count)) : id
+            placeDroppedCatalogItem(itemID: itemID, at: world, in: layout)
+        }
+    }
+
+    private func placeDroppedTemplate(templateID: String, at world: SIMD2<Double>, in layout: Layout) {
+        guard let template = cachedBoothTemplates.first(where: { $0.id == templateID }) else { return }
+        let size = SIMD2<Double>(template.sizeKey.shortM, template.sizeKey.longM)
+        let candidate = PlacementResolver.resolve(
+            size: size,
+            at: world,
+            extraRotationDegrees: 0,
+            kind: .booth,
+            in: layout,
+            free: false
+        )
+        guard candidate.isValid else { return }
+        let objectID = UUID()
+        let label = nextLabel(for: .booth, in: layout)
+        var booth = LayoutObject(
+            id: objectID,
+            kind: .booth,
+            label: label,
+            placement: candidate.placement,
+            categoryID: template.categoryID,
+            heightM: BoothShape.panelHeightM
+        )
+        booth.openSides = OpenSideInference.infer(for: booth, in: layout)
+        withSingleRefresh {
+            commitEdit(.insert(booth, index: layout.objects.count))
+            applySelection(objectID)
+        }
+    }
+
+    private func placeDroppedCatalogItem(itemID: String, at world: SIMD2<Double>, in layout: Layout) {
+        guard let item = ObjectCatalog.item(itemID) else { return }
+        let candidate = PlacementResolver.resolve(
+            size: item.sizeM,
+            at: world,
+            extraRotationDegrees: 0,
+            kind: item.kind,
+            in: layout,
+            free: false
+        )
+        guard candidate.isValid else { return }
+        let label = (item.kind == .fixture) ? item.name : nextLabel(for: item.kind, in: layout)
+        let object = LayoutObject(
+            id: UUID(),
+            kind: item.kind,
+            label: label,
+            placement: candidate.placement,
+            catalogID: item.id,
+            heightM: item.heightM
+        )
+        withSingleRefresh {
+            commitEdit(.insert(object, index: layout.objects.count))
+            applySelection(object.id)
+        }
     }
 }

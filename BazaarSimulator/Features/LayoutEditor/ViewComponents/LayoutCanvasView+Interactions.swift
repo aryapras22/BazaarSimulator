@@ -145,6 +145,11 @@ extension LayoutCanvasView {
     }
 
     func handleClick(on hitID: UUID?) {
+        if case .place = tool {
+            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
+            onCommitPlacement(!isShiftDown)
+            return
+        }
         let modifiers = NSEvent.modifierFlags
         let isDouble = clickSequence.register(
             id: hitID,

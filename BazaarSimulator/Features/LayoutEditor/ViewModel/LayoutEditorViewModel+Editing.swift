@@ -141,7 +141,9 @@ extension LayoutEditorViewModel {
 
     func performSelectTool(_ newTool: EditorTool) {
         tool = newTool
-        if newTool == .blockedArea {
+        placementRotationDegrees = 0
+        placementPreview = nil
+        if newTool == .blockedArea || newTool != .select {
             applySelection(nil)
         }
     }
@@ -223,7 +225,7 @@ extension LayoutEditorViewModel {
         return pendingAction == nil && selectionID == id
     }
 
-    private func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
+    func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
         switch kind {
         case .booth:
             return nextPrefixedLabel(prefix: "N", kind: kind, in: layout)

@@ -45,6 +45,8 @@ struct LayoutCanvasView: View {
     var onCancelTool: () -> Void = {}
     var onResizeEnded: (UUID, Placement) -> Void = { _, _ in }
     var onDropLibraryItem: (String, SIMD2<Double>) -> Void = { _, _ in }
+    var onCommitPlacement: (Bool) -> Void = { _ in }
+    var pointer: CanvasPointer?
 
     @State var activeDragObjectID: UUID?
     @State var activeDragDeltaWorld: SIMD2<Double> = .zero
@@ -79,7 +81,9 @@ struct LayoutCanvasView: View {
                     drawingStart: drawingStartWorld,
                     drawingCurrent: drawingCurrentWorld,
                     isOptionDown: NSEvent.modifierFlags.contains(.option),
-                    resize: activeResize
+                    resize: activeResize,
+                    placementCandidate: pointer?.placementCandidate,
+                    placingSource: pointer?.placingSource
                 )
             )
         }
@@ -173,6 +177,9 @@ struct LayoutCanvasView: View {
         }
         if let handle = hoveredHandle {
             return .frameResize(position: handle.pointerPosition)
+        }
+        if case .place = tool {
+            return .rectSelection
         }
         return tool == .blockedArea ? .rectSelection : .default
     }

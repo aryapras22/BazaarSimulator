@@ -24,6 +24,15 @@ struct LayoutEditorView: View {
                     onPointerMove: { world in
                         pointer.world = world
                         pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
+                        if case .place(let source) = viewModel.tool, let world {
+                            let isOptionDown = NSEvent.modifierFlags.contains(.option)
+                            viewModel.updatePlacementPreview(at: world, free: isOptionDown)
+                            pointer.placementCandidate = viewModel.placementPreview
+                            pointer.placingSource = source
+                        } else {
+                            pointer.placementCandidate = nil
+                            pointer.placingSource = nil
+                        }
                     },
                     onDragEnded: { id, delta, isOptionDown in
                         viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
@@ -34,7 +43,9 @@ struct LayoutEditorView: View {
                     onDrawBlockedArea: { viewModel.addBlockedArea($0) },
                     onCancelTool: { viewModel.selectTool(.select) },
                     onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
-                    onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) }
+                    onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
+                    onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
+                    pointer: pointer
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteCurrentSelection()
@@ -70,8 +81,22 @@ struct LayoutEditorView: View {
                 }
                 .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
                     guard press.modifiers.isEmpty else { return .ignored }
-                    viewModel.rotateSelected()
+                    if case .place = viewModel.tool {
+                        viewModel.rotatePlacement()
+                        pointer.placementCandidate = viewModel.placementPreview
+                    } else {
+                        viewModel.rotateSelected()
+                    }
                     return .handled
+                }
+                .onKeyPress(.escape) {
+                    if viewModel.tool != .select {
+                        viewModel.selectTool(.select)
+                        pointer.placementCandidate = nil
+                        pointer.placingSource = nil
+                        return .handled
+                    }
+                    return .ignored
                 }
                 .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { press in
                     guard press.modifiers.isEmpty, viewModel.tab == .floorPlan else { return .ignored }
