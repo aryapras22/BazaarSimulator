@@ -137,4 +137,49 @@ struct PlacementResolverTests {
         #expect(!candidate.isValid)
         #expect(candidate.note == "Overlaps blocked area")
     }
+
+    @Test("A booth on top of another booth stays valid with an overlap note")
+    func boothOnBoothWarns() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "N1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(3, 2))
+        )
+        let layout = makeLayout(objects: [booth])
+
+        let candidate = PlacementResolver.resolve(
+            size: SIMD2<Double>(3, 2),
+            at: SIMD2<Double>(10, 10),
+            extraRotationDegrees: 0,
+            kind: .booth,
+            in: layout,
+            free: true
+        )
+
+        #expect(candidate.isValid)
+        #expect(candidate.note == "Overlaps N1")
+    }
+
+    @Test("A booth snapped flush to a neighbour has no overlap note")
+    func flushBoothHasNoNote() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "N1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(3, 2))
+        )
+        let layout = makeLayout(objects: [booth])
+
+        let candidate = PlacementResolver.resolve(
+            size: SIMD2<Double>(3, 2),
+            at: SIMD2<Double>(11.7, 10),
+            extraRotationDegrees: 0,
+            kind: .booth,
+            in: layout,
+            free: false
+        )
+
+        #expect(abs(candidate.placement.center.x - 13) < 1e-6)
+        #expect(candidate.isValid)
+        #expect(candidate.note == nil)
+    }
 }
