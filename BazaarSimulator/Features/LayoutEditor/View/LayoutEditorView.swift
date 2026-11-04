@@ -29,9 +29,16 @@ struct LayoutEditorView: View {
                             viewModel.updatePlacementPreview(at: world, free: isOptionDown)
                             pointer.placementCandidate = viewModel.placementPreview
                             pointer.placingSource = source
+                        } else if case .drawWall = viewModel.tool, let world {
+                            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
+                            pointer.wallCurrentPointer = viewModel.handleWallPointerMove(
+                                at: world,
+                                isShiftDown: isShiftDown
+                            )
                         } else {
                             pointer.placementCandidate = nil
                             pointer.placingSource = nil
+                            pointer.wallCurrentPointer = nil
                         }
                     },
                     onDragEnded: { id, delta, isOptionDown in
@@ -45,7 +52,18 @@ struct LayoutEditorView: View {
                     onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
                     onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
                     onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
-                    pointer: pointer
+                    pointer: pointer,
+                    wallDrawing: viewModel.wallDrawing,
+                    onWallClick: { isShiftDown in
+                        if let world = pointer.world {
+                            viewModel.handleWallClick(at: world, isShiftDown: isShiftDown)
+                        }
+                    },
+                    onWallDoubleClick: { viewModel.finishWallDrawing() },
+                    onWallKey: { viewModel.handleWallKey($0) },
+                    onWallReturn: { viewModel.handleWallReturn(currentPointer: pointer.wallCurrentPointer) },
+                    onWallBackspace: { viewModel.handleWallBackspace() },
+                    onWallFinish: { viewModel.finishWallDrawing() }
                 )
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     viewModel.deleteCurrentSelection()
