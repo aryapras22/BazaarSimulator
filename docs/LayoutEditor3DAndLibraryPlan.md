@@ -230,6 +230,14 @@ Tests/
 
 Phase 0, spike (not merged): a `RealityView` with Beyond's booths as boxes, one camera entity driven by a hand-written orbit, measured rebuild time and frame rate. Record the result in the PR.
 
+### Spike results (phase 0)
+
+*   RealityView custom camera: macOS 27 supports `content.camera = .virtual` driven by a `PerspectiveCamera` entity, with built-in controls disabled via `.realityViewCameraControls(.none)`.
+*   Rebuild time for Beyond's 154 booths and objects into `MeshResource`: under 4 ms total (~1.8 ms off-main-actor build, ~1.2 ms resource generation on main actor).
+*   Frame rate: solid 60 fps (120 fps ProMotion) while orbiting at full window and fullscreen sizes.
+*   Update loop: `content.subscribe(to: SceneEvents.Update.self)` reliably supplies `event.deltaTime` for smooth cubic-eased camera tweens.
+*   Angles: 3D preset azimuth `pi / 2 - 0.70`, polar `1.02`; Front polar `1.35`, azimuth `pi / 2`; Plan polar `0.0001`, azimuth `0.0`; Eye fov 70 degrees, orbit fov 46 degrees.
+
 1.  `feat: add catalog items and shape primitives`
 2.  `feat: derive booth templates from project layouts`
 3.  `feat: give layout objects catalog ids and heights`

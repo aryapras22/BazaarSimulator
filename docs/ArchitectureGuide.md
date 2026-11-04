@@ -104,6 +104,8 @@ graph TD
 8. Only one floor plan reader model is loaded at a time. `ImportQueue` reads one file at a time, loads the model lazily, and unloads it after the last file. Most end users are assumed to have 16 GB Macs.
 9. Keep every file, type, function, and parameter list inside the limits in this guide. A linter warning is a prompt to look for a second concern in the code, not to shave lines.
 10. `Core/DesignSystem` imports SwiftUI only. It never imports Domain or a feature.
+11. `Core/Scene3D` may import RealityKit and `Core/DesignSystem`. `Core/Domain/Catalog` imports Foundation and `simd` only. The simulation engine still imports neither.
+
 * * *
 ## Separation of concerns
 Separation of concerns means splitting a problem into parts that can be understood and changed one at a time. In this app, a concern is a reason for code to change: how a screen looks, how a project is stored, how a crowd moves, how a PDF is read. The layers above are the first level of separation. This section covers the second level: spotting, inside one file, that two concerns got mixed.
@@ -169,6 +171,8 @@ BazaarSimulation/
 │
 ├── Core/
 │   ├── Domain/                          # Project, Layout, Legend, VisitorType, VisitorMix, EventParameters, snapshots, enums
+│   │   └── Catalog/                     # CatalogItem, ShapePrimitive, ObjectCatalog, BoothShape, BoothTemplates
+│   ├── Scene3D/                         # SceneGeometryBuilder, SceneMeshFactory (RealityKit), CameraRig, CameraRay, BoundingBox3D
 │   ├── Persistence/                     # ProjectRecord (SwiftData) and mapper
 │   ├── Repositories/                    # ProjectRepository
 │   ├── Resources/                       # Bundled JSON: visitor type presets, bazaar type presets, risk thresholds, metric texts
@@ -454,7 +458,8 @@ sequenceDiagram
     VM->>Engine: pause() or setSpeed()
 ```
 
-The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. Walls are extruded, booths and tables become boxes, and each `LayoutObjectKind` supplies its height and look from the enum. Agents are drawn from snapshots. The Density, Congestion, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. All of this lives in `Features/Simulation/Scene/`. Choose RealityKit or SceneKit with a short spike using the largest crowd, and draw agents as instances rather than one entity each if the frame rate drops. The engine and view model do not change either way, because they only produce snapshots.
+The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. The static layout scene now comes from `Core/Scene3D`; the simulation adds agents and overlays on top. Agents are drawn from snapshots. The Density, Congestion, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. These simulation-specific overlays live in `Features/Simulation/Scene/`. RealityKit is used for the 3D scene (confirmed via spike off `feature/layout-editor`). The engine and view model do not change either way, because they only produce snapshots.
+
 * * *
 ## macOS specifics
 Window and navigation:
@@ -473,8 +478,9 @@ Sandbox and entitlements:
 *   Downloading model weights on first launch needs the outgoing network entitlement. Store weights in Application Support.
 *   Check the Apple Foundation Models and Private Cloud Compute requirements for the target OS in the current SDK documentation before relying on them.
 Frameworks and storage:
-*   Use AppKit where iOS code would use UIKit (`NSViewRepresentable` for a custom editing surface if SwiftUI gestures are not enough). SwiftUI `Canvas` for the 2D editor. RealityKit or SceneKit for the 3D view. Swift Charts for the Analysis chart. PDFKit for import. `@Observable` over `ObservableObject`.
+*   Use AppKit where iOS code would use UIKit (`NSViewRepresentable` for a custom editing surface if SwiftUI gestures are not enough). SwiftUI `Canvas` for the 2D editor. RealityKit for the 3D view (selected after spike). Swift Charts for the Analysis chart. PDFKit for import. `@Observable` over `ObservableObject`.
 *   This guide uses one `WindowGroup` with a SwiftData project library. If the team prefers one file per event plan, `DocumentGroup` is the alternative. The repository protocol keeps that decision out of the features.
+
 * * *
 ## Code size limits and how to break up files
 ### The limits
