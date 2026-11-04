@@ -6,6 +6,8 @@ import Testing
 @Suite
 @MainActor
 struct LayoutEditorViewModelViewsTests {
+    private static let viewSize = CGSize(width: 800, height: 600)
+
     private static func makeViewModel() -> LayoutEditorViewModel {
         let session = ProjectSession()
         let project = session.createProject(named: "Annyeong")
@@ -40,7 +42,7 @@ struct LayoutEditorViewModelViewsTests {
     @Test("Moving a booth in 3D rebuilds the scene with a newer version")
     func movingBoothRebuildsScene() async {
         let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: CGSize(width: 800, height: 600))
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
         guard let before = await Self.geometry(of: viewModel, newerThan: 0),
               let booth = viewModel.activeLayout?.objects.first(where: { $0.kind == .booth }) else {
             Issue.record("No initial geometry")
@@ -60,7 +62,7 @@ struct LayoutEditorViewModelViewsTests {
     @Test("Back-to-back rebuilds keep only the newest geometry")
     func backToBackRebuildsKeepNewest() async {
         let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: CGSize(width: 800, height: 600))
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
 
         viewModel.rebuildSceneGeometry()
         viewModel.rebuildSceneGeometry()
@@ -78,15 +80,15 @@ struct LayoutEditorViewModelViewsTests {
         #expect(booth != nil)
         viewModel.selectObject(booth?.id)
 
-        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.viewPreset == .threeD)
         #expect(viewModel.selectionID == booth?.id)
 
-        viewModel.selectViewPreset(.front, reduceMotion: true)
+        viewModel.selectViewPreset(.front, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.viewPreset == .front)
         #expect(viewModel.selectionID == booth?.id)
 
-        viewModel.selectViewPreset(.plan, reduceMotion: true)
+        viewModel.selectViewPreset(.plan, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.viewPreset == .plan)
         #expect(viewModel.selectionID == booth?.id)
     }
@@ -98,7 +100,7 @@ struct LayoutEditorViewModelViewsTests {
         #expect(targetBooth != nil)
         guard let targetBooth else { return }
 
-        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
 
         let targetCenter = targetBooth.placement.center
         viewModel.cameraRig = CameraRig(
@@ -138,7 +140,7 @@ struct LayoutEditorViewModelViewsTests {
     @Test("Eye view walk and clamping")
     func eyeViewWalkAndClamping() {
         let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.eye, reduceMotion: true)
+        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
 
         #expect(viewModel.cameraRig.eye != nil)
         #expect(viewModel.cameraRig.eye?.position.y == 1.6)
@@ -158,7 +160,7 @@ struct LayoutEditorViewModelViewsTests {
     @Test("Eye view pitch is clamped to +/- 60 degrees")
     func eyeViewPitchClamp() {
         let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.eye, reduceMotion: true)
+        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
 
         // Look way up
         viewModel.handle3DLook(delta: CGSize(width: 0, height: -10000))
@@ -173,14 +175,32 @@ struct LayoutEditorViewModelViewsTests {
     @Test("Leaving eye preset restores orbit camera")
     func leavingEyeRestoresOrbit() {
         let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
         let orbitPose = viewModel.cameraRig.pose
 
-        viewModel.selectViewPreset(.eye, reduceMotion: true)
+        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.cameraRig.eye != nil)
 
-        viewModel.selectViewPreset(.threeD, reduceMotion: true)
+        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.cameraRig.eye == nil)
         #expect(abs(viewModel.cameraRig.pose.polar - orbitPose.polar) < 1e-4)
+    }
+
+    @Test("Plan to 3D and straight back keeps the canvas center and zoom")
+    func planRoundTripKeepsCanvas() {
+        let viewModel = Self.makeViewModel()
+        let size = CGSize(width: 1200, height: 700)
+        let center = SIMD2<Double>(600, 350)
+        viewModel.transform = CanvasTransform(scale: 18, offset: SIMD2<Double>(-120, 40))
+        let worldBefore = viewModel.transform.toWorld(center)
+        let scaleBefore = viewModel.transform.scale
+
+        // Animated with no frames advanced, so the camera is still on the pose built from the canvas.
+        viewModel.selectViewPreset(.threeD, reduceMotion: false, viewSize: size)
+        viewModel.selectViewPreset(.plan, reduceMotion: true, viewSize: size)
+
+        let worldAfter = viewModel.transform.toWorld(center)
+        #expect(simd_length(worldAfter - worldBefore) < 0.01)
+        #expect(abs(viewModel.transform.scale / scaleBefore - 1) < 0.01)
     }
 }

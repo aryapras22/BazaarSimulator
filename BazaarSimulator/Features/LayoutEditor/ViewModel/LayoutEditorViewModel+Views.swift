@@ -6,7 +6,7 @@ extension LayoutEditorViewModel {
     func selectViewPreset(
         _ preset: ViewPreset,
         reduceMotion: Bool = false,
-        viewSize: CGSize = CGSize(width: 800, height: 600)
+        viewSize: CGSize
     ) {
         guard preset != viewPreset else { return }
         if tool != .select && preset != .plan {
@@ -101,7 +101,7 @@ extension LayoutEditorViewModel {
         }
     }
 
-    func advanceCamera(by seconds: Double, viewSize: CGSize = CGSize(width: 800, height: 600)) {
+    func advanceCamera(by seconds: Double, viewSize: CGSize) {
         let stillAnimating = cameraRig.advance(by: seconds)
         if !stillAnimating && isTransitioningToPlan {
             isTransitioningToPlan = false

@@ -49,7 +49,7 @@ extension LayoutEditorView {
                     ),
                     onSelect: { preset in
                         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion)
+                        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
                     }
                 )
             }
