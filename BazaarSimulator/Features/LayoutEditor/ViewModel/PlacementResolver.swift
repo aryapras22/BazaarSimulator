@@ -161,7 +161,11 @@ enum PlacementResolver {
         for index in 0..<polygon.count {
             let nextIndex = (index + 1) % polygon.count
             segments.append(
-                WallSegment(startPoint: polygon[index], endPoint: polygon[nextIndex], thickness: 0)
+                WallSegment(
+                    startPoint: polygon[index],
+                    endPoint: polygon[nextIndex],
+                    thickness: DoorHosting.defaultThicknessM
+                )
             )
         }
     }

@@ -182,4 +182,21 @@ struct PlacementResolverTests {
         #expect(candidate.isValid)
         #expect(candidate.note == nil)
     }
+
+    @Test("A booth snapped to a hall edge clears the drawn perimeter wall")
+    func boothSnappedToHallEdgeClearsWall() {
+        let layout = makeLayout()
+
+        let candidate = PlacementResolver.resolve(
+            size: SIMD2<Double>(3, 2),
+            at: SIMD2<Double>(10, 0.8),
+            extraRotationDegrees: 0,
+            kind: .booth,
+            in: layout,
+            free: false
+        )
+
+        #expect(abs(candidate.placement.center.y - (0.1 + 1.0)) < 1e-6)
+        #expect(candidate.isValid)
+    }
 }
