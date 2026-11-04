@@ -11,7 +11,10 @@ final class AppServices {
         projectSession: (any ProjectSessionProtocol)? = nil,
         seedsMockProject: Bool = false
     ) {
-        let queue = importQueue ?? ScriptedImportQueue()
+        let queue: any ImportQueueing = importQueue
+            ?? (seedsMockProject
+                ? ScriptedImportQueue()
+                : ImportQueue(pdf: PDFImportService(), reader: ExtractorFloorPlanReader()))
         let session = projectSession ?? ProjectSession()
         self.importQueue = queue
         self.projectSession = session
