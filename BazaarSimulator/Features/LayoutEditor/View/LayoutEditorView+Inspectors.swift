@@ -75,13 +75,30 @@ extension LayoutEditorView {
     }
 
     func groupsListPanel() -> some View {
-        InspectorPanel(title: "Booth Groups") {
-            BoothGroupsList(
-                nameRows: viewModel.nameGroupRows,
-                sizeRows: viewModel.sizeGroupRows,
-                onHover: { viewModel.hoveredGroup = $0 },
-                onSelect: { viewModel.selectGroup($0) }
-            )
+        InspectorPanel(title: viewModel.inspectorPanelTab.title) {
+            VStack(alignment: .leading, spacing: Spacing.m) {
+                SegmentedTabs(
+                    selection: $viewModel.inspectorPanelTab,
+                    tabs: InspectorPanelTab.allCases,
+                    title: \.title
+                )
+
+                if viewModel.inspectorPanelTab == .library {
+                    LibraryPanel(
+                        rows: viewModel.libraryRows,
+                        searchText: $viewModel.librarySearch,
+                        selectedCategory: $viewModel.libraryCategory,
+                        onSelect: { viewModel.startPlacing($0) }
+                    )
+                } else {
+                    BoothGroupsList(
+                        nameRows: viewModel.nameGroupRows,
+                        sizeRows: viewModel.sizeGroupRows,
+                        onHover: { viewModel.hoveredGroup = $0 },
+                        onSelect: { viewModel.selectGroup($0) }
+                    )
+                }
+            }
         } footer: {
             EmptyView()
         }

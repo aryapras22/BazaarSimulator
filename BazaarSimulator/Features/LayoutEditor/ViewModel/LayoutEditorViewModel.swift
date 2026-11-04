@@ -39,6 +39,10 @@ final class LayoutEditorViewModel {
     var hoverID: UUID?
     var groupSelection: GroupSelection?
     var hoveredGroup: BoothGroupKind?
+    var librarySearch: String = ""
+    var libraryCategory: CatalogCategory?
+    var inspectorPanelTab: InspectorPanelTab = .library
+    private(set) var cachedBoothTemplates: [BoothTemplate] = []
     var transform = CanvasTransform()
     var hasFittedTransform = false
     private(set) var issues: [LayoutIssue] = []
@@ -70,6 +74,7 @@ final class LayoutEditorViewModel {
         self.projectID = projectID
         self.session = session
         self.onBack = onBack
+        refreshTemplates()
     }
 
     var layouts: [Layout] {
@@ -186,6 +191,7 @@ final class LayoutEditorViewModel {
 
     func refreshDerivedState() {
         refreshGroups()
+        refreshTemplates()
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
             return
@@ -204,6 +210,10 @@ final class LayoutEditorViewModel {
         groupedObjects = layout.objects
         nameGroups = BoothGrouping.nameGroups(in: layout)
         sizeGroups = BoothGrouping.sizeGroups(in: layout)
+    }
+
+    private func refreshTemplates() {
+        cachedBoothTemplates = BoothTemplates.templates(layouts: layouts, legend: legend)
     }
 
     func commitEdit(_ edit: LayoutEdit) {
