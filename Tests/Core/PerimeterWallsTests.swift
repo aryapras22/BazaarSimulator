@@ -84,4 +84,54 @@ struct PerimeterWallsTests {
         #expect(abs(lintel.start.x - 0.0) < 1e-3)
         #expect(abs(lintel.end.x - 1.0) < 1e-3)
     }
+
+    static func wallWithCenteredDoor() -> (Layout, LayoutObject) {
+        let hall = [SIMD2<Double>(0, 0), SIMD2<Double>(10, 0), SIMD2<Double>(10, 10), SIMD2<Double>(0, 10)]
+        let wall = LayoutObject(
+            kind: .wall,
+            label: "Wall",
+            placement: Placement(center: SIMD2<Double>(5, 0), sizeM: SIMD2<Double>(6, 0.15))
+        )
+        let door = LayoutObject(
+            kind: .door,
+            label: "D1",
+            placement: Placement(center: SIMD2<Double>(5, 0), sizeM: SIMD2<Double>(1.2, 0.3))
+        )
+        let layout = Layout(
+            id: UUID(),
+            name: "Test",
+            sizeM: SIMD2<Double>(10, 10),
+            hall: hall,
+            lobby: [],
+            objects: [wall, door],
+            markers: [],
+            zones: []
+        )
+        return (layout, wall)
+    }
+
+    @Test("A wall object with a centered door gives two full spans and one lintel")
+    func wallObjectWithCenteredDoor() {
+        let (layout, wall) = Self.wallWithCenteredDoor()
+
+        let spans = PerimeterWalls.spans(forWallObject: wall, in: layout)
+
+        let fullSpans = spans.filter { $0.bottom == 0.0 }
+        let lintelSpans = spans.filter { $0.bottom > 0.0 }
+        #expect(fullSpans.count == 2)
+        #expect(lintelSpans.count == 1)
+        #expect(abs(simd_length(lintelSpans[0].end - lintelSpans[0].start) - 1.2) < 1e-6)
+        #expect(spans.allSatisfy { abs($0.thickness - 0.15) < 1e-9 })
+    }
+
+    @Test("The Beyond lobby wall has an opening for its doors")
+    func beyondLobbyWallHasLintel() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
+        let layout = MockLayoutMapper.layout(from: dto, legend: Legend())
+        let lobbyWall = try #require(layout.objects.first { $0.kind == .wall })
+
+        let spans = PerimeterWalls.spans(forWallObject: lobbyWall, in: layout)
+
+        #expect(spans.contains { $0.bottom > 0.0 })
+    }
 }

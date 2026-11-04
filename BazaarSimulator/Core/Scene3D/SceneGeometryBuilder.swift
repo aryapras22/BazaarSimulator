@@ -40,7 +40,21 @@ nonisolated enum SceneGeometryBuilder {
         from layout: Layout,
         into meshes: inout [SceneMaterialKey: TriangleMesh]
     ) {
-        let spans = PerimeterWalls.spans(for: layout)
+        appendWallSpans(PerimeterWalls.spans(for: layout), into: &meshes)
+    }
+
+    private static func appendWallObject(
+        _ object: LayoutObject,
+        layout: Layout,
+        into meshes: inout [SceneMaterialKey: TriangleMesh]
+    ) {
+        appendWallSpans(PerimeterWalls.spans(forWallObject: object, in: layout), into: &meshes)
+    }
+
+    private static func appendWallSpans(
+        _ spans: [WallSpan],
+        into meshes: inout [SceneMaterialKey: TriangleMesh]
+    ) {
         var wallMesh = TriangleMesh()
         for span in spans {
             let spanVec = span.end - span.start
@@ -52,7 +66,7 @@ nonisolated enum SceneGeometryBuilder {
             let yaw = atan2(spanVec.y, spanVec.x)
             wallMesh.appendBox(
                 center: SIMD3<Double>(mid.x, centerY, mid.y),
-                size: SIMD3<Double>(spanLen, spanH, 0.2),
+                size: SIMD3<Double>(spanLen, spanH, span.thickness),
                 yaw: yaw
             )
         }
@@ -70,6 +84,8 @@ nonisolated enum SceneGeometryBuilder {
                 appendBooth(object, legend: legend, tab: tab, into: &meshes)
             } else if object.kind == .door {
                 appendDoor(object, tab: tab, into: &meshes)
+            } else if object.kind == .wall, object.catalogID == nil || object.catalogID == "wall" {
+                appendWallObject(object, layout: layout, into: &meshes)
             } else {
                 appendGeneric(object, into: &meshes)
             }

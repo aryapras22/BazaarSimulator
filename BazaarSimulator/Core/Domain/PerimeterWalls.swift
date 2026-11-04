@@ -6,6 +6,23 @@ struct WallSpan: Equatable, Sendable {
     let end: SIMD2<Double>
     let bottom: Double
     let top: Double
+    var thickness: Double = DoorHosting.defaultThicknessM
+}
+
+private struct DoorCut {
+    let start: Double
+    let end: Double
+    let height: Double
+}
+
+private struct WallLine {
+    let start: SIMD2<Double>
+    let end: SIMD2<Double>
+    let top: Double
+    let thickness: Double
+
+    var length: Double { simd_length(end - start) }
+    var direction: SIMD2<Double> { (end - start) / length }
 }
 
 enum PerimeterWalls {
@@ -44,6 +61,15 @@ enum PerimeterWalls {
         return allSpans
     }
 
+    /// Spans for one wall object, split around doors hosted on it.
+    static func spans(forWallObject object: LayoutObject, in layout: Layout) -> [WallSpan] {
+        let halfLength = object.placement.sizeM.x / 2.0
+        let start = LayoutGeometry.toWorld(local: SIMD2<Double>(-halfLength, 0), in: object.placement)
+        let end = LayoutGeometry.toWorld(local: SIMD2<Double>(halfLength, 0), in: object.placement)
+        let line = WallLine(start: start, end: end, top: object.heightM ?? heightM, thickness: object.placement.sizeM.y)
+        return spans(along: [(0.0, line.length)], of: line, in: layout)
+    }
+
     private static func spansForEdge(
         start: SIMD2<Double>,
         end: SIMD2<Double>,
@@ -54,7 +80,7 @@ enum PerimeterWalls {
         guard edgeLen > 1e-4 else { return [] }
         let dir = edgeVec / edgeLen
 
-        // Find wall objects covering part of this edge (e.g. lobby wall)
+        // Wall objects lying on the edge draw their own part of it, so the edge leaves that part out.
         var coveredIntervals: [(Double, Double)] = []
         for object in layout.objects where object.kind == .wall {
             let dist = distanceToSegment(object.placement.center, start: start, end: end)
@@ -70,78 +96,73 @@ enum PerimeterWalls {
             }
         }
 
-        // Subtract covered intervals from [0, edgeLen]
-        let freeIntervals = subtractIntervals(coveredIntervals, from: [(0.0, edgeLen)])
+        let line = WallLine(start: start, end: end, top: heightM, thickness: DoorHosting.defaultThicknessM)
+        return spans(along: subtractIntervals(coveredIntervals, from: [(0.0, edgeLen)]), of: line, in: layout)
+    }
 
-        // Find doors sitting on this edge
-        var doorIntervals: [(Double, Double)] = []
+    private static func spans(
+        along intervals: [(Double, Double)],
+        of line: WallLine,
+        in layout: Layout
+    ) -> [WallSpan] {
+        let edgeLen = line.length
+        guard edgeLen > 1e-4 else { return [] }
+        let start = line.start
+        let dir = line.direction
+
+        var doorCuts: [DoorCut] = []
         for object in layout.objects where object.kind == .door {
             if let host = DoorHosting.nearestHost(to: object.placement.center, in: layout, reach: doorReachM),
-               isSameEdge(hostStart: host.start, hostEnd: host.end, edgeStart: start, edgeEnd: end) {
+               isSameEdge(hostStart: host.start, hostEnd: host.end, edgeStart: start, edgeEnd: line.end) {
                 let toCenter = object.placement.center - start
                 let centerT = dot(toCenter, dir)
                 let halfW = object.placement.sizeM.x / 2.0
                 let startT = min(max(centerT - halfW, 0.0), edgeLen)
                 let endT = min(max(centerT + halfW, 0.0), edgeLen)
                 if endT - startT > 1e-4 {
-                    doorIntervals.append((startT, endT))
+                    doorCuts.append(DoorCut(start: startT, end: endT, height: object.heightM ?? lintelM))
                 }
             }
         }
-        doorIntervals.sort { $0.0 < $1.0 }
+        doorCuts.sort { $0.start < $1.start }
 
-        var result: [WallSpan] = []
-        for interval in freeIntervals {
-            result.append(contentsOf: buildSpans(
-                interval: interval,
-                doors: doorIntervals,
-                start: start,
-                dir: dir
-            ))
-        }
-        return result
+        return intervals.flatMap { buildSpans(interval: $0, doors: doorCuts, wall: line) }
     }
 
     private static func buildSpans(
         interval: (Double, Double),
-        doors: [(Double, Double)],
-        start: SIMD2<Double>,
-        dir: SIMD2<Double>
+        doors: [DoorCut],
+        wall: WallLine
     ) -> [WallSpan] {
+        func span(from fromT: Double, to toT: Double, bottom: Double) -> WallSpan {
+            WallSpan(
+                start: wall.start + wall.direction * fromT,
+                end: wall.start + wall.direction * toT,
+                bottom: bottom,
+                top: wall.top,
+                thickness: wall.thickness
+            )
+        }
+
         var result: [WallSpan] = []
         var currentT = interval.0
 
-        let relevantDoors = doors.filter { $0.1 > interval.0 && $0.0 < interval.1 }
+        let relevantDoors = doors.filter { $0.end > interval.0 && $0.start < interval.1 }
         for door in relevantDoors {
-            let doorStart = max(door.0, interval.0)
-            let doorEnd = min(door.1, interval.1)
+            let doorStart = max(door.start, interval.0)
+            let doorEnd = min(door.end, interval.1)
 
             if doorStart - currentT > 1e-4 {
-                result.append(WallSpan(
-                    start: start + dir * currentT,
-                    end: start + dir * doorStart,
-                    bottom: 0.0,
-                    top: heightM
-                ))
+                result.append(span(from: currentT, to: doorStart, bottom: 0.0))
             }
             if doorEnd - doorStart > 1e-4 {
-                result.append(WallSpan(
-                    start: start + dir * doorStart,
-                    end: start + dir * doorEnd,
-                    bottom: lintelM,
-                    top: heightM
-                ))
+                result.append(span(from: doorStart, to: doorEnd, bottom: min(door.height, wall.top - 0.1)))
             }
             currentT = max(currentT, doorEnd)
         }
 
         if interval.1 - currentT > 1e-4 {
-            result.append(WallSpan(
-                start: start + dir * currentT,
-                end: start + dir * interval.1,
-                bottom: 0.0,
-                top: heightM
-            ))
+            result.append(span(from: currentT, to: interval.1, bottom: 0.0))
         }
 
         return result
