@@ -99,4 +99,25 @@ struct CameraRigTests {
         #expect(abs(horizontal.x) < 1e-6)
         #expect(horizontal.y < 0)
     }
+
+    @Test("Dragging right moves the target against screen right", arguments: [ViewPreset.threeD, .plan])
+    func panRightMovesTargetLeft(preset: ViewPreset) {
+        var rig = CameraRig(pose: CameraRig.pose(for: preset, framing: sampleBounds, aspect: 1.5))
+        let before = rig.pose.target
+        let screenRight = SIMD3<Double>(sin(rig.pose.azimuth), 0, -cos(rig.pose.azimuth))
+
+        rig.pan(deltaX: 100, deltaY: 0, viewHeight: 600)
+
+        #expect(dot(rig.pose.target - before, screenRight) < 0)
+    }
+
+    @Test("In Plan, dragging right decreases the target's x")
+    func planPanRightDecreasesX() {
+        var rig = CameraRig(pose: CameraRig.pose(for: .plan, framing: sampleBounds, aspect: 1.5))
+        let before = rig.pose.target
+
+        rig.pan(deltaX: 100, deltaY: 0, viewHeight: 600)
+
+        #expect(rig.pose.target.x < before.x)
+    }
 }

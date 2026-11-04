@@ -120,7 +120,7 @@ struct CameraRig: Equatable, Sendable {
 
     mutating func pan(deltaX: Double, deltaY: Double, viewHeight: Double) {
         let perPixel = worldPerPixel(viewHeight: viewHeight)
-        let rightVector = SIMD3<Double>(-sin(pose.azimuth), 0, cos(pose.azimuth))
+        let rightVector = SIMD3<Double>(sin(pose.azimuth), 0, -cos(pose.azimuth))
         let forwardVector = SIMD3<Double>(-cos(pose.azimuth), 0, -sin(pose.azimuth))
         pose.target += rightVector * (-deltaX * perPixel) + forwardVector * (deltaY * perPixel)
     }
