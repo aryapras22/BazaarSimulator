@@ -10,159 +10,48 @@ struct LayoutEditorView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             GeometryReader { proxy in
-                LayoutCanvasView(
-                    snapshot: canvasSnapshot,
-                    transform: $viewModel.transform,
-                    isFocused: $isCanvasFocused,
-                    excludedTrailingWidth: inspectorInset,
-                    onSelect: { viewModel.selectObject($0) },
-                    onHover: { viewModel.hoverID = $0 },
-                    onToggleSelection: { viewModel.toggleBoothInSelection($0) },
-                    onDoubleClick: { id, isOptionDown in
-                        viewModel.selectGroup(containing: id, bySize: isOptionDown)
-                    },
-                    onPointerMove: { world in
-                        pointer.world = world
-                        pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
-                        if case .place(let source) = viewModel.tool, let world {
-                            let isOptionDown = NSEvent.modifierFlags.contains(.option)
-                            viewModel.updatePlacementPreview(at: world, free: isOptionDown)
-                            pointer.placementCandidate = viewModel.placementPreview
-                            pointer.placingSource = source
-                        } else if case .placeDoor(let itemID) = viewModel.tool, let world {
-                            viewModel.updateDoorPlacementPreview(at: world, itemID: itemID)
-                            pointer.placementCandidate = viewModel.placementPreview
-                            pointer.placingSource = .catalog(itemID)
-                        } else if case .drawWall = viewModel.tool, let world {
-                            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
-                            pointer.wallCurrentPointer = viewModel.handleWallPointerMove(
-                                at: world,
-                                isShiftDown: isShiftDown
-                            )
-                        } else {
-                            pointer.placementCandidate = nil
-                            pointer.placingSource = nil
-                            pointer.wallCurrentPointer = nil
-                        }
-                    },
-                    onDragEnded: { id, delta, isOptionDown in
-                        viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
-                    },
-                    onContextAction: { viewModel.handleContextAction($0) },
-                    onInteract: { isCanvasFocused = true },
-                    tool: viewModel.tool,
-                    onDrawBlockedArea: { viewModel.addBlockedArea($0) },
-                    onCancelTool: { viewModel.selectTool(.select) },
-                    onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
-                    onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
-                    onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
-                    onCommitDoorPlacement: { keepTool, itemID in
-                        viewModel.commitDoorPlacement(keepTool: keepTool, itemID: itemID)
-                    },
-                    constrainDelta: { id, delta in
-                        viewModel.constrainDragDelta(id: id, delta: delta)
-                    },
-                    pointer: pointer,
-                    wallDrawing: viewModel.wallDrawing,
-                    onWallClick: { isShiftDown in
-                        if let world = pointer.world {
-                            viewModel.handleWallClick(at: world, isShiftDown: isShiftDown)
-                        }
-                    },
-                    onWallDoubleClick: { viewModel.finishWallDrawing() },
-                    onWallKey: { viewModel.handleWallKey($0) },
-                    onWallReturn: { viewModel.handleWallReturn(currentPointer: pointer.wallCurrentPointer) },
-                    onWallBackspace: { viewModel.handleWallBackspace() },
-                    onWallFinish: { viewModel.finishWallDrawing() }
-                )
-                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    viewModel.deleteCurrentSelection()
-                    return .handled
-                }
-                .onKeyPress(.upArrow, phases: .down) { press in
-                    let step = press.modifiers.contains(.shift)
-                        ? LayoutEditorViewModel.shiftNudgeStepM
-                        : LayoutEditorViewModel.gridSnapCellM
-                    viewModel.nudgeSelected(by: SIMD2<Double>(0, -step))
-                    return .handled
-                }
-                .onKeyPress(.downArrow, phases: .down) { press in
-                    let step = press.modifiers.contains(.shift)
-                        ? LayoutEditorViewModel.shiftNudgeStepM
-                        : LayoutEditorViewModel.gridSnapCellM
-                    viewModel.nudgeSelected(by: SIMD2<Double>(0, step))
-                    return .handled
-                }
-                .onKeyPress(.leftArrow, phases: .down) { press in
-                    let step = press.modifiers.contains(.shift)
-                        ? LayoutEditorViewModel.shiftNudgeStepM
-                        : LayoutEditorViewModel.gridSnapCellM
-                    viewModel.nudgeSelected(by: SIMD2<Double>(-step, 0))
-                    return .handled
-                }
-                .onKeyPress(.rightArrow, phases: .down) { press in
-                    let step = press.modifiers.contains(.shift)
-                        ? LayoutEditorViewModel.shiftNudgeStepM
-                        : LayoutEditorViewModel.gridSnapCellM
-                    viewModel.nudgeSelected(by: SIMD2<Double>(step, 0))
-                    return .handled
-                }
-                .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { press in
-                    guard press.modifiers.isEmpty else { return .ignored }
-                    if case .place = viewModel.tool {
-                        viewModel.rotatePlacement()
-                        pointer.placementCandidate = viewModel.placementPreview
-                    } else {
-                        viewModel.rotateSelected()
-                    }
-                    return .handled
-                }
-                .onKeyPress(.escape) {
-                    if viewModel.tool != .select {
-                        viewModel.selectTool(.select)
-                        pointer.placementCandidate = nil
-                        pointer.placingSource = nil
-                        return .handled
-                    }
-                    return .ignored
-                }
-                .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { press in
-                    guard press.modifiers.isEmpty, viewModel.tab == .floorPlan else { return .ignored }
-                    viewModel.selectTool(.blockedArea)
-                    return .handled
-                }
-                .onKeyPress(characters: CharacterSet(charactersIn: "vV")) { press in
-                    guard press.modifiers.isEmpty, viewModel.tab == .floorPlan else { return .ignored }
-                    viewModel.selectTool(.select)
-                    return .handled
-                }
-                .onAppear {
-                    canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
-                    viewModel.fitIfNeeded(in: canvasViewSize)
-                    viewModel.refreshDerivedState()
-                    isCanvasFocused = true
-                }
-                .onChange(of: proxy.size) { _, newSize in
-                    canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
-                }
-                .onChange(of: viewModel.activeLayoutID) { _, _ in
-                    viewModel.fitIfNeeded(in: canvasViewSize)
+                if viewModel.viewPreset == .plan {
+                    canvasView(proxy: proxy)
+                } else {
+                    threeDView(proxy: proxy)
                 }
             }
 
-            CanvasRulers(
-                transform: viewModel.transform,
-                pointer: pointer,
-                selectionBounds: viewModel.selectionBounds
-            )
+            if viewModel.viewPreset == .plan {
+                CanvasRulers(
+                    transform: viewModel.transform,
+                    pointer: pointer,
+                    selectionBounds: viewModel.selectionBounds
+                )
+            }
 
             CanvasOverlays(
                 pointer: pointer,
                 pointsPerMetre: viewModel.transform.scale,
                 trailingInset: inspectorInset,
-                onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
-                onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
-                onFit: { viewModel.fitToView(in: canvasViewSize) }
+                showReadouts: viewModel.viewPreset == .plan,
+                onZoomIn: {
+                    if viewModel.viewPreset == .plan {
+                        viewModel.zoomIn(in: canvasViewSize)
+                    } else {
+                        viewModel.cameraRig.zoom(delta: -150.0, toward: nil)
+                    }
+                },
+                onZoomOut: {
+                    if viewModel.viewPreset == .plan {
+                        viewModel.zoomOut(in: canvasViewSize)
+                    } else {
+                        viewModel.cameraRig.zoom(delta: 150.0, toward: nil)
+                    }
+                },
+                onFit: {
+                    if viewModel.viewPreset == .plan {
+                        viewModel.fitToView(in: canvasViewSize)
+                    } else {
+                        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                        viewModel.selectViewPreset(viewModel.viewPreset, reduceMotion: reduceMotion)
+                    }
+                }
             )
 
             if !viewModel.flowBannerIssues.isEmpty {
@@ -262,6 +151,150 @@ extension LayoutEditorView {
             zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
             fitToView: { viewModel.fitToView(in: canvasViewSize) }
         )
+    }
+
+    @ViewBuilder
+    private func threeDView(proxy: GeometryProxy) -> some View {
+        Layout3DView(
+            geometry: viewModel.sceneGeometry,
+            pose: viewModel.cameraRig.pose,
+            eye: viewModel.cameraRig.eye,
+            selectionOutline: viewModel.selectionOutlineBoxes,
+            onOrbit: { delta in viewModel.handle3DOrbit(delta: delta) },
+            onPan: { delta in viewModel.handle3DPan(delta: delta, viewHeight: Double(proxy.size.height)) },
+            onZoom: { delta, point in
+                viewModel.handle3DZoom(delta: delta, viewPoint: point, viewSize: proxy.size)
+            },
+            onLook: { delta in viewModel.handle3DLook(delta: delta) },
+            onWalk: { forward, right in viewModel.handle3DWalk(forward: forward, right: right) },
+            onClick: { point, size in viewModel.handle3DClick(viewPoint: point, viewSize: size) },
+            onFrame: { delta in viewModel.advanceCamera(by: delta, viewSize: proxy.size) }
+        )
+        .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in
+            switchPreset(.plan)
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in
+            switchPreset(.threeD)
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in
+            switchPreset(.front)
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in
+            switchPreset(.eye)
+            return .handled
+        }
+    }
+
+    private func switchPreset(_ preset: ViewPreset) {
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion)
+    }
+
+    @ViewBuilder
+    private func canvasView(proxy: GeometryProxy) -> some View {
+        makeLayoutCanvasView()
+            .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                viewModel.deleteCurrentSelection()
+                return .handled
+            }
+            .onKeyPress(.escape) { handleEscapeKey() }
+            .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
+            .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
+            .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in switchPreset(.front); return .handled }
+            .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in switchPreset(.eye); return .handled }
+            .onAppear {
+                canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                viewModel.fitIfNeeded(in: canvasViewSize)
+                viewModel.refreshDerivedState()
+                isCanvasFocused = true
+            }
+            .onChange(of: proxy.size) { _, newSize in
+                canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+            }
+            .onChange(of: viewModel.activeLayoutID) { _, _ in
+                viewModel.fitIfNeeded(in: canvasViewSize)
+            }
+    }
+
+    private func handleEscapeKey() -> KeyPress.Result {
+        if viewModel.tool != .select {
+            viewModel.selectTool(.select)
+            pointer.placementCandidate = nil
+            pointer.placingSource = nil
+            return .handled
+        }
+        return .ignored
+    }
+
+    @ViewBuilder
+    private func makeLayoutCanvasView() -> some View {
+        LayoutCanvasView(
+            snapshot: canvasSnapshot,
+            transform: $viewModel.transform,
+            isFocused: $isCanvasFocused,
+            excludedTrailingWidth: inspectorInset,
+            onSelect: { viewModel.selectObject($0) },
+            onHover: { viewModel.hoverID = $0 },
+            onToggleSelection: { viewModel.toggleBoothInSelection($0) },
+            onDoubleClick: { id, isOptionDown in
+                viewModel.selectGroup(containing: id, bySize: isOptionDown)
+            },
+            onPointerMove: { world in handlePointerMove(world) },
+            onDragEnded: { id, delta, isOptionDown in
+                viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
+            },
+            onContextAction: { viewModel.handleContextAction($0) },
+            onInteract: { isCanvasFocused = true },
+            tool: viewModel.tool,
+            onDrawBlockedArea: { viewModel.addBlockedArea($0) },
+            onCancelTool: { viewModel.selectTool(.select) },
+            onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
+            onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
+            onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
+            onCommitDoorPlacement: { keepTool, itemID in
+                viewModel.commitDoorPlacement(keepTool: keepTool, itemID: itemID)
+            },
+            constrainDelta: { id, delta in
+                viewModel.constrainDragDelta(id: id, delta: delta)
+            },
+            pointer: pointer,
+            wallDrawing: viewModel.wallDrawing,
+            onWallClick: { isShiftDown in
+                if let world = pointer.world {
+                    viewModel.handleWallClick(at: world, isShiftDown: isShiftDown)
+                }
+            },
+            onWallDoubleClick: { viewModel.finishWallDrawing() },
+            onWallKey: { viewModel.handleWallKey($0) },
+            onWallReturn: { viewModel.handleWallReturn(currentPointer: pointer.wallCurrentPointer) },
+            onWallBackspace: { viewModel.handleWallBackspace() },
+            onWallFinish: { viewModel.finishWallDrawing() }
+        )
+    }
+
+    private func handlePointerMove(_ world: SIMD2<Double>?) {
+        pointer.world = world
+        pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
+        if case .place(let source) = viewModel.tool, let world {
+            let isOptionDown = NSEvent.modifierFlags.contains(.option)
+            viewModel.updatePlacementPreview(at: world, free: isOptionDown)
+            pointer.placementCandidate = viewModel.placementPreview
+            pointer.placingSource = source
+        } else if case .placeDoor(let itemID) = viewModel.tool, let world {
+            viewModel.updateDoorPlacementPreview(at: world, itemID: itemID)
+            pointer.placementCandidate = viewModel.placementPreview
+            pointer.placingSource = .catalog(itemID)
+        } else if case .drawWall = viewModel.tool, let world {
+            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
+            pointer.wallCurrentPointer = viewModel.handleWallPointerMove(at: world, isShiftDown: isShiftDown)
+        } else {
+            pointer.placementCandidate = nil
+            pointer.placingSource = nil
+            pointer.wallCurrentPointer = nil
+        }
     }
 }
 

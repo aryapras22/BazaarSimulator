@@ -48,6 +48,12 @@ final class LayoutEditorViewModel {
     var wallDrawing: WallDrawing?
     var transform = CanvasTransform()
     var hasFittedTransform = false
+    var viewPreset: ViewPreset = .plan
+    var cameraRig = CameraRig(
+        pose: CameraPose(target: .zero, azimuth: 0, polar: CameraRig.minPolar, distance: 30, fieldOfViewDegrees: 46)
+    )
+    var isTransitioningToPlan = false
+    var sceneGeometry: SceneGeometry?
     private(set) var issues: [LayoutIssue] = []
     private(set) var nameGroups: [BoothGroup] = []
     private(set) var sizeGroups: [BoothGroup] = []
@@ -197,9 +203,16 @@ final class LayoutEditorViewModel {
         refreshTemplates()
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
+            rebuildSceneGeometryDebounced()
             return
         }
         issues = LayoutValidator.issues(in: previewLayout)
+        rebuildSceneGeometryDebounced()
+    }
+
+    func rebuildSceneGeometryDebounced() {
+        guard viewPreset != .plan else { return }
+        rebuildSceneGeometry()
     }
 
     private func refreshGroups() {

@@ -32,14 +32,27 @@ extension LayoutEditorView {
         }
 
         ToolbarItem(placement: .principal) {
-            SegmentedTabs(
-                selection: Binding(
-                    get: { viewModel.tab },
-                    set: { viewModel.selectTab($0) }
-                ),
-                tabs: EditorTab.allCases,
-                title: \.title
-            )
+            HStack(spacing: Spacing.m) {
+                SegmentedTabs(
+                    selection: Binding(
+                        get: { viewModel.tab },
+                        set: { viewModel.selectTab($0) }
+                    ),
+                    tabs: EditorTab.allCases,
+                    title: \.title
+                )
+
+                ViewPresetPicker(
+                    selection: Binding(
+                        get: { viewModel.viewPreset },
+                        set: { _ in }
+                    ),
+                    onSelect: { preset in
+                        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion)
+                    }
+                )
+            }
         }
 
         if viewModel.tab == .floorPlan {

@@ -4,6 +4,7 @@ struct CanvasOverlays: View {
     let pointer: CanvasPointer
     let pointsPerMetre: Double
     let trailingInset: CGFloat
+    var showReadouts: Bool = true
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onFit: () -> Void
@@ -12,11 +13,15 @@ struct CanvasOverlays: View {
         VStack {
             Spacer()
             HStack(alignment: .bottom) {
-                CanvasCursorReadout(pointer: pointer)
+                if showReadouts {
+                    CanvasCursorReadout(pointer: pointer)
+                }
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
                     CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
-                    CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                    if showReadouts {
+                        CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                    }
                 }
             }
             .padding(.leading, CanvasRulers.leftWidth + Spacing.l)
