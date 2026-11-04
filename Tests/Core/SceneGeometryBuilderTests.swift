@@ -80,4 +80,23 @@ struct SceneGeometryBuilderTests {
         #expect(fasciaKeys.contains(SceneMaterialKey(role: .fascia, tint: cat1.color)))
         #expect(fasciaKeys.contains(SceneMaterialKey(role: .fascia, tint: cat2.color)))
     }
+
+    @Test("A wall object leaves a gap under the lintel where its door is")
+    func wallObjectHasDoorGap() {
+        let (layout, _) = PerimeterWallsTests.wallWithCenteredDoor()
+
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+
+        let mesh = geometry.meshes[SceneMaterialKey(role: .wall, tint: nil)] ?? TriangleMesh()
+        // A box only has vertices at its corners, so look for faces that cross the door center instead.
+        let facesAcrossDoorway = stride(from: 0, to: mesh.indices.count, by: 3).filter { start in
+            let corners = mesh.indices[start..<start + 3].map { mesh.positions[Int($0)] }
+            let xValues = corners.map(\.x)
+            return corners.allSatisfy { abs($0.z) < 0.5 }
+                && (xValues.min() ?? 0) < 5.0 && (xValues.max() ?? 0) > 5.0
+                && Double(corners.map(\.y).min() ?? 0) < PerimeterWalls.lintelM - 0.01
+        }
+        #expect(mesh.triangleCount > 0)
+        #expect(facesAcrossDoorway.isEmpty)
+    }
 }
