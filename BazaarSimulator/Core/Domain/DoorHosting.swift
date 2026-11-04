@@ -94,7 +94,7 @@ enum DoorHosting {
 
         for host in allHosts {
             let distance = distanceToSegment(point, start: host.start, end: host.end)
-            if distance <= bestDistance {
+            if distance < bestDistance {
                 bestDistance = distance
                 bestHost = host
             }
