@@ -153,7 +153,7 @@ extension LayoutEditorViewModel {
         cameraRig.pan(deltaX: Double(delta.width), deltaY: Double(delta.height), viewHeight: viewHeight)
     }
 
-    func handle3DZoom(delta: Double, viewPoint: CGPoint, viewSize: CGSize) {
+    func handle3DZoom(delta: Double, isPrecise: Bool, viewPoint: CGPoint, viewSize: CGSize) {
         guard cameraRig.eye == nil else { return }
         let floorPoint = CameraRay.floorPoint(
             viewPoint: SIMD2(Double(viewPoint.x), Double(viewPoint.y)),
@@ -162,7 +162,9 @@ extension LayoutEditorViewModel {
             lookAt: cameraRig.lookAtPoint,
             fieldOfViewDegrees: cameraRig.activeFieldOfViewDegrees
         )
-        cameraRig.zoom(delta: delta, toward: floorPoint)
+        let base = isPrecise ? CanvasTransform.preciseScrollZoomBase : CanvasTransform.lineScrollZoomBase
+        let clampedDelta = isPrecise ? delta : min(max(delta, -10), 10)
+        cameraRig.zoom(byFactor: pow(base, clampedDelta), toward: floorPoint)
     }
 
     func handle3DLook(delta: CGSize) {
