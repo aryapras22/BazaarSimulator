@@ -34,14 +34,14 @@ struct LayoutEditorView: View {
                     if viewModel.viewPreset == .plan {
                         viewModel.zoomIn(in: canvasViewSize)
                     } else {
-                        viewModel.cameraRig.zoom(delta: -150.0, toward: nil)
+                        viewModel.cameraRig.zoom(byFactor: 1.25, toward: nil)
                     }
                 },
                 onZoomOut: {
                     if viewModel.viewPreset == .plan {
                         viewModel.zoomOut(in: canvasViewSize)
                     } else {
-                        viewModel.cameraRig.zoom(delta: 150.0, toward: nil)
+                        viewModel.cameraRig.zoom(byFactor: 0.8, toward: nil)
                     }
                 },
                 onFit: {
@@ -170,8 +170,8 @@ extension LayoutEditorView {
             selectionOutline: viewModel.selectionOutlineBoxes,
             onOrbit: { delta in viewModel.handle3DOrbit(delta: delta) },
             onPan: { delta in viewModel.handle3DPan(delta: delta, viewHeight: Double(proxy.size.height)) },
-            onZoom: { delta, point in
-                viewModel.handle3DZoom(delta: delta, viewPoint: point, viewSize: proxy.size)
+            onZoom: { delta, isPrecise, point in
+                viewModel.handle3DZoom(delta: delta, isPrecise: isPrecise, viewPoint: point, viewSize: proxy.size)
             },
             onLook: { delta in viewModel.handle3DLook(delta: delta) },
             onWalk: { forward, right in viewModel.handle3DWalk(forward: forward, right: right) },

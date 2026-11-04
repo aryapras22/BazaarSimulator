@@ -64,7 +64,7 @@ struct CameraRigTests {
         var rig = CameraRig(pose: initialPose)
         let floorPoint = SIMD2<Double>(25.0, 15.0)
 
-        rig.zoom(delta: -100.0, toward: floorPoint)
+        rig.zoom(byFactor: 1.1, toward: floorPoint)
         #expect(rig.pose.distance < initialPose.distance)
 
         // Target should shift towards floorPoint
@@ -119,5 +119,15 @@ struct CameraRigTests {
         rig.pan(deltaX: 100, deltaY: 0, viewHeight: 600)
 
         #expect(rig.pose.target.x < before.x)
+    }
+
+    @Test("Zooming by 1.1 brings the camera about 9% closer")
+    func zoomByFactorReducesDistance() {
+        var rig = CameraRig(pose: CameraRig.pose(for: .threeD, framing: sampleBounds, aspect: 1.5))
+        let before = rig.pose.distance
+
+        rig.zoom(byFactor: 1.1, toward: nil)
+
+        #expect(abs(rig.pose.distance / before - 1 / 1.1) < 1e-9)
     }
 }

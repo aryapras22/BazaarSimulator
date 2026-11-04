@@ -9,7 +9,7 @@ struct Layout3DView: View {
     let selectionOutline: [BoundingBox3D]
     var onOrbit: (CGSize) -> Void
     var onPan: (CGSize) -> Void
-    var onZoom: (Double, CGPoint) -> Void
+    var onZoom: (_ deltaY: Double, _ isPrecise: Bool, _ location: CGPoint) -> Void
     var onLook: (CGSize) -> Void
     var onWalk: (Double, Double) -> Void
     var onClick: (CGPoint, CGSize) -> Void
@@ -53,7 +53,7 @@ struct Layout3DView: View {
                     if isPrecise && !isCommand {
                         onPan(CGSize(width: delta.width, height: delta.height))
                     } else {
-                        onZoom(Double(delta.height * 10.0), location)
+                        onZoom(Double(delta.height), isPrecise, location)
                     }
                 }
             }

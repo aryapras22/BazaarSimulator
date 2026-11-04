@@ -125,9 +125,9 @@ struct CameraRig: Equatable, Sendable {
         pose.target += rightVector * (-deltaX * perPixel) + forwardVector * (deltaY * perPixel)
     }
 
-    mutating func zoom(delta: Double, toward floorPoint: SIMD2<Double>?) {
-        let factor = exp(delta * 0.0014)
-        let newDistance = min(max(pose.distance * factor, Self.minDistance), Self.maxDistance)
+    /// A factor above 1 moves the camera closer, the way `CanvasTransform.zoomed(by:)` scales up.
+    mutating func zoom(byFactor factor: Double, toward floorPoint: SIMD2<Double>?) {
+        let newDistance = min(max(pose.distance / factor, Self.minDistance), Self.maxDistance)
 
         if let floorPoint, abs(newDistance - pose.distance) > 1e-6 {
             let scaleRatio = 1.0 - (newDistance / pose.distance)
