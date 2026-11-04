@@ -100,7 +100,7 @@ nonisolated enum SceneGeometryBuilder {
     ) {
         let primitives = BoothShape.primitives(
             size: object.placement.sizeM,
-            openSides: object.openSides ?? []
+            openSides: object.openSides
         )
         let worldOffset = SIMD3<Double>(object.placement.center.x, 0, object.placement.center.y)
         let rotation = object.placement.rotationRadians
