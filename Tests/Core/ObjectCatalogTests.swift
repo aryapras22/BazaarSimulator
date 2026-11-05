@@ -31,7 +31,7 @@ struct ObjectCatalogTests {
 
     @Test("Default item IDs map to expected catalog items")
     func defaultItemIDs() {
-        #expect(ObjectCatalog.defaultItemID(for: .table) == "table-round-4")
+        #expect(ObjectCatalog.defaultItemID(for: .table) == "table-rect-6ft")
         #expect(ObjectCatalog.defaultItemID(for: .pillar) == "pillar-round")
         #expect(ObjectCatalog.defaultItemID(for: .wall) == "wall")
         #expect(ObjectCatalog.defaultItemID(for: .rail) == "rail")

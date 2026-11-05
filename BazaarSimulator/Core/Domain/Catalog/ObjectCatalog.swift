@@ -25,7 +25,7 @@ enum ObjectCatalog {
         case .pillar: return "pillar-round"
         case .door: return "door"
         case .closedArea: return "blocked-area"
-        case .table: return "table-round-4"
+        case .table: return "table-rect-6ft"
         case .stage: return "stage"
         case .fixture: return "planter"
         case .booth, .audienceArea: return nil

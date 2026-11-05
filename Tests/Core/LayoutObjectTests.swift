@@ -74,7 +74,7 @@ struct LayoutObjectTests {
 
         let tables = beyond.objects.filter { $0.kind == .table }
         #expect(!tables.isEmpty)
-        #expect(tables.allSatisfy { $0.catalogID == "table-round-4" })
+        #expect(tables.allSatisfy { $0.catalogID == "table-rect-6ft" })
 
         let pillars = beyond.objects.filter { $0.kind == .pillar }
         #expect(!pillars.isEmpty)

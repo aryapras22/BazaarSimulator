@@ -229,7 +229,7 @@ extension SceneGeometryBuilder {
             return [.box(center: SIMD3(0, stageH / 2.0, 0), size: SIMD3(size.x, stageH, size.y), yaw: 0, role: .stage)]
         case .table:
             let tableH = object.heightM ?? 0.75
-            return ObjectShapes.shape(for: "table-round-4", size: size, height: tableH)
+            return ObjectShapes.shape(for: "table-rect-6ft", size: size, height: tableH)
         default:
             let defH = object.heightM ?? 1.0
             return [.box(center: SIMD3(0, defH / 2.0, 0), size: SIMD3(size.x, defH, size.y), yaw: 0, role: .counter)]
