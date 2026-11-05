@@ -6,6 +6,7 @@ struct ObjectDrawState: Sendable {
     let isSelected: Bool
     let isHovered: Bool
     let hasWarning: Bool
+    var cornerExtensions: (start: Double, end: Double) = (0.0, 0.0)
 }
 
 @MainActor

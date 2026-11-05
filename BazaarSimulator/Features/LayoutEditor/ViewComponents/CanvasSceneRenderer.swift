@@ -105,11 +105,15 @@ enum CanvasSceneRenderer {
         let isSelected = !isInactive && object.id == snapshot.selectionID
         let isHovered = !isInactive && object.id == snapshot.hoverID
         let hasWarning = snapshot.issues.warningObjectIDs.contains(object.id)
+        let ext = object.kind == .wall
+            ? WallCornerExtensions(layout: snapshot.layout).extensions(for: object.id)
+            : (0.0, 0.0)
         let objectState = ObjectDrawState(
             object: object,
             isSelected: isSelected,
             isHovered: isHovered,
-            hasWarning: hasWarning
+            hasWarning: hasWarning,
+            cornerExtensions: ext
         )
 
         switch object.kind {

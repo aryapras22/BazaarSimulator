@@ -63,10 +63,22 @@ enum PerimeterWalls {
 
     /// Spans for one wall object, split around doors hosted on it.
     static func spans(forWallObject object: LayoutObject, in layout: Layout) -> [WallSpan] {
+        let extensions = WallCornerExtensions(layout: layout).extensions(for: object.id)
         let halfLength = object.placement.sizeM.x / 2.0
         let start = LayoutGeometry.toWorld(local: SIMD2<Double>(-halfLength, 0), in: object.placement)
         let end = LayoutGeometry.toWorld(local: SIMD2<Double>(halfLength, 0), in: object.placement)
-        let line = WallLine(start: start, end: end, top: object.heightM ?? heightM, thickness: object.placement.sizeM.y)
+        let vec = end - start
+        let len = length(vec)
+        guard len > 1e-4 else { return [] }
+        let dir = vec / len
+        let extStart = start - dir * extensions.start
+        let extEnd = end + dir * extensions.end
+        let line = WallLine(
+            start: extStart,
+            end: extEnd,
+            top: object.heightM ?? heightM,
+            thickness: object.placement.sizeM.y
+        )
         return spans(along: [(0.0, line.length)], of: line, in: layout)
     }
 
@@ -200,7 +212,9 @@ enum PerimeterWalls {
     ) -> Bool {
         let forwardMatch = length(hostStart - edgeStart) < 1e-3 && length(hostEnd - edgeEnd) < 1e-3
         let reverseMatch = length(hostStart - edgeEnd) < 1e-3 && length(hostEnd - edgeStart) < 1e-3
-        return forwardMatch || reverseMatch
+        if forwardMatch || reverseMatch { return true }
+        return distanceToSegment(hostStart, start: edgeStart, end: edgeEnd) < 0.01
+            && distanceToSegment(hostEnd, start: edgeStart, end: edgeEnd) < 0.01
     }
 
     private static func distanceToSegment(_ point: SIMD2<Double>, start: SIMD2<Double>, end: SIMD2<Double>) -> Double {
