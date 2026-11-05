@@ -25,7 +25,7 @@ enum ObjectCatalog {
         case .pillar: return "pillar-round"
         case .door: return "door"
         case .closedArea: return "blocked-area"
-        case .table: return "table-rect-6ft"
+        case .table: return "table-4"
         case .stage: return "stage"
         case .fixture: return "planter"
         case .booth, .audienceArea: return nil
@@ -90,6 +90,20 @@ enum ObjectCatalog {
     ]
 
     static let furnitureItems: [CatalogItem] = [
+        CatalogItem(
+            id: "table-2", name: "Table for 2", category: .furniture, kind: .table,
+            sizeM: SIMD2(0.8, 0.8), heightM: 0.75, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["table", "rectangular", "square", "cafe", "seats", "dining"],
+            seats: []
+        ),
+        CatalogItem(
+            id: "table-4", name: "Table for 4", category: .furniture, kind: .table,
+            sizeM: SIMD2(1.2, 0.8), heightM: 0.75, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["table", "rectangular", "dining", "restaurant", "seats"],
+            seats: []
+        ),
         CatalogItem(
             id: "table-round-4", name: "Round table for 4", category: .furniture, kind: .table,
             sizeM: SIMD2(1.0, 1.0), heightM: 0.75, footprint: .circle,

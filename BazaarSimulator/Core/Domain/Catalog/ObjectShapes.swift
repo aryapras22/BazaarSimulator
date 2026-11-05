@@ -100,14 +100,8 @@ enum ObjectShapes {
                 role: .tabletop
             )
             return [top] + Shapes.pedestal(height: legH, topRadius: topRadius, role: .frame)
-        case "table-rect-6ft":
-            let topH = min(0.04, height * 0.1)
-            let legH = max(0, height - topH)
-            let top = Shapes.box(
-                center: SIMD3(0, height - topH / 2.0, 0),
-                size: SIMD3(size.x, topH, size.y), role: .tabletop
-            )
-            return [top] + Shapes.legs(width: size.x, depth: size.y, height: legH, role: .frame)
+        case "table-2", "table-4", "table-rect-6ft":
+            return rectangularTableShape(for: id, size: size, height: height)
         case "bench":
             let seatH = min(0.05, height * 0.2)
             let legH = max(0, height - seatH)
@@ -131,6 +125,35 @@ enum ObjectShapes {
         default:
             return nil
         }
+    }
+
+    private static func rectangularTableShape(
+        for id: String,
+        size: SIMD2<Double>,
+        height: Double
+    ) -> [ShapePrimitive] {
+        let topH = min(0.04, height * 0.1)
+        let legH = max(0, height - topH)
+        let top = Shapes.box(
+            center: SIMD3(0, height - topH / 2.0, 0),
+            size: SIMD3(size.x, topH, size.y), role: .tabletop
+        )
+        var shapes = [top] + Shapes.legs(width: size.x, depth: size.y, height: legH, role: .frame)
+        if id == "table-2" || id == "table-4" {
+            let count = id == "table-2" ? 2 : 4
+            let tablePlacement = Placement(center: .zero, sizeM: size)
+            let chairs = TableChairs.chairPlacements(for: tablePlacement, count: count)
+            let chairHeight = height * 0.6
+            for chair in chairs {
+                let chairBox = Shapes.box(
+                    center: SIMD3(chair.center.x, chairHeight / 2.0, chair.center.y),
+                    size: SIMD3(chair.sizeM.x, chairHeight, chair.sizeM.y),
+                    role: .frame
+                )
+                shapes.append(chairBox)
+            }
+        }
+        return shapes
     }
 
     private static func decorShape(

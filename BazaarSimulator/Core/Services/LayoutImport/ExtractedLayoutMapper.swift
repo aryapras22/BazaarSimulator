@@ -135,8 +135,9 @@ enum ExtractedLayoutMapper {
             return nil
         case "object":
             guard item.kind == "table" else { return nil }
+            let tableCatalogID = (item.chairs ?? 4) <= 2 && (item.chairs ?? 4) > 0 ? "table-2" : "table-4"
             return LayoutObject(
-                kind: .table, label: "Table", placement: placement, reviewState: .detected, catalogID: "table-rect-6ft"
+                kind: .table, label: "Table", placement: placement, reviewState: .detected, catalogID: tableCatalogID
             )
         default:
             return legendObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)

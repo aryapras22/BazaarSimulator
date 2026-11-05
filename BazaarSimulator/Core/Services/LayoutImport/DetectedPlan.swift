@@ -21,4 +21,5 @@ struct DetectedItem: Sendable, Equatable {
     /// Legend colour of the class, 0 to 255. Booth classes are named after an ID prefix,
     /// so this ties them to a legend entry.
     var legendRgb: [Int] = []
+    var chairs: Int?
 }

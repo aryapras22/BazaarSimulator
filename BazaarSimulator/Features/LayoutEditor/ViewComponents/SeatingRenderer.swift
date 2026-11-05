@@ -46,6 +46,17 @@ enum SeatingRenderer {
             path.addLines(corners.map { CGPoint(x: $0.x, y: $0.y) })
             path.closeSubpath()
             tablePath = path
+
+            if let catalogID = table.catalogID, catalogID == "table-2" || catalogID == "table-4" {
+                let chairCount = catalogID == "table-2" ? 2 : 4
+                drawRectangularTableChairs(
+                    for: table,
+                    count: chairCount,
+                    colors: (fillColor, strokeColor),
+                    in: &context,
+                    transform: transform
+                )
+            }
         }
 
         context.fill(tablePath, with: .color(fillColor))
@@ -93,5 +104,23 @@ enum SeatingRenderer {
             height: radius * 2
         )
         return Path(ellipseIn: tableRect)
+    }
+
+    private static func drawRectangularTableChairs(
+        for table: LayoutObject,
+        count: Int,
+        colors: (fill: Color, stroke: Color),
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let chairs = TableChairs.chairPlacements(for: table.placement, count: count)
+        for chair in chairs {
+            let corners = LayoutGeometry.corners(of: chair).map { transform.toView($0) }
+            var path = Path()
+            path.addLines(corners.map { CGPoint(x: $0.x, y: $0.y) })
+            path.closeSubpath()
+            context.fill(path, with: .color(colors.fill))
+            context.stroke(path, with: .color(colors.stroke), lineWidth: 0.8)
+        }
     }
 }

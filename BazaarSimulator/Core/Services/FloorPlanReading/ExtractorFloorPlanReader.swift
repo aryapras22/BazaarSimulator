@@ -49,7 +49,8 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             segment: item.segment?.map(Double.init),
             widthPx: item.width,
             kind: item.kind,
-            legendRgb: item.legendRgb
+            legendRgb: item.legendRgb,
+            chairs: item.chairs
         )
     }
 }

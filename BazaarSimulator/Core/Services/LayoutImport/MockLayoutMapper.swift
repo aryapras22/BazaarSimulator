@@ -145,7 +145,7 @@ extension MockLayoutMapper {
                     sizeM: SIMD2<Double>(table.width, table.height)
                 ),
                 reviewState: .detected,
-                catalogID: "table-rect-6ft"
+                catalogID: "table-4"
             )
         }
     }

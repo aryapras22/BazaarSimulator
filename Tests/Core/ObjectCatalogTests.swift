@@ -9,7 +9,7 @@ struct ObjectCatalogTests {
     func uniqueItemIDs() {
         let ids = ObjectCatalog.items.map(\.id)
         let uniqueIDs = Set(ids)
-        #expect(ids.count == 26)
+        #expect(ids.count == 28)
         #expect(uniqueIDs.count == ids.count)
     }
 
@@ -31,7 +31,7 @@ struct ObjectCatalogTests {
 
     @Test("Default item IDs map to expected catalog items")
     func defaultItemIDs() {
-        #expect(ObjectCatalog.defaultItemID(for: .table) == "table-rect-6ft")
+        #expect(ObjectCatalog.defaultItemID(for: .table) == "table-4")
         #expect(ObjectCatalog.defaultItemID(for: .pillar) == "pillar-round")
         #expect(ObjectCatalog.defaultItemID(for: .wall) == "wall")
         #expect(ObjectCatalog.defaultItemID(for: .rail) == "rail")
@@ -51,8 +51,9 @@ struct ObjectCatalogTests {
             let primitives = item.shape(size: item.sizeM, height: item.heightM)
             #expect(!primitives.isEmpty, "Item \(item.id) should produce primitives")
 
-            let halfW = item.sizeM.x / 2.0
-            let halfD = item.sizeM.y / 2.0
+            let chairReach = (item.id == "table-2" || item.id == "table-4") ? 0.5 : 0.0
+            let halfW = item.sizeM.x / 2.0 + chairReach
+            let halfD = item.sizeM.y / 2.0 + chairReach
 
             for primitive in primitives {
                 let bounds = primitive.bounds

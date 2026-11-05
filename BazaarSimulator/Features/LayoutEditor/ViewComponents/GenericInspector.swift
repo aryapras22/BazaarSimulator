@@ -8,11 +8,12 @@ struct InspectorFields: Sendable {
     var showsRotation: Bool
     var showsStageFront: Bool
     var showsHeight: Bool
+    var showsTableChairs: Bool
 
     static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
         switch kind {
         case .table:
-            return InspectorFields(showsRotation: true)
+            return InspectorFields(showsRotation: true, showsTableChairs: true)
         case .fixture:
             return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true)
         case .stage:
@@ -37,7 +38,8 @@ struct InspectorFields: Sendable {
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
         showsStageFront: Bool = false,
-        showsHeight: Bool = false
+        showsHeight: Bool = false,
+        showsTableChairs: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -46,6 +48,7 @@ struct InspectorFields: Sendable {
         self.showsRotation = showsRotation
         self.showsStageFront = showsStageFront
         self.showsHeight = showsHeight
+        self.showsTableChairs = showsTableChairs
     }
 }
 
@@ -103,6 +106,27 @@ struct GenericInspector: View {
                     title: "Front"
                 )
             }
+
+            if fields.showsTableChairs {
+                chairsControl
+            }
+        }
+    }
+
+    private var chairsControl: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Chairs")
+                .font(Typography.inspectorLabel)
+                .foregroundStyle(Palette.textSecondary)
+
+            Picker("Chairs", selection: Binding(
+                get: { draft.catalogID == "table-2" ? 2 : 4 },
+                set: { draft.catalogID = $0 == 2 ? "table-2" : "table-4" }
+            )) {
+                Text("2 Chairs").tag(2)
+                Text("4 Chairs").tag(4)
+            }
+            .pickerStyle(.segmented)
         }
     }
 }
