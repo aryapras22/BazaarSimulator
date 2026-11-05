@@ -10,23 +10,57 @@ extension LayoutEditorView {
                 } label: {
                     Image(systemName: "chevron.left")
                 }
-                .accessibilityLabel("Back to Analysis")
+                .accessibilityLabel("Back to Project Setup")
+                .help("Back to Project Setup")
 
-                if viewModel.layouts.count > 1 {
-                    Menu {
-                        ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { index, item in
-                            Button("Layout \(index + 1) · \(item.name)") {
-                                viewModel.selectLayout(item.id)
+                HStack(spacing: Spacing.xs) {
+                    Text(viewModel.projectName)
+                        .font(Typography.body)
+                        .foregroundStyle(Palette.textPrimary)
+
+                    Text("·")
+                        .foregroundStyle(Palette.textSecondary)
+
+                    if viewModel.layouts.count > 1 {
+                        Menu {
+                            ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { index, item in
+                                Button("Layout \(index + 1) · \(item.name)") {
+                                    viewModel.selectLayout(item.id)
+                                }
                             }
+                        } label: {
+                            let activeIndex = viewModel.layouts.firstIndex {
+                                $0.id == viewModel.activeLayoutID
+                            } ?? 0
+                            let activeName = viewModel.activeLayout?.name ?? ""
+                            Text("Layout \(activeIndex + 1) · \(activeName)")
+                                .font(Typography.body)
                         }
-                    } label: {
-                        let activeIndex = viewModel.layouts.firstIndex {
-                            $0.id == viewModel.activeLayoutID
-                        } ?? 0
-                        let activeName = viewModel.activeLayout?.name ?? ""
-                        Text("Layout \(activeIndex + 1) · \(activeName)")
+                    } else {
+                        Text(viewModel.activeLayout?.name ?? "")
                             .font(Typography.body)
+                            .foregroundStyle(Palette.textSecondary)
                     }
+                }
+
+                HStack(spacing: Spacing.xs) {
+                    Button {
+                        viewModel.undo()
+                    } label: {
+                        Image(systemName: "arrow.uturn.backward")
+                    }
+                    .disabled(!viewModel.canUndo)
+                    .help("Undo (⌘Z)")
+                    .accessibilityLabel("Undo")
+
+                    Button {
+                        viewModel.redo()
+                    } label: {
+                        Image(systemName: "arrow.uturn.forward")
+                    }
+                    .disabled(!viewModel.canRedo)
+                    .help("Redo (⇧⌘Z)")
+                    .accessibilityLabel("Redo")
                 }
             }
         }
@@ -55,55 +89,31 @@ extension LayoutEditorView {
             }
         }
 
-        if viewModel.tab == .floorPlan {
+        if let placingChipTitle {
             ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: Spacing.s) {
-                    if let placingChipTitle {
-                        HStack(spacing: Spacing.xs) {
-                            Text(placingChipTitle)
-                                .font(Typography.caption)
-                                .foregroundStyle(Palette.textPrimary)
-                            Button {
-                                viewModel.selectTool(.select)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(Typography.caption)
-                                    .foregroundStyle(Palette.textSecondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, Spacing.s)
-                        .padding(.vertical, Spacing.xs)
-                        .background(
-                            Capsule()
-                                .fill(Palette.surface)
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Palette.surfaceBorder, lineWidth: 1)
-                        )
+                HStack(spacing: Spacing.xs) {
+                    Text(placingChipTitle)
+                        .font(Typography.caption)
+                        .foregroundStyle(Palette.textPrimary)
+                    Button {
+                        viewModel.selectTool(.select)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(Typography.caption)
+                            .foregroundStyle(Palette.textSecondary)
                     }
-
-                    HStack(spacing: Spacing.xs) {
-                        ForEach(EditorTool.primaryTools, id: \.self) { tool in
-                            Button {
-                                viewModel.selectTool(tool)
-                            } label: {
-                                Image(systemName: tool.systemImage)
-                                    .font(Typography.body)
-                                    .foregroundStyle(Palette.textPrimary)
-                                    .frame(width: 28, height: 28)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: Radius.s)
-                                            .fill(viewModel.tool == tool ? Palette.segmentedSelected : Color.clear)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(tool.title)
-                            .help(tool.title)
-                        }
-                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, Spacing.s)
+                .padding(.vertical, Spacing.xs)
+                .background(
+                    Capsule()
+                        .fill(Palette.surface)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Palette.surfaceBorder, lineWidth: 1)
+                )
             }
         }
     }

@@ -3,7 +3,7 @@ import SwiftUI
 struct CanvasOverlays: View {
     let pointer: CanvasPointer
     let pointsPerMetre: Double
-    let trailingInset: CGFloat
+    var tool: EditorTool = .select
     var showReadouts: Bool = true
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
@@ -13,8 +13,11 @@ struct CanvasOverlays: View {
         VStack {
             Spacer()
             HStack(alignment: .bottom) {
-                if showReadouts {
-                    CanvasCursorReadout(pointer: pointer)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    if showReadouts {
+                        CanvasCursorReadout(pointer: pointer)
+                    }
+                    EditorHintStrip(tool: tool)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
@@ -25,7 +28,7 @@ struct CanvasOverlays: View {
                 }
             }
             .padding(.leading, CanvasRulers.leftWidth + Spacing.l)
-            .padding(.trailing, trailingInset + Spacing.l)
+            .padding(.trailing, Spacing.l)
             .padding(.bottom, Spacing.l)
         }
     }

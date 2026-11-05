@@ -92,6 +92,10 @@ final class LayoutEditorViewModel {
         refreshTemplates()
     }
 
+    var projectName: String {
+        session.draft(for: projectID)?.name ?? ""
+    }
+
     var layouts: [Layout] {
         session.draft(for: projectID)?.layouts ?? []
     }

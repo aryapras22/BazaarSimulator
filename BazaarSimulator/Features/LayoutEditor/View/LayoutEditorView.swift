@@ -5,9 +5,99 @@ struct LayoutEditorView: View {
     @Bindable var viewModel: LayoutEditorViewModel
     @State var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
     @State private var pointer = CanvasPointer()
+    @State private var isSidePanelVisible = true
     @FocusState private var isCanvasFocused: Bool
 
     var body: some View {
+        HStack(spacing: 0) {
+            ToolRail(
+                activeTool: viewModel.tool,
+                isSidePanelOpen: isSidePanelVisible,
+                onSelect: { railItem in
+                    handleToolRailSelection(railItem)
+                }
+            )
+
+            if isSidePanelVisible {
+                LayoutEditorSidePanel(
+                    viewModel: viewModel,
+                    onClose: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isSidePanelVisible = false
+                        }
+                    }
+                )
+                .transition(.move(edge: .leading).combined(with: .opacity))
+            }
+
+            viewportArea
+
+            LayoutInspectorColumn(viewModel: viewModel)
+        }
+        .frame(minWidth: 800, minHeight: 560)
+        .background(Palette.background)
+        .toolbar {
+            editorToolbar
+        }
+        .focusedSceneValue(\.editorCommandActions, commandActions)
+        .unsavedChangesDialog(
+            isPresented: Binding(
+                get: { viewModel.pendingAction != nil },
+                set: { if !$0 { viewModel.cancelPendingAction() } }
+            ),
+            canSave: viewModel.isInspectorDraftValid,
+            onSave: { viewModel.confirmPendingActionWithSave() },
+            onDiscard: { viewModel.confirmPendingActionWithDiscard() },
+            onCancel: { viewModel.cancelPendingAction() }
+        )
+        .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
+            Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
+        }
+    }
+}
+
+extension LayoutEditorView {
+    var canvasSize: CGSize {
+        CGSize(width: canvasViewSize.x, height: canvasViewSize.y)
+    }
+
+    private var canvasSnapshot: CanvasDisplaySnapshot {
+        CanvasDisplaySnapshot(
+            layout: viewModel.activeLayout ?? Layout(name: "", sizeM: SIMD2<Double>(20, 20)),
+            legend: viewModel.legend,
+            tab: viewModel.tab,
+            selectionID: viewModel.selectionID,
+            hoverID: viewModel.hoverID,
+            groupMemberIDs: viewModel.groupMemberIDs,
+            hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
+            groupClusters: viewModel.groupClusters,
+            hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
+            issues: viewModel.canvasIssueSnapshot
+        )
+    }
+
+    private var commandActions: EditorCommandActions {
+        let selected = viewModel.selectedObject
+        let isMovable = selected?.kind.isMovable == true
+        let isRotatable = selected?.kind.isRotatable == true
+        return EditorCommandActions(
+            canUndo: viewModel.canUndo,
+            canRedo: viewModel.canRedo,
+            hasSelection: isMovable || viewModel.groupSelection != nil,
+            canRotate: isRotatable,
+            undo: { viewModel.undo() },
+            redo: { viewModel.redo() },
+            deleteSelected: { viewModel.deleteCurrentSelection() },
+            duplicateSelected: { viewModel.duplicateSelected() },
+            rotateSelected: { viewModel.rotateSelected() },
+            zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
+            zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
+            fitToView: { viewModel.fitToView(in: canvasViewSize) }
+        )
+    }
+
+    private var viewportArea: some View {
         ZStack(alignment: .topTrailing) {
             GeometryReader { proxy in
                 if viewModel.viewPreset == .plan {
@@ -28,7 +118,7 @@ struct LayoutEditorView: View {
             CanvasOverlays(
                 pointer: pointer,
                 pointsPerMetre: viewModel.transform.scale,
-                trailingInset: inspectorInset,
+                tool: viewModel.tool,
                 showReadouts: viewModel.viewPreset == .plan,
                 onZoomIn: {
                     if viewModel.viewPreset == .plan {
@@ -75,90 +165,8 @@ struct LayoutEditorView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, Spacing.l)
             }
-
-            if let selected = viewModel.selectedObject,
-               viewModel.inspectorDraft != nil {
-                inspectorView(for: selected)
-                    .padding(.top, Spacing.l)
-                    .padding(.trailing, Spacing.l)
-                    .padding(.bottom, Spacing.l)
-            } else if viewModel.groupSelection != nil {
-                groupInspectorView()
-                    .padding(.top, Spacing.l)
-                    .padding(.trailing, Spacing.l)
-                    .padding(.bottom, Spacing.l)
-            } else if viewModel.isGroupsListVisible {
-                groupsListPanel()
-                    .padding(.top, Spacing.l)
-                    .padding(.trailing, Spacing.l)
-                    .padding(.bottom, Spacing.l)
-            }
         }
-        .frame(minWidth: 800, minHeight: 560)
-        .background(Palette.background)
-        .toolbar {
-            editorToolbar
-        }
-        .focusedSceneValue(\.editorCommandActions, commandActions)
-        .unsavedChangesDialog(
-            isPresented: Binding(
-                get: { viewModel.pendingAction != nil },
-                set: { if !$0 { viewModel.cancelPendingAction() } }
-            ),
-            canSave: viewModel.isInspectorDraftValid,
-            onSave: { viewModel.confirmPendingActionWithSave() },
-            onDiscard: { viewModel.confirmPendingActionWithDiscard() },
-            onCancel: { viewModel.cancelPendingAction() }
-        )
-        .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
-            Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
-        }
-    }
-}
-
-extension LayoutEditorView {
-    private var inspectorInset: CGFloat {
-        viewModel.isInspectorPanelVisible ? InspectorPanelMetrics.width + Spacing.l * 2 : 0
-    }
-
-    var canvasSize: CGSize {
-        CGSize(width: canvasViewSize.x, height: canvasViewSize.y)
-    }
-
-    private var canvasSnapshot: CanvasDisplaySnapshot {
-        CanvasDisplaySnapshot(
-            layout: viewModel.activeLayout ?? Layout(name: "", sizeM: SIMD2<Double>(20, 20)),
-            legend: viewModel.legend,
-            tab: viewModel.tab,
-            selectionID: viewModel.selectionID,
-            hoverID: viewModel.hoverID,
-            groupMemberIDs: viewModel.groupMemberIDs,
-            hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
-            groupClusters: viewModel.groupClusters,
-            hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
-            issues: viewModel.canvasIssueSnapshot
-        )
-    }
-
-    private var commandActions: EditorCommandActions {
-        let selected = viewModel.selectedObject
-        let isMovable = selected?.kind.isMovable == true
-        let isRotatable = selected?.kind.isRotatable == true
-        return EditorCommandActions(
-            canUndo: viewModel.canUndo,
-            canRedo: viewModel.canRedo,
-            hasSelection: isMovable || viewModel.groupSelection != nil,
-            canRotate: isRotatable,
-            undo: { viewModel.undo() },
-            redo: { viewModel.redo() },
-            deleteSelected: { viewModel.deleteCurrentSelection() },
-            duplicateSelected: { viewModel.duplicateSelected() },
-            rotateSelected: { viewModel.rotateSelected() },
-            zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
-            zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
-            fitToView: { viewModel.fitToView(in: canvasViewSize) }
-        )
+        .clipped()
     }
 
     @ViewBuilder
@@ -181,22 +189,10 @@ extension LayoutEditorView {
         .onChange(of: proxy.size) { _, newSize in
             canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
         }
-        .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in
-            switchPreset(.plan)
-            return .handled
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in
-            switchPreset(.threeD)
-            return .handled
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in
-            switchPreset(.front)
-            return .handled
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in
-            switchPreset(.eye)
-            return .handled
-        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
+        .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
+        .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in switchPreset(.front); return .handled }
+        .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in switchPreset(.eye); return .handled }
     }
 
     private func switchPreset(_ preset: ViewPreset) {
@@ -216,6 +212,26 @@ extension LayoutEditorView {
             .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in switchPreset(.front); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in switchPreset(.eye); return .handled }
+            .onKeyPress(characters: CharacterSet(charactersIn: "vV")) { _ in
+                handleToolRailSelection(.select)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "wW")) { _ in
+                handleToolRailSelection(.wall)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
+                handleToolRailSelection(.door)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { _ in
+                handleToolRailSelection(.library)
+                return .handled
+            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "xX")) { _ in
+                handleToolRailSelection(.blockedArea)
+                return .handled
+            }
             .onAppear {
                 canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
                 viewModel.fitIfNeeded(in: canvasViewSize)
@@ -238,6 +254,31 @@ extension LayoutEditorView {
         return .ignored
     }
 
+    private func handleToolRailSelection(_ item: ToolRailItem) {
+        switch item {
+        case .select:
+            viewModel.selectTool(.select)
+        case .wall:
+            viewModel.selectTool(.drawWall(itemID: "wall"))
+        case .door:
+            viewModel.selectTool(.placeDoor(itemID: "door"))
+        case .library:
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if !isSidePanelVisible {
+                    isSidePanelVisible = true
+                    viewModel.inspectorPanelTab = .library
+                    if let first = viewModel.cachedBoothTemplates.first {
+                        viewModel.selectTool(.place(.template(first)))
+                    }
+                } else {
+                    isSidePanelVisible = false
+                }
+            }
+        case .blockedArea:
+            viewModel.selectTool(.blockedArea)
+        }
+    }
+
     @ViewBuilder
     private func makeLayoutCanvasView() -> some View {
         LayoutCanvasView(
@@ -245,7 +286,6 @@ extension LayoutEditorView {
             transform: $viewModel.transform,
             isFocused: $isCanvasFocused,
             dragState: viewModel.dragState,
-            excludedTrailingWidth: inspectorInset,
             tool: viewModel.tool,
             onPointerPress: { viewModel.handlePointerPress($0) },
             onPointerMove: { viewModel.handlePointerMove($0) },

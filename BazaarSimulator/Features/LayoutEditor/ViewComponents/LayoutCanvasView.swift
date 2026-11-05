@@ -32,7 +32,6 @@ struct LayoutCanvasView: View {
     @Binding var transform: CanvasTransform
     var isFocused: FocusState<Bool>.Binding
     var dragState: CanvasDragState = CanvasDragState()
-    var excludedTrailingWidth: CGFloat = 0
     var tool: EditorTool = .select
     var onPointerPress: (CanvasPointerEvent) -> Void = { _ in }
     var onPointerMove: (CanvasPointerEvent) -> Void = { _ in }
@@ -103,7 +102,6 @@ struct LayoutCanvasView: View {
         .simultaneousGesture(magnificationGesture)
         .overlay {
             CanvasScrollCatcher(
-                excludedTrailingWidth: excludedTrailingWidth,
                 onScroll: { delta, location, isPrecise, isCmd in
                     if !isPrecise || isCmd {
                         let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
