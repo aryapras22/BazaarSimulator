@@ -5,6 +5,7 @@ enum EditorTool: Hashable, Sendable {
     case blockedArea
     case place(LibraryRowDisplay.Source)
     case drawWall(itemID: String)
+    case room(itemID: String)
     case placeDoor(itemID: String)
 
     static let primaryTools: [EditorTool] = [.select, .blockedArea]
@@ -15,6 +16,7 @@ enum EditorTool: Hashable, Sendable {
         case .blockedArea: return "Blocked Area"
         case .place: return "Place"
         case .drawWall: return "Draw Wall"
+        case .room: return "Room"
         case .placeDoor: return "Place Door"
         }
     }
@@ -25,6 +27,7 @@ enum EditorTool: Hashable, Sendable {
         case .blockedArea: return "square.dashed"
         case .place: return "plus.square"
         case .drawWall: return "line.diagonal"
+        case .room: return "rectangle"
         case .placeDoor: return "door.left.hand.open"
         }
     }

@@ -155,6 +155,8 @@ extension LayoutEditorView {
             }
         case .drawWall:
             return "Drawing wall · Esc to stop"
+        case .room:
+            return "Drawing room · Esc to stop"
         case .placeDoor:
             return "Placing door · Esc to stop"
         default:

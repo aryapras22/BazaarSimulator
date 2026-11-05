@@ -220,6 +220,11 @@ extension LayoutEditorView {
                 handleToolRailSelection(.wall)
                 return .handled
             }
+            .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { _ in
+                guard viewModel.activeLayer == .structure else { return .ignored }
+                handleToolRailSelection(.room)
+                return .handled
+            }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
                 guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
@@ -269,7 +274,9 @@ extension LayoutEditorView {
         case .select:
             viewModel.selectTool(.select)
         case .wall:
-            viewModel.selectTool(.drawWall(itemID: "wall"))
+            viewModel.selectTool(.drawWall(itemID: viewModel.selectedWallItemID))
+        case .room:
+            viewModel.selectTool(.room(itemID: viewModel.selectedWallItemID))
         case .library:
             withAnimation(.easeInOut(duration: 0.2)) {
                 if !isSidePanelVisible {

@@ -176,6 +176,11 @@ extension LayoutEditorViewModel {
     func performSelectTool(_ newTool: EditorTool) {
         sealHistory()
         tool = newTool
+        if case .drawWall(let itemID) = newTool {
+            selectedWallItemID = itemID
+        } else if case .room(let itemID) = newTool {
+            selectedWallItemID = itemID
+        }
         placementRotationDegrees = 0
         placementPreview = nil
         wallDrawing = nil

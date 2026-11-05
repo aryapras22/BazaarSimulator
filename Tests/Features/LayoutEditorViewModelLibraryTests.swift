@@ -97,7 +97,7 @@ struct LayoutEditorViewModelLibraryTests {
 
     @Test("ToolRailItem filters items by active layer")
     func toolRailItemsByLayer() {
-        #expect(ToolRailItem.items(for: .structure) == [.select, .wall, .library])
+        #expect(ToolRailItem.items(for: .structure) == [.select, .wall, .room, .library])
         #expect(ToolRailItem.items(for: .booths) == [.select, .library])
     }
 

@@ -25,6 +25,8 @@ extension LayoutEditorViewModel: ToolContext {
             return PlaceTool(source: source, rotationDegrees: placementRotationDegrees)
         case .drawWall(let itemID):
             return WallTool(itemID: itemID)
+        case .room(let itemID):
+            return RoomTool(itemID: itemID)
         case .placeDoor(let itemID):
             return DoorTool(itemID: itemID)
         }
