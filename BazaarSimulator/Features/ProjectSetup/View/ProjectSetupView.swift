@@ -83,10 +83,15 @@ struct ProjectSetupView: View {
     private var columnsView: some View {
         HStack(alignment: .top, spacing: Spacing.xl) {
             legendColumn
-                .containerRelativeFrame(.horizontal, count: 3, span: 1, spacing: Spacing.xl)
+            // this causes NSGenericException
+//                .containerRelativeFrame(.horizontal, count: 3, span: 1, spacing: Spacing.xl)
+                .frame(minWidth: 260, maxWidth: .infinity, alignment: .topLeading)
+                            .layoutPriority(1)
 
             floorPlanColumn
-                .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: Spacing.xl)
+//                .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: Spacing.xl)
+                .frame(minWidth: 520, maxWidth: .infinity, alignment: .topLeading)
+                            .layoutPriority(2)
         }
     }
 

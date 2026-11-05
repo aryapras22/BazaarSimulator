@@ -16,9 +16,10 @@ struct RootView: View {
         _router = State(initialValue: router)
         _factory = State(initialValue: factory)
         _libraryViewModel = State(initialValue: factory.makeLibraryViewModel())
-        if case .review = initialDestination {
+        switch initialDestination {
+        case .editor, .simulation:
             _columnVisibility = State(initialValue: .detailOnly)
-        } else {
+        default:
             _columnVisibility = State(initialValue: .all)
         }
     }
@@ -32,9 +33,10 @@ struct RootView: View {
         .appBackground()
         .preferredColorScheme(.dark)
         .onChange(of: router.destination) { _, newDestination in
-            if case .review = newDestination {
+            switch newDestination {
+            case .editor, .simulation:
                 columnVisibility = .detailOnly
-            } else {
+            default:
                 columnVisibility = .all
             }
         }
@@ -46,11 +48,33 @@ struct RootView: View {
         case .empty:
             EmptyWorkspaceView()
         case .setup(let projectID):
+            Text("open project setup view") // debug
+            // The crash is happening here bruh
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
-        case .review(let projectID):
+        case .analysis(let projectID), .review(let projectID):
+            AnalysisView(
+                projectID: projectID,
+                session: services.projectSession,
+                onOpenEditor: { router.showEditor(projectID: projectID) },
+                onOpenSimulation: { router.showSimulation(projectID: projectID) },
+                onBackToSetup: { router.showSetup(projectID: projectID) }
+            )
+            .id(projectID)
+        case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)
+        case .simulation(let projectID):
+            let activeID = services.projectSession.activeLayoutID(for: projectID)
+            let layout = (activeID != nil ? services.projectSession.layout(id: activeID!, in: projectID) : nil)
+                ?? services.projectSession.draft(for: projectID)?.layouts.first
+                ?? PreviewLayouts.beyond()
+
+            SimulationView(
+                layout: layout,
+                onDismiss: { router.showAnalysis(projectID: projectID) }
+            )
+            .id(projectID)
         }
     }
 }

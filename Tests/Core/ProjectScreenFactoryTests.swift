@@ -63,9 +63,47 @@ struct ProjectScreenFactoryTests {
         let draft = try #require(services.projectSession.draft(for: activeID))
 
         #expect(services.projectSession.projects.count == 1)
-        #expect(services.initialDestination == .review(projectID: activeID))
+        #expect(services.initialDestination == .analysis(projectID: activeID))
         #expect(draft.layouts.count == 2)
         #expect(!draft.layouts[0].objects.isEmpty)
         #expect(!draft.layouts[1].objects.isEmpty)
+    }
+
+    @Test("Selecting project routes to setup when no layouts exist")
+    func selectingProjectWithoutLayoutsRoutesToSetup() {
+        let services = AppServices()
+        let router = AppRouter()
+        let factory = ProjectScreenFactory(services: services, router: router)
+        let libraryVM = factory.makeLibraryViewModel()
+
+        libraryVM.createProject()
+        guard let project = services.projectSession.projects.first else {
+            Issue.record("Expected created project")
+            return
+        }
+
+        #expect(router.destination == .setup(projectID: project.id))
+
+        let setupVM = factory.makeSetupViewModel(projectID: project.id)
+        #expect(setupVM.projectName == "Bazaar 1")
+        _ = setupVM.statusText
+        _ = setupVM.legendEntries
+        _ = setupVM.planRows
+        _ = setupVM.floorPlanFiles
+
+        let view = ProjectSetupView(viewModel: setupVM)
+        _ = view.body
+    }
+
+    @Test("ProjectSetupView with seeded mock project")
+    func projectSetupViewWithSeededMockProject() {
+        let services = AppServices(seedsMockProject: true)
+        let router = AppRouter()
+        let factory = ProjectScreenFactory(services: services, router: router)
+        let activeID = services.projectSession.activeProjectID!
+
+        let setupVM = factory.makeSetupViewModel(projectID: activeID)
+        let view = ProjectSetupView(viewModel: setupVM)
+        _ = view.body
     }
 }

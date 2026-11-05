@@ -18,7 +18,7 @@ final class AppServices {
 
         if seedsMockProject, let scriptedQueue = queue as? ScriptedImportQueue {
             let projectID = Self.seedMockProject(in: session, importQueue: scriptedQueue)
-            initialDestination = .review(projectID: projectID)
+            initialDestination = .analysis(projectID: projectID)
         } else {
             initialDestination = .empty
         }

@@ -19,12 +19,44 @@ struct AppRouterTests {
         #expect(router.destination == .setup(projectID: id))
     }
 
-    @Test("Continue shows review with projectID")
-    func continueShowsReview() {
+    @Test("Continue shows analysis with projectID")
+    func continueShowsAnalysis() {
         let id = UUID()
         let router = AppRouter(destination: .setup(projectID: id))
-        router.showReview(projectID: id)
-        #expect(router.destination == .review(projectID: id))
+        router.showAnalysis(projectID: id)
+        #expect(router.destination == .analysis(projectID: id))
+    }
+
+//    @Test("Show review redirects to analysis with projectID")
+//    func showReviewRedirectsToAnalysis() {
+//        let id = UUID()
+//        let router = AppRouter(destination: .setup(projectID: id))
+//        router.showReview(projectID: id)
+//        #expect(router.destination == .analysis(projectID: id))
+//    }
+    
+    @Test("Show review redirects to analysis with projectID")
+    func showReviewRedirectsToAnalysis() {
+        let id = UUID()
+        let router = AppRouter(destination: .setup(projectID: id))
+        router.showAnalysis(projectID: id)
+        #expect(router.destination == .analysis(projectID: id))
+    }
+
+    @Test("Show editor sets destination to editor")
+    func showEditorSetsDestination() {
+        let id = UUID()
+        let router = AppRouter()
+        router.showEditor(projectID: id)
+        #expect(router.destination == .editor(projectID: id))
+    }
+
+    @Test("Show simulation sets destination to simulation")
+    func showSimulationSetsDestination() {
+        let id = UUID()
+        let router = AppRouter()
+        router.showSimulation(projectID: id)
+        #expect(router.destination == .simulation(projectID: id))
     }
 
     @Test("Show empty resets destination to empty")

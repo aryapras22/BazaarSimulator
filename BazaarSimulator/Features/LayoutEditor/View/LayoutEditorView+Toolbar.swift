@@ -10,7 +10,7 @@ extension LayoutEditorView {
                 } label: {
                     Image(systemName: "chevron.left")
                 }
-                .accessibilityLabel("Back to Project Setup")
+                .accessibilityLabel("Back to Analysis")
 
                 if viewModel.layouts.count > 1 {
                     Menu {

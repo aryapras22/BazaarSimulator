@@ -252,7 +252,8 @@ final class AppRouter {
     var destination: AppDestination
     func showEmpty()
     func showSetup(projectID: UUID)
-    func showReview(projectID: UUID)
+    ## func showReview(projectID: UUID)
+    func showAnalysis(projectID: UUID)
 }
 ```
 
