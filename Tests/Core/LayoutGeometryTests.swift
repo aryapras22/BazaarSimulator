@@ -104,4 +104,19 @@ struct LayoutGeometryTests {
 
         #expect(LayoutValidator.issues(in: layout).filter { $0.kind == .overlappingObjects }.isEmpty)
     }
+
+    @Test("Placement inside floor object is considered inside walkable floor")
+    func placementInsideFloorObject() {
+        let floor = LayoutObject(
+            kind: .floor,
+            label: "Floor 1",
+            placement: Placement(center: SIMD2(30, 30), sizeM: SIMD2(10, 10))
+        )
+        let layout = Layout(name: "Test", sizeM: SIMD2(50, 50), objects: [floor])
+        let boothInside = Placement(center: SIMD2(30, 30), sizeM: SIMD2(2, 2))
+        let boothOutside = Placement(center: SIMD2(40, 40), sizeM: SIMD2(2, 2))
+
+        #expect(LayoutGeometry.isPlacementInsideWalkableFloor(boothInside, in: layout))
+        #expect(!LayoutGeometry.isPlacementInsideWalkableFloor(boothOutside, in: layout))
+    }
 }

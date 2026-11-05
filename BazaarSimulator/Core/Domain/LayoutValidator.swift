@@ -105,7 +105,8 @@ enum LayoutValidator {
     }
 
     private static func checkFloorBounds(in layout: Layout) -> [LayoutIssue] {
-        guard !layout.hall.isEmpty || !layout.lobby.isEmpty else { return [] }
+        let hasWalkable = !layout.hall.isEmpty || !layout.lobby.isEmpty || layout.objects.contains { $0.kind == .floor }
+        guard hasWalkable else { return [] }
         var issues: [LayoutIssue] = []
         for object in layout.objects where object.kind.isMovable && !object.kind.isStructural {
             var inset = object.placement
