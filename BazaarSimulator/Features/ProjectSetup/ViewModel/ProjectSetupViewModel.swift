@@ -198,6 +198,19 @@ final class ProjectSetupViewModel {
         importQueue.cancel(projectID: projectID)
     }
 
+    func editLayout(fileID: UUID) {
+        guard let file = floorPlanFiles.first(where: { $0.id == fileID }) else { return }
+        guard case .done = file.state else { return }
+
+        let extractedLayouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
+        guard extractedLayouts.contains(where: { $0.layout.id == fileID }) else { return }
+
+        let draft = buildDraft(from: extractedLayouts)
+        session.setDraft(draft, for: projectID)
+        session.setActiveLayoutID(fileID, for: projectID)
+        onContinue(projectID)
+    }
+
     func continueToReview() {
         guard isContinueEnabled else { return }
 
@@ -207,9 +220,15 @@ final class ProjectSetupViewModel {
             return
         }
 
+        let draft = buildDraft(from: extractedLayouts)
+        session.setDraft(draft, for: projectID)
+        onContinue(projectID)
+    }
+
+    private func buildDraft(from extractedLayouts: [ExtractedLayout]) -> ProjectDraft {
         let existingLayouts = session.draft(for: projectID)?.layouts ?? []
         let finalLegend = Legend(entries: legendEntries)
-        let draft = ProjectDraft(
+        return ProjectDraft(
             name: projectName.trimmingCharacters(in: .whitespacesAndNewlines),
             legend: finalLegend,
             layouts: DraftLayoutMerger.merged(
@@ -218,9 +237,6 @@ final class ProjectSetupViewModel {
                 legend: finalLegend
             )
         )
-
-        session.setDraft(draft, for: projectID)
-        onContinue(projectID)
     }
 
     private func validatePDFs(urls: [URL]) -> Bool {

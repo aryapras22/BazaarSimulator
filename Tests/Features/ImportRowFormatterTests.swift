@@ -45,6 +45,18 @@ struct ImportRowFormatterTests {
         #expect(display.isReading)
     }
 
+    @Test("Done rows report isDone true and not reading")
+    func doneRowsReportIsDone() {
+        let display = PlanRowDisplay(
+            id: UUID(),
+            title: "plan.pdf",
+            subtitle: "Layout 1 · 1.0 MB",
+            status: .done(text: "✓ 1 booth")
+        )
+        #expect(display.isDone)
+        #expect(!display.isReading)
+    }
+
     @Test("Rows without thumbnail data have no thumbnail")
     func rowWithoutThumbnailDataHasNoThumbnail() {
         let file = ImportFile(

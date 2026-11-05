@@ -178,6 +178,7 @@ struct ProjectSetupView: View {
                 ForEach(Array(viewModel.planRows.enumerated()), id: \.element.id) { index, row in
                     PlanFileRow(
                         display: row,
+                        onEdit: { viewModel.editLayout(fileID: row.id) },
                         onDelete: { viewModel.deleteFloorPlan(id: row.id) },
                         onRetry: { viewModel.retryFloorPlan(id: row.id) }
                     )

@@ -55,7 +55,7 @@ struct PlanFileRow: View {
 
             if let onEdit {
                 Button("Edit", action: onEdit)
-                    .disabled(true)
+                    .disabled(!display.isDone)
             }
 
             Button("Delete", role: .destructive, action: onDelete)
