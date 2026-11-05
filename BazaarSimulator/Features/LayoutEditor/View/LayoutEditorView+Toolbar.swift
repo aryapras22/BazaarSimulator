@@ -62,6 +62,22 @@ extension LayoutEditorView {
                         .accessibilityLabel(tool.title)
                         .help(tool.title)
                     }
+
+                    Button {
+                        isShowing3DView = true
+                    } label: {
+                        Image(systemName: "cube")
+                            .font(Typography.body)
+                            .foregroundStyle(Palette.textPrimary)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: Radius.s)
+                                    .fill(Palette.control)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Preview in 3D")
+                    .help("Preview layout in 3D")
                 }
             }
         }
