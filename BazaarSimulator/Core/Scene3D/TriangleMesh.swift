@@ -186,20 +186,24 @@ extension TriangleMesh {
             normals.append(normalUp)
         }
 
-        let pt0 = points[0]
-        let pt1 = points[1]
-        let pt2 = points[2]
-        let crossY = (pt1.x - pt0.x) * (pt2.y - pt0.y) - (pt1.y - pt0.y) * (pt2.x - pt0.x)
-        let isCounterClockwise = crossY > 0
+        var doubleSignedArea = 0.0
+        let count = points.count
+        for index in 0..<count {
+            let currentPoint = points[index]
+            let nextPoint = points[(index + 1) % count]
+            doubleSignedArea += currentPoint.x * nextPoint.y - nextPoint.x * currentPoint.y
+        }
 
-        for idx in 1..<(points.count - 1) {
+        let isCounterClockwise = doubleSignedArea > 0
+
+        for idx in 1..<(count - 1) {
             let idxA = baseIndex
             let idxB = baseIndex + UInt32(idx)
             let idxC = baseIndex + UInt32(idx + 1)
             if isCounterClockwise {
-                indices.append(contentsOf: [idxA, idxB, idxC])
-            } else {
                 indices.append(contentsOf: [idxA, idxC, idxB])
+            } else {
+                indices.append(contentsOf: [idxA, idxB, idxC])
             }
         }
     }

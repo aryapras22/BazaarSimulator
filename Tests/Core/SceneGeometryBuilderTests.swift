@@ -118,4 +118,54 @@ struct SceneGeometryBuilderTests {
             .reduce(0, +)
         #expect(nonAccentTriangles > 0)
     }
+
+    @Test("Floor polygon triangles face +Y up for clockwise, counter-clockwise, and mock halls")
+    func floorPolygonTrianglesFaceUp() throws {
+        func allTrianglesFaceUp(_ mesh: TriangleMesh) -> Bool {
+            guard mesh.indices.count >= 3 else { return false }
+            for start in stride(from: 0, to: mesh.indices.count, by: 3) {
+                let idxA = Int(mesh.indices[start])
+                let idxB = Int(mesh.indices[start + 1])
+                let idxC = Int(mesh.indices[start + 2])
+                let vertA = mesh.positions[idxA]
+                let vertB = mesh.positions[idxB]
+                let vertC = mesh.positions[idxC]
+                let edge1 = vertB - vertA
+                let edge2 = vertC - vertA
+                let normalY = edge1.z * edge2.x - edge1.x * edge2.z
+                if normalY <= 0 { return false }
+            }
+            return true
+        }
+
+        var ccwMesh = TriangleMesh()
+        ccwMesh.appendFloorPolygon([
+            SIMD2<Double>(0, 0),
+            SIMD2<Double>(10, 0),
+            SIMD2<Double>(10, 10),
+            SIMD2<Double>(0, 10)
+        ])
+        #expect(allTrianglesFaceUp(ccwMesh))
+
+        var cwMesh = TriangleMesh()
+        cwMesh.appendFloorPolygon([
+            SIMD2<Double>(0, 0),
+            SIMD2<Double>(0, 10),
+            SIMD2<Double>(10, 10),
+            SIMD2<Double>(10, 0)
+        ])
+        #expect(allTrianglesFaceUp(cwMesh))
+
+        let annyeongDTO = try MockDataStore.load(BazaarLayoutDTO.self, from: "annyeong-market-layout")
+        let annyeongHall = annyeongDTO.hall.map { SIMD2<Double>($0[0], $0[1]) }
+        var annyeongMesh = TriangleMesh()
+        annyeongMesh.appendFloorPolygon(annyeongHall)
+        #expect(allTrianglesFaceUp(annyeongMesh))
+
+        let beyondDTO = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
+        let beyondHall = beyondDTO.hall.map { SIMD2<Double>($0[0], $0[1]) }
+        var beyondMesh = TriangleMesh()
+        beyondMesh.appendFloorPolygon(beyondHall)
+        #expect(allTrianglesFaceUp(beyondMesh))
+    }
 }
