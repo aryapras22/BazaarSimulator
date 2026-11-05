@@ -10,7 +10,10 @@
 | Floor Plan and Flow tabs | Replaced by the layers. Door direction moves into the door inspector. Spawn and exit markers and door arrows become a "Show visitor flow" toggle |
 | Plan and 3D | Stay as the way you look. Layers are what you edit. They are independent |
 | Front and Eye views | Removed, with the walk-through keys that only Eye used |
-| Saved data | No change for walls, doors, booths, and layers. The floor is the one open decision (question 1) |
+| Saved data | No change for walls, doors, booths, and layers. The floor adds one enum case, `LayoutObjectKind.floor`, which is the only change to saved data |
+| Floor | Option B: a rectangle floor object the user draws, white in 2D and 3D, counted as walkable |
+| Stage and audience area | In the Structure layer, with the other hall features |
+| Flow tab | Becomes the "Show visitor flow" toggle |
 | Look | Dark Hi-Fi tokens stay |
 
 ## What is wrong or missing today
@@ -98,13 +101,22 @@ The hall polygon is the only floor today, and it comes from the layout, not from
 | B | A new `LayoutObjectKind.floor`: a rectangle the user draws, white in 2D and 3D, drawn below everything, counted as walkable | Adds an enum case to saved data, so this needs a decision. Also changes `isPlacementInsideWalkableFloor`, the validator, and the 3D builder |
 | C | Detect a floor from each closed loop of connected walls | Uses `WallGraph`. No data change. Fills only closed shapes. Harder to get right with the extractor's loose walls |
 
-Recommend B for adding a white floor on request, with A as a later hall editor. B is also the only option that lets a second room have its own floor.
+Decision: B. It is the only option that gives a second room its own floor. A (a hall corner editor) is left for later and C is dropped.
+
+Floor objects:
+
+- `LayoutObjectKind.floor` with a rectangle `Placement`, resizable and movable, no category, no open sides. `Layout` and `LayoutObject` keep their shape. Projects saved before this change still decode, and older builds cannot read projects that contain a floor.
+- Drawn like a blocked area: drag a rectangle, snapped to nodes, wall faces, and the grid. The Floor tool and the library both start it.
+- Drawn first, below every other kind, in white (`Palette.canvasFloor` in 2D, `Palette.sceneFloor` in 3D). Not selectable on the Booths layer.
+- Counted as walkable: `LayoutGeometry.isPlacementInsideWalkableFloor` accepts a footprint inside the hall, the lobby, or any floor object. `LayoutValidator`'s outside-floor check follows it.
+- `blocksWalking` is false. The simulation grid and `ObjectCatalog` get an entry (`floor`, library under Structure).
+- 3D: a flat white slab at the floor height, using the same upward winding as the hall fix in phase 0.
 
 ## Layers
 
 | Layer | Kinds | Tools | Library | Inspector |
 | ---| --- | --- | --- | --- |
-| Structure | wall, rail, block, pillar, door, closedArea, stage, audienceArea, floor (if B) | Select, Wall, Room, Door (from the library), Area, Floor | Structure items, doors, blocked area, stage | Size, rotation, wall length, door direction and connection |
+| Structure | wall, rail, block, pillar, door, closedArea, stage, audienceArea, floor | Select, Wall, Room, Door (from the library), Area, Floor | Structure items, doors, blocked area, stage | Size, rotation, wall length, door direction and connection |
 | Booths | booth, table, fixture | Select, Booth, Row, Fill (from `LayoutEditorLayersPlan.md`) | Booth templates, furniture, decor | Category, open sides, chairs, group editing |
 
 Behaviour, taken from AutoCAD's lock and fade ([Chron](https://smallbusiness.chron.com/difference-between-freezing-layers-turning-layers-off-autocad-32425.html), [Bricsys forum](https://forum.bricsys.com/discussion/comment/34572)):
@@ -165,8 +177,10 @@ Each numbered line is one commit. The editor works after each phase.
    3. Wall body drag with neighbour stretch.
    4. Length field in the inspector and Return-to-type.
    5. Corner extension in 2D and 3D.
-5. Floor, after question 1
-   1. The chosen model, its tool, 2D and 3D rendering, and tests.
+5. Floor
+   1. `LayoutObjectKind.floor`, its catalog entry, the layer mapping, and tests for decoding old projects.
+   2. Walkable-floor rule in `LayoutGeometry` and `LayoutValidator`, with tests.
+   3. Floor tool and library entry, 2D drawing, and the 3D slab.
 6. Booths layer
    1. Chairs control in the group inspector.
    2. Row and Fill, from `LayoutEditorLayersPlan.md` phase 5.
@@ -189,11 +203,9 @@ Each numbered line is one commit. The editor works after each phase.
 - Splitting creates new objects and changes the count. Selection, the group list, and door hosting must follow the new IDs. Each split keeps the original ID on the first half.
 - Dots on every wall would clutter a busy plan, so they appear near the pointer and on selected walls only.
 - Removing the tab touches about 20 files. It is split into five commits for that reason.
-- If the floor is a new kind (option B), older builds cannot read projects that use it.
+- The floor is a new kind, so older builds cannot read projects that use it. Projects without a floor are unaffected.
 - The right-click behaviour from `LayoutEditorLayersPlan.md` still needs a trackpad test before it ships.
 
 ## Open questions
 
-1. Floor model: A, B, or C above? Recommend B for a floor the user adds, because it is the only one that gives a second room its own floor. It changes saved data, so I'm waiting for your decision before phase 5.
-2. Do stage and audience area belong in Structure? Recommend yes. They are hall features, not booths.
-3. Should the Flow tab become the "Show visitor flow" toggle, or be dropped completely? Recommend the toggle, because door arrows and spawn and exit markers are the only way to see flow at a glance, and removing them leaves the simulation's entry and exit points invisible.
+None. The three questions in the first draft are answered under "Decisions already made".
