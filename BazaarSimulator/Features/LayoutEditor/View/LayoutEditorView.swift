@@ -76,7 +76,8 @@ extension LayoutEditorView {
             hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
             groupClusters: viewModel.groupClusters,
             hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
-            issues: viewModel.canvasIssueSnapshot
+            issues: viewModel.canvasIssueSnapshot,
+            hoverWorld: pointer.world
         )
     }
 

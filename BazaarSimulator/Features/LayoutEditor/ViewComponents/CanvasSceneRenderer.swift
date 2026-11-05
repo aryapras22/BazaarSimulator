@@ -53,7 +53,9 @@ enum CanvasSceneRenderer {
         var selectedObject: LayoutObject?
         for var object in ordered {
             guard !snapshot.hiddenLayers.contains(object.kind.layer) else { continue }
-            if object.id == drag.objectID {
+            if let previewPlacement = drag.previewPlacements[object.id] {
+                object.placement = previewPlacement
+            } else if object.id == drag.objectID {
                 object.placement.center += drag.deltaWorld
             } else if object.id == drag.resize?.objectID {
                 object.placement = drag.resize!.preview
@@ -86,6 +88,7 @@ enum CanvasSceneRenderer {
         if let selectedObject, selectedObject.kind.layer == snapshot.activeLayer {
             drawSelectionDetails(selectedObject, drag: drag, in: &context, transform: transform)
         }
+        WallNodeRenderer.draw(snapshot: snapshot, transform: transform, in: &context)
     }
 
     private static func drawObject(

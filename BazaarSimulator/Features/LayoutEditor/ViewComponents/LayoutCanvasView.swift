@@ -27,6 +27,7 @@ struct CanvasDisplaySnapshot: Sendable {
     var groupClusters: [GroupClusterDisplay] = []
     var hasUnsavedChanges: Bool = false
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
+    var hoverWorld: SIMD2<Double>?
 }
 
 struct LayoutCanvasView: View {
