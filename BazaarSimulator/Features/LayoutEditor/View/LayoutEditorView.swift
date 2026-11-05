@@ -174,15 +174,12 @@ extension LayoutEditorView {
         Layout3DView(
             geometry: viewModel.sceneGeometry,
             pose: viewModel.cameraRig.pose,
-            eye: viewModel.cameraRig.eye,
             selectionOutline: viewModel.selectionOutlineBoxes,
             onOrbit: { delta in viewModel.handle3DOrbit(delta: delta) },
             onPan: { delta in viewModel.handle3DPan(delta: delta, viewHeight: Double(proxy.size.height)) },
             onZoom: { delta, isPrecise, point in
                 viewModel.handle3DZoom(delta: delta, isPrecise: isPrecise, viewPoint: point, viewSize: proxy.size)
             },
-            onLook: { delta in viewModel.handle3DLook(delta: delta) },
-            onWalk: { forward, right in viewModel.handle3DWalk(forward: forward, right: right) },
             onClick: { point, size in viewModel.handle3DClick(viewPoint: point, viewSize: size) },
             onFrame: { delta in viewModel.advanceCamera(by: delta, viewSize: proxy.size) }
         )
@@ -191,8 +188,6 @@ extension LayoutEditorView {
         }
         .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
         .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
-        .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in switchPreset(.front); return .handled }
-        .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in switchPreset(.eye); return .handled }
     }
 
     private func switchPreset(_ preset: ViewPreset) {
@@ -210,8 +205,6 @@ extension LayoutEditorView {
             .onKeyPress(.escape) { handleEscapeKey() }
             .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
-            .onKeyPress(characters: CharacterSet(charactersIn: "3")) { _ in switchPreset(.front); return .handled }
-            .onKeyPress(characters: CharacterSet(charactersIn: "4")) { _ in switchPreset(.eye); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "vV")) { _ in
                 handleToolRailSelection(.select)
                 return .handled

@@ -2,14 +2,12 @@ import Foundation
 import simd
 
 enum ViewPreset: String, CaseIterable, Hashable, Sendable {
-    case plan, threeD, front, eye
+    case plan, threeD
 
     var title: String {
         switch self {
         case .plan: return "Plan"
         case .threeD: return "3D"
-        case .front: return "Front"
-        case .eye: return "Eye"
         }
     }
 }
@@ -22,12 +20,6 @@ struct CameraPose: Equatable, Sendable {
     var fieldOfViewDegrees: Double
 }
 
-struct EyePose: Equatable, Sendable {
-    var position: SIMD3<Double>
-    var yaw: Double
-    var pitch: Double
-}
-
 struct CameraRig: Equatable, Sendable {
     static let tweenDuration: Double = 0.55
     static let minDistance: Double = 2.0
@@ -36,23 +28,17 @@ struct CameraRig: Equatable, Sendable {
     static let maxPolar: Double = Double.pi / 2.0 - 0.02
     /// Puts world -z at the top of the screen, the same way the 2D canvas puts world -y at the top.
     static let planAzimuth = Double.pi / 2.0
-    static let eyeFieldOfViewDegrees: Double = 70
 
     private(set) var pose: CameraPose
-    private(set) var eye: EyePose?
     private var fromPose: CameraPose?
     private var toPose: CameraPose?
     private var progress: Double = 1.0
 
-    init(pose: CameraPose, eye: EyePose? = nil) {
+    init(pose: CameraPose) {
         self.pose = pose
-        self.eye = eye
     }
 
     var cameraPosition: SIMD3<Double> {
-        if let eye {
-            return eye.position
-        }
         let sphericalOffset = SIMD3<Double>(
             cos(pose.azimuth) * sin(pose.polar),
             cos(pose.polar),
@@ -62,17 +48,11 @@ struct CameraRig: Equatable, Sendable {
     }
 
     var lookAtPoint: SIMD3<Double> {
-        guard let eye else { return pose.target }
-        let forward = SIMD3<Double>(
-            -sin(eye.yaw) * cos(eye.pitch),
-            sin(eye.pitch),
-            -cos(eye.yaw) * cos(eye.pitch)
-        )
-        return eye.position + forward
+        pose.target
     }
 
     var activeFieldOfViewDegrees: Double {
-        eye == nil ? pose.fieldOfViewDegrees : Self.eyeFieldOfViewDegrees
+        pose.fieldOfViewDegrees
     }
 
     static func pose(for preset: ViewPreset, framing bounds: BoundingBox, aspect: Double) -> CameraPose {
@@ -94,14 +74,11 @@ struct CameraRig: Equatable, Sendable {
         let polar: Double
         switch preset {
         case .plan:
-            azimuth = planAzimuth
-            polar = minPolar
+             azimuth = planAzimuth
+             polar = minPolar
         case .threeD:
-            azimuth = Double.pi / 2.0 - 0.70
-            polar = 1.02
-        case .front, .eye:
-            azimuth = Double.pi / 2.0
-            polar = 1.35
+             azimuth = Double.pi / 2.0 - 0.70
+             polar = 1.02
         }
 
         return CameraPose(
@@ -191,31 +168,5 @@ struct CameraRig: Equatable, Sendable {
         } else {
             return 1.0 - pow(-2.0 * timeFraction + 2.0, 3.0) / 2.0
         }
-    }
-
-    mutating func setEye(_ newEye: EyePose?) {
-        eye = newEye
-    }
-
-    mutating func eyeLook(deltaX: Double, deltaY: Double) {
-        guard var currentEye = eye else { return }
-        currentEye.yaw += deltaX * 0.004
-        currentEye.pitch = min(max(currentEye.pitch - deltaY * 0.004, -Double.pi / 3.0), Double.pi / 3.0)
-        eye = currentEye
-    }
-
-    mutating func eyeWalk(forward: Double, right: Double, in bounds: BoundingBox) {
-        guard var currentEye = eye else { return }
-        let forwardVector = SIMD2<Double>(-sin(currentEye.yaw), -cos(currentEye.yaw))
-        let rightVector = SIMD2<Double>(cos(currentEye.yaw), -sin(currentEye.yaw))
-
-        var newX = currentEye.position.x + forwardVector.x * forward + rightVector.x * right
-        var newZ = currentEye.position.z + forwardVector.y * forward + rightVector.y * right
-
-        newX = min(max(newX, bounds.minX), bounds.maxX)
-        newZ = min(max(newZ, bounds.minY), bounds.maxY)
-
-        currentEye.position = SIMD3<Double>(newX, 1.6, newZ)
-        eye = currentEye
     }
 }

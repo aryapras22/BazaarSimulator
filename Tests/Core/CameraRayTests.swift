@@ -74,21 +74,18 @@ struct CameraRayTests {
         #expect(abs(right.y - 10) < 0.01)
     }
 
-    @Test("Eye view picks along the eye's own line of sight")
-    func eyeViewPicksAlongSightLine() throws {
-        let rig = CameraRig(
-            pose: CameraPose(
-                target: SIMD3<Double>(30, 0, 5), azimuth: 0, polar: 1, distance: 20, fieldOfViewDegrees: 46
-            ),
-            eye: EyePose(position: SIMD3<Double>(10, 1.6, 20), yaw: 0, pitch: -0.3)
-        )
+    @Test("An offset camera picks along its line of sight")
+    func cameraPicksAlongSightLine() throws {
+        let position = SIMD3<Double>(10, 1.6, 20)
+        let forward = SIMD3<Double>(0, sin(-0.3), -cos(-0.3))
+        let lookAt = position + forward
 
         let hit = try #require(CameraRay.floorPoint(
             viewPoint: SIMD2<Double>(400, 300),
             viewSize: SIMD2<Double>(800, 600),
-            cameraPosition: rig.cameraPosition,
-            lookAt: rig.lookAtPoint,
-            fieldOfViewDegrees: rig.activeFieldOfViewDegrees
+            cameraPosition: position,
+            lookAt: lookAt,
+            fieldOfViewDegrees: 70
         ))
 
         #expect(abs(hit.x - 10) < 0.01)

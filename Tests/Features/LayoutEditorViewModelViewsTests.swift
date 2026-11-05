@@ -84,10 +84,6 @@ struct LayoutEditorViewModelViewsTests {
         #expect(viewModel.viewPreset == .threeD)
         #expect(viewModel.selectionID == booth?.id)
 
-        viewModel.selectViewPreset(.front, reduceMotion: true, viewSize: Self.viewSize)
-        #expect(viewModel.viewPreset == .front)
-        #expect(viewModel.selectionID == booth?.id)
-
         viewModel.selectViewPreset(.plan, reduceMotion: true, viewSize: Self.viewSize)
         #expect(viewModel.viewPreset == .plan)
         #expect(viewModel.selectionID == booth?.id)
@@ -137,55 +133,6 @@ struct LayoutEditorViewModelViewsTests {
         #expect(abs(outline.size.x - targetBooth.placement.sizeM.x) < 1e-4)
     }
 
-    @Test("Eye view walk and clamping")
-    func eyeViewWalkAndClamping() {
-        let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
-
-        #expect(viewModel.cameraRig.eye != nil)
-        #expect(viewModel.cameraRig.eye?.position.y == 1.6)
-
-        let initialZ = viewModel.cameraRig.eye?.position.z ?? 0
-        viewModel.handle3DWalk(forward: 10.0, right: 0)
-        let newZ = viewModel.cameraRig.eye?.position.z ?? 0
-        #expect(newZ != initialZ)
-
-        // Walk huge distance to hit bounds clamp
-        viewModel.handle3DWalk(forward: 1000.0, right: 0)
-        let clampedZ = viewModel.cameraRig.eye?.position.z ?? 0
-        viewModel.handle3DWalk(forward: 1000.0, right: 0)
-        #expect(viewModel.cameraRig.eye?.position.z == clampedZ)
-    }
-
-    @Test("Eye view pitch is clamped to +/- 60 degrees")
-    func eyeViewPitchClamp() {
-        let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
-
-        // Look way up
-        viewModel.handle3DLook(delta: CGSize(width: 0, height: -10000))
-        let maxPitch = Double.pi / 3.0
-        #expect(abs((viewModel.cameraRig.eye?.pitch ?? 0) - maxPitch) < 1e-4)
-
-        // Look way down
-        viewModel.handle3DLook(delta: CGSize(width: 0, height: 10000))
-        #expect(abs((viewModel.cameraRig.eye?.pitch ?? 0) - (-maxPitch)) < 1e-4)
-    }
-
-    @Test("Leaving eye preset restores orbit camera")
-    func leavingEyeRestoresOrbit() {
-        let viewModel = Self.makeViewModel()
-        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
-        let orbitPose = viewModel.cameraRig.pose
-
-        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
-        #expect(viewModel.cameraRig.eye != nil)
-
-        viewModel.selectViewPreset(.threeD, reduceMotion: true, viewSize: Self.viewSize)
-        #expect(viewModel.cameraRig.eye == nil)
-        #expect(abs(viewModel.cameraRig.pose.polar - orbitPose.polar) < 1e-4)
-    }
-
     @Test("Plan to 3D and straight back keeps the canvas center and zoom")
     func planRoundTripKeepsCanvas() {
         let viewModel = Self.makeViewModel()
@@ -202,26 +149,5 @@ struct LayoutEditorViewModelViewsTests {
         let worldAfter = viewModel.transform.toWorld(center)
         #expect(simd_length(worldAfter - worldBefore) < 0.01)
         #expect(abs(viewModel.transform.scale / scaleBefore - 1) < 0.01)
-    }
-
-    @Test("The first step from a lobby spawn stays in the lobby")
-    func firstStepFromLobbySpawnDoesNotJump() {
-        let session = ProjectSession()
-        let project = session.createProject(named: "Lobby")
-        let layout = Layout(
-            name: "Lobby",
-            sizeM: SIMD2<Double>(20, 26),
-            hall: [SIMD2<Double>(0, 0), SIMD2<Double>(20, 0), SIMD2<Double>(20, 20), SIMD2<Double>(0, 20)],
-            lobby: [SIMD2<Double>(0, 20), SIMD2<Double>(20, 20), SIMD2<Double>(20, 26), SIMD2<Double>(0, 26)],
-            markers: [LayoutMarker(kind: .spawn, label: "Spawn", position: SIMD2<Double>(10, 24))]
-        )
-        session.setDraft(ProjectDraft(name: "Lobby", legend: Legend(), layouts: [layout]), for: project.id)
-        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
-        viewModel.selectViewPreset(.eye, reduceMotion: true, viewSize: Self.viewSize)
-
-        viewModel.handle3DWalk(forward: 0.5, right: 0)
-
-        let eyeZ = viewModel.cameraRig.eye?.position.z ?? 0
-        #expect(abs(eyeZ - 24) < 0.6)
     }
 }

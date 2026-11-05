@@ -16,7 +16,7 @@ extension LayoutEditorViewModel {
             ?? BoundingBox(minX: 0, maxX: 40, minY: 0, maxY: 30)
         let aspect = max(viewSize.width / max(viewSize.height, 1), 0.1)
 
-        if viewPreset == .plan && preset != .plan {
+        if viewPreset == .plan && preset == .threeD {
             transitionFromPlanTo3D(
                 preset: preset,
                 bounds: bounds,
@@ -26,13 +26,6 @@ extension LayoutEditorViewModel {
             )
         } else if preset == .plan {
             transitionToPlan(viewSize: viewSize, reduceMotion: reduceMotion)
-        } else {
-            transitionBetween3D(
-                preset: preset,
-                bounds: bounds,
-                aspect: aspect,
-                reduceMotion: reduceMotion
-            )
         }
     }
 
@@ -57,12 +50,8 @@ extension LayoutEditorViewModel {
         cameraRig = CameraRig(pose: initialPose)
         viewPreset = preset
 
-        if preset == .eye {
-            enterEyeView(in: bounds)
-        } else {
-            let targetPose = CameraRig.pose(for: preset, framing: bounds, aspect: aspect)
-            cameraRig.transition(to: targetPose, animated: !reduceMotion)
-        }
+        let targetPose = CameraRig.pose(for: preset, framing: bounds, aspect: aspect)
+        cameraRig.transition(to: targetPose, animated: !reduceMotion)
         rebuildSceneGeometry()
     }
 
@@ -74,7 +63,6 @@ extension LayoutEditorViewModel {
             distance: cameraRig.pose.distance,
             fieldOfViewDegrees: 46.0
         )
-        cameraRig.setEye(nil)
         if reduceMotion {
             cameraRig.transition(to: targetPose, animated: false)
             applyCameraToCanvas(viewSize: viewSize)
@@ -82,22 +70,6 @@ extension LayoutEditorViewModel {
         } else {
             isTransitioningToPlan = true
             cameraRig.transition(to: targetPose, animated: true)
-        }
-    }
-
-    private func transitionBetween3D(
-        preset: ViewPreset,
-        bounds: BoundingBox,
-        aspect: Double,
-        reduceMotion: Bool
-    ) {
-        viewPreset = preset
-        if preset == .eye {
-            enterEyeView(in: bounds)
-        } else {
-            cameraRig.setEye(nil)
-            let targetPose = CameraRig.pose(for: preset, framing: bounds, aspect: aspect)
-            cameraRig.transition(to: targetPose, animated: !reduceMotion)
         }
     }
 
@@ -154,7 +126,6 @@ extension LayoutEditorViewModel {
     }
 
     func handle3DZoom(delta: Double, isPrecise: Bool, viewPoint: CGPoint, viewSize: CGSize) {
-        guard cameraRig.eye == nil else { return }
         let floorPoint = CameraRay.floorPoint(
             viewPoint: SIMD2(Double(viewPoint.x), Double(viewPoint.y)),
             viewSize: SIMD2(Double(viewSize.width), Double(viewSize.height)),
@@ -165,34 +136,6 @@ extension LayoutEditorViewModel {
         let base = isPrecise ? CanvasTransform.preciseScrollZoomBase : CanvasTransform.lineScrollZoomBase
         let clampedDelta = isPrecise ? delta : min(max(delta, -10), 10)
         cameraRig.zoom(byFactor: pow(base, clampedDelta), toward: floorPoint)
-    }
-
-    func handle3DLook(delta: CGSize) {
-        cameraRig.eyeLook(deltaX: Double(delta.width), deltaY: Double(delta.height))
-    }
-
-    /// The spawn marker usually sits in the lobby, so walking is bounded by the hall and lobby together.
-    private var walkableBounds: BoundingBox {
-        activeLayout.map { LayoutGeometry.bounds(of: $0.hall + $0.lobby) }
-            ?? BoundingBox(minX: 0, maxX: 40, minY: 0, maxY: 30)
-    }
-
-    func handle3DWalk(forward: Double, right: Double) {
-        cameraRig.eyeWalk(forward: forward, right: right, in: walkableBounds)
-    }
-
-    func enterEyeView(in bounds: BoundingBox) {
-        let hallCenter = SIMD2<Double>((bounds.minX + bounds.maxX) / 2.0, (bounds.minY + bounds.maxY) / 2.0)
-        let walkable = walkableBounds
-        let spawnPos = activeLayout?.markers.first(where: { $0.kind == .spawn })?.position
-            ?? SIMD2<Double>((walkable.minX + walkable.maxX) / 2.0, walkable.maxY - 2.0)
-        let eyePos = SIMD3<Double>(spawnPos.x, 1.6, spawnPos.y)
-
-        let toCenterX = hallCenter.x - spawnPos.x
-        let toCenterZ = hallCenter.y - spawnPos.y
-        let yaw = atan2(-toCenterX, -toCenterZ)
-
-        cameraRig.setEye(EyePose(position: eyePos, yaw: yaw, pitch: 0))
     }
 
     func handle3DClick(viewPoint: CGPoint, viewSize: CGSize) {
