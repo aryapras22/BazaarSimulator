@@ -251,6 +251,50 @@ struct EditorToolTests {
         #expect(context.preview == nil)
     }
 
+    @Test("WallTool typed distance on host wall and return commits point")
+    func wallToolTypedDistanceOnHostWall() {
+        let wallPlacement = Placement(
+            center: SIMD2<Double>(5, 0),
+            sizeM: SIMD2<Double>(10, 0.2),
+            rotationRadians: 0
+        )
+        let wall = LayoutObject(kind: .wall, label: "Wall", placement: wallPlacement)
+        var layout = Layout(
+            id: UUID(),
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: [SIMD2<Double>(0, 0), SIMD2<Double>(20, 0), SIMD2<Double>(20, 20), SIMD2<Double>(0, 20)],
+            lobby: [],
+            objects: [wall],
+            markers: []
+        )
+        let context = TestToolContext(layout: layout)
+        let tool = WallTool(itemID: "drywall-wall")
+
+        let hover = CanvasPointerEvent(worldPoint: SIMD2<Double>(2, 0))
+        tool.handleMove(hover, context: context)
+
+        _ = tool.handleKey(.character("3"), context: context)
+        #expect(tool.currentPointer != nil)
+        #expect(abs((tool.currentPointer?.x ?? 0) - 3.0) < 1e-4)
+
+        _ = tool.handleKey(.returnKey, context: context)
+        #expect(tool.drawing?.points.count == 1)
+        #expect(abs((tool.drawing?.points.first?.x ?? 0) - 3.0) < 1e-4)
+
+        let moveUp = CanvasPointerEvent(worldPoint: SIMD2<Double>(3, 5))
+        tool.handleMove(moveUp, context: context)
+
+        _ = tool.handleKey(.character("4"), context: context)
+        _ = tool.handleKey(.returnKey, context: context)
+        #expect(tool.drawing?.points.count == 2)
+        #expect(abs((tool.drawing?.points[1].y ?? 0) - 4.0) < 1e-4)
+
+        _ = tool.handleKey(.returnKey, context: context)
+        #expect(context.appliedEdits.count == 1)
+        #expect(context.switchedTools.contains(.select))
+    }
+
     @Test("PlaceTool moves candidate and click commits placement")
     func placeToolCandidateAndCommit() {
         let fixture = makeLayout()

@@ -38,6 +38,34 @@ enum WallEditing {
         return nil
     }
 
+    static func pointOnHostWall(
+        snapped: SIMD2<Double>,
+        distanceFromNearEnd: Double,
+        in layout: Layout,
+        tolerance: Double = 0.1
+    ) -> SIMD2<Double>? {
+        for object in layout.objects where object.kind == .wall {
+            let halfL = object.placement.sizeM.x / 2.0
+            let local = LayoutGeometry.toLocal(point: snapped, in: object.placement)
+            let isAlongLength = local.x >= -halfL - tolerance && local.x <= halfL + tolerance
+            let isNearCenterline = abs(local.y) <= tolerance
+            if isAlongLength && isNearCenterline {
+                let endA = LayoutGeometry.toWorld(local: SIMD2<Double>(-halfL, 0), in: object.placement)
+                let endB = LayoutGeometry.toWorld(local: SIMD2<Double>(halfL, 0), in: object.placement)
+                let distA = simd_distance(snapped, endA)
+                let distB = simd_distance(snapped, endB)
+                let nearEnd = distA < distB ? endA : endB
+                let farEnd = distA < distB ? endB : endA
+                let wallLength = object.placement.sizeM.x
+                guard wallLength > 1e-6 else { return nearEnd }
+                let dir = simd_normalize(farEnd - nearEnd)
+                let clampedDistance = min(max(distanceFromNearEnd, 0), wallLength)
+                return nearEnd + dir * clampedDistance
+            }
+        }
+        return nil
+    }
+
     static func planChainCommit(
         points: [SIMD2<Double>],
         attributes: WallAttributes,

@@ -12,6 +12,11 @@ enum WallDrawingRenderer {
         let points = drawing.points
         if points.isEmpty, let current = currentPointer {
             drawHoverDot(at: current, in: &context, transform: transform)
+            if !drawing.typedLength.isEmpty {
+                let screenPoint = transform.toView(current)
+                let chipLocation = CGPoint(x: CGFloat(screenPoint.x) + 12.0, y: CGFloat(screenPoint.y) + 12.0)
+                SelectionDimensionRenderer.drawSizeChip("\(drawing.typedLength) m", near: chipLocation, in: &context)
+            }
             return
         }
 
@@ -54,6 +59,18 @@ enum WallDrawingRenderer {
         }
 
         context.stroke(path, with: .color(Palette.canvasLine), lineWidth: 3.0)
+
+        for index in 0..<(points.count - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let length = simd_distance(start, end)
+            guard length > 0.01 else { continue }
+            let midpoint = (start + end) / 2.0
+            let midScreen = transform.toView(midpoint)
+            let chipLocation = CGPoint(x: CGFloat(midScreen.x) + 12.0, y: CGFloat(midScreen.y) + 12.0)
+            let lengthText = "\(DimensionInput.text(for: length)) m"
+            SelectionDimensionRenderer.drawSizeChip(lengthText, near: chipLocation, in: &context)
+        }
     }
 
     private static func drawJoint(

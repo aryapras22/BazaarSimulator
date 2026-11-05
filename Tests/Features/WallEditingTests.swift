@@ -254,4 +254,26 @@ struct WallEditingTests {
         let reverted = LayoutEditing.apply(LayoutEditing.inverse(of: plan.edit), to: updated)
         #expect(reverted.objects.isEmpty)
     }
+
+    @Test("Typed distance from nearest end places dot on host wall centerline")
+    func typedDistanceFromNearestEndPlacesDotOnWall() throws {
+        let wall = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let layout = Self.makeLayout(objects: [wall])
+
+        let pointNearStart = try #require(WallEditing.pointOnHostWall(
+            snapped: SIMD2<Double>(2, 0),
+            distanceFromNearEnd: 3.0,
+            in: layout
+        ))
+        #expect(abs(pointNearStart.x - 3.0) < 1e-4)
+        #expect(abs(pointNearStart.y - 0.0) < 1e-4)
+
+        let pointNearEnd = try #require(WallEditing.pointOnHostWall(
+            snapped: SIMD2<Double>(9, 0),
+            distanceFromNearEnd: 2.0,
+            in: layout
+        ))
+        #expect(abs(pointNearEnd.x - 8.0) < 1e-4)
+        #expect(abs(pointNearEnd.y - 0.0) < 1e-4)
+    }
 }
