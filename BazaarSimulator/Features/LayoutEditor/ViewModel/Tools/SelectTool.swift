@@ -6,7 +6,7 @@ import simd
 final class SelectTool: EditorToolHandling {
     let tool: EditorTool = .select
 
-    private var pressPoint: SIMD2<Double> = .zero
+    var pressPoint: SIMD2<Double> = .zero
     var pressViewPoint: CGPoint = .zero
     private var activeResize: ActiveResize?
     var activeNodeDrag: ActiveNodeDrag?
@@ -16,8 +16,14 @@ final class SelectTool: EditorToolHandling {
     private var activeDragDeltaWorld: SIMD2<Double> = .zero
     private var marqueeStartWorld: SIMD2<Double>?
     private var marqueeCurrentWorld: SIMD2<Double>?
+    var isTypingLength: Bool = false
+    var typedLengthString: String = ""
+    var lengthAnchor: WallGraph.IncidentEnd = .start
 
     func handlePress(_ event: CanvasPointerEvent, context: ToolContext) {
+        if isTypingLength {
+            cancelWallLength(context: context)
+        }
         pressPoint = event.worldPoint
         pressViewPoint = event.viewPoint
         resetGesture()
@@ -140,6 +146,12 @@ final class SelectTool: EditorToolHandling {
     }
 
     func handleKey(_ key: CanvasKey, context: ToolContext) -> Bool {
+        if isTypingLength {
+            return handleWallLengthKey(key, context: context)
+        }
+        if key == .returnKey, startWallLengthTyping(context: context) {
+            return true
+        }
         switch key {
         case .escape:
             if isInteracting {
@@ -170,6 +182,9 @@ final class SelectTool: EditorToolHandling {
     }
 
     func cancel(context: ToolContext) {
+        if isTypingLength {
+            cancelWallLength(context: context)
+        }
         resetGesture()
         context.clearPreview()
     }
@@ -177,7 +192,8 @@ final class SelectTool: EditorToolHandling {
 
 extension SelectTool {
     var isInteracting: Bool {
-        activeMidpointDrag != nil
+        isTypingLength
+            || activeMidpointDrag != nil
             || activeNodeDrag != nil
             || activeResize != nil
             || dragCandidateID != nil

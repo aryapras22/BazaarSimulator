@@ -229,4 +229,41 @@ struct SelectToolNodeDragTests {
         #expect(simd_distance(ep2.start, SIMD2<Double>(10, -2)) < 0.05)
         #expect(simd_distance(ep3.start, SIMD2<Double>(0, -2)) < 0.05)
     }
+
+    @Test("Return on selected wall opens length for typing, far end moves and neighbours stretch")
+    func returnOnSelectedWallTypesLength() throws {
+        let wall1 = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let wall2 = Self.makeWall(start: SIMD2<Double>(10, 0), end: SIMD2<Double>(10, 8))
+        let layout = Self.makeLayout(objects: [wall1, wall2])
+        let context = NodeDragTestContext(layout: layout, selectionID: wall1.id)
+        let tool = SelectTool()
+
+        let press = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(2, 0),
+            viewPoint: CGPoint(x: 20, y: 0),
+            hitObjectID: wall1.id
+        )
+        tool.handlePress(press, context: context)
+        tool.handleRelease(press, context: context)
+
+        let handledReturn1 = tool.handleKey(.returnKey, context: context)
+        #expect(handledReturn1)
+        #expect(tool.isTypingLength)
+
+        _ = tool.handleKey(.character("1"), context: context)
+        _ = tool.handleKey(.character("5"), context: context)
+        #expect(tool.typedLengthString == "15")
+
+        let handledReturn2 = tool.handleKey(.returnKey, context: context)
+        #expect(handledReturn2)
+        #expect(!tool.isTypingLength)
+
+        #expect(context.appliedEdits.count == 1)
+        let graphAfter = WallGraph(layout: context.layout)
+        let ep1 = try #require(graphAfter.endpoints(for: wall1.id))
+        let ep2 = try #require(graphAfter.endpoints(for: wall2.id))
+        #expect(simd_distance(ep1.start, SIMD2<Double>(0, 0)) < 0.05)
+        #expect(simd_distance(ep1.end, SIMD2<Double>(15, 0)) < 0.05)
+        #expect(simd_distance(ep2.start, SIMD2<Double>(15, 0)) < 0.05)
+    }
 }

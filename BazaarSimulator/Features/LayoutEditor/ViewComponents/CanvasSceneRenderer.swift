@@ -144,7 +144,10 @@ enum CanvasSceneRenderer {
         transform: CanvasTransform
     ) {
         SelectionDimensionRenderer.drawDimensions(for: selectedObject, in: &context, transform: transform)
-        if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
+        if let text = drag.wallLengthChipText, let worldPoint = drag.wallLengthChipWorld {
+            let viewPoint = transform.toView(worldPoint)
+            SelectionDimensionRenderer.drawSizeChip(text, near: CGPoint(x: viewPoint.x, y: viewPoint.y), in: &context)
+        } else if selectedObject.id == drag.objectID, let pointerLocation = drag.pointerLocation {
             SelectionDimensionRenderer.drawDragOffset(drag.deltaWorld, near: pointerLocation, in: &context)
         } else if drag.resize != nil, let pointerLocation = drag.pointerLocation {
             let widthText = DimensionInput.text(for: selectedObject.placement.sizeM.x)

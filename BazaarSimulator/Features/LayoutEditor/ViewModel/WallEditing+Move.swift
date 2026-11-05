@@ -105,4 +105,35 @@ extension WallEditing {
         edits.append(contentsOf: moveHostedDoors(on: wall, delta: delta, in: layout))
         return .batch(edits)
     }
+
+    static func setWallLength(
+        wall: LayoutObject,
+        newLength: Double,
+        anchor: WallGraph.IncidentEnd = .start,
+        in layout: Layout,
+        graph: WallGraph
+    ) -> LayoutEdit {
+        guard let endpoints = graph.endpoints(for: wall.id), newLength > 0.01 else {
+            return .batch([])
+        }
+        let vector = endpoints.end - endpoints.start
+        let currentLength = simd_length(vector)
+        guard currentLength > 1e-6 else { return .batch([]) }
+        let dir = vector / currentLength
+
+        let farEnd: WallGraph.IncidentEnd
+        let newFarPosition: SIMD2<Double>
+        if anchor == .start {
+            farEnd = .end
+            newFarPosition = endpoints.start + dir * newLength
+        } else {
+            farEnd = .start
+            newFarPosition = endpoints.end - dir * newLength
+        }
+
+        guard let farNode = graph.node(for: wall.id, end: farEnd) else {
+            return .batch([])
+        }
+        return moveNode(nodeID: farNode.id, to: newFarPosition, in: layout, graph: graph)
+    }
 }

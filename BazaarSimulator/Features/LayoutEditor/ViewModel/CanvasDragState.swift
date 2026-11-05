@@ -27,4 +27,6 @@ struct CanvasDragState: Equatable, Sendable {
     var previewPlacements: [UUID: Placement] = [:]
     var previewInserts: [LayoutObject] = []
     var guides: [SnapGuide] = []
+    var wallLengthChipText: String?
+    var wallLengthChipWorld: SIMD2<Double>?
 }

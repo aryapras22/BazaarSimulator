@@ -167,4 +167,42 @@ struct LayoutEditorViewModelInspectorTests {
         let area = try #require(layout.objects.first { $0.kind == .closedArea })
         return (viewModel, area)
     }
+
+    @Test("Saving wall length in inspector updates wall length and stretches neighbours")
+    func savingWallLengthInInspectorStretchesNeighbours() throws {
+        let wall1 = LayoutObject(
+            kind: .wall,
+            label: "Wall 1",
+            placement: Placement(center: SIMD2<Double>(5, 0), sizeM: SIMD2<Double>(10, 0.2))
+        )
+        let wall2 = LayoutObject(
+            kind: .wall,
+            label: "Wall 2",
+            placement: Placement(center: SIMD2<Double>(10, 4), sizeM: SIMD2<Double>(8, 0.2), rotationRadians: .pi / 2)
+        )
+        let layout = Layout(name: "WallTest", sizeM: SIMD2<Double>(20, 20), objects: [wall1, wall2])
+        let session = ProjectSession()
+        let project = session.createProject(named: "WallProject")
+        session.setDraft(
+            ProjectDraft(name: "WallProject", legend: PreviewLayouts.sampleLegend, layouts: [layout]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session, onBack: {})
+        viewModel.selectObject(wall1.id)
+        #expect(viewModel.inspectorDraft?.widthM == 10.0)
+
+        viewModel.inspectorDraft?.widthM = 15.0
+        #expect(viewModel.isSaveChangesEnabled)
+        viewModel.saveInspectorChanges()
+
+        let savedWall1 = try #require(viewModel.activeLayout?.objects.first { $0.id == wall1.id })
+        #expect(abs(savedWall1.placement.sizeM.x - 15.0) < 0.05)
+
+        let active = try #require(viewModel.activeLayout)
+        let graph = WallGraph(layout: active)
+        let ep1 = try #require(graph.endpoints(for: wall1.id))
+        let ep2 = try #require(graph.endpoints(for: wall2.id))
+        #expect(simd_distance(ep1.end, SIMD2<Double>(15, 0)) < 0.05)
+        #expect(simd_distance(ep2.start, SIMD2<Double>(15, 0)) < 0.05)
+    }
 }

@@ -31,7 +31,7 @@ struct SizeFields: View {
             }
 
             HStack(spacing: Spacing.s) {
-                TextField("Width", text: $widthText)
+                TextField(showsSingleDimension ? primaryTitle : "Width", text: $widthText)
                     .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !range.contains(width)))
                     .focused($focusedField, equals: .width)
                     .onChange(of: widthText) { _, newValue in

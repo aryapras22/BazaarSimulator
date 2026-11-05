@@ -38,6 +38,11 @@ struct LayoutInspectorColumn: View {
                     advice: viewModel.currentDoorAdvice,
                     onUseAdvice: { viewModel.applyDoorAdvice() }
                 )
+            case .wall:
+                WallInspector(
+                    draft: draftBinding,
+                    lengthRange: viewModel.sizeRangeM
+                )
             default:
                 GenericInspector(
                     draft: draftBinding,

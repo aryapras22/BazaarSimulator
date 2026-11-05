@@ -174,8 +174,28 @@ extension LayoutEditorViewModel {
             return
         }
         withSingleRefresh {
-            let updated = draft.applied(to: selected)
-            commitEdit(.replace(before: selected, after: updated))
+            if selected.kind == .wall,
+               let layout = activeLayout,
+               abs(draft.widthM - selected.placement.sizeM.x) > 1e-4 {
+                let graph = WallGraph(layout: layout)
+                let edit = WallEditing.setWallLength(
+                    wall: selected,
+                    newLength: draft.widthM,
+                    anchor: .start,
+                    in: layout,
+                    graph: graph
+                )
+                commitEdit(edit)
+                if let updatedWall = activeLayout?.objects.first(where: { $0.id == selected.id }) {
+                    let finalWall = draft.applied(to: updatedWall)
+                    if finalWall != updatedWall {
+                        commitEdit(.replace(before: updatedWall, after: finalWall))
+                    }
+                }
+            } else {
+                let updated = draft.applied(to: selected)
+                commitEdit(.replace(before: selected, after: updated))
+            }
             if let refreshed = selectedObject {
                 inspectorDraft = InspectorDraft(object: refreshed)
             }
