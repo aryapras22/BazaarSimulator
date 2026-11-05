@@ -36,7 +36,7 @@ struct InspectorDraft: Sendable, Equatable {
         let heights: [LayoutObjectKind: Double] = [
             .wall: 3.0, .pillar: 3.0, .booth: 2.4, .door: 2.1,
             .rail: 1.0, .block: 1.2, .fixture: 1.2, .stage: 0.8,
-            .table: 0.75, .closedArea: 0.05
+            .table: 0.75, .closedArea: 0.05, .floor: 0.05
         ]
         return heights[object.kind] ?? 3.0
     }

@@ -24,7 +24,7 @@ struct InspectorFields: Sendable {
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .pillar:
             return InspectorFields(showsSingleDimension: true, primarySizeTitle: "Diameter", sizeDetailText: nil)
-        case .closedArea:
+        case .closedArea, .floor:
             return InspectorFields(showsLabel: true, showsRotation: true)
         case .booth, .door:
             return InspectorFields()

@@ -26,7 +26,7 @@ extension LayoutEditorViewModel {
         case .stage:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? "Stage" : trimmed
-        case .wall, .rail, .block, .pillar:
+        case .wall, .rail, .block, .pillar, .floor:
             return selected.kind.displayName
         }
     }

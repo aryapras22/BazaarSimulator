@@ -19,11 +19,56 @@ struct LayoutObjectKindTests {
         #expect(kind.isSelectable)
     }
 
+    @Test("Floor kind facts")
+    func floorKindFacts() {
+        let kind = LayoutObjectKind.floor
+
+        #expect(kind.displayName == "Floor")
+        #expect(kind.isMovable)
+        #expect(kind.isResizable)
+        #expect(kind.isRotatable)
+        #expect(kind.canBeAdded)
+        #expect(kind.hasResizeHandles)
+        #expect(!kind.blocksWalking)
+        #expect(kind.minimumDimensionM == 0.5)
+        #expect(kind.isSelectable)
+        #expect(kind.isStructural)
+    }
+
+    @Test("Floor catalog entry is in structure category")
+    func floorCatalogEntry() {
+        #expect(ObjectCatalog.defaultItemID(for: .floor) == "floor")
+        let item = ObjectCatalog.item("floor")
+        #expect(item?.kind == .floor)
+        #expect(item?.category == .structure)
+    }
+
+    @Test("Decoding old project without floor succeeds")
+    func decodingOldProjectWithoutFloorSucceeds() throws {
+        let original = Layout(
+            name: "Old Layout",
+            sizeM: SIMD2(30, 30),
+            hall: [SIMD2(0, 0), SIMD2(30, 0), SIMD2(30, 30), SIMD2(0, 30)],
+            objects: [
+                LayoutObject(
+                    kind: .wall,
+                    label: "Wall",
+                    placement: Placement(center: SIMD2(10, 10), sizeM: SIMD2(4, 0.2))
+                )
+            ]
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Layout.self, from: data)
+        #expect(decoded.name == "Old Layout")
+        #expect(decoded.objects.count == 1)
+        #expect(decoded.objects.first?.kind == .wall)
+    }
+
     @Test("Every LayoutObjectKind belongs to exactly one layer", arguments: LayoutObjectKind.allCases)
     func eachKindBelongsToOneLayer(kind: LayoutObjectKind) {
         let layer = kind.layer
         switch kind {
-        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea:
+        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea, .floor:
             #expect(layer == .structure)
         case .booth, .table, .fixture:
             #expect(layer == .booths)

@@ -69,6 +69,7 @@ enum LayoutHitTester {
 
     private static func drawRank(for kind: LayoutObjectKind) -> Int {
         switch kind {
+        case .floor: return -1
         case .closedArea: return 0
         case .audienceArea: return 1
         case .stage: return 2

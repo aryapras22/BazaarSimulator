@@ -197,7 +197,7 @@ extension SceneGeometryBuilder {
         case .block:
             let blockH = object.heightM ?? 0.8
             return [.box(center: SIMD3(0, blockH / 2.0, 0), size: SIMD3(size.x, blockH, size.y), yaw: 0, role: .slab)]
-        case .closedArea:
+        case .closedArea, .floor:
             let slabH = object.heightM ?? 0.05
             return [.box(center: SIMD3(0, slabH / 2.0, 0), size: SIMD3(size.x, slabH, size.y), yaw: 0, role: .slab)]
         case .pillar:

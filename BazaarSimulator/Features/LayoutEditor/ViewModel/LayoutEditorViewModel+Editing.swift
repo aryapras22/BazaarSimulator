@@ -144,7 +144,7 @@ extension LayoutEditorViewModel {
         case .table: defaultSize = SIMD2<Double>(1.0, 1.0)
         case .fixture: defaultSize = SIMD2<Double>(2.0, 1.5)
         case .rail: defaultSize = SIMD2<Double>(2.0, 0.25)
-        case .closedArea: defaultSize = SIMD2<Double>(4.0, 4.0)
+        case .closedArea, .floor: defaultSize = SIMD2<Double>(4.0, 4.0)
         default: defaultSize = SIMD2<Double>(2.0, 2.0)
         }
 

@@ -17,19 +17,21 @@ enum ObjectCatalog {
         }
     }
 
+    private static let defaultItemIDsByKind: [LayoutObjectKind: String] = [
+        .wall: "wall",
+        .rail: "rail",
+        .block: "block",
+        .pillar: "pillar-round",
+        .door: "door",
+        .closedArea: "blocked-area",
+        .floor: "floor",
+        .table: "table-4",
+        .stage: "stage",
+        .fixture: "planter"
+    ]
+
     static func defaultItemID(for kind: LayoutObjectKind) -> String? {
-        switch kind {
-        case .wall: return "wall"
-        case .rail: return "rail"
-        case .block: return "block"
-        case .pillar: return "pillar-round"
-        case .door: return "door"
-        case .closedArea: return "blocked-area"
-        case .table: return "table-4"
-        case .stage: return "stage"
-        case .fixture: return "planter"
-        case .booth, .audienceArea: return nil
-        }
+        defaultItemIDsByKind[kind]
     }
 
     static let structureItems: [CatalogItem] = [
@@ -86,6 +88,12 @@ enum ObjectCatalog {
             sizeM: SIMD2(2.0, 2.0), heightM: 0.05, footprint: .rect,
             resize: .free, placement: .drawArea,
             keywords: ["blocked", "restricted", "closed", "void", "hazard"], seats: []
+        ),
+        CatalogItem(
+            id: "floor", name: "Floor", category: .structure, kind: .floor,
+            sizeM: SIMD2(4.0, 4.0), heightM: 0.05, footprint: .rect,
+            resize: .free, placement: .drawArea,
+            keywords: ["floor", "slab", "ground", "walkable", "deck"], seats: []
         ),
         CatalogItem(
             id: "stage", name: "Stage", category: .structure, kind: .stage,

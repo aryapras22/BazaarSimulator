@@ -12,6 +12,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case stage
     case audienceArea
     case closedArea
+    case floor
 
     var displayName: String {
         switch self {
@@ -26,12 +27,13 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .stage: return "Stage"
         case .audienceArea: return "Audience area"
         case .closedArea: return "Blocked area"
+        case .floor: return "Floor"
         }
     }
 
     var layer: EditorLayer {
         switch self {
-        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea:
+        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea, .floor:
             return .structure
         case .booth, .table, .fixture:
             return .booths
@@ -67,14 +69,14 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var blocksWalking: Bool {
         switch self {
-        case .door, .audienceArea: return false
+        case .door, .audienceArea, .floor: return false
         default: return true
         }
     }
 
     var canBeAdded: Bool {
         switch self {
-        case .booth, .table, .rail, .fixture, .closedArea, .wall, .block, .pillar, .stage, .door:
+        case .booth, .table, .rail, .fixture, .closedArea, .wall, .block, .pillar, .stage, .door, .floor:
             return true
         default:
             return false
@@ -83,7 +85,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .table, .fixture, .stage, .audienceArea, .closedArea: return 0.5
+        case .booth, .table, .fixture, .stage, .audienceArea, .closedArea, .floor: return 0.5
         case .door: return 0.8
         case .wall, .rail, .block, .pillar: return 0.1
         }
@@ -94,12 +96,12 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasResizeHandles: Bool {
-        self == .closedArea
+        self == .closedArea || self == .floor
     }
 
     var isStructural: Bool {
         switch self {
-        case .wall, .pillar, .closedArea: return true
+        case .wall, .pillar, .closedArea, .floor: return true
         default: return false
         }
     }

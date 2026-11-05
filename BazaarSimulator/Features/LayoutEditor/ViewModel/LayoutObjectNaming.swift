@@ -13,6 +13,8 @@ enum LayoutObjectNaming {
             return "Rail"
         case .closedArea:
             return "Blocked area"
+        case .floor:
+            return "Floor"
         default:
             let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
             return "\(kind.displayName) \(existingCount)"
