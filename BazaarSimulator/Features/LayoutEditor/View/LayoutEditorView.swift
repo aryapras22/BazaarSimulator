@@ -221,7 +221,7 @@ extension LayoutEditorView {
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
-                handleToolRailSelection(.door)
+                openLibraryFiltered(to: .structure)
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { _ in
@@ -229,7 +229,7 @@ extension LayoutEditorView {
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "xX")) { _ in
-                handleToolRailSelection(.blockedArea)
+                openLibraryFiltered(to: .structure)
                 return .handled
             }
             .onAppear {
@@ -254,14 +254,20 @@ extension LayoutEditorView {
         return .ignored
     }
 
+    private func openLibraryFiltered(to category: CatalogCategory) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isSidePanelVisible = true
+            viewModel.inspectorPanelTab = .library
+            viewModel.libraryCategory = category
+        }
+    }
+
     private func handleToolRailSelection(_ item: ToolRailItem) {
         switch item {
         case .select:
             viewModel.selectTool(.select)
         case .wall:
             viewModel.selectTool(.drawWall(itemID: "wall"))
-        case .door:
-            viewModel.selectTool(.placeDoor(itemID: "door"))
         case .library:
             withAnimation(.easeInOut(duration: 0.2)) {
                 if !isSidePanelVisible {
@@ -274,8 +280,6 @@ extension LayoutEditorView {
                     isSidePanelVisible = false
                 }
             }
-        case .blockedArea:
-            viewModel.selectTool(.blockedArea)
         }
     }
 

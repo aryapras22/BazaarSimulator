@@ -3,9 +3,7 @@ import SwiftUI
 enum ToolRailItem: CaseIterable, Identifiable, Sendable {
     case select
     case wall
-    case door
     case library
-    case blockedArea
 
     var id: Self { self }
 
@@ -13,9 +11,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         switch self {
         case .select: return "Select (V)"
         case .wall: return "Wall (W)"
-        case .door: return "Door (D)"
-        case .library: return "Library / Place booth (B)"
-        case .blockedArea: return "Blocked Area (X)"
+        case .library: return "Library (B)"
         }
     }
 
@@ -23,9 +19,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         switch self {
         case .select: return "cursorarrow"
         case .wall: return "line.diagonal"
-        case .door: return "door.left.hand.open"
         case .library: return "square.grid.2x2"
-        case .blockedArea: return "square.dashed"
         }
     }
 }
@@ -64,14 +58,9 @@ struct ToolRail: View {
         case .wall:
             if case .drawWall = activeTool { return true }
             return false
-        case .door:
-            if case .placeDoor = activeTool { return true }
-            return false
         case .library:
             if case .place = activeTool { return true }
             return isSidePanelOpen
-        case .blockedArea:
-            return activeTool == .blockedArea
         }
     }
 
