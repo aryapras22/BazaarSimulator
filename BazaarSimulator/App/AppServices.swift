@@ -11,16 +11,13 @@ final class AppServices {
         projectSession: (any ProjectSessionProtocol)? = nil,
         seedsMockProject: Bool = false
     ) {
-        let queue: any ImportQueueing = importQueue
-            ?? (seedsMockProject
-                ? ScriptedImportQueue()
-                : ImportQueue(pdf: PDFImportService(), reader: ExtractorFloorPlanReader()))
         let session = projectSession ?? ProjectSession()
-        self.importQueue = queue
+        self.importQueue = importQueue ?? ImportQueue(pdf: PDFImportService(), reader: ExtractorFloorPlanReader())
         self.projectSession = session
 
-        if seedsMockProject, let scriptedQueue = queue as? ScriptedImportQueue {
-            let projectID = Self.seedMockProject(in: session, importQueue: scriptedQueue)
+        // The seed has its own scripted queue so that projects created afterwards are read by the real one.
+        if seedsMockProject {
+            let projectID = Self.seedMockProject(in: session, importQueue: ScriptedImportQueue(isSynchronous: true))
             initialDestination = .analysis(projectID: projectID)
         } else {
             initialDestination = .empty
@@ -32,10 +29,6 @@ final class AppServices {
         importQueue: ScriptedImportQueue
     ) -> UUID {
         let project = session.createProject(named: "Annyeong Market")
-        let wasSynchronous = importQueue.isSynchronous
-        importQueue.isSynchronous = true
-        defer { importQueue.isSynchronous = wasSynchronous }
-
         importQueue.add(
             urls: [URL(fileURLWithPath: "/mock/legend.pdf")],
             kind: .legend,
