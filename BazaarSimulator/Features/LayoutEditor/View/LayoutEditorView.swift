@@ -94,7 +94,7 @@ struct LayoutEditorView: View {
                     .padding(.bottom, Spacing.l)
             }
         }
-        .frame(minWidth: 960, minHeight: 640)
+        .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background)
         .toolbar {
             editorToolbar
