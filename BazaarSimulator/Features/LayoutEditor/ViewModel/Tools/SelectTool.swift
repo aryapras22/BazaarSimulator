@@ -230,7 +230,7 @@ private extension SelectTool {
            current.kind.isResizable {
             var updated = current
             updated.placement = resize.preview
-            context.applyEdit(.replace(before: current, after: updated))
+            context.applyEdit(.replace(before: current, after: updated), coalesceKey: "resize-\(resize.objectID)")
         }
         resetGesture()
         context.clearPreview()
@@ -262,7 +262,7 @@ private extension SelectTool {
         var after = before
         after.placement.center += activeDragDeltaWorld
         guard after != before else { return }
-        context.applyEdit(.replace(before: before, after: after))
+        context.applyEdit(.replace(before: before, after: after), coalesceKey: "drag-\(candidateID)")
     }
 
     private func commitDoorDrag(before: LayoutObject, context: ToolContext) {
@@ -278,7 +278,7 @@ private extension SelectTool {
         after.placement = newPlacement
         after.doorFlow?.connection = DoorHosting.connection(for: newPlacement.center, on: host, in: context.layout)
         guard after != before else { return }
-        context.applyEdit(.replace(before: before, after: after))
+        context.applyEdit(.replace(before: before, after: after), coalesceKey: "drag-\(before.id)")
     }
 
     private func finishMarquee(

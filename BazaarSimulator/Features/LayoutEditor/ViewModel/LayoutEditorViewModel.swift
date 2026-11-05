@@ -128,6 +128,10 @@ final class LayoutEditorViewModel {
     var canUndo: Bool { currentHistory.canUndo }
     var canRedo: Bool { currentHistory.canRedo }
 
+    func sealHistory() {
+        currentHistory.seal()
+    }
+
     var hasUnsavedInspectorChanges: Bool {
         if groupSelection != nil { return groupDraft?.hasChanges ?? false }
         guard let selectedObject, let inspectorDraft else { return false }
@@ -183,6 +187,9 @@ final class LayoutEditorViewModel {
     }
 
     func applySelection(_ objectID: UUID?) {
+        if objectID != selectionID || groupSelection != nil {
+            sealHistory()
+        }
         hoveredGroup = nil
         groupSelection = nil
         groupDraft = nil
@@ -229,10 +236,10 @@ final class LayoutEditorViewModel {
         sizeGroups = BoothGrouping.sizeGroups(in: layout)
     }
 
-    func commitEdit(_ edit: LayoutEdit) {
+    func commitEdit(_ edit: LayoutEdit, coalesceKey: String? = nil) {
         guard let layout = activeLayout else { return }
         let updated = LayoutEditing.apply(edit, to: layout)
-        currentHistory.record(edit)
+        currentHistory.record(edit, coalesceKey: coalesceKey)
         session.updateLayout(updated, in: projectID)
         if !isBatchingRefresh { refreshDerivedState() }
     }

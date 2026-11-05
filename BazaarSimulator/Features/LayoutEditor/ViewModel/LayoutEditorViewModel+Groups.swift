@@ -128,6 +128,9 @@ extension LayoutEditorViewModel {
     }
 
     func applyGroupSelection(_ selection: GroupSelection?) {
+        if selection != groupSelection || selectionID != nil {
+            sealHistory()
+        }
         hoveredGroup = nil
         selectionID = nil
         inspectorDraft = nil

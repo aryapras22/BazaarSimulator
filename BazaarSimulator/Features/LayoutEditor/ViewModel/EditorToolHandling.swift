@@ -20,6 +20,8 @@ protocol ToolContext: AnyObject {
     func setPreview(_ preview: CanvasDragState)
     func clearPreview()
     func applyEdit(_ edit: LayoutEdit)
+    func applyEdit(_ edit: LayoutEdit, coalesceKey: String?)
+    func sealHistory()
     func selectObject(_ id: UUID?)
     func selectBooths(_ ids: Set<UUID>, additive: Bool)
     func toggleSelection(_ id: UUID)
@@ -29,6 +31,10 @@ protocol ToolContext: AnyObject {
 }
 
 extension ToolContext {
+    func applyEdit(_ edit: LayoutEdit, coalesceKey: String?) {
+        applyEdit(edit)
+    }
+    func sealHistory() {}
     func switchTool(_ tool: EditorTool) {}
     func selectGroup(containing id: UUID, bySize: Bool) {}
     func nudgeSelected(by delta: SIMD2<Double>) {}

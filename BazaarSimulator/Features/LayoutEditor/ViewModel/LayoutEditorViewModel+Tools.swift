@@ -42,6 +42,10 @@ extension LayoutEditorViewModel: ToolContext {
         commitEdit(edit)
     }
 
+    func applyEdit(_ edit: LayoutEdit, coalesceKey: String?) {
+        commitEdit(edit, coalesceKey: coalesceKey)
+    }
+
     func toggleSelection(_ id: UUID) {
         toggleBoothInSelection(id)
     }
@@ -51,6 +55,7 @@ extension LayoutEditorViewModel: ToolContext {
     }
 
     func handlePointerPress(_ event: CanvasPointerEvent) {
+        sealHistory()
         currentToolHandler.handlePress(event, context: self)
     }
 
@@ -60,10 +65,12 @@ extension LayoutEditorViewModel: ToolContext {
 
     func handlePointerRelease(_ event: CanvasPointerEvent) {
         currentToolHandler.handleRelease(event, context: self)
+        sealHistory()
     }
 
     func handlePointerDoubleClick(_ event: CanvasPointerEvent) {
         currentToolHandler.handleDoubleClick(event, context: self)
+        sealHistory()
     }
 
     @discardableResult
@@ -73,5 +80,6 @@ extension LayoutEditorViewModel: ToolContext {
 
     func cancelActiveTool() {
         currentToolHandler.cancel(context: self)
+        sealHistory()
     }
 }

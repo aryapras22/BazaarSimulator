@@ -25,7 +25,7 @@ extension LayoutEditorViewModel {
                 after.placement = newPlacement
                 after.doorFlow?.connection = DoorHosting.connection(for: newPlacement.center, on: host, in: layout)
                 guard after != before else { return }
-                commitEdit(.replace(before: before, after: after))
+                commitEdit(.replace(before: before, after: after), coalesceKey: "drag-\(id)")
             }
             return
         }
@@ -36,7 +36,7 @@ extension LayoutEditorViewModel {
             after.placement = after.placement.snapped(toGrid: Self.gridSnapCellM)
         }
         guard after != before else { return }
-        commitEdit(.replace(before: before, after: after))
+        commitEdit(.replace(before: before, after: after), coalesceKey: "drag-\(id)")
     }
 
     func finishResizingObject(id: UUID, to placement: Placement) {
@@ -44,7 +44,7 @@ extension LayoutEditorViewModel {
               current.kind.isResizable else { return }
         var updated = current
         updated.placement = placement
-        commitEdit(.replace(before: current, after: updated))
+        commitEdit(.replace(before: current, after: updated), coalesceKey: "resize-\(id)")
         if selectionID == id {
             inspectorDraft?.widthM = placement.sizeM.x
             inspectorDraft?.lengthM = placement.sizeM.y
@@ -53,6 +53,7 @@ extension LayoutEditorViewModel {
 
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
         guard let before = selectedObject, before.kind.isMovable, let layout = activeLayout else { return }
+        let key = "nudge-\(before.id)"
         if before.kind == .door {
             if let host = DoorHosting.nearestHost(to: before.placement.center, in: layout, reach: 0.3),
                let newPlacement = DoorHosting.placement(
@@ -64,7 +65,7 @@ extension LayoutEditorViewModel {
                 after.placement = newPlacement
                 guard after != before else { return }
                 withSingleRefresh {
-                    commitEdit(.replace(before: before, after: after))
+                    commitEdit(.replace(before: before, after: after), coalesceKey: key)
                     applySelection(after.id)
                 }
             }
@@ -72,7 +73,7 @@ extension LayoutEditorViewModel {
         }
         var after = before
         after.placement.center += deltaWorld
-        commitEdit(.replace(before: before, after: after))
+        commitEdit(.replace(before: before, after: after), coalesceKey: key)
     }
 
     func rotateSelected() {
@@ -173,6 +174,7 @@ extension LayoutEditorViewModel {
     }
 
     func performSelectTool(_ newTool: EditorTool) {
+        sealHistory()
         tool = newTool
         placementRotationDegrees = 0
         placementPreview = nil
