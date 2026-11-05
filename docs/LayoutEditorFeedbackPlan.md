@@ -49,6 +49,8 @@ Tests: `editLayout` writes the draft and selects the right layout. Edit is unava
 
 ## 5. Doors and blocked areas in the library
 
+Superseded by `LayoutEditorLayersPlan.md`, which puts doors and blocked areas in the library of their own layer. The text below is kept for the findings.
+
 The catalog already holds Door, Double door, the other door items, and Blocked area under Structure, and `startPlacing` already handles them. The tool rail also has separate Door (D) and Blocked Area (X) buttons.
 
 1. Remove Door and Blocked Area from `ToolRail`. Placing either starts from the library. The D and X shortcuts open the library filtered to Structure.
