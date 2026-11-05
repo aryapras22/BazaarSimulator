@@ -41,6 +41,15 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         }
     }
 
+    var layer: EditorLayer {
+        switch self {
+        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea:
+            return .structure
+        case .booth, .table, .fixture:
+            return .booths
+        }
+    }
+
     var isMovable: Bool {
         true
     }

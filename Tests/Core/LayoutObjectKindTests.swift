@@ -18,4 +18,15 @@ struct LayoutObjectKindTests {
         #expect(kind.minimumDimensionM == 0.5)
         #expect(kind.isSelectable)
     }
+
+    @Test("Every LayoutObjectKind belongs to exactly one layer", arguments: LayoutObjectKind.allCases)
+    func eachKindBelongsToOneLayer(kind: LayoutObjectKind) {
+        let layer = kind.layer
+        switch kind {
+        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea:
+            #expect(layer == .structure)
+        case .booth, .table, .fixture:
+            #expect(layer == .booths)
+        }
+    }
 }
