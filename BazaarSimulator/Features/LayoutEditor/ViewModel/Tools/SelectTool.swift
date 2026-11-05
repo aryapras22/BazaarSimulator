@@ -139,8 +139,10 @@ final class SelectTool: EditorToolHandling {
         resetGesture()
         context.clearPreview()
     }
+}
 
-    private var isInteracting: Bool {
+private extension SelectTool {
+    var isInteracting: Bool {
         activeResize != nil || dragCandidateID != nil || activeDragObjectID != nil || marqueeStartWorld != nil
     }
 
@@ -182,22 +184,44 @@ final class SelectTool: EditorToolHandling {
         if event.modifiers.contains(.shift) {
             rawDelta = SelectGesture.lockAxis(rawDelta)
         }
-        if let object = context.layout.objects.first(where: { $0.id == candidateID }),
-           object.kind == .door,
-           let host = DoorHosting.nearestHost(to: object.placement.center, in: context.layout, reach: 0.3),
-           let placement = DoorHosting.placement(
-               width: object.placement.sizeM.x,
-               on: host,
-               near: object.placement.center + rawDelta
-           ) {
-            rawDelta = placement.center - object.placement.center
+
+        let isOptionDown = event.modifiers.contains(.option)
+        var guides: [SnapGuide] = []
+
+        if let object = context.layout.objects.first(where: { $0.id == candidateID }) {
+            if object.kind == .door {
+                let reach = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
+                if !isOptionDown,
+                   let host = DoorHosting.nearestHost(to: object.placement.center, in: context.layout, reach: reach),
+                   let placement = DoorHosting.placement(
+                       width: object.placement.sizeM.x,
+                       on: host,
+                       near: object.placement.center + rawDelta
+                   ) {
+                    rawDelta = placement.center - object.placement.center
+                    guides = [SnapGuide(start: host.start, end: host.end, kind: .wallFace)]
+                }
+            } else if !isOptionDown {
+                let targetCenter = object.placement.center + rawDelta
+                let snap = Snapper.snap(
+                    point: targetCenter,
+                    layout: context.layout,
+                    pointsPerMetre: event.pointsPerMetre,
+                    isFree: false,
+                    ignoringObjectID: candidateID
+                )
+                rawDelta = snap.point - object.placement.center
+                guides = snap.guides
+            }
         }
+
         activeDragDeltaWorld = rawDelta
         context.setPreview(CanvasDragState(
             objectID: activeDragObjectID,
             deltaWorld: rawDelta,
             pointerLocation: event.viewPoint,
-            isOptionDown: event.modifiers.contains(.option)
+            isOptionDown: isOptionDown,
+            guides: guides
         ))
     }
 
@@ -237,9 +261,6 @@ final class SelectTool: EditorToolHandling {
         }
         var after = before
         after.placement.center += activeDragDeltaWorld
-        if !freeMove {
-            after.placement = after.placement.snapped(toGrid: 0.25)
-        }
         guard after != before else { return }
         context.applyEdit(.replace(before: before, after: after))
     }

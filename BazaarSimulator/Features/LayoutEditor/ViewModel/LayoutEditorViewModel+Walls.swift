@@ -8,6 +8,7 @@ extension LayoutEditorViewModel {
             world,
             from: wallDrawing?.points.last,
             in: layout,
+            pointsPerMetre: transform.scale,
             lockAngle: isShiftDown
         )
 
@@ -28,6 +29,7 @@ extension LayoutEditorViewModel {
             world,
             from: wallDrawing?.points.last,
             in: layout,
+            pointsPerMetre: transform.scale,
             lockAngle: isShiftDown
         )
 

@@ -141,6 +141,7 @@ extension LayoutEditorViewModel {
             extraRotationDegrees: placementRotationDegrees,
             kind: kind,
             in: layout,
+            pointsPerMetre: transform.scale,
             free: free
         )
     }

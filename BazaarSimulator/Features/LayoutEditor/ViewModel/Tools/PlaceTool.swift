@@ -21,7 +21,7 @@ final class PlaceTool: EditorToolHandling {
     }
 
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
-        let isFree = event.modifiers.contains(.shift) || event.modifiers.contains(.option)
+        let isFree = event.modifiers.contains(.option)
         let (kind, size) = objectKindAndSize(source: source)
         let candidate = PlacementResolver.resolve(
             size: size,
@@ -29,12 +29,14 @@ final class PlaceTool: EditorToolHandling {
             extraRotationDegrees: rotationDegrees,
             kind: kind,
             in: context.layout,
+            pointsPerMetre: event.pointsPerMetre,
             free: isFree
         )
         self.candidate = candidate
         context.setPreview(CanvasDragState(
             placementCandidate: candidate,
-            placingSource: source
+            placingSource: source,
+            guides: candidate.guides
         ))
     }
 

@@ -55,5 +55,5 @@ struct CanvasPointerEvent: Sendable, Equatable {
     var button: CanvasMouseButton = .left
     var modifiers: CanvasModifiers = []
     var hitObjectID: UUID?
-    var pointsPerMetre: Double = 1.0
+    var pointsPerMetre: Double = 10.0
 }

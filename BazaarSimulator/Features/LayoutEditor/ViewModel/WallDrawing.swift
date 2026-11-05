@@ -5,62 +5,64 @@ struct WallDrawing: Equatable, Sendable {
     var points: [SIMD2<Double>] = []
     var typedLength: String = ""
 
-    static let snapReachM: Double = 0.5
-    static let gridSnapCellM: Double = 0.25
-
     static func snappedPoint(
         _ pointer: SIMD2<Double>,
         from last: SIMD2<Double>?,
         in layout: Layout,
-        lockAngle: Bool
+        pointsPerMetre: Double = 10.0,
+        lockAngle: Bool,
+        isFree: Bool = false
     ) -> SIMD2<Double> {
-        if let target = findNearestSnapTarget(to: pointer, in: layout, maxDistance: snapReachM) {
-            return target
+        snap(
+            pointer,
+            from: last,
+            in: layout,
+            pointsPerMetre: pointsPerMetre,
+            lockAngle: lockAngle,
+            isFree: isFree
+        ).point
+    }
+
+    static func snap(
+        _ pointer: SIMD2<Double>,
+        from last: SIMD2<Double>?,
+        in layout: Layout,
+        pointsPerMetre: Double = 10.0,
+        lockAngle: Bool = false,
+        isFree: Bool = false
+    ) -> SnapResult {
+        if isFree {
+            return SnapResult(point: pointer, kind: .none, guides: [])
+        }
+
+        let snapResult = Snapper.snap(
+            point: pointer,
+            layout: layout,
+            pointsPerMetre: pointsPerMetre,
+            isFree: false
+        )
+
+        if snapResult.kind == .wallEndpoint || snapResult.kind == .wallFace {
+            return snapResult
         }
 
         if lockAngle, let last {
             let vector = pointer - last
             let distance = simd_length(vector)
-            guard distance > 1e-6 else { return last }
+            guard distance > 1e-6 else {
+                return SnapResult(point: last, kind: .none, guides: [])
+            }
             let angle = atan2(vector.y, vector.x)
             let step = Double.pi / 4.0
             let snappedAngle = (angle / step).rounded() * step
             let unitDirection = SIMD2<Double>(cos(snappedAngle), sin(snappedAngle))
             let projectedDistance = simd_dot(vector, unitDirection)
-            let snappedDistance = (projectedDistance / gridSnapCellM).rounded() * gridSnapCellM
-            return last + unitDirection * snappedDistance
+            let snappedDistance = (projectedDistance / Snapper.gridStepM).rounded() * Snapper.gridStepM
+            let snappedPoint = last + unitDirection * snappedDistance
+            return SnapResult(point: snappedPoint, kind: .grid, guides: [])
         }
 
-        return SIMD2<Double>(
-            (pointer.x / gridSnapCellM).rounded() * gridSnapCellM,
-            (pointer.y / gridSnapCellM).rounded() * gridSnapCellM
-        )
-    }
-
-    private static func findNearestSnapTarget(
-        to pointer: SIMD2<Double>,
-        in layout: Layout,
-        maxDistance: Double
-    ) -> SIMD2<Double>? {
-        var targets: [SIMD2<Double>] = []
-        for object in layout.objects where object.kind == .wall || object.kind == .rail {
-            let halfLength = object.placement.sizeM.x / 2.0
-            targets.append(LayoutGeometry.toWorld(local: SIMD2<Double>(-halfLength, 0), in: object.placement))
-            targets.append(LayoutGeometry.toWorld(local: SIMD2<Double>(halfLength, 0), in: object.placement))
-        }
-        targets.append(contentsOf: layout.hall)
-        targets.append(contentsOf: layout.lobby)
-
-        var closest: SIMD2<Double>?
-        var bestDistance = maxDistance
-        for target in targets {
-            let distance = simd_distance(pointer, target)
-            if distance <= bestDistance {
-                bestDistance = distance
-                closest = target
-            }
-        }
-        return closest
+        return snapResult
     }
 
     static func point(

@@ -51,6 +51,10 @@ enum CanvasSceneRenderer {
             drawMarqueePreview(start: start, current: current, in: &context, transform: transform)
         }
 
+        if !drag.guides.isEmpty {
+            drawGuides(drag.guides, in: &context, transform: transform)
+        }
+
         MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
     }
 
@@ -103,6 +107,26 @@ enum CanvasSceneRenderer {
             with: .color(Palette.accent.opacity(0.85)),
             style: StrokeStyle(lineWidth: 1.0, dash: [4, 4])
         )
+    }
+
+    private static func drawGuides(
+        _ guides: [SnapGuide],
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        for guide in guides {
+            let viewStart = transform.toView(guide.start)
+            let viewEnd = transform.toView(guide.end)
+            guard simd_distance(guide.start, guide.end) > 1e-4 else { continue }
+            var path = Path()
+            path.move(to: CGPoint(x: viewStart.x, y: viewStart.y))
+            path.addLine(to: CGPoint(x: viewEnd.x, y: viewEnd.y))
+            context.stroke(
+                path,
+                with: .color(Palette.accent.opacity(0.85)),
+                style: StrokeStyle(lineWidth: 1.0, dash: [4, 4])
+            )
+        }
     }
 
     private static func drawDrawingPreview(

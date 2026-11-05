@@ -15,12 +15,16 @@ final class WallTool: EditorToolHandling {
 
     func handlePress(_ event: CanvasPointerEvent, context: ToolContext) {
         let isShiftDown = event.modifiers.contains(.shift)
-        let snapped = WallDrawing.snappedPoint(
+        let isFree = event.modifiers.contains(.option)
+        let snapResult = WallDrawing.snap(
             event.worldPoint,
             from: drawing?.points.last,
             in: context.layout,
-            lockAngle: isShiftDown
+            pointsPerMetre: event.pointsPerMetre,
+            lockAngle: isShiftDown,
+            isFree: isFree
         )
+        let snapped = snapResult.point
 
         if drawing == nil {
             drawing = WallDrawing(points: [snapped], typedLength: "")
@@ -29,17 +33,21 @@ final class WallTool: EditorToolHandling {
             drawing?.typedLength = ""
         }
         currentPointer = snapped
-        updatePreview(context: context, lockAngle: isShiftDown)
+        updatePreview(context: context, lockAngle: isShiftDown, guides: snapResult.guides)
     }
 
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
         let isShiftDown = event.modifiers.contains(.shift)
-        let snapped = WallDrawing.snappedPoint(
+        let isFree = event.modifiers.contains(.option)
+        let snapResult = WallDrawing.snap(
             event.worldPoint,
             from: drawing?.points.last,
             in: context.layout,
-            lockAngle: isShiftDown
+            pointsPerMetre: event.pointsPerMetre,
+            lockAngle: isShiftDown,
+            isFree: isFree
         )
+        let snapped = snapResult.point
 
         if let typed = drawing?.typedLength,
            let length = Double(typed),
@@ -48,7 +56,7 @@ final class WallTool: EditorToolHandling {
         } else {
             currentPointer = snapped
         }
-        updatePreview(context: context, lockAngle: isShiftDown)
+        updatePreview(context: context, lockAngle: isShiftDown, guides: snapResult.guides)
     }
 
     func handleRelease(_ event: CanvasPointerEvent, context: ToolContext) {}
@@ -128,11 +136,12 @@ final class WallTool: EditorToolHandling {
         return false
     }
 
-    private func updatePreview(context: ToolContext, lockAngle: Bool) {
+    private func updatePreview(context: ToolContext, lockAngle: Bool, guides: [SnapGuide] = []) {
         context.setPreview(CanvasDragState(
             isShiftDown: lockAngle,
             wallDrawing: drawing,
-            wallCurrentPointer: currentPointer
+            wallCurrentPointer: currentPointer,
+            guides: guides
         ))
     }
 

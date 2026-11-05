@@ -5,11 +5,10 @@ struct PlacementCandidate: Equatable, Sendable {
     let placement: Placement
     let isValid: Bool
     let note: String?
+    var guides: [SnapGuide] = []
 }
 
 enum PlacementResolver {
-    static let wallReachM: Double = 1.2
-    static let boothSnapReachM: Double = 0.6
     static let gridSnapCellM: Double = 0.25
 
     // swiftlint:disable:next function_parameter_count
@@ -19,31 +18,50 @@ enum PlacementResolver {
         extraRotationDegrees: Int,
         kind: LayoutObjectKind,
         in layout: Layout,
+        pointsPerMetre: Double = 10.0,
         free: Bool
     ) -> PlacementCandidate {
+        let reachM = Snapper.tolerance(pointsPerMetre: pointsPerMetre)
         let placement: Placement
+        var guides: [SnapGuide] = []
+
         if free {
             let rotation = Double(extraRotationDegrees) * .pi / 180.0
             placement = Placement(center: point, sizeM: size, rotationRadians: rotation)
-        } else if kind == .booth, let snapped = snapToNeighborBooth(size: size, near: point, in: layout) {
-            placement = snapped
-        } else if let aligned = alignToNearestWall(size: size, near: point, in: layout) {
-            placement = aligned
+        } else if kind == .booth, let snap = snapToNeighborBooth(size: size, near: point, in: layout, reach: reachM) {
+            placement = snap.placement
+            guides = [snap.guide]
+        } else if let align = alignToNearestWall(size: size, near: point, in: layout, reach: reachM) {
+            placement = align.placement
+            guides = [align.guide]
         } else {
             placement = snapToGrid(size: size, at: point, extraRotationDegrees: extraRotationDegrees)
         }
 
         let (isValid, note) = validateCandidate(placement, in: layout)
-        return PlacementCandidate(placement: placement, isValid: isValid, note: note)
+        return PlacementCandidate(placement: placement, isValid: isValid, note: note, guides: guides)
+    }
+
+    private struct SideEvaluation {
+        let distance: Double
+        let placement: Placement
+        let guide: SnapGuide
+    }
+
+    private struct WallSegment {
+        let startPoint: SIMD2<Double>
+        let endPoint: SIMD2<Double>
+        let thickness: Double
     }
 
     private static func snapToNeighborBooth(
         size: SIMD2<Double>,
         near point: SIMD2<Double>,
-        in layout: Layout
-    ) -> Placement? {
-        var bestDistance = boothSnapReachM
-        var bestPlacement: Placement?
+        in layout: Layout,
+        reach: Double
+    ) -> SideEvaluation? {
+        var best: SideEvaluation?
+        var bestDistance = reach
 
         let booths = layout.objects.filter { $0.kind == .booth }
         for booth in booths {
@@ -55,15 +73,51 @@ enum PlacementResolver {
             )
             if let candidate, candidate.distance < bestDistance {
                 bestDistance = candidate.distance
-                bestPlacement = candidate.placement
+                best = candidate
             }
         }
-        return bestPlacement
+        return best
     }
 
-    private struct SideEvaluation {
-        let distance: Double
-        let placement: Placement
+    private struct BoothSide {
+        let localCenter: SIMD2<Double>
+        let edgePoint: SIMD2<Double>
+        let segStart: SIMD2<Double>
+        let segEnd: SIMD2<Double>
+    }
+
+    private static func boothSides(
+        halfW: Double,
+        halfD: Double,
+        local: SIMD2<Double>,
+        newSize: SIMD2<Double>
+    ) -> [BoothSide] {
+        [
+            BoothSide(
+                localCenter: SIMD2<Double>(-halfW - newSize.x / 2.0, 0),
+                edgePoint: SIMD2<Double>(-halfW, min(max(local.y, -halfD), halfD)),
+                segStart: SIMD2<Double>(-halfW, -halfD),
+                segEnd: SIMD2<Double>(-halfW, halfD)
+            ),
+            BoothSide(
+                localCenter: SIMD2<Double>(halfW + newSize.x / 2.0, 0),
+                edgePoint: SIMD2<Double>(halfW, min(max(local.y, -halfD), halfD)),
+                segStart: SIMD2<Double>(halfW, -halfD),
+                segEnd: SIMD2<Double>(halfW, halfD)
+            ),
+            BoothSide(
+                localCenter: SIMD2<Double>(0, -halfD - newSize.y / 2.0),
+                edgePoint: SIMD2<Double>(min(max(local.x, -halfW), halfW), -halfD),
+                segStart: SIMD2<Double>(-halfW, -halfD),
+                segEnd: SIMD2<Double>(halfW, -halfD)
+            ),
+            BoothSide(
+                localCenter: SIMD2<Double>(0, halfD + newSize.y / 2.0),
+                edgePoint: SIMD2<Double>(min(max(local.x, -halfW), halfW), halfD),
+                segStart: SIMD2<Double>(-halfW, halfD),
+                segEnd: SIMD2<Double>(halfW, halfD)
+            )
+        ]
     }
 
     private static func evaluateBoothSides(
@@ -75,61 +129,44 @@ enum PlacementResolver {
         let delta = pointer - booth.center
         let cosAngle = cos(-booth.rotationRadians)
         let sinAngle = sin(-booth.rotationRadians)
-        let localPoint = SIMD2<Double>(
+        let local = SIMD2<Double>(
             delta.x * cosAngle - delta.y * sinAngle,
             delta.x * sinAngle + delta.y * cosAngle
         )
-
-        let halfWidth = booth.sizeM.x / 2.0
-        let halfDepth = booth.sizeM.y / 2.0
-
-        let sides: [(localCenter: SIMD2<Double>, edgePoint: SIMD2<Double>)] = [
-            (
-                SIMD2<Double>(-halfWidth - newSize.x / 2.0, 0),
-                SIMD2<Double>(-halfWidth, min(max(localPoint.y, -halfDepth), halfDepth))
-            ),
-            (
-                SIMD2<Double>(halfWidth + newSize.x / 2.0, 0),
-                SIMD2<Double>(halfWidth, min(max(localPoint.y, -halfDepth), halfDepth))
-            ),
-            (
-                SIMD2<Double>(0, -halfDepth - newSize.y / 2.0),
-                SIMD2<Double>(min(max(localPoint.x, -halfWidth), halfWidth), -halfDepth)
-            ),
-            (
-                SIMD2<Double>(0, halfDepth + newSize.y / 2.0),
-                SIMD2<Double>(min(max(localPoint.x, -halfWidth), halfWidth), halfDepth)
-            )
-        ]
+        let sides = boothSides(
+            halfW: booth.sizeM.x / 2.0,
+            halfD: booth.sizeM.y / 2.0,
+            local: local,
+            newSize: newSize
+        )
 
         var best: SideEvaluation?
         var currentMin = maxReach
 
         for side in sides {
-            let dist = simd_distance(localPoint, side.edgePoint)
+            let dist = simd_distance(local, side.edgePoint)
             if dist < currentMin {
                 currentMin = dist
                 let worldCenter = LayoutGeometry.toWorld(local: side.localCenter, in: booth)
+                let guideStart = LayoutGeometry.toWorld(local: side.segStart, in: booth)
+                let guideEnd = LayoutGeometry.toWorld(local: side.segEnd, in: booth)
+                let guide = SnapGuide(start: guideStart, end: guideEnd, kind: .boothEdge)
                 best = SideEvaluation(
                     distance: dist,
-                    placement: Placement(center: worldCenter, sizeM: newSize, rotationRadians: booth.rotationRadians)
+                    placement: Placement(center: worldCenter, sizeM: newSize, rotationRadians: booth.rotationRadians),
+                    guide: guide
                 )
             }
         }
         return best
     }
 
-    private struct WallSegment {
-        let startPoint: SIMD2<Double>
-        let endPoint: SIMD2<Double>
-        let thickness: Double
-    }
-
     private static func alignToNearestWall(
         size: SIMD2<Double>,
         near point: SIMD2<Double>,
-        in layout: Layout
-    ) -> Placement? {
+        in layout: Layout,
+        reach: Double
+    ) -> (placement: Placement, guide: SnapGuide)? {
         var segments: [WallSegment] = []
         for wall in layout.objects where wall.kind == .wall {
             let halfLength = wall.placement.sizeM.x / 2.0
@@ -141,8 +178,8 @@ enum PlacementResolver {
         collectPerimeterSegments(polygon: layout.hall, into: &segments)
         collectPerimeterSegments(polygon: layout.lobby, into: &segments)
 
-        var bestDistance = wallReachM
-        var bestPlacement: Placement?
+        var bestDistance = reach
+        var bestResult: (placement: Placement, guide: SnapGuide)?
 
         for segment in segments {
             guard let evaluated = evaluateWallSegment(segment, near: point, size: size, maxReach: bestDistance) else {
@@ -150,10 +187,11 @@ enum PlacementResolver {
             }
             if evaluated.distance < bestDistance {
                 bestDistance = evaluated.distance
-                bestPlacement = evaluated.placement
+                let guide = SnapGuide(start: segment.startPoint, end: segment.endPoint, kind: .wallFace)
+                bestResult = (evaluated.placement, guide)
             }
         }
-        return bestPlacement
+        return bestResult
     }
 
     private static func collectPerimeterSegments(polygon: [SIMD2<Double>], into segments: inout [WallSegment]) {
@@ -243,7 +281,6 @@ enum PlacementResolver {
             return (false, "Overlaps blocked area")
         }
 
-        // A warning, not a block: LayoutValidator already reports booth and wall overlaps after the drop.
         let overlapped = layout.objects.first { other in
             (other.kind == .booth || other.kind == .wall)
                 && LayoutGeometry.overlapDepth(placement, other.placement) > 0.1

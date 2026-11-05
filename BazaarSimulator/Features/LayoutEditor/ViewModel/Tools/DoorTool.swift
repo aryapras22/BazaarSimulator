@@ -21,10 +21,19 @@ final class DoorTool: EditorToolHandling {
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
         let item = ObjectCatalog.item(itemID)
         let width = item?.sizeM.x ?? 1.2
+        let isFree = event.modifiers.contains(.option)
         let resolvedCandidate: PlacementCandidate
-        if let host = DoorHosting.nearestHost(to: event.worldPoint, in: context.layout),
+        let reach = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
+        if !isFree,
+           let host = DoorHosting.nearestHost(to: event.worldPoint, in: context.layout, reach: reach),
            let placement = DoorHosting.placement(width: width, on: host, near: event.worldPoint) {
-            resolvedCandidate = PlacementCandidate(placement: placement, isValid: true, note: nil)
+            let guide = SnapGuide(start: host.start, end: host.end, kind: .wallFace)
+            resolvedCandidate = PlacementCandidate(
+                placement: placement,
+                isValid: true,
+                note: nil,
+                guides: [guide]
+            )
         } else {
             let placement = Placement(
                 center: event.worldPoint,
@@ -34,13 +43,15 @@ final class DoorTool: EditorToolHandling {
             resolvedCandidate = PlacementCandidate(
                 placement: placement,
                 isValid: false,
-                note: "Must be placed on a wall or edge"
+                note: isFree ? "Snapping suspended" : "Must be placed on a wall or edge",
+                guides: []
             )
         }
         self.candidate = resolvedCandidate
         context.setPreview(CanvasDragState(
             placementCandidate: resolvedCandidate,
-            placingSource: .catalog(itemID)
+            placingSource: .catalog(itemID),
+            guides: resolvedCandidate.guides
         ))
     }
 
@@ -51,8 +62,13 @@ final class DoorTool: EditorToolHandling {
         if candidate == nil {
             handleMove(event, context: context)
         }
+        let reach = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
         guard let candidate, candidate.isValid,
-              let host = DoorHosting.nearestHost(to: candidate.placement.center, in: context.layout) else {
+              let host = DoorHosting.nearestHost(
+                  to: candidate.placement.center,
+                  in: context.layout,
+                  reach: reach
+              ) else {
             return
         }
 

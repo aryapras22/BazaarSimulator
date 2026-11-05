@@ -24,4 +24,5 @@ struct CanvasDragState: Equatable, Sendable {
     var wallCurrentPointer: SIMD2<Double>?
     var marqueeStart: SIMD2<Double>?
     var marqueeCurrent: SIMD2<Double>?
+    var guides: [SnapGuide] = []
 }
