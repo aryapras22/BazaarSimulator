@@ -86,6 +86,18 @@ enum ObjectCatalog {
             sizeM: SIMD2(2.0, 2.0), heightM: 0.05, footprint: .rect,
             resize: .free, placement: .drawArea,
             keywords: ["blocked", "restricted", "closed", "void", "hazard"], seats: []
+        ),
+        CatalogItem(
+            id: "stage", name: "Stage", category: .structure, kind: .stage,
+            sizeM: SIMD2(4.0, 3.0), heightM: 0.8, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["stage", "platform", "performance", "deck"], seats: []
+        ),
+        CatalogItem(
+            id: "stage-extension", name: "Stage extension", category: .structure, kind: .stage,
+            sizeM: SIMD2(3.0, 3.0), heightM: 0.8, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["stage", "extension", "riser", "deck"], seats: []
         )
     ]
 
@@ -153,18 +165,6 @@ enum ObjectCatalog {
             resize: .none, placement: .point,
             keywords: ["bench", "seat", "seating", "chair"],
             seats: [SIMD2(-0.5, 0), SIMD2(0, 0), SIMD2(0.5, 0)]
-        ),
-        CatalogItem(
-            id: "stage", name: "Stage", category: .furniture, kind: .stage,
-            sizeM: SIMD2(4.0, 3.0), heightM: 0.8, footprint: .rect,
-            resize: .free, placement: .point,
-            keywords: ["stage", "platform", "performance", "deck"], seats: []
-        ),
-        CatalogItem(
-            id: "stage-extension", name: "Stage extension", category: .furniture, kind: .stage,
-            sizeM: SIMD2(3.0, 3.0), heightM: 0.8, footprint: .rect,
-            resize: .free, placement: .point,
-            keywords: ["stage", "extension", "riser", "deck"], seats: []
         ),
         CatalogItem(
             id: "counter", name: "Counter", category: .furniture, kind: .fixture,

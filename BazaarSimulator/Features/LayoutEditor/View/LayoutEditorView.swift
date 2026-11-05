@@ -11,6 +11,7 @@ struct LayoutEditorView: View {
     var body: some View {
         HStack(spacing: 0) {
             ToolRail(
+                layer: viewModel.activeLayer,
                 activeTool: viewModel.tool,
                 isSidePanelOpen: isSidePanelVisible,
                 onSelect: { railItem in
@@ -95,7 +96,9 @@ extension LayoutEditorView {
             rotateSelected: { viewModel.rotateSelected() },
             zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
             zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
-            fitToView: { viewModel.fitToView(in: canvasViewSize) }
+            fitToView: { viewModel.fitToView(in: canvasViewSize) },
+            selectStructureLayer: { viewModel.selectLayer(.structure) },
+            selectBoothsLayer: { viewModel.selectLayer(.booths) }
         )
     }
 
@@ -213,10 +216,12 @@ extension LayoutEditorView {
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "wW")) { _ in
+                guard viewModel.activeLayer == .structure else { return .ignored }
                 handleToolRailSelection(.wall)
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
+                guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
                 return .handled
             }
@@ -225,6 +230,7 @@ extension LayoutEditorView {
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "xX")) { _ in
+                guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
                 return .handled
             }
@@ -269,7 +275,7 @@ extension LayoutEditorView {
                 if !isSidePanelVisible {
                     isSidePanelVisible = true
                     viewModel.inspectorPanelTab = .library
-                    if let first = viewModel.cachedBoothTemplates.first {
+                    if viewModel.activeLayer == .booths, let first = viewModel.cachedBoothTemplates.first {
                         viewModel.selectTool(.place(.template(first)))
                     }
                 } else {

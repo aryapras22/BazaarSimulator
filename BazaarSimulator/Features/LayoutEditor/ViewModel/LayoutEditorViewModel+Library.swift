@@ -25,51 +25,55 @@ extension LayoutEditorViewModel {
     var libraryRows: [LibraryRowDisplay] {
         var rows: [LibraryRowDisplay] = []
 
-        let templateRows = cachedBoothTemplates.map { template -> LibraryRowDisplay in
-            let categoryName = legend.entries.first { $0.id == template.categoryID }?.name ?? "Booth"
-            let title = "\(categoryName) booth"
-            let shortText = DimensionInput.text(for: template.sizeKey.shortM)
-            let longText = DimensionInput.text(for: template.sizeKey.longM)
-            let detail = "\(shortText) × \(longText) m · \(template.count) placed"
-            let tint = legend.entries.first { $0.id == template.categoryID }?.color
-            return LibraryRowDisplay(
-                id: template.id,
-                source: .template(template),
-                title: title,
-                detail: detail,
-                category: .project,
-                footprint: .rect,
-                sizeM: SIMD2(template.sizeKey.shortM, template.sizeKey.longM),
-                openSides: [.bottom],
-                seats: [],
-                tint: tint
-            )
-        }
-        rows.append(contentsOf: templateRows)
-
-        let catalogRows = ObjectCatalog.items.map { item -> LibraryRowDisplay in
-            let detail: String
-            if item.footprint == .circle {
-                detail = "⌀ \(DimensionInput.text(for: item.sizeM.x)) m"
-            } else {
-                detail = "\(DimensionInput.text(for: item.sizeM.x)) × \(DimensionInput.text(for: item.sizeM.y)) m"
+        if activeLayer == .booths {
+            let templateRows = cachedBoothTemplates.map { template -> LibraryRowDisplay in
+                let categoryName = legend.entries.first { $0.id == template.categoryID }?.name ?? "Booth"
+                let title = "\(categoryName) booth"
+                let shortText = DimensionInput.text(for: template.sizeKey.shortM)
+                let longText = DimensionInput.text(for: template.sizeKey.longM)
+                let detail = "\(shortText) × \(longText) m · \(template.count) placed"
+                let tint = legend.entries.first { $0.id == template.categoryID }?.color
+                return LibraryRowDisplay(
+                    id: template.id,
+                    source: .template(template),
+                    title: title,
+                    detail: detail,
+                    category: .project,
+                    footprint: .rect,
+                    sizeM: SIMD2(template.sizeKey.shortM, template.sizeKey.longM),
+                    openSides: [.bottom],
+                    seats: [],
+                    tint: tint
+                )
             }
-            return LibraryRowDisplay(
-                id: item.id,
-                source: .catalog(item.id),
-                title: item.name,
-                detail: detail,
-                category: item.category,
-                footprint: item.footprint,
-                sizeM: item.sizeM,
-                openSides: [],
-                seats: item.seats,
-                tint: nil
-            )
+            rows.append(contentsOf: templateRows)
         }
+
+        let catalogRows = ObjectCatalog.items
+            .filter { $0.category.layer == activeLayer }
+            .map { item -> LibraryRowDisplay in
+                let detail: String
+                if item.footprint == .circle {
+                    detail = "⌀ \(DimensionInput.text(for: item.sizeM.x)) m"
+                } else {
+                    detail = "\(DimensionInput.text(for: item.sizeM.x)) × \(DimensionInput.text(for: item.sizeM.y)) m"
+                }
+                return LibraryRowDisplay(
+                    id: item.id,
+                    source: .catalog(item.id),
+                    title: item.name,
+                    detail: detail,
+                    category: item.category,
+                    footprint: item.footprint,
+                    sizeM: item.sizeM,
+                    openSides: [],
+                    seats: item.seats,
+                    tint: nil
+                )
+            }
         rows.append(contentsOf: catalogRows)
 
-        if let selectedCategory = libraryCategory {
+        if let selectedCategory = libraryCategory, selectedCategory.layer == activeLayer {
             rows = rows.filter { $0.category == selectedCategory }
         }
 
@@ -88,6 +92,7 @@ extension LayoutEditorViewModel {
     }
 
     func startPlacing(_ row: LibraryRowDisplay) {
+        guard row.category.layer == activeLayer else { return }
         selectObject(nil)
         switch row.source {
         case .template:

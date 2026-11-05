@@ -22,16 +22,26 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .library: return "square.grid.2x2"
         }
     }
+
+    static func items(for layer: EditorLayer) -> [ToolRailItem] {
+        switch layer {
+        case .structure:
+            return [.select, .wall, .library]
+        case .booths:
+            return [.select, .library]
+        }
+    }
 }
 
 struct ToolRail: View {
+    let layer: EditorLayer
     let activeTool: EditorTool
     let isSidePanelOpen: Bool
     let onSelect: (ToolRailItem) -> Void
 
     var body: some View {
         VStack(spacing: Spacing.s) {
-            ForEach(ToolRailItem.allCases) { item in
+            ForEach(ToolRailItem.items(for: layer)) { item in
                 toolButton(for: item)
             }
 
@@ -106,6 +116,7 @@ struct ToolRail: View {
 #Preview {
     HStack(spacing: 0) {
         ToolRail(
+            layer: .structure,
             activeTool: .select,
             isSidePanelOpen: false,
             onSelect: { _ in }

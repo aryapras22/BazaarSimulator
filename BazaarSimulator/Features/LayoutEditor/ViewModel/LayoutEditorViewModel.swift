@@ -170,6 +170,7 @@ final class LayoutEditorViewModel {
         }
         activeLayer = newLayer
         tool = .select
+        libraryCategory = nil
         applySelection(nil)
     }
 
@@ -280,6 +281,7 @@ final class LayoutEditorViewModel {
         case .switchLayer(let newLayer):
             activeLayer = newLayer
             tool = .select
+            libraryCategory = nil
             applySelection(nil)
         case .switchTool(let newTool):
             performSelectTool(newTool)

@@ -15,6 +15,22 @@ enum CatalogCategory: String, CaseIterable, Hashable, Sendable {
         case .decor: return "Decor"
         }
     }
+
+    var layer: EditorLayer {
+        switch self {
+        case .structure: return .structure
+        case .project, .furniture, .decor: return .booths
+        }
+    }
+
+    static func categories(for layer: EditorLayer) -> [CatalogCategory] {
+        switch layer {
+        case .structure:
+            return [.structure]
+        case .booths:
+            return [.project, .furniture, .decor]
+        }
+    }
 }
 
 enum CatalogFootprint: Hashable, Sendable {

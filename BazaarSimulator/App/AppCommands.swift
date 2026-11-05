@@ -13,6 +13,8 @@ struct EditorCommandActions {
     var zoomIn: () -> Void
     var zoomOut: () -> Void
     var fitToView: () -> Void
+    var selectStructureLayer: () -> Void
+    var selectBoothsLayer: () -> Void
 }
 
 private struct EditorCommandActionsKey: FocusedValueKey {
@@ -83,6 +85,20 @@ struct AppCommands: Commands {
                 actions?.fitToView()
             }
             .keyboardShortcut("0", modifiers: .command)
+            .disabled(actions == nil)
+        }
+
+        CommandMenu("Layer") {
+            Button("Structure") {
+                actions?.selectStructureLayer()
+            }
+            .keyboardShortcut("1", modifiers: .command)
+            .disabled(actions == nil)
+
+            Button("Booths") {
+                actions?.selectBoothsLayer()
+            }
+            .keyboardShortcut("2", modifiers: .command)
             .disabled(actions == nil)
         }
     }

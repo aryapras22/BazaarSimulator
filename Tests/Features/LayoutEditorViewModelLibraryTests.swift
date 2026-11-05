@@ -6,7 +6,7 @@ import Testing
 @Suite
 @MainActor
 struct LayoutEditorViewModelLibraryTests {
-    private static func makeViewModel() -> LayoutEditorViewModel {
+    private static func makeViewModel(layer: EditorLayer = .booths) -> LayoutEditorViewModel {
         let session = ProjectSession()
         let project = session.createProject(named: "Annyeong")
         let layout = PreviewLayouts.annyeong()
@@ -15,23 +15,28 @@ struct LayoutEditorViewModelLibraryTests {
             for: project.id
         )
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.selectLayer(layer)
         viewModel.refreshDerivedState()
         return viewModel
     }
 
-    @Test("Library rows contain booth templates and catalog items")
+    @Test("Library rows filter by active layer")
     func libraryRowsContent() {
-        let viewModel = Self.makeViewModel()
-        let rows = viewModel.libraryRows
+        let boothsVM = Self.makeViewModel(layer: .booths)
+        let boothRows = boothsVM.libraryRows
+        #expect(!boothRows.isEmpty)
+        let projectRows = boothRows.filter { $0.category == .project }
+        #expect(projectRows.count == 5)
+        #expect(boothRows.allSatisfy { $0.category.layer == .booths })
 
-        #expect(!rows.isEmpty)
-        let projectRows = rows.filter { $0.category == .project }
-        #expect(!projectRows.isEmpty)
-        #expect(projectRows.count == 5) // Annyeong alone has 5 templates
-
-        let catalogCount = ObjectCatalog.items.count
-        let nonProjectRows = rows.filter { $0.category != .project }
-        #expect(nonProjectRows.count == catalogCount)
+        let structureVM = Self.makeViewModel(layer: .structure)
+        let structureRows = structureVM.libraryRows
+        #expect(!structureRows.isEmpty)
+        #expect(!structureRows.contains { $0.category == .project })
+        #expect(structureRows.allSatisfy { $0.category.layer == .structure })
+        #expect(structureRows.contains { $0.id == "wall" })
+        #expect(structureRows.contains { $0.id == "door" })
+        #expect(structureRows.contains { $0.id == "stage" })
     }
 
     @Test("Search query filters rows by name and keywords")
@@ -59,35 +64,51 @@ struct LayoutEditorViewModelLibraryTests {
 
     @Test("startPlacing selects the right placement tool")
     func startPlacingTools() throws {
-        let viewModel = Self.makeViewModel()
-
-        let templateRow = try #require(viewModel.libraryRows.first { $0.category == .project })
-        viewModel.startPlacing(templateRow)
-        if case .place = viewModel.tool {
+        let boothsVM = Self.makeViewModel(layer: .booths)
+        let templateRow = try #require(boothsVM.libraryRows.first { $0.category == .project })
+        boothsVM.startPlacing(templateRow)
+        if case .place = boothsVM.tool {
             // Success
         } else {
-            Issue.record("Expected .place tool, got \(viewModel.tool)")
+            Issue.record("Expected .place tool, got \(boothsVM.tool)")
         }
 
-        let wallRow = try #require(viewModel.libraryRows.first { $0.id == "wall" })
-        viewModel.startPlacing(wallRow)
-        if case .drawWall = viewModel.tool {
+        let structureVM = Self.makeViewModel(layer: .structure)
+        let wallRow = try #require(structureVM.libraryRows.first { $0.id == "wall" })
+        structureVM.startPlacing(wallRow)
+        if case .drawWall = structureVM.tool {
             // Success
         } else {
-            Issue.record("Expected .drawWall tool, got \(viewModel.tool)")
+            Issue.record("Expected .drawWall tool, got \(structureVM.tool)")
         }
 
-        let doorRow = try #require(viewModel.libraryRows.first { $0.id == "door" })
-        viewModel.startPlacing(doorRow)
-        if case .placeDoor = viewModel.tool {
+        let doorRow = try #require(structureVM.libraryRows.first { $0.id == "door" })
+        structureVM.startPlacing(doorRow)
+        if case .placeDoor = structureVM.tool {
             // Success
         } else {
-            Issue.record("Expected .placeDoor tool, got \(viewModel.tool)")
+            Issue.record("Expected .placeDoor tool, got \(structureVM.tool)")
         }
 
-        let blockedRow = try #require(viewModel.libraryRows.first { $0.id == "blocked-area" })
-        viewModel.startPlacing(blockedRow)
-        #expect(viewModel.tool == .blockedArea)
+        let blockedRow = try #require(structureVM.libraryRows.first { $0.id == "blocked-area" })
+        structureVM.startPlacing(blockedRow)
+        #expect(structureVM.tool == .blockedArea)
+    }
+
+    @Test("ToolRailItem filters items by active layer")
+    func toolRailItemsByLayer() {
+        #expect(ToolRailItem.items(for: .structure) == [.select, .wall, .library])
+        #expect(ToolRailItem.items(for: .booths) == [.select, .library])
+    }
+
+    @Test("CatalogCategory maps to expected layer and categories")
+    func catalogCategoryLayers() {
+        #expect(CatalogCategory.structure.layer == .structure)
+        #expect(CatalogCategory.project.layer == .booths)
+        #expect(CatalogCategory.furniture.layer == .booths)
+        #expect(CatalogCategory.decor.layer == .booths)
+        #expect(CatalogCategory.categories(for: .structure) == [.structure])
+        #expect(CatalogCategory.categories(for: .booths) == [.project, .furniture, .decor])
     }
 
     @Test("Template placement creates booth with size, category, inferred sides, and label N1")

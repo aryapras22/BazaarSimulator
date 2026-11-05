@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LibraryPanel: View {
+    let layer: EditorLayer
     let rows: [LibraryRowDisplay]
     @Binding var searchText: String
     @Binding var selectedCategory: CatalogCategory?
@@ -41,6 +42,10 @@ struct LibraryPanel: View {
         }
     }
 
+    private var availableCategories: [CatalogCategory] {
+        CatalogCategory.categories(for: layer)
+    }
+
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Spacing.xs) {
@@ -48,7 +53,7 @@ struct LibraryPanel: View {
                     selectedCategory = nil
                 }
 
-                ForEach(CatalogCategory.allCases, id: \.self) { category in
+                ForEach(availableCategories, id: \.self) { category in
                     chipButton(title: category.title, isSelected: selectedCategory == category) {
                         selectedCategory = category
                     }
@@ -77,7 +82,7 @@ struct LibraryPanel: View {
     }
 
     private var categoriesWithRows: [CatalogCategory] {
-        CatalogCategory.allCases.filter { category in
+        availableCategories.filter { category in
             rows.contains { $0.category == category }
         }
     }
