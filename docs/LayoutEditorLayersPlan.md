@@ -1,5 +1,7 @@
 # Layout Editor: Layers and Build Tools
 
+> Superseded for the layer split by `LayoutEditorStructureAndBoothsPlan.md`, which uses two layers (structure, booths) instead of three. The build behaviour (placement feedback, booth rows and fill, overlays) in this plan still applies.
+>
 > Plan to replace the Floor Plan and Flow tabs with three editing layers (walls and doors, areas, booths), give each layer its own tools and library, and add the build helpers that make Cities: Skylines easy to build in: live validity feedback, drag-out rows, and fill. It builds on `LayoutEditorCrowdInteractionPlan.md` (tools, snapping, undo, screen layout, all landed) and replaces section 5 of `LayoutEditorFeedbackPlan.md`. Findings about our code come from reading `feature/project-setup-reading` at `ea2239a`, not from running the app. Findings about other products come from the sources listed at the end.
 
 ## Decisions already made
