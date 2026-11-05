@@ -183,7 +183,7 @@ extension LayoutEditorViewModel {
             categoryID: template.categoryID,
             heightM: BoothShape.panelHeightM
         )
-        booth.openSides = OpenSideInference.infer(for: booth, in: layout)
+        booth.openSides = OpenSideInference.defaultSide(for: booth, in: layout)
         commitEdit(.insert(booth, index: layout.objects.count))
         applySelection(objectID)
     }
@@ -246,7 +246,7 @@ extension LayoutEditorViewModel {
             categoryID: template.categoryID,
             heightM: BoothShape.panelHeightM
         )
-        booth.openSides = OpenSideInference.infer(for: booth, in: layout)
+        booth.openSides = OpenSideInference.defaultSide(for: booth, in: layout)
         withSingleRefresh {
             commitEdit(.insert(booth, index: layout.objects.count))
             applySelection(objectID)

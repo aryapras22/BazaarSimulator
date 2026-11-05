@@ -65,7 +65,7 @@ extension LayoutEditorViewModel {
         guard let layout = activeLayout else { return }
         let edits = selectedGroupMembers.compactMap { member -> LayoutEdit? in
             var updated = member
-            updated.openSides = OpenSideInference.infer(for: member, in: layout)
+            updated.openSides = OpenSideInference.defaultSide(for: member, in: layout)
             return updated == member ? nil : .replace(before: member, after: updated)
         }
         guard !edits.isEmpty else { return }

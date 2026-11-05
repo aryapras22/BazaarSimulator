@@ -95,7 +95,7 @@ final class PlaceTool: EditorToolHandling {
                 categoryID: template.categoryID,
                 heightM: BoothShape.panelHeightM
             )
-            booth.openSides = OpenSideInference.infer(for: booth, in: context.layout)
+            booth.openSides = OpenSideInference.defaultSide(for: booth, in: context.layout)
             context.applyEdit(.insert(booth, index: context.layout.objects.count))
             context.selectObject(objectID)
 

@@ -4,6 +4,57 @@ import simd
 enum OpenSideInference {
     static let probeDepthM: Double = 0.3
 
+    static func defaultSide(for booth: LayoutObject, in layout: Layout) -> OpenSides {
+        let open = infer(for: booth, in: layout)
+        guard !open.isEmpty else { return [] }
+
+        let candidateSides = OpenSides.ordered.filter { open.contains($0) }
+        guard candidateSides.count > 1 else {
+            return candidateSides.first ?? []
+        }
+
+        var bestSide = candidateSides[0]
+        var maxClearM = -1.0
+
+        for side in candidateSides {
+            let clearM = clearDepth(for: side, of: booth, in: layout)
+            if clearM > maxClearM {
+                maxClearM = clearM
+                bestSide = side
+            }
+        }
+
+        return bestSide
+    }
+
+    private static func clearDepth(for side: OpenSides, of booth: LayoutObject, in layout: Layout) -> Double {
+        var clearDistance = 0.0
+        let steps = stride(from: 0.5, through: 3.0, by: 0.5)
+        for depth in steps {
+            let strip = LayoutGeometry.stripPlacement(
+                for: side,
+                of: booth.placement,
+                depthM: depth
+            )
+            guard LayoutGeometry.isPlacementInsideWalkableFloor(strip, in: layout) else {
+                break
+            }
+            var blocked = false
+            for candidate in layout.objects where candidate.id != booth.id {
+                guard candidate.kind.blocksWalking else { continue }
+                if LayoutGeometry.intersects(strip, candidate.placement) {
+                    blocked = true
+                    break
+                }
+            }
+            if blocked {
+                break
+            }
+            clearDistance = depth
+        }
+        return clearDistance
+    }
+
     static func infer(for booth: LayoutObject, in layout: Layout) -> OpenSides {
         var openSides: OpenSides = []
         for side in OpenSides.ordered where isSideOpen(side, of: booth, in: layout) {

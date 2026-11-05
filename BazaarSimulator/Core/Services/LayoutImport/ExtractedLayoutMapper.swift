@@ -64,7 +64,7 @@ enum ExtractedLayoutMapper {
             )
         )
         for index in layout.objects.indices where layout.objects[index].kind == .booth {
-            layout.objects[index].openSides = OpenSideInference.infer(for: layout.objects[index], in: layout)
+            layout.objects[index].openSides = OpenSideInference.defaultSide(for: layout.objects[index], in: layout)
         }
         return layout
     }

@@ -37,7 +37,7 @@ enum MockLayoutMapper {
 
         for index in draftLayout.objects.indices where draftLayout.objects[index].kind == .booth {
             let booth = draftLayout.objects[index]
-            draftLayout.objects[index].openSides = OpenSideInference.infer(for: booth, in: draftLayout)
+            draftLayout.objects[index].openSides = OpenSideInference.defaultSide(for: booth, in: draftLayout)
         }
 
         return draftLayout

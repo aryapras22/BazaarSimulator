@@ -181,4 +181,90 @@ struct OpenSideInferenceTests {
 
         #expect(OpenSideInference.isSideOpen(.top, of: booth, in: layout))
     }
+
+    @Test("An aisle booth with two clear sides gets the wider one")
+    func aisleBoothGetsWiderClearSide() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let topBlocker = LayoutObject(
+            kind: .booth,
+            label: "Top",
+            placement: Placement(center: SIMD2<Double>(10, 8), sizeM: SIMD2<Double>(2, 2))
+        )
+        let bottomBlocker = LayoutObject(
+            kind: .booth,
+            label: "Bottom",
+            placement: Placement(center: SIMD2<Double>(10, 12), sizeM: SIMD2<Double>(2, 2))
+        )
+        let leftWall = LayoutObject(
+            kind: .wall,
+            label: "WallLeft",
+            placement: Placement(center: SIMD2<Double>(8.2, 10), sizeM: SIMD2<Double>(0.2, 4))
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [booth, topBlocker, bottomBlocker, leftWall]
+        )
+
+        let defaultSide = OpenSideInference.defaultSide(for: booth, in: layout)
+        #expect(defaultSide == .right)
+    }
+
+    @Test("A corner booth gets one side")
+    func cornerBoothGetsOneSide() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(1.1, 1.1), sizeM: SIMD2<Double>(2, 2))
+        )
+        let bottomBlocker = LayoutObject(
+            kind: .booth,
+            label: "Bottom",
+            placement: Placement(center: SIMD2<Double>(1.1, 3.1), sizeM: SIMD2<Double>(2, 2))
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [booth, bottomBlocker]
+        )
+
+        let defaultSide = OpenSideInference.defaultSide(for: booth, in: layout)
+        #expect(defaultSide == .right)
+    }
+
+    @Test("A boxed-in booth gets none")
+    func boxedInBoothGetsNone() {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let top = LayoutObject(
+            kind: .booth, label: "T", placement: Placement(center: SIMD2<Double>(10, 8), sizeM: SIMD2<Double>(2, 2))
+        )
+        let bottom = LayoutObject(
+            kind: .booth, label: "B", placement: Placement(center: SIMD2<Double>(10, 12), sizeM: SIMD2<Double>(2, 2))
+        )
+        let left = LayoutObject(
+            kind: .booth, label: "L", placement: Placement(center: SIMD2<Double>(8, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let right = LayoutObject(
+            kind: .booth, label: "R", placement: Placement(center: SIMD2<Double>(12, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: defaultHall,
+            objects: [booth, top, bottom, left, right]
+        )
+
+        let defaultSide = OpenSideInference.defaultSide(for: booth, in: layout)
+        #expect(defaultSide.isEmpty)
+    }
 }

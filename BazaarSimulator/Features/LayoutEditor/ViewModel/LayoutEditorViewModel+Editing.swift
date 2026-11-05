@@ -127,7 +127,7 @@ extension LayoutEditorViewModel {
             return
         }
         var after = before
-        after.openSides = OpenSideInference.infer(for: before, in: layout)
+        after.openSides = OpenSideInference.defaultSide(for: before, in: layout)
         withSingleRefresh {
             if after != before {
                 commitEdit(.replace(before: before, after: after))
@@ -156,7 +156,7 @@ extension LayoutEditorViewModel {
             placement: placement
         )
         if kind == .booth {
-            newObject.openSides = OpenSideInference.infer(for: newObject, in: layout)
+            newObject.openSides = OpenSideInference.defaultSide(for: newObject, in: layout)
         }
         withSingleRefresh {
             commitEdit(.insert(newObject, index: layout.objects.count))
