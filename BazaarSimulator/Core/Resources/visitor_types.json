@@ -1,0 +1,6 @@
+[
+  { "id": "socializer", "name": "Socializer", "summary": "Buys and stays longer." },
+  { "id": "family", "name": "Family Member", "summary": "Moves slow and in group." },
+  { "id": "stroller", "name": "Stroller", "summary": "Moves around leisurely" },
+  { "id": "buyer", "name": "Purpose Buyer", "summary": "Quick and straightforward" }
+]

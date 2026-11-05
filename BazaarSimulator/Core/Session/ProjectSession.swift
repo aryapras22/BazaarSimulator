@@ -12,6 +12,9 @@ protocol ProjectSessionProtocol: AnyObject {
     func selectProject(id: UUID)
     func renameProject(id: UUID, to name: String)
 
+    func eventParameters(for projectID: UUID) -> EventParameters?
+    func setEventParameters(_ parameters: EventParameters, for projectID: UUID)
+
     func draft(for projectID: UUID) -> ProjectDraft?
     func setDraft(_ draft: ProjectDraft, for projectID: UUID)
 
@@ -27,6 +30,7 @@ final class ProjectSession: ProjectSessionProtocol {
     private(set) var projects: [ProjectSummary] = []
     private(set) var activeProjectID: UUID?
     private var drafts: [UUID: ProjectDraft] = [:]
+    private var eventParametersByProject: [UUID: EventParameters] = [:]
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
 
     var activeProject: ProjectSummary? {
@@ -48,6 +52,14 @@ final class ProjectSession: ProjectSessionProtocol {
     func renameProject(id: UUID, to name: String) {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[index].name = name
+    }
+
+    func eventParameters(for projectID: UUID) -> EventParameters? {
+        eventParametersByProject[projectID]
+    }
+
+    func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
+        eventParametersByProject[projectID] = parameters
     }
 
     func draft(for projectID: UUID) -> ProjectDraft? {

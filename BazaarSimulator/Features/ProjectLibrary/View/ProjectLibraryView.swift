@@ -28,7 +28,7 @@ struct ProjectLibraryView: View {
             SidebarSearchField(text: $viewModel.searchText)
         }
         .padding(Spacing.m)
-        .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sidebarBackground()
     }
 

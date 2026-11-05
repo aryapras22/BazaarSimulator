@@ -55,4 +55,13 @@ final class ProjectScreenFactory {
         layoutEditorViewModels[projectID] = created
         return created
     }
+
+    func makeParametersViewModel(projectID: UUID, onClose: @escaping () -> Void) -> ParametersViewModel {
+        ParametersViewModel(
+            projectID: projectID,
+            session: services.projectSession,
+            catalog: PresetCatalog.bundled(),
+            onClose: onClose
+        )
+    }
 }

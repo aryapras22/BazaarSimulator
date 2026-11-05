@@ -9,6 +9,7 @@ struct BazaarSimulatorApp: App {
             RootView(services: services)
                 .preferredColorScheme(.dark)
         }
+        .defaultSize(width: 1280, height: 800)
         .commands {
             AppCommands()
         }

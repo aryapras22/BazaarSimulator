@@ -1,0 +1,10 @@
+[
+  { "id": "family-kids", "name": "Family & Kids", "totalVisitors": 5000,
+    "mix": { "socializer": 21, "family": 46, "stroller": 30, "buyer": 3 } },
+  { "id": "food-festival", "name": "Food Festival", "totalVisitors": 8000,
+    "mix": { "socializer": 40, "family": 25, "stroller": 30, "buyer": 5 } },
+  { "id": "fashion-lifestyle", "name": "Fashion & Lifestyle", "totalVisitors": 4000,
+    "mix": { "socializer": 30, "family": 10, "stroller": 35, "buyer": 25 } },
+  { "id": "community-market", "name": "Community Market", "totalVisitors": 3000,
+    "mix": { "socializer": 25, "family": 25, "stroller": 25, "buyer": 25 } }
+]

@@ -15,9 +15,21 @@ struct ProfitOverTime: Hashable {
 
 
 struct LineChart: View {
-    let layout1: [ProfitOverTime] = [ProfitOverTime(date: Date.now, profit: 1.0), ProfitOverTime(date: Calendar.current.date(byAdding: .day, value: 1, to: Date.now)!, profit: 10.0), ProfitOverTime(date: Calendar.current.date(byAdding: .day, value: 2, to: Date.now)!, profit: 100.0)]
-    let layout2: [ProfitOverTime] = [ProfitOverTime(date: Date.now, profit: 2.0), ProfitOverTime(date: Calendar.current.date(byAdding: .day, value: 1, to: Date.now)!, profit: 20.0), ProfitOverTime(date: Calendar.current.date(byAdding: .day, value: 2, to: Date.now)!, profit: 200.0)]
-    
+    private static func time(_ hour: Int) -> Date {
+        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now)!
+    }
+
+    let layout1: [ProfitOverTime] = [
+        ProfitOverTime(date: LineChart.time(9), profit: 1.0),
+        ProfitOverTime(date: LineChart.time(12), profit: 10.0),
+        ProfitOverTime(date: LineChart.time(15), profit: 100.0)
+    ]
+    let layout2: [ProfitOverTime] = [
+        ProfitOverTime(date: LineChart.time(9), profit: 2.0),
+        ProfitOverTime(date: LineChart.time(12), profit: 20.0),
+        ProfitOverTime(date: LineChart.time(15), profit: 200.0)
+    ]
+
     var layout1MinMax: [ProfitOverTime] {
         guard let minItem = layout1.min(by: { $0.profit < $1.profit }),
               let maxItem = layout1.max(by: { $0.profit < $1.profit }) else { return [] }
@@ -56,10 +68,29 @@ struct LineChart: View {
                     .foregroundStyle(.blue)
                 }
                 ForEach(layout1MinMax, id: \.date) { item in
+                    
                     PointMark(
                         x: .value("Date", item.date),
                         y: .value("Profit A", item.profit)
                     )
+//                    .annotation(position: .bottom){
+//                        if(item == layout1MinMax.first){
+//                            Text("Minimum")
+//                                .font(.caption)
+//                                .padding(4)
+//                                .background(Color.blue.opacity(0.4))
+//                                .foregroundColor(.white)
+//                                .cornerRadius(4)
+//                        } else{
+//                            Text("Peak")
+//                                .font(.caption)
+//                                .padding(4)
+//                                .background(Color.blue.opacity(0.4))
+//                                .foregroundColor(.white)
+//                                .cornerRadius(4)
+//                        }
+//                        
+//                    }
                     .symbol(.diamond)
                     .symbolSize(60)
                     .foregroundStyle(.blue)
@@ -78,6 +109,24 @@ struct LineChart: View {
                         x: .value("Date", item.date),
                         y: .value("Profit A", item.profit)
                     )
+//                    .annotation(position: .top){
+//                        if(item == layout2MinMax.first){
+//                            Text("Minimum")
+//                                .font(.caption)
+//                                .padding(4)
+//                                .background(Color.green.opacity(0.4))
+//                                .foregroundColor(.white)
+//                                .cornerRadius(4)
+//                        } else{
+//                            Text("Peak")
+//                                .font(.caption)
+//                                .padding(4)
+//                                .background(Color.green.opacity(0.4))
+//                                .foregroundColor(.white)
+//                                .cornerRadius(4)
+//                        }
+//                        
+//                    }
                     .symbol(.diamond)
                     .symbolSize(60)
                     .foregroundStyle(.green)
@@ -95,15 +144,15 @@ struct LineChart: View {
             }
             
             .chartXAxis {
-                AxisMarks { value in
+                AxisMarks(values: .stride(by: .hour)) { _ in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1.5))
                         .foregroundStyle(Color.blue.opacity(0))
                     
-                    AxisValueLabel()
+                    AxisValueLabel(format: .dateTime.hour().minute())
                 }
             }
-            .padding().glassEffect(in: .rect(cornerRadius: 12.0)).brightness(0.002)
-        }.padding()
+            .padding()
+        }.padding().glassEffect(in: .rect(cornerRadius: 12.0)).brightness(0.002)
         
     }
 }

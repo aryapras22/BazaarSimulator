@@ -48,6 +48,10 @@ enum Palette {
     static let canvasDoorSelected = Color(hex: 0xB72008)
     static let canvasIssue = destructive
     static let highlight = Color(hex: 0xF76222)
+    static let visitorSeries1 = Color(hex: 0x0B4DAE)
+    static let visitorSeries2 = Color(hex: 0x2878D4)
+    static let visitorSeries3 = Color(hex: 0x76B4FF)
+    static let visitorSeries4 = Color(hex: 0xFFFFFF)
     static let fieldOnSurface = Color(hex: 0x3F4D64)
     static let fieldOnSurfaceBorder = Color(hex: 0x47556B)
     static let popoverOnSurface = Color(hex: 0x4F5D73)
