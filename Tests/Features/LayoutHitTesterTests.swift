@@ -80,4 +80,49 @@ struct LayoutHitTesterTests {
         #expect(LayoutHitTester.object(at: nearPoint, in: layout, tab: .flow) == door.id)
         #expect(LayoutHitTester.object(at: farPoint, in: layout, tab: .flow) == nil)
     }
+
+    @Test("Hit testing filters objects by active layer")
+    func hitTestingFiltersByLayer() {
+        let wall = LayoutObject(
+            kind: .wall,
+            label: "Wall 1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(4, 0.2))
+        )
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [wall, booth])
+
+        let hitStructure = LayoutHitTester.object(at: SIMD2<Double>(10, 10), in: layout, layer: .structure)
+        let hitBooths = LayoutHitTester.object(at: SIMD2<Double>(10, 10), in: layout, layer: .booths)
+
+        #expect(hitStructure == wall.id)
+        #expect(hitBooths == booth.id)
+    }
+
+    @Test("Locked object returns hit object on the other layer")
+    func lockedObjectDetection() {
+        let wall = LayoutObject(
+            kind: .wall,
+            label: "Wall 1",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(4, 0.2))
+        )
+        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [wall])
+
+        let lockedWhenInBooths = LayoutHitTester.lockedObject(
+            at: SIMD2<Double>(10, 10),
+            in: layout,
+            currentLayer: .booths
+        )
+        let lockedWhenInStructure = LayoutHitTester.lockedObject(
+            at: SIMD2<Double>(10, 10),
+            in: layout,
+            currentLayer: .structure
+        )
+
+        #expect(lockedWhenInBooths?.id == wall.id)
+        #expect(lockedWhenInStructure == nil)
+    }
 }

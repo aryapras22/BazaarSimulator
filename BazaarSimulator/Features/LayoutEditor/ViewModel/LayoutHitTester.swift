@@ -7,6 +7,36 @@ enum LayoutHitTester {
     static func object(
         at world: SIMD2<Double>,
         in layout: Layout,
+        layer: EditorLayer
+    ) -> LayoutObject.ID? {
+        let ordered = drawOrderedObjects(in: layout)
+        for candidate in ordered.reversed() {
+            guard candidate.kind.layer == layer && candidate.kind.isSelectable else { continue }
+            if hits(candidate, at: world) {
+                return candidate.id
+            }
+        }
+        return nil
+    }
+
+    static func lockedObject(
+        at world: SIMD2<Double>,
+        in layout: Layout,
+        currentLayer: EditorLayer
+    ) -> LayoutObject? {
+        let ordered = drawOrderedObjects(in: layout)
+        for candidate in ordered.reversed() {
+            guard candidate.kind.layer != currentLayer && candidate.kind.isSelectable else { continue }
+            if hits(candidate, at: world) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    static func object(
+        at world: SIMD2<Double>,
+        in layout: Layout,
         tab: EditorTab
     ) -> LayoutObject.ID? {
         let ordered = drawOrderedObjects(in: layout)

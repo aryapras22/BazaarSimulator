@@ -2,9 +2,10 @@ import SwiftUI
 
 struct EditorHintStrip: View {
     let tool: EditorTool
+    var message: String?
 
     var body: some View {
-        Text(hintText(for: tool))
+        Text(message ?? hintText(for: tool))
             .font(Typography.caption)
             .foregroundStyle(Palette.textSecondary)
             .padding(.horizontal, Spacing.s)

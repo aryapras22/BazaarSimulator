@@ -35,6 +35,9 @@ final class LayoutEditorViewModel {
     private let onBack: () -> Void
 
     var tab: EditorTab = .floorPlan
+    var activeLayer: EditorLayer = .structure
+    var transientHint: String?
+    @ObservationIgnored var transientHintTask: Task<Void, Never>?
     var tool: EditorTool = .select
     var selectionID: UUID?
     var hoverID: UUID?
@@ -145,7 +148,7 @@ final class LayoutEditorViewModel {
     func selectObject(_ objectID: UUID?) {
         if let objectID, let activeLayout {
             guard let target = activeLayout.objects.first(where: { $0.id == objectID }),
-                  target.kind.tab == tab.objectTab,
+                  target.kind.layer == activeLayer,
                   target.kind.isSelectable else {
                 return
             }

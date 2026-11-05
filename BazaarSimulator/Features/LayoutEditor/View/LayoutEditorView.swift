@@ -67,6 +67,7 @@ extension LayoutEditorView {
             layout: viewModel.activeLayout ?? Layout(name: "", sizeM: SIMD2<Double>(20, 20)),
             legend: viewModel.legend,
             tab: viewModel.tab,
+            activeLayer: viewModel.activeLayer,
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
             groupMemberIDs: viewModel.groupMemberIDs,
@@ -119,6 +120,7 @@ extension LayoutEditorView {
                 pointer: pointer,
                 pointsPerMetre: viewModel.transform.scale,
                 tool: viewModel.tool,
+                message: viewModel.transientHint,
                 showReadouts: viewModel.viewPreset == .plan,
                 onZoomIn: {
                     if viewModel.viewPreset == .plan {

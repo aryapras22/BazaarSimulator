@@ -18,6 +18,7 @@ struct CanvasDisplaySnapshot: Sendable {
     var layout: Layout
     var legend: Legend
     var tab: EditorTab
+    var activeLayer: EditorLayer = .structure
     var selectionID: UUID?
     var hoverID: UUID?
     var groupMemberIDs: Set<UUID> = []

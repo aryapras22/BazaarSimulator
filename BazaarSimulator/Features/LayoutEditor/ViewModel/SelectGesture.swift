@@ -25,6 +25,42 @@ enum SelectGesture {
         }
     }
 
+    static func touchedObjects(in rect: BoundingBox, layout: Layout, layer: EditorLayer) -> Set<UUID> {
+        let norm = BoundingBox(
+            minX: min(rect.minX, rect.maxX),
+            maxX: max(rect.minX, rect.maxX),
+            minY: min(rect.minY, rect.maxY),
+            maxY: max(rect.minY, rect.maxY)
+        )
+        var result = Set<UUID>()
+        for object in layout.objects where object.kind.layer == layer && object.kind.isSelectable {
+            let bounds = LayoutGeometry.bounds(of: object.placement)
+            let intersects = norm.minX <= bounds.maxX
+                && norm.maxX >= bounds.minX
+                && norm.minY <= bounds.maxY
+                && norm.maxY >= bounds.minY
+            if intersects {
+                result.insert(object.id)
+            }
+        }
+        return result
+    }
+
+    static func touchedObjects(
+        from start: SIMD2<Double>,
+        to end: SIMD2<Double>,
+        layout: Layout,
+        layer: EditorLayer
+    ) -> Set<UUID> {
+        let box = BoundingBox(
+            minX: min(start.x, end.x),
+            maxX: max(start.x, end.x),
+            minY: min(start.y, end.y),
+            maxY: max(start.y, end.y)
+        )
+        return touchedObjects(in: box, layout: layout, layer: layer)
+    }
+
     static func touchedBooths(in rect: BoundingBox, layout: Layout) -> Set<UUID> {
         let norm = BoundingBox(
             minX: min(rect.minX, rect.maxX),

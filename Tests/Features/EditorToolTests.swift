@@ -15,11 +15,13 @@ private final class TestToolContext: ToolContext {
     var toggledIDs: [UUID] = []
     var switchedTools: [EditorTool] = []
     var selectedGroups: [(id: UUID, bySize: Bool)] = []
+    var activeLayer: EditorLayer = .booths
     var nudges: [SIMD2<Double>] = []
 
-    init(layout: Layout, selectionID: UUID? = nil) {
+    init(layout: Layout, selectionID: UUID? = nil, activeLayer: EditorLayer = .booths) {
         self.layout = layout
         self.selectionID = selectionID
+        self.activeLayer = activeLayer
     }
 
     func setPreview(_ preview: CanvasDragState) {

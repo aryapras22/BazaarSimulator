@@ -4,7 +4,7 @@ extension LayoutCanvasView {
     @ViewBuilder
     var contextMenuContent: some View {
         if tool == .select && snapshot.tab == .floorPlan {
-            let hitID = LayoutHitTester.object(at: hoverTracker.world, in: snapshot.layout, tab: snapshot.tab)
+            let hitID = LayoutHitTester.object(at: hoverTracker.world, in: snapshot.layout, layer: snapshot.activeLayer)
             if let hitID,
                 let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
                 target.kind.isMovable {
@@ -39,7 +39,7 @@ extension LayoutCanvasView {
         } else {
             hoveredHandle = nil
         }
-        let hitID = LayoutHitTester.object(at: world, in: snapshot.layout, tab: snapshot.tab)
+        let hitID = LayoutHitTester.object(at: world, in: snapshot.layout, layer: snapshot.activeLayer)
         if hitID != lastHoverHit {
             lastHoverHit = hitID
             onHover(hitID)
@@ -48,7 +48,7 @@ extension LayoutCanvasView {
 
     func makePointerEvent(at viewPoint: CGPoint, button: CanvasMouseButton = .left) -> CanvasPointerEvent {
         let worldPoint = transform.toWorld(SIMD2<Double>(Double(viewPoint.x), Double(viewPoint.y)))
-        let hitObjectID = LayoutHitTester.object(at: worldPoint, in: snapshot.layout, tab: snapshot.tab)
+        let hitObjectID = LayoutHitTester.object(at: worldPoint, in: snapshot.layout, layer: snapshot.activeLayer)
         let modifiers = CanvasModifiers(modifierFlags: NSEvent.modifierFlags)
         return CanvasPointerEvent(
             worldPoint: worldPoint,

@@ -90,6 +90,14 @@ final class SelectTool: EditorToolHandling {
         }
 
         if event.hitObjectID == nil {
+            if let locked = LayoutHitTester.lockedObject(
+                at: event.worldPoint,
+                in: context.layout,
+                currentLayer: context.activeLayer
+            ) {
+                let name = locked.kind == .wall ? "Walls" : "\(locked.kind.displayName)s"
+                context.showTransientHint("\(name) are locked on this layer")
+            }
             context.selectObject(nil)
         }
         resetGesture()
@@ -289,9 +297,22 @@ private extension SelectTool {
     ) {
         let translation = CGPoint(x: event.viewPoint.x - pressViewPoint.x, y: event.viewPoint.y - pressViewPoint.y)
         if SelectGesture.isPastThreshold(translation) {
-            let booths = SelectGesture.touchedBooths(from: start, to: current, layout: context.layout)
-            context.selectBooths(booths, additive: event.modifiers.contains(.shift))
+            let touched = SelectGesture.touchedObjects(
+                from: start,
+                to: current,
+                layout: context.layout,
+                layer: context.activeLayer
+            )
+            context.selectBooths(touched, additive: event.modifiers.contains(.shift))
         } else {
+            if let locked = LayoutHitTester.lockedObject(
+                at: event.worldPoint,
+                in: context.layout,
+                currentLayer: context.activeLayer
+            ) {
+                let name = locked.kind == .wall ? "Walls" : "\(locked.kind.displayName)s"
+                context.showTransientHint("\(name) are locked on this layer")
+            }
             context.selectObject(nil)
         }
         resetGesture()

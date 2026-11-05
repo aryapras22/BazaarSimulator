@@ -54,6 +54,16 @@ extension LayoutEditorViewModel: ToolContext {
         selectTool(tool)
     }
 
+    func showTransientHint(_ message: String) {
+        transientHintTask?.cancel()
+        transientHint = message
+        transientHintTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard !Task.isCancelled else { return }
+            self?.transientHint = nil
+        }
+    }
+
     func handlePointerPress(_ event: CanvasPointerEvent) {
         sealHistory()
         currentToolHandler.handlePress(event, context: self)

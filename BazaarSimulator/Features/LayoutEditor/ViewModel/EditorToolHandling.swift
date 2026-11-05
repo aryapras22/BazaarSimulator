@@ -17,6 +17,7 @@ protocol ToolContext: AnyObject {
     var layout: Layout { get }
     var selectionID: UUID? { get }
     var groupMemberIDs: Set<UUID> { get }
+    var activeLayer: EditorLayer { get }
     func setPreview(_ preview: CanvasDragState)
     func clearPreview()
     func applyEdit(_ edit: LayoutEdit)
@@ -28,9 +29,11 @@ protocol ToolContext: AnyObject {
     func switchTool(_ tool: EditorTool)
     func selectGroup(containing id: UUID, bySize: Bool)
     func nudgeSelected(by delta: SIMD2<Double>)
+    func showTransientHint(_ message: String)
 }
 
 extension ToolContext {
+    var activeLayer: EditorLayer { .structure }
     func applyEdit(_ edit: LayoutEdit, coalesceKey: String?) {
         applyEdit(edit)
     }
@@ -38,6 +41,7 @@ extension ToolContext {
     func switchTool(_ tool: EditorTool) {}
     func selectGroup(containing id: UUID, bySize: Bool) {}
     func nudgeSelected(by delta: SIMD2<Double>) {}
+    func showTransientHint(_ message: String) {}
 }
 
 @MainActor

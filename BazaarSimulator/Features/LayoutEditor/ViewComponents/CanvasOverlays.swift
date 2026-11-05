@@ -4,6 +4,7 @@ struct CanvasOverlays: View {
     let pointer: CanvasPointer
     let pointsPerMetre: Double
     var tool: EditorTool = .select
+    var message: String?
     var showReadouts: Bool = true
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
@@ -17,7 +18,7 @@ struct CanvasOverlays: View {
                     if showReadouts {
                         CanvasCursorReadout(pointer: pointer)
                     }
-                    EditorHintStrip(tool: tool)
+                    EditorHintStrip(tool: tool, message: message)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
