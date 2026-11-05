@@ -31,7 +31,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | ---| --- |
 | Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. The empty state reads "Add project to get started" |
 | Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
-| Layout editor | Screen layout with a vertical tool rail on the left, a collapsible side panel for the library and booth groups, a central canvas with an active-tool hint strip, and a fixed inspector column on the right. Floor Plan tab: place and edit booths, tables, walls, and other items. Flow tab: door direction and width with flow tips. The same editor is used to review detected objects |
+| Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
 | Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, peak hours, bazaar type, visitor type mix, group size. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Analysis | Below the cards. Tabs for Crowd Density, Flow Rate, Congestion, and Duration. Each tab shows a recommendation ("Our choice"), a comparison table, and a chart over the day |
@@ -220,7 +220,7 @@ struct LayoutObject: Codable, Identifiable, Sendable {
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
     var openSides: OpenSides = []    // booths: the sides visitors can use
-    var doorFlow: DoorFlow?          // doors: direction and connection (Flow tab)
+    var doorFlow: DoorFlow?          // doors: direction and connection (Door inspector on Structure layer)
 }
 
 struct Placement: Codable, Sendable {
@@ -466,7 +466,7 @@ The Simulation view builds the 3D scene from the layout while the Preparing Layo
 Window and navigation:
 *   One `WindowGroup` with a `NavigationSplitView`. The sidebar lists projects, has a search field at the bottom, and can be collapsed. The detail column is a `NavigationStack`: project setup, then review (the editor), then the project screen, which leads to the editor or the simulation. `AppRouter` in `App/Navigation/` owns the active destination (`empty`, `setup(projectID:)`, `review(projectID:)`). `ProjectScreenFactory` in `App/Navigation/` builds and caches screen ViewModels (such as keeping one `ProjectSetupViewModel` per project for the life of the window).
 *   The project screen header has a back chevron, the project name, and the Parameters and Legend buttons. Both open as dialogs over the screen. Parameters edits a draft copy and has Cancel and Apply.
-*   The editor uses a structured desktop layout: a vertical tool rail on the left (Select, Wall, Door, Library, Blocked Area, with one-key shortcuts V, W, D, B, X and Space-to-pan helper), a collapsible side panel for library items and booth groups, a central canvas with an active-tool hint strip at the bottom left, and a fixed 320 pt inspector column on the right showing object or group properties or layout summary when unselected. Edits are held until Save Changes.
+*   The editor uses a structured desktop layout with two layers (Structure and Booths) switched via toolbar tabs or Cmd-1 and Cmd-2. Inactive layers draw dimmed at 35% opacity and supply snap candidates without being selectable. The vertical tool rail reflects the active layer: Select, Wall, Room, Floor, Library in Structure; Select, Row, Fill, Library in Booths. The central canvas has view presets (Plan and 3D, switched by keys 1 and 2), an active-tool hint strip, and a visitor flow overlay toggle. The right 320 pt inspector column displays single-object, group, or wall graph editing properties.
 *   The 3D view has a segmented control at the top (Density, Congestion, Footfall) and a compact playback overlay at the bottom (play and pause, clock, speed).
 *   The window uses the dark navy background of the Hi-Fi with blue and orange glows and a translucent sidebar. Tokens carry these colors. Only a dark appearance is designed.
 *   A `Settings` scene for reader selection and model management. It is not in the Hi-Fi.
@@ -831,7 +831,7 @@ Review rules:
 The floor plan reader is the riskiest part, so the app should not depend on it early. Write tests alongside each step.
 1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals with peak periods, `ZoneMap`, and `runToEnd()`.
 2. Simulation view: the Preparing Layout step, the 3D scene with moving agents, and the three overlays. If 3D slows the team down, start with a top-down `Canvas` behind the same snapshot interface and swap later.
-3. Layout editor with manual placement, the inspector, and the Flow tab, so a layout can exist without any model.
+3. Layout editor with Structure and Booths layers, manual placement, wall graph editing, and the inspector, so a layout can exist without any model.
 4. Project library, project screen with layout cards, and `ProjectSession` wiring.
 5. Parameters dialog: mix sliders with rescaling, peak periods, bazaar type presets, Cancel and Apply on a draft.
 6. Analysis: `AnalysisService`, the four tabs, `RecommendationBuilder`, the table and the chart.
