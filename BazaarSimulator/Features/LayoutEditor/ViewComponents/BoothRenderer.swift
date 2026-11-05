@@ -4,7 +4,6 @@ import simd
 struct BoothDrawState: Sendable {
     let booth: LayoutObject
     let displayLabel: String
-    let tab: EditorTab
     let isSelected: Bool
     let isHovered: Bool
     let isGroupMember: Bool

@@ -49,13 +49,14 @@ struct LayoutEditorViewModelToolTests {
         #expect(context.viewModel.tool == .blockedArea)
     }
 
-    @Test("Switching to flow tab resets tool to select")
-    func switchingToFlowTabResetsTool() {
+    @Test("Switching layers resets tool to select")
+    func switchingLayersResetsTool() {
         let context = makeContext()
+        context.viewModel.selectLayer(.structure)
         context.viewModel.selectTool(.blockedArea)
         #expect(context.viewModel.tool == .blockedArea)
 
-        context.viewModel.selectTab(.flow)
+        context.viewModel.selectLayer(.booths)
         #expect(context.viewModel.tool == .select)
     }
 

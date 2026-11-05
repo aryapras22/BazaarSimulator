@@ -18,7 +18,7 @@ extension LayoutEditorViewModel {
 
     func pointerDescription(at world: SIMD2<Double>) -> String {
         guard let layout = activeLayout else { return "Outside" }
-        guard let hitID = LayoutHitTester.object(at: world, in: layout, tab: tab),
+        guard let hitID = LayoutHitTester.object(at: world, in: layout, layer: activeLayer),
               let object = layout.objects.first(where: { $0.id == hitID }) else {
             let isOnFloor = LayoutGeometry.polygonContains(layout.hall, point: world)
                 || LayoutGeometry.polygonContains(layout.lobby, point: world)

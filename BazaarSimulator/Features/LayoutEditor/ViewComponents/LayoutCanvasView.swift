@@ -17,8 +17,8 @@ struct CanvasIssueSnapshot: Sendable, Equatable {
 struct CanvasDisplaySnapshot: Sendable {
     var layout: Layout
     var legend: Legend
-    var tab: EditorTab
     var activeLayer: EditorLayer = .structure
+    var hiddenLayers: Set<EditorLayer> = []
     var showVisitorFlow: Bool = false
     var selectionID: UUID?
     var hoverID: UUID?

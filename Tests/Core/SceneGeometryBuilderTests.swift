@@ -16,7 +16,7 @@ struct SceneGeometryBuilderTests {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
         let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
 
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
 
         var totalTriangles = 0
         for (_, mesh) in geometry.meshes {
@@ -32,7 +32,7 @@ struct SceneGeometryBuilderTests {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
         let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
 
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
 
         for (key, mesh) in geometry.meshes {
             for normal in mesh.normals {
@@ -73,7 +73,7 @@ struct SceneGeometryBuilderTests {
             zones: []
         )
 
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
 
         let fasciaKeys = geometry.meshes.keys.filter { $0.role == MaterialRole.fascia }
         #expect(fasciaKeys.count == 2)
@@ -85,7 +85,7 @@ struct SceneGeometryBuilderTests {
     func wallObjectHasDoorGap() {
         let (layout, _) = PerimeterWallsTests.wallWithCenteredDoor()
 
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
 
         let mesh = geometry.meshes[SceneMaterialKey(role: .wall, tint: nil)] ?? TriangleMesh()
         // A box only has vertices at its corners, so look for faces that cross the door center instead.
@@ -110,7 +110,7 @@ struct SceneGeometryBuilderTests {
         )
         let layout = Layout(name: "Door", sizeM: SIMD2<Double>(10, 10), objects: [door])
 
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend, tab: .floorPlan)
+        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
 
         let nonAccentTriangles = geometry.meshes
             .filter { $0.key.role != .accent && $0.key.role != .floor }

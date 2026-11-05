@@ -109,7 +109,7 @@ extension LayoutEditorViewModel {
     }
 
     var flowBannerIssues: [String] {
-        guard tab == .flow else { return [] }
+        guard showVisitorFlow || activeLayer == .structure else { return [] }
         return issues.compactMap { issue in
             switch issue.kind {
             case .missingHallDoorEntry, .missingHallDoorExit:

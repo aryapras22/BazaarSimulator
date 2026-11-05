@@ -1,10 +1,5 @@
 import Foundation
 
-enum LayoutObjectTab: String, Codable, CaseIterable, Hashable, Sendable {
-    case floorPlan
-    case flow
-}
-
 enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case booth
     case table
@@ -31,13 +26,6 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .stage: return "Stage"
         case .audienceArea: return "Audience area"
         case .closedArea: return "Blocked area"
-        }
-    }
-
-    var tab: LayoutObjectTab {
-        switch self {
-        case .door: return .flow
-        default: return .floorPlan
         }
     }
 

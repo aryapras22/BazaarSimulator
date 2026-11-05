@@ -66,8 +66,8 @@ extension LayoutEditorView {
         CanvasDisplaySnapshot(
             layout: viewModel.activeLayout ?? Layout(name: "", sizeM: SIMD2<Double>(20, 20)),
             legend: viewModel.legend,
-            tab: viewModel.tab,
             activeLayer: viewModel.activeLayer,
+            hiddenLayers: viewModel.hiddenLayers,
             showVisitorFlow: viewModel.showVisitorFlow,
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
@@ -324,7 +324,7 @@ extension LayoutEditorView {
     .preferredColorScheme(.dark)
 }
 
-#Preview("Flow Tab") {
+#Preview("Structure Layer With Flow") {
     let session = ProjectSession()
     let project = session.createProject(named: "Preview Market")
     let layout = PreviewLayouts.smallMarket()
@@ -333,7 +333,8 @@ extension LayoutEditorView {
         for: project.id
     )
     let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
-    viewModel.selectTab(.flow)
+    viewModel.selectLayer(.structure)
+    viewModel.showVisitorFlow = true
     viewModel.selectObject(layout.objects.first { $0.kind == .door }?.id)
     return NavigationStack {
         LayoutEditorView(viewModel: viewModel)

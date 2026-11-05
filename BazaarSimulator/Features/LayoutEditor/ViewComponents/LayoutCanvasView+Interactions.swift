@@ -3,7 +3,7 @@ import SwiftUI
 extension LayoutCanvasView {
     @ViewBuilder
     var contextMenuContent: some View {
-        if tool == .select && snapshot.tab == .floorPlan {
+        if tool == .select {
             let hitID = LayoutHitTester.object(at: hoverTracker.world, in: snapshot.layout, layer: snapshot.activeLayer)
             if let hitID,
                 let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
@@ -27,8 +27,7 @@ extension LayoutCanvasView {
     }
 
     func updateHoverState(at world: SIMD2<Double>) {
-        if snapshot.tab == .floorPlan,
-           let selectedID = snapshot.selectionID,
+        if let selectedID = snapshot.selectionID,
            let selected = snapshot.layout.objects.first(where: { $0.id == selectedID }),
            selected.kind.hasResizeHandles {
             hoveredHandle = PlacementResizing.hitTest(

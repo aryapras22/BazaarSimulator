@@ -20,7 +20,7 @@ enum PendingNavigationAction: Sendable, Equatable {
     case toggleBooth(UUID)
     case selectBooths(ids: Set<UUID>, additive: Bool)
     case switchTool(EditorTool)
-    case switchTab(EditorTab)
+    case switchLayer(EditorLayer)
     case switchLayout(UUID)
     case navigateBack
     case performUndo
@@ -34,8 +34,8 @@ final class LayoutEditorViewModel {
     let session: any ProjectSessionProtocol
     private let onBack: () -> Void
 
-    var tab: EditorTab = .floorPlan
     var activeLayer: EditorLayer = .structure
+    var hiddenLayers: Set<EditorLayer> = []
     var showVisitorFlow: Bool = false
     var transientHint: String?
     @ObservationIgnored var transientHintTask: Task<Void, Never>?
@@ -162,13 +162,13 @@ final class LayoutEditorViewModel {
         applySelection(objectID)
     }
 
-    func selectTab(_ newTab: EditorTab) {
-        guard newTab != tab else { return }
+    func selectLayer(_ newLayer: EditorLayer) {
+        guard newLayer != activeLayer else { return }
         if hasUnsavedInspectorChanges {
-            pendingAction = .switchTab(newTab)
+            pendingAction = .switchLayer(newLayer)
             return
         }
-        tab = newTab
+        activeLayer = newLayer
         tool = .select
         applySelection(nil)
     }
@@ -277,8 +277,8 @@ final class LayoutEditorViewModel {
             applySelection(objectID)
         case .selectGroup, .toggleBooth, .selectBooths:
             executeGroupAction(action)
-        case .switchTab(let newTab):
-            tab = newTab
+        case .switchLayer(let newLayer):
+            activeLayer = newLayer
             tool = .select
             applySelection(nil)
         case .switchTool(let newTool):

@@ -67,14 +67,29 @@ extension LayoutEditorView {
 
         ToolbarItem(placement: .principal) {
             HStack(spacing: Spacing.m) {
-                SegmentedTabs(
-                    selection: Binding(
-                        get: { viewModel.tab },
-                        set: { viewModel.selectTab($0) }
-                    ),
-                    tabs: EditorTab.allCases,
-                    title: \.title
-                )
+                HStack(spacing: Spacing.xs) {
+                    SegmentedTabs(
+                        selection: Binding(
+                            get: { viewModel.activeLayer },
+                            set: { viewModel.selectLayer($0) }
+                        ),
+                        tabs: EditorLayer.allCases,
+                        title: \.title
+                    )
+
+                    ForEach(EditorLayer.allCases, id: \.self) { layer in
+                        Button {
+                            viewModel.toggleLayerVisibility(layer)
+                        } label: {
+                            Image(systemName: viewModel.isLayerVisible(layer) ? "eye" : "eye.slash")
+                                .foregroundStyle(
+                                    viewModel.isLayerVisible(layer) ? Palette.textPrimary : Palette.textDisabled
+                                )
+                        }
+                        .help("Toggle \(layer.title) visibility")
+                        .accessibilityLabel("Toggle \(layer.title) visibility")
+                    }
+                }
 
                 ViewPresetPicker(
                     selection: Binding(

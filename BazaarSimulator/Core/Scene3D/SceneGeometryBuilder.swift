@@ -14,13 +14,12 @@ struct SceneGeometry: Sendable {
 nonisolated enum SceneGeometryBuilder {
     static func build(
         layout: Layout,
-        legend: Legend,
-        tab: LayoutObjectTab = .floorPlan
+        legend: Legend
     ) -> SceneGeometry {
         var meshes: [SceneMaterialKey: TriangleMesh] = [:]
         appendFloors(from: layout, into: &meshes)
         appendPerimeterWalls(from: layout, into: &meshes)
-        appendObjects(from: layout, legend: legend, tab: tab, into: &meshes)
+        appendObjects(from: layout, legend: legend, into: &meshes)
         return SceneGeometry(meshes: meshes)
     }
 
@@ -76,14 +75,13 @@ nonisolated enum SceneGeometryBuilder {
     private static func appendObjects(
         from layout: Layout,
         legend: Legend,
-        tab: LayoutObjectTab,
         into meshes: inout [SceneMaterialKey: TriangleMesh]
     ) {
         for object in layout.objects {
             if object.kind == .booth {
-                appendBooth(object, legend: legend, tab: tab, into: &meshes)
+                appendBooth(object, legend: legend, into: &meshes)
             } else if object.kind == .door {
-                appendDoor(object, tab: tab, into: &meshes)
+                appendDoor(object, into: &meshes)
             } else if object.kind == .wall, object.catalogID == nil || object.catalogID == "wall" {
                 appendWallObject(object, layout: layout, into: &meshes)
             } else {
@@ -95,7 +93,6 @@ nonisolated enum SceneGeometryBuilder {
     private static func appendBooth(
         _ object: LayoutObject,
         legend: Legend,
-        tab: LayoutObjectTab,
         into meshes: inout [SceneMaterialKey: TriangleMesh]
     ) {
         let primitives = BoothShape.primitives(
@@ -111,9 +108,7 @@ nonisolated enum SceneGeometryBuilder {
         for prim in primitives {
             let worldPrim = prim.rotated(by: rotation).translated(by: worldOffset)
             let key: SceneMaterialKey
-            if tab == .flow {
-                key = SceneMaterialKey(role: .panel, tint: nil)
-            } else if prim.role == MaterialRole.fascia || prim.role == MaterialRole.counter {
+            if prim.role == MaterialRole.fascia || prim.role == MaterialRole.counter {
                 key = SceneMaterialKey(role: prim.role, tint: categoryColor)
             } else {
                 key = SceneMaterialKey(role: prim.role, tint: nil)
@@ -124,29 +119,16 @@ nonisolated enum SceneGeometryBuilder {
 
     private static func appendDoor(
         _ object: LayoutObject,
-        tab: LayoutObjectTab,
         into meshes: inout [SceneMaterialKey: TriangleMesh]
     ) {
         let worldOffset = SIMD3<Double>(object.placement.center.x, 0, object.placement.center.y)
         let rotation = object.placement.rotationRadians
-
-        if tab == .flow {
-            let arrowLength = min(max(object.placement.sizeM.x * 0.6, 0.6), 1.2)
-            let arrowBox = ShapePrimitive.box(
-                center: SIMD3<Double>(0, 0.01, 0),
-                size: SIMD3<Double>(0.15, 0.02, arrowLength),
-                yaw: 0,
-                role: .accent
-            ).rotated(by: rotation).translated(by: worldOffset)
-            appendPrimitive(arrowBox, key: SceneMaterialKey(role: .accent, tint: nil), into: &meshes)
-        } else {
-            let catalogID = object.catalogID ?? "door"
-            let height = object.heightM ?? 2.1
-            let primitives = ObjectShapes.shape(for: catalogID, size: object.placement.sizeM, height: height)
-            for prim in primitives {
-                let worldPrim = prim.rotated(by: rotation).translated(by: worldOffset)
-                appendPrimitive(worldPrim, key: SceneMaterialKey(role: prim.role, tint: nil), into: &meshes)
-            }
+        let catalogID = object.catalogID ?? "door"
+        let height = object.heightM ?? 2.1
+        let primitives = ObjectShapes.shape(for: catalogID, size: object.placement.sizeM, height: height)
+        for prim in primitives {
+            let worldPrim = prim.rotated(by: rotation).translated(by: worldOffset)
+            appendPrimitive(worldPrim, key: SceneMaterialKey(role: prim.role, tint: nil), into: &meshes)
         }
     }
 

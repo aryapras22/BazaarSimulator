@@ -34,27 +34,8 @@ enum LayoutHitTester {
         return nil
     }
 
-    static func object(
-        at world: SIMD2<Double>,
-        in layout: Layout,
-        tab: EditorTab
-    ) -> LayoutObject.ID? {
-        let ordered = drawOrderedObjects(in: layout)
-        for candidate in ordered.reversed() {
-            guard isSelectable(candidate, in: tab) else { continue }
-            if hits(candidate, at: world) {
-                return candidate.id
-            }
-        }
-        return nil
-    }
-
     static func drawOrderedObjects(in layout: Layout) -> [LayoutObject] {
         layout.objects.sorted { drawRank(for: $0.kind) < drawRank(for: $1.kind) }
-    }
-
-    private static func isSelectable(_ object: LayoutObject, in tab: EditorTab) -> Bool {
-        object.kind.tab == tab.objectTab && object.kind.isSelectable
     }
 
     private static func hits(_ object: LayoutObject, at world: SIMD2<Double>) -> Bool {

@@ -3,7 +3,6 @@ import simd
 
 struct ObjectDrawState: Sendable {
     let object: LayoutObject
-    let tab: EditorTab
     let isSelected: Bool
     let isHovered: Bool
     let hasWarning: Bool

@@ -87,8 +87,7 @@ struct LayoutEditorViewModelInspectorTests {
 
     @Test("Use advice sets the draft direction and Save applies it")
     func useAdviceSetsDraftDirectionAndSaves() throws {
-        let context = LayoutEditorViewModelTests.makeContext()
-        context.viewModel.selectTab(.flow)
+        let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
         let doorNW = try #require(
             context.layout.objects.first { $0.kind == .door && $0.label == "Door NW" }
         )

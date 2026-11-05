@@ -91,7 +91,6 @@ enum BlockedAreaRenderer {
         )
         let state = ObjectDrawState(
             object: area,
-            tab: .floorPlan,
             isSelected: true,
             isHovered: false,
             hasWarning: false

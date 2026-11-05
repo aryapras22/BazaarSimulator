@@ -47,7 +47,7 @@ extension LayoutEditorViewModel {
     }
 
     func selectGroup(_ kind: BoothGroupKind) {
-        guard tab == .floorPlan, boothGroup(kind) != nil else { return }
+        guard activeLayer == .booths, boothGroup(kind) != nil else { return }
         if hasUnsavedInspectorChanges {
             pendingAction = .selectGroup(kind)
             return
@@ -61,7 +61,7 @@ extension LayoutEditorViewModel {
     }
 
     func toggleBoothInSelection(_ boothID: UUID) {
-        guard tab == .floorPlan,
+        guard activeLayer == .booths,
               activeLayout?.objects.contains(where: { $0.id == boothID && $0.kind == .booth }) == true else {
             return
         }
@@ -73,7 +73,7 @@ extension LayoutEditorViewModel {
     }
 
     func selectBooths(_ ids: Set<UUID>, additive: Bool = false) {
-        guard tab == .floorPlan, let layout = activeLayout else { return }
+        guard activeLayer == .booths, let layout = activeLayout else { return }
         let boothIDs = ids.filter { id in
             layout.objects.contains(where: { $0.id == id && $0.kind == .booth })
         }

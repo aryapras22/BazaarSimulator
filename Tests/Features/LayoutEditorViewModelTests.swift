@@ -12,7 +12,7 @@ struct LayoutEditorViewModelTests {
         let layout: Layout
     }
 
-    static func makeContext() -> TestContext {
+    static func makeContext(layer: EditorLayer = .booths) -> TestContext {
         let session = ProjectSession()
         let project = session.createProject(named: "Test Market")
         let layout = PreviewLayouts.smallMarket()
@@ -23,6 +23,7 @@ struct LayoutEditorViewModelTests {
         )
         session.setDraft(draft, for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = layer
         return TestContext(viewModel: viewModel, session: session, layout: layout)
     }
 
@@ -38,25 +39,25 @@ struct LayoutEditorViewModelTests {
         #expect(context.viewModel.inspectorDraft?.widthM == booth.placement.sizeM.x)
     }
 
-    @Test("Switching tabs clears the selection")
-    func switchingTabsClearsSelection() throws {
+    @Test("Switching layers clears the selection")
+    func switchingLayersClearsSelection() throws {
         let context = Self.makeContext()
+        context.viewModel.selectLayer(.booths)
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
         context.viewModel.selectObject(booth.id)
         #expect(context.viewModel.selectionID == booth.id)
 
-        context.viewModel.selectTab(.flow)
+        context.viewModel.selectLayer(.structure)
 
-        #expect(context.viewModel.tab == .flow)
+        #expect(context.viewModel.activeLayer == .structure)
         #expect(context.viewModel.selectionID == nil)
         #expect(context.viewModel.inspectorDraft == nil)
     }
 
-    @Test("Flow tab ignores a booth click")
-    func flowTabIgnoresBoothClick() throws {
-        let context = Self.makeContext()
+    @Test("Structure layer ignores a booth click")
+    func structureLayerIgnoresBoothClick() throws {
+        let context = Self.makeContext(layer: .structure)
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
-        context.viewModel.selectTab(.flow)
 
         context.viewModel.selectObject(booth.id)
 
@@ -116,11 +117,12 @@ struct LayoutEditorViewModelTests {
         context.viewModel.addObject(kind: .booth, at: SIMD2<Double>(20.1, 10.1))
 
         let added = try #require(context.viewModel.selectedObject)
+        let layout = try #require(context.viewModel.activeLayout)
         #expect(added.kind == .booth)
         #expect(added.categoryID == nil)
         #expect(added.placement.sizeM == SIMD2<Double>(2.0, 2.0))
         #expect(added.placement.center == SIMD2<Double>(20.0, 10.0))
-        #expect(added.openSides == .all)
+        #expect(added.openSides == OpenSideInference.defaultSide(for: added, in: layout))
     }
 
     @Test("Hovering does not refresh issues")
@@ -201,6 +203,7 @@ struct LayoutEditorViewModelTests {
         let layout = Layout(name: "Test", sizeM: SIMD2<Double>(25, 25), objects: booths)
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = .booths
 
         viewModel.selectObject(booths[2].id)
         viewModel.deleteSelected()
@@ -223,7 +226,9 @@ struct LayoutEditorViewModelTests {
 
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
+}
 
+extension LayoutEditorViewModelTests {
     @Test("Select booths sets selection or group and additive unions with current members")
     func selectBoothsWithoutUnsavedChanges() throws {
         let session = ProjectSession()
@@ -253,6 +258,7 @@ struct LayoutEditorViewModelTests {
         )
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = .booths
 
         viewModel.selectBooths([boothA.id])
         #expect(viewModel.selectionID == boothA.id)
@@ -294,6 +300,7 @@ struct LayoutEditorViewModelTests {
         )
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = .booths
 
         viewModel.selectObject(boothA.id)
         #expect(!viewModel.hasUnsavedInspectorChanges)

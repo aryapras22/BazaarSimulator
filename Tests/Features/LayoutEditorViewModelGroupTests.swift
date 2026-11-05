@@ -11,7 +11,7 @@ struct LayoutEditorViewModelGroupTests {
         let layout: Layout
     }
 
-    static func makeContext() -> TestContext {
+    static func makeContext(layer: EditorLayer = .booths) -> TestContext {
         let session = ProjectSession()
         let project = session.createProject(named: "Annyeong")
         let layout = PreviewLayouts.annyeong()
@@ -20,6 +20,7 @@ struct LayoutEditorViewModelGroupTests {
             for: project.id
         )
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = layer
         viewModel.refreshDerivedState()
         return TestContext(viewModel: viewModel, layout: layout)
     }
@@ -130,16 +131,17 @@ struct LayoutEditorViewModelGroupTests {
         #expect(viewModel.activeLayout == context.layout)
     }
 
-    @Test("Groups list is visible when nothing is selected on floor plan")
+    @Test("Groups list is visible when nothing is selected on booths layer")
     func groupsListVisibilityAndRows() {
         let context = Self.makeContext()
         let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
 
         #expect(viewModel.isGroupsListVisible)
         #expect(viewModel.nameGroupRows.map(\.title) == ["A", "B", "C", "F", "I"])
         #expect(viewModel.sizeGroupRows.map(\.count) == [150, 42, 9, 8])
 
-        viewModel.selectTab(.flow)
+        viewModel.selectLayer(.structure)
         #expect(!viewModel.isGroupsListVisible)
     }
 

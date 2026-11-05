@@ -52,6 +52,7 @@ enum CanvasSceneRenderer {
 
         var selectedObject: LayoutObject?
         for var object in ordered {
+            guard !snapshot.hiddenLayers.contains(object.kind.layer) else { continue }
             if object.id == drag.objectID {
                 object.placement.center += drag.deltaWorld
             } else if object.id == drag.resize?.objectID {
@@ -100,7 +101,6 @@ enum CanvasSceneRenderer {
         let hasWarning = snapshot.issues.warningObjectIDs.contains(object.id)
         let objectState = ObjectDrawState(
             object: object,
-            tab: snapshot.tab,
             isSelected: isSelected,
             isHovered: isHovered,
             hasWarning: hasWarning
@@ -111,7 +111,6 @@ enum CanvasSceneRenderer {
             let boothState = BoothDrawState(
                 booth: object,
                 displayLabel: BoothLabelFormatter.display(object.label),
-                tab: snapshot.tab,
                 isSelected: isSelected,
                 isHovered: isHovered,
                 isGroupMember: !isInactive && snapshot.groupMemberIDs.contains(object.id),
@@ -258,7 +257,6 @@ extension CanvasSceneRenderer {
         let tempArea = LayoutObject(kind: .closedArea, label: "", placement: preview)
         let state = ObjectDrawState(
             object: tempArea,
-            tab: .floorPlan,
             isSelected: !isBelowMinimum,
             isHovered: false,
             hasWarning: isBelowMinimum

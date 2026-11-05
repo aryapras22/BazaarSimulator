@@ -106,9 +106,8 @@ extension LayoutEditorViewModel {
         sceneGeometryGeneration += 1
         let generation = sceneGeometryGeneration
         let currentLegend = legend
-        let currentTab = tab.objectTab
         Task.detached(priority: .userInitiated) { [weak self] in
-            var geometry = SceneGeometryBuilder.build(layout: layout, legend: currentLegend, tab: currentTab)
+            var geometry = SceneGeometryBuilder.build(layout: layout, legend: currentLegend)
             geometry.version = generation
             await MainActor.run {
                 guard let self, generation == self.sceneGeometryGeneration else { return }
@@ -150,7 +149,7 @@ extension LayoutEditorViewModel {
             selectObject(nil)
             return
         }
-        let hitID = LayoutHitTester.object(at: floorPoint, in: layout, tab: tab)
+        let hitID = LayoutHitTester.object(at: floorPoint, in: layout, layer: activeLayer)
         selectObject(hitID)
     }
 
@@ -177,5 +176,17 @@ extension LayoutEditorViewModel {
             size: SIMD3<Double>(object.placement.sizeM.x, height, object.placement.sizeM.y),
             yaw: object.placement.rotationRadians
         )
+    }
+
+    func isLayerVisible(_ layer: EditorLayer) -> Bool {
+        !hiddenLayers.contains(layer)
+    }
+
+    func toggleLayerVisibility(_ layer: EditorLayer) {
+        if hiddenLayers.contains(layer) {
+            hiddenLayers.remove(layer)
+        } else {
+            hiddenLayers.insert(layer)
+        }
     }
 }

@@ -57,7 +57,6 @@ enum PlacementPreviewRenderer {
         let state = BoothDrawState(
             booth: booth,
             displayLabel: "",
-            tab: .floorPlan,
             isSelected: false,
             isHovered: false,
             isGroupMember: false,
