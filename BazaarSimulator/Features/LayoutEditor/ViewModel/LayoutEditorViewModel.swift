@@ -47,6 +47,8 @@ final class LayoutEditorViewModel {
     var placementRotationDegrees: Int = 0
     var placementPreview: PlacementCandidate?
     var wallDrawing: WallDrawing?
+    var dragState = CanvasDragState()
+    @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
     var hasFittedTransform = false
     var viewPreset: ViewPreset = .plan

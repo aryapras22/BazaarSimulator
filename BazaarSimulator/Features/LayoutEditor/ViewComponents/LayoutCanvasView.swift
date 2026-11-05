@@ -31,48 +31,26 @@ struct LayoutCanvasView: View {
     let snapshot: CanvasDisplaySnapshot
     @Binding var transform: CanvasTransform
     var isFocused: FocusState<Bool>.Binding
+    var dragState: CanvasDragState = CanvasDragState()
     var excludedTrailingWidth: CGFloat = 0
-    var onSelect: (UUID?) -> Void = { _ in }
-    var onSelectBooths: (Set<UUID>, Bool) -> Void = { _, _ in }
+    var tool: EditorTool = .select
+    var onPointerPress: (CanvasPointerEvent) -> Void = { _ in }
+    var onPointerMove: (CanvasPointerEvent) -> Void = { _ in }
+    var onPointerRelease: (CanvasPointerEvent) -> Void = { _ in }
+    var onPointerDoubleClick: (CanvasPointerEvent) -> Void = { _ in }
+    var onCanvasKey: (CanvasKey) -> Bool = { _ in false }
+    var onCancelTool: () -> Void = {}
+    var onHoverWorld: (SIMD2<Double>?) -> Void = { _ in }
     var onHover: (UUID?) -> Void = { _ in }
-    var onToggleSelection: (UUID) -> Void = { _ in }
-    var onDoubleClick: (UUID, Bool) -> Void = { _, _ in }
-    var onPointerMove: (SIMD2<Double>?) -> Void = { _ in }
-    var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
     var onInteract: () -> Void = {}
     var onNudge: (SIMD2<Double>) -> Void = { _ in }
-    var tool: EditorTool = .select
-    var onDrawBlockedArea: (Placement) -> Void = { _ in }
-    var onCancelTool: () -> Void = {}
-    var onResizeEnded: (UUID, Placement) -> Void = { _, _ in }
     var onDropLibraryItem: (String, SIMD2<Double>) -> Void = { _, _ in }
-    var onCommitPlacement: (Bool) -> Void = { _ in }
-    var onCommitDoorPlacement: (Bool, String) -> Void = { _, _ in }
-    var constrainDelta: ((UUID, SIMD2<Double>) -> SIMD2<Double>)?
-    var pointer: CanvasPointer?
-    var wallDrawing: WallDrawing?
-    var onWallClick: (Bool) -> Void = { _ in }
-    var onWallDoubleClick: () -> Void = {}
-    var onWallKey: (Character) -> Bool = { _ in false }
-    var onWallReturn: () -> Bool = { false }
-    var onWallBackspace: () -> Bool = { false }
-    var onWallFinish: () -> Void = {}
 
-    @State var activeDragObjectID: UUID?
-    @State var dragCandidateObjectID: UUID?
-    @State var activeDragDeltaWorld: SIMD2<Double> = .zero
-    @State var activeResize: ActiveResize?
+    @State var isDragging = false
     @State var hoveredHandle: ResizeHandle?
-    @State var isDragCancelled = false
-    @State var isDragSuppressed = false
     @State var isSpaceDown = false
     @State var lastPanLocation: CGPoint?
-    @State var dragPointerLocation: CGPoint?
-    @State var drawingStartWorld: SIMD2<Double>?
-    @State var drawingCurrentWorld: SIMD2<Double>?
-    @State var marqueeStartWorld: SIMD2<Double>?
-    @State var marqueeCurrentWorld: SIMD2<Double>?
     @State var clickSequence = ClickSequence()
     @State var hoverTracker = HoverTracker()
     @State var lastHoverHit: UUID?
@@ -89,28 +67,14 @@ struct LayoutCanvasView: View {
                 size: size,
                 snapshot: snapshot,
                 transform: transform,
-                drag: CanvasDragState(
-                    objectID: activeDragObjectID,
-                    deltaWorld: activeDragDeltaWorld,
-                    pointerLocation: dragPointerLocation,
-                    drawingStart: drawingStartWorld,
-                    drawingCurrent: drawingCurrentWorld,
-                    isOptionDown: NSEvent.modifierFlags.contains(.option),
-                    resize: activeResize,
-                    placementCandidate: pointer?.placementCandidate,
-                    placingSource: pointer?.placingSource,
-                    wallDrawing: wallDrawing,
-                    wallCurrentPointer: pointer?.wallCurrentPointer,
-                    marqueeStart: marqueeStartWorld,
-                    marqueeCurrent: marqueeCurrentWorld
-                )
+                drag: dragState
             )
         }
         .background(Palette.background)
         .contentShape(Rectangle())
         .onHover { isHovering in
             guard !isHovering else { return }
-            onPointerMove(nil)
+            onHoverWorld(nil)
             hoveredHandle = nil
             if lastHoverHit != nil {
                 lastHoverHit = nil
@@ -122,10 +86,12 @@ struct LayoutCanvasView: View {
             case .active(let location):
                 let world = transform.toWorld(SIMD2<Double>(location.x, location.y))
                 hoverTracker.world = world
-                onPointerMove(world)
+                onHoverWorld(world)
                 updateHoverState(at: world)
+                let event = makePointerEvent(at: location)
+                onPointerMove(event)
             case .ended:
-                onPointerMove(nil)
+                onHoverWorld(nil)
                 hoveredHandle = nil
                 if lastHoverHit != nil {
                     lastHoverHit = nil
@@ -171,6 +137,17 @@ struct LayoutCanvasView: View {
             return .handled
         }
         .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            let key: CanvasKey
+            switch press.key {
+            case .upArrow: key = .upArrow
+            case .downArrow: key = .downArrow
+            case .leftArrow: key = .leftArrow
+            case .rightArrow: key = .rightArrow
+            default: return .ignored
+            }
+            if onCanvasKey(key) {
+                return .handled
+            }
             let step = press.modifiers.contains(.shift)
                 ? LayoutEditorViewModel.shiftNudgeStepM
                 : LayoutEditorViewModel.gridSnapCellM
@@ -184,55 +161,26 @@ struct LayoutCanvasView: View {
             return .handled
         }
         .onKeyPress(.escape) {
-            if activeResize != nil {
-                activeResize = nil
-                dragPointerLocation = nil
+            if onCanvasKey(.escape) {
                 return .handled
             }
-            if case .drawWall = tool {
-                onWallFinish()
-                return .handled
-            }
-            if drawingStartWorld != nil {
-                drawingStartWorld = nil
-                drawingCurrentWorld = nil
-                return .handled
-            }
-            if marqueeStartWorld != nil {
-                marqueeStartWorld = nil
-                marqueeCurrentWorld = nil
-                dragPointerLocation = nil
-                return .handled
-            }
-            if tool == .blockedArea {
-                onCancelTool()
-                return .handled
-            }
-            if activeDragObjectID != nil || dragCandidateObjectID != nil {
-                activeDragObjectID = nil
-                dragCandidateObjectID = nil
-                activeDragDeltaWorld = .zero
-                dragPointerLocation = nil
-                isDragCancelled = true
-                return .handled
-            }
-            onSelect(nil)
+            onCancelTool()
             return .handled
         }
         .onKeyPress(.return) {
-            if case .drawWall = tool, onWallReturn() {
+            if onCanvasKey(.returnKey) {
                 return .handled
             }
             return .ignored
         }
         .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-            if case .drawWall = tool, onWallBackspace() {
+            if onCanvasKey(.delete) {
                 return .handled
             }
             return .ignored
         }
         .onKeyPress(characters: CharacterSet(charactersIn: "0123456789.")) { press in
-            if case .drawWall = tool, let char = press.characters.first, onWallKey(char) {
+            if let char = press.characters.first, onCanvasKey(.character(char)) {
                 return .handled
             }
             return .ignored
@@ -243,19 +191,18 @@ struct LayoutCanvasView: View {
     }
 
     private var canvasPointerStyle: PointerStyle {
-        if let resize = activeResize {
+        if let resize = dragState.resize {
             return .frameResize(position: resize.handle.pointerPosition)
         }
         if let handle = hoveredHandle {
             return .frameResize(position: handle.pointerPosition)
         }
         switch tool {
-        case .place, .drawWall:
+        case .place, .drawWall, .blockedArea:
             return .rectSelection
         default:
-            break
+            return .default
         }
-        return tool == .blockedArea ? .rectSelection : .default
     }
 
     private var canvasGesture: some Gesture {

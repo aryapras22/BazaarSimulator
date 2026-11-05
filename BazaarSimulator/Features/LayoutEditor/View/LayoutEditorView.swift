@@ -232,9 +232,7 @@ extension LayoutEditorView {
 
     private func handleEscapeKey() -> KeyPress.Result {
         if viewModel.tool != .select {
-            viewModel.selectTool(.select)
-            pointer.placementCandidate = nil
-            pointer.placingSource = nil
+            viewModel.cancelActiveTool()
             return .handled
         }
         return .ignored
@@ -246,68 +244,27 @@ extension LayoutEditorView {
             snapshot: canvasSnapshot,
             transform: $viewModel.transform,
             isFocused: $isCanvasFocused,
+            dragState: viewModel.dragState,
             excludedTrailingWidth: inspectorInset,
-            onSelect: { viewModel.selectObject($0) },
-            onSelectBooths: { ids, additive in viewModel.selectBooths(ids, additive: additive) },
+            tool: viewModel.tool,
+            onPointerPress: { viewModel.handlePointerPress($0) },
+            onPointerMove: { viewModel.handlePointerMove($0) },
+            onPointerRelease: { viewModel.handlePointerRelease($0) },
+            onPointerDoubleClick: { viewModel.handlePointerDoubleClick($0) },
+            onCanvasKey: { viewModel.handleCanvasKey($0) },
+            onCancelTool: { viewModel.cancelActiveTool() },
+            onHoverWorld: { handleHoverWorld($0) },
             onHover: { viewModel.hoverID = $0 },
-            onToggleSelection: { viewModel.toggleBoothInSelection($0) },
-            onDoubleClick: { id, isOptionDown in
-                viewModel.selectGroup(containing: id, bySize: isOptionDown)
-            },
-            onPointerMove: { world in handlePointerMove(world) },
-            onDragEnded: { id, delta, isOptionDown in
-                viewModel.finishDraggingObject(id: id, deltaWorld: delta, freeMove: isOptionDown)
-            },
             onContextAction: { viewModel.handleContextAction($0) },
             onInteract: { isCanvasFocused = true },
             onNudge: { delta in viewModel.nudgeSelected(by: delta) },
-            tool: viewModel.tool,
-            onDrawBlockedArea: { viewModel.addBlockedArea($0) },
-            onCancelTool: { viewModel.selectTool(.select) },
-            onResizeEnded: { id, placement in viewModel.finishResizingObject(id: id, to: placement) },
-            onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) },
-            onCommitPlacement: { keepTool in viewModel.commitPlacement(keepTool: keepTool) },
-            onCommitDoorPlacement: { keepTool, itemID in
-                viewModel.commitDoorPlacement(keepTool: keepTool, itemID: itemID)
-            },
-            constrainDelta: { id, delta in
-                viewModel.constrainDragDelta(id: id, delta: delta)
-            },
-            pointer: pointer,
-            wallDrawing: viewModel.wallDrawing,
-            onWallClick: { isShiftDown in
-                if let world = pointer.world {
-                    viewModel.handleWallClick(at: world, isShiftDown: isShiftDown)
-                }
-            },
-            onWallDoubleClick: { viewModel.finishWallDrawing() },
-            onWallKey: { viewModel.handleWallKey($0) },
-            onWallReturn: { viewModel.handleWallReturn(currentPointer: pointer.wallCurrentPointer) },
-            onWallBackspace: { viewModel.handleWallBackspace() },
-            onWallFinish: { viewModel.finishWallDrawing() }
+            onDropLibraryItem: { id, world in viewModel.placeLibraryItem(id: id, at: world) }
         )
     }
 
-    private func handlePointerMove(_ world: SIMD2<Double>?) {
+    private func handleHoverWorld(_ world: SIMD2<Double>?) {
         pointer.world = world
         pointer.hitDescription = world.map { viewModel.pointerDescription(at: $0) }
-        if case .place(let source) = viewModel.tool, let world {
-            let isOptionDown = NSEvent.modifierFlags.contains(.option)
-            viewModel.updatePlacementPreview(at: world, free: isOptionDown)
-            pointer.placementCandidate = viewModel.placementPreview
-            pointer.placingSource = source
-        } else if case .placeDoor(let itemID) = viewModel.tool, let world {
-            viewModel.updateDoorPlacementPreview(at: world, itemID: itemID)
-            pointer.placementCandidate = viewModel.placementPreview
-            pointer.placingSource = .catalog(itemID)
-        } else if case .drawWall = viewModel.tool, let world {
-            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
-            pointer.wallCurrentPointer = viewModel.handleWallPointerMove(at: world, isShiftDown: isShiftDown)
-        } else {
-            pointer.placementCandidate = nil
-            pointer.placingSource = nil
-            pointer.wallCurrentPointer = nil
-        }
     }
 }
 
