@@ -85,6 +85,9 @@ enum CanvasSceneRenderer {
                 )
             }
         }
+        for inserted in drag.previewInserts {
+            drawObject(inserted, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
+        }
         if let selectedObject, selectedObject.kind.layer == snapshot.activeLayer {
             drawSelectionDetails(selectedObject, drag: drag, in: &context, transform: transform)
         }

@@ -10,6 +10,7 @@ final class SelectTool: EditorToolHandling {
     var pressViewPoint: CGPoint = .zero
     private var activeResize: ActiveResize?
     var activeNodeDrag: ActiveNodeDrag?
+    var activeMidpointDrag: ActiveMidpointDrag?
     private var dragCandidateID: UUID?
     private var activeDragObjectID: UUID?
     private var activeDragDeltaWorld: SIMD2<Double> = .zero
@@ -21,24 +22,8 @@ final class SelectTool: EditorToolHandling {
         pressViewPoint = event.viewPoint
         resetGesture()
 
-        if context.activeLayer == .structure {
-            let graph = WallGraph(layout: context.layout)
-            let hitTolerance = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
-            if let node = graph.nearestNode(to: event.worldPoint, maximumDistance: hitTolerance) {
-                let isOptionDown = event.modifiers.contains(.option)
-                let targetWallID = (context.selectionID.flatMap { sel in
-                    node.incidents.first(where: { $0.wallID == sel })?.wallID
-                }) ?? event.hitObjectID ?? node.incidents.first?.wallID
-
-                activeNodeDrag = ActiveNodeDrag(
-                    nodeID: node.id,
-                    initialPosition: node.position,
-                    targetWallID: targetWallID,
-                    isDetach: isOptionDown,
-                    initialGraph: graph
-                )
-                return
-            }
+        if handleStructurePress(event, context: context) {
+            return
         }
 
         if let selectedID = context.selectionID,
@@ -74,6 +59,11 @@ final class SelectTool: EditorToolHandling {
     }
 
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
+        if let midpointDrag = activeMidpointDrag {
+            updateMidpointDrag(event: event, midpointDrag: midpointDrag, context: context)
+            return
+        }
+
         if let nodeDrag = activeNodeDrag {
             updateNodeDrag(event: event, nodeDrag: nodeDrag, context: context)
             return
@@ -100,6 +90,11 @@ final class SelectTool: EditorToolHandling {
     }
 
     func handleRelease(_ event: CanvasPointerEvent, context: ToolContext) {
+        if let midpointDrag = activeMidpointDrag {
+            finishMidpointDrag(event: event, midpointDrag: midpointDrag, context: context)
+            return
+        }
+
         if let nodeDrag = activeNodeDrag {
             finishNodeDrag(event: event, nodeDrag: nodeDrag, context: context)
             return
@@ -182,7 +177,8 @@ final class SelectTool: EditorToolHandling {
 
 extension SelectTool {
     var isInteracting: Bool {
-        activeNodeDrag != nil
+        activeMidpointDrag != nil
+            || activeNodeDrag != nil
             || activeResize != nil
             || dragCandidateID != nil
             || activeDragObjectID != nil
@@ -190,6 +186,7 @@ extension SelectTool {
     }
 
     func resetGesture() {
+        activeMidpointDrag = nil
         activeNodeDrag = nil
         activeResize = nil
         dragCandidateID = nil

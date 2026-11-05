@@ -52,8 +52,10 @@ enum WallNodeRenderer {
         }
 
         if let selectedWall {
+            let isHovered = hoverWorld.map { simd_distance(selectedWall.placement.center, $0) <= hitM } ?? false
             drawHollowDot(
                 at: selectedWall.placement.center,
+                isHovered: isHovered,
                 transform: transform,
                 in: &context
             )
@@ -81,6 +83,7 @@ enum WallNodeRenderer {
 
     private static func drawHollowDot(
         at point: SIMD2<Double>,
+        isHovered: Bool,
         transform: CanvasTransform,
         in context: inout GraphicsContext
     ) {
@@ -92,7 +95,8 @@ enum WallNodeRenderer {
             width: radius * 2.0,
             height: radius * 2.0
         )
+        let strokeColor = isHovered ? Palette.highlight : Palette.canvasLine
         context.fill(Path(ellipseIn: rect), with: .color(Palette.surface))
-        context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 1.5)
+        context.stroke(Path(ellipseIn: rect), with: .color(strokeColor), lineWidth: 1.5)
     }
 }

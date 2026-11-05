@@ -152,4 +152,39 @@ struct SelectToolNodeDragTests {
         #expect(simd_distance(ep1.end, SIMD2<Double>(10, -2)) < 0.05)
         #expect(simd_distance(ep2.start, SIMD2<Double>(10, 0)) < 0.05)
     }
+
+    @Test("Dragging a wall midpoint bends wall into two angled segments")
+    func dragMidpointBendsWall() throws {
+        let wall = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let layout = Self.makeLayout(objects: [wall])
+        let context = NodeDragTestContext(layout: layout, selectionID: wall.id)
+        let tool = SelectTool()
+
+        let press = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(5, 0),
+            viewPoint: CGPoint(x: 50, y: 0)
+        )
+        tool.handlePress(press, context: context)
+
+        let move = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(5, 4),
+            viewPoint: CGPoint(x: 50, y: 40)
+        )
+        tool.handleMove(move, context: context)
+        #expect(context.preview?.previewPlacements.count == 1)
+        #expect(context.preview?.previewInserts.count == 1)
+
+        let release = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(5, 4),
+            viewPoint: CGPoint(x: 50, y: 40)
+        )
+        tool.handleRelease(release, context: context)
+
+        #expect(context.appliedEdits.count == 1)
+        #expect(context.layout.objects.count == 2)
+        let graphAfter = WallGraph(layout: context.layout)
+        #expect(graphAfter.nodes.count == 3)
+        let bendNode = try #require(graphAfter.nearestNode(to: SIMD2<Double>(5, 4), maximumDistance: 0.05))
+        #expect(bendNode.incidents.count == 2)
+    }
 }

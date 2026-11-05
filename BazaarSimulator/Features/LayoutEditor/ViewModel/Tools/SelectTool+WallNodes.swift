@@ -10,7 +10,46 @@ struct ActiveNodeDrag: Sendable {
     let initialGraph: WallGraph
 }
 
+struct ActiveMidpointDrag: Sendable {
+    let wall: LayoutObject
+    let initialCenter: SIMD2<Double>
+}
+
 extension SelectTool {
+    func handleStructurePress(_ event: CanvasPointerEvent, context: ToolContext) -> Bool {
+        guard context.activeLayer == .structure else { return false }
+        let hitTolerance = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
+        let graph = WallGraph(layout: context.layout)
+
+        if let node = graph.nearestNode(to: event.worldPoint, maximumDistance: hitTolerance) {
+            let isOptionDown = event.modifiers.contains(.option)
+            let targetWallID = (context.selectionID.flatMap { sel in
+                node.incidents.first(where: { $0.wallID == sel })?.wallID
+            }) ?? event.hitObjectID ?? node.incidents.first?.wallID
+
+            activeNodeDrag = ActiveNodeDrag(
+                nodeID: node.id,
+                initialPosition: node.position,
+                targetWallID: targetWallID,
+                isDetach: isOptionDown,
+                initialGraph: graph
+            )
+            return true
+        }
+
+        if let selectedID = context.selectionID,
+           let selectedWall = context.layout.objects.first(where: { $0.id == selectedID && $0.kind == .wall }),
+           simd_distance(event.worldPoint, selectedWall.placement.center) <= hitTolerance {
+            activeMidpointDrag = ActiveMidpointDrag(
+                wall: selectedWall,
+                initialCenter: selectedWall.placement.center
+            )
+            return true
+        }
+
+        return false
+    }
+
     func updateNodeDrag(
         event: CanvasPointerEvent,
         nodeDrag: ActiveNodeDrag,
@@ -99,6 +138,79 @@ extension SelectTool {
             context.selectObject(targetWallID)
         }
         activeNodeDrag = nil
+        resetGesture()
+        context.clearPreview()
+    }
+
+    func updateMidpointDrag(
+        event: CanvasPointerEvent,
+        midpointDrag: ActiveMidpointDrag,
+        context: ToolContext
+    ) {
+        let translation = CGPoint(x: event.viewPoint.x - pressViewPoint.x, y: event.viewPoint.y - pressViewPoint.y)
+        guard SelectGesture.isPastThreshold(translation) else { return }
+
+        let isOptionDown = event.modifiers.contains(.option)
+        let snapResult = Snapper.snap(
+            point: event.worldPoint,
+            layout: context.layout,
+            pointsPerMetre: event.pointsPerMetre,
+            isFree: isOptionDown
+        )
+        let newPosition = snapResult.point
+        let edit = WallEditing.bendMidpoint(
+            wall: midpointDrag.wall,
+            to: newPosition,
+            in: context.layout
+        )
+
+        var previewPlacements: [UUID: Placement] = [:]
+        var previewInserts: [LayoutObject] = []
+        if case .batch(let edits) = edit {
+            for subEdit in edits {
+                switch subEdit {
+                case .replace(_, let after):
+                    previewPlacements[after.id] = after.placement
+                case .insert(let inserted, _):
+                    previewInserts.append(inserted)
+                default:
+                    break
+                }
+            }
+        }
+
+        context.setPreview(CanvasDragState(
+            pointerLocation: event.viewPoint,
+            isOptionDown: isOptionDown,
+            previewPlacements: previewPlacements,
+            previewInserts: previewInserts,
+            guides: snapResult.guides
+        ))
+    }
+
+    func finishMidpointDrag(
+        event: CanvasPointerEvent,
+        midpointDrag: ActiveMidpointDrag,
+        context: ToolContext
+    ) {
+        let translation = CGPoint(x: event.viewPoint.x - pressViewPoint.x, y: event.viewPoint.y - pressViewPoint.y)
+        if SelectGesture.isPastThreshold(translation) {
+            let isOptionDown = event.modifiers.contains(.option)
+            let snapResult = Snapper.snap(
+                point: event.worldPoint,
+                layout: context.layout,
+                pointsPerMetre: event.pointsPerMetre,
+                isFree: isOptionDown
+            )
+            let newPosition = snapResult.point
+            let edit = WallEditing.bendMidpoint(
+                wall: midpointDrag.wall,
+                to: newPosition,
+                in: context.layout
+            )
+            context.applyEdit(edit)
+        }
+        activeMidpointDrag = nil
         resetGesture()
         context.clearPreview()
     }
