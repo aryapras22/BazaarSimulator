@@ -214,4 +214,77 @@ extension SelectTool {
         resetGesture()
         context.clearPreview()
     }
+
+    func wallDragPreview(
+        wall: LayoutObject,
+        rawDelta: SIMD2<Double>,
+        context: ToolContext
+    ) -> [UUID: Placement] {
+        let graph = WallGraph(layout: context.layout)
+        let edit = WallEditing.moveWallWithNeighbours(
+            wall: wall,
+            delta: rawDelta,
+            in: context.layout,
+            graph: graph
+        )
+        var previewPlacements: [UUID: Placement] = [:]
+        if case .batch(let edits) = edit {
+            for subEdit in edits {
+                if case .replace(_, let after) = subEdit {
+                    previewPlacements[after.id] = after.placement
+                }
+            }
+        }
+        return previewPlacements
+    }
+
+    func commitWallDrag(
+        before: LayoutObject,
+        candidateID: UUID,
+        delta: SIMD2<Double>,
+        context: ToolContext
+    ) {
+        let graph = WallGraph(layout: context.layout)
+        let edit = WallEditing.moveWallWithNeighbours(
+            wall: before,
+            delta: delta,
+            in: context.layout,
+            graph: graph
+        )
+        context.applyEdit(edit, coalesceKey: "drag-\(candidateID)")
+    }
+
+    func computeCandidateSnapDelta(
+        candidateID: UUID,
+        rawDelta: SIMD2<Double>,
+        isOptionDown: Bool,
+        event: CanvasPointerEvent,
+        context: ToolContext
+    ) -> (delta: SIMD2<Double>, guides: [SnapGuide]) {
+        guard let object = context.layout.objects.first(where: { $0.id == candidateID }), !isOptionDown else {
+            return (rawDelta, [])
+        }
+        if object.kind == .door {
+            let reach = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
+            if let host = DoorHosting.nearestHost(to: object.placement.center, in: context.layout, reach: reach),
+               let placement = DoorHosting.placement(
+                   width: object.placement.sizeM.x,
+                   on: host,
+                   near: object.placement.center + rawDelta
+               ) {
+                let guides = [SnapGuide(start: host.start, end: host.end, kind: .wallFace)]
+                return (placement.center - object.placement.center, guides)
+            }
+            return (rawDelta, [])
+        }
+        let targetCenter = object.placement.center + rawDelta
+        let snap = Snapper.snap(
+            point: targetCenter,
+            layout: context.layout,
+            pointsPerMetre: event.pointsPerMetre,
+            isFree: false,
+            ignoringObjectID: candidateID
+        )
+        return (snap.point - object.placement.center, snap.guides)
+    }
 }

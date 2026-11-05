@@ -229,7 +229,7 @@ enum WallEditing {
         return .batch([.replace(before: wall, after: updated)])
     }
 
-    private static func makeSegment(
+    static func makeSegment(
         id: UUID,
         from start: SIMD2<Double>,
         to end: SIMD2<Double>,

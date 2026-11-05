@@ -187,4 +187,46 @@ struct SelectToolNodeDragTests {
         let bendNode = try #require(graphAfter.nearestNode(to: SIMD2<Double>(5, 4), maximumDistance: 0.05))
         #expect(bendNode.incidents.count == 2)
     }
+
+    @Test("Dragging a wall body moves the wall and stretches incident neighbours")
+    func dragWallBodyStretchesNeighbours() throws {
+        let wall1 = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let wall2 = Self.makeWall(start: SIMD2<Double>(10, 0), end: SIMD2<Double>(10, 8))
+        let wall3 = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(0, 8))
+        let layout = Self.makeLayout(objects: [wall1, wall2, wall3])
+        let context = NodeDragTestContext(layout: layout, selectionID: wall1.id)
+        let tool = SelectTool()
+
+        let press = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(3, 0),
+            viewPoint: CGPoint(x: 30, y: 0),
+            hitObjectID: wall1.id
+        )
+        tool.handlePress(press, context: context)
+
+        let move = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(3, -2),
+            viewPoint: CGPoint(x: 30, y: -20),
+            hitObjectID: wall1.id
+        )
+        tool.handleMove(move, context: context)
+        #expect(context.preview?.previewPlacements.count == 3)
+
+        let release = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(3, -2),
+            viewPoint: CGPoint(x: 30, y: -20),
+            hitObjectID: wall1.id
+        )
+        tool.handleRelease(release, context: context)
+
+        #expect(context.appliedEdits.count == 1)
+        let graphAfter = WallGraph(layout: context.layout)
+        let ep1 = try #require(graphAfter.endpoints(for: wall1.id))
+        let ep2 = try #require(graphAfter.endpoints(for: wall2.id))
+        let ep3 = try #require(graphAfter.endpoints(for: wall3.id))
+        #expect(simd_distance(ep1.start, SIMD2<Double>(0, -2)) < 0.05)
+        #expect(simd_distance(ep1.end, SIMD2<Double>(10, -2)) < 0.05)
+        #expect(simd_distance(ep2.start, SIMD2<Double>(10, -2)) < 0.05)
+        #expect(simd_distance(ep3.start, SIMD2<Double>(0, -2)) < 0.05)
+    }
 }

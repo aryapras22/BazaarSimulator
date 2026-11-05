@@ -227,42 +227,29 @@ extension SelectTool {
         }
 
         let isOptionDown = event.modifiers.contains(.option)
-        var guides: [SnapGuide] = []
+        let snap = computeCandidateSnapDelta(
+            candidateID: candidateID,
+            rawDelta: rawDelta,
+            isOptionDown: isOptionDown,
+            event: event,
+            context: context
+        )
+        activeDragDeltaWorld = snap.delta
 
-        if let object = context.layout.objects.first(where: { $0.id == candidateID }) {
-            if object.kind == .door {
-                let reach = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
-                if !isOptionDown,
-                   let host = DoorHosting.nearestHost(to: object.placement.center, in: context.layout, reach: reach),
-                   let placement = DoorHosting.placement(
-                       width: object.placement.sizeM.x,
-                       on: host,
-                       near: object.placement.center + rawDelta
-                   ) {
-                    rawDelta = placement.center - object.placement.center
-                    guides = [SnapGuide(start: host.start, end: host.end, kind: .wallFace)]
-                }
-            } else if !isOptionDown {
-                let targetCenter = object.placement.center + rawDelta
-                let snap = Snapper.snap(
-                    point: targetCenter,
-                    layout: context.layout,
-                    pointsPerMetre: event.pointsPerMetre,
-                    isFree: false,
-                    ignoringObjectID: candidateID
-                )
-                rawDelta = snap.point - object.placement.center
-                guides = snap.guides
-            }
+        var previewPlacements: [UUID: Placement] = [:]
+        if let object = context.layout.objects.first(where: { $0.id == candidateID }),
+           object.kind == .wall,
+           context.activeLayer == .structure {
+            previewPlacements = wallDragPreview(wall: object, rawDelta: snap.delta, context: context)
         }
 
-        activeDragDeltaWorld = rawDelta
         context.setPreview(CanvasDragState(
             objectID: activeDragObjectID,
-            deltaWorld: rawDelta,
+            deltaWorld: snap.delta,
             pointerLocation: event.viewPoint,
             isOptionDown: isOptionDown,
-            guides: guides
+            previewPlacements: previewPlacements,
+            guides: snap.guides
         ))
     }
 
@@ -298,6 +285,15 @@ extension SelectTool {
         }
         if before.kind == .door {
             commitDoorDrag(before: before, context: context)
+            return
+        }
+        if before.kind == .wall && context.activeLayer == .structure {
+            commitWallDrag(
+                before: before,
+                candidateID: candidateID,
+                delta: activeDragDeltaWorld,
+                context: context
+            )
             return
         }
         var after = before
