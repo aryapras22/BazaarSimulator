@@ -54,7 +54,9 @@ struct InspectorDraft: Sendable, Equatable {
         }
         updated.categoryID = categoryID
         updated.openSides = openSides
-        updated.heightM = heightM
+        if original.heightM != nil || heightM != Self.defaultHeight(for: original) {
+            updated.heightM = heightM
+        }
         if kind == .door {
             updated.doorFlow = DoorFlow(direction: doorDirection, connection: doorConnection)
         }
