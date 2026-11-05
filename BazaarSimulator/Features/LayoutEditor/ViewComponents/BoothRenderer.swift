@@ -27,10 +27,7 @@ enum BoothRenderer {
 
         let fillColor: Color
         let strokeColor: Color
-        if state.tab == .flow {
-            fillColor = Palette.canvasFlowFill
-            strokeColor = Palette.canvasFlowLine
-        } else if state.isSelected {
+        if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
@@ -40,9 +37,7 @@ enum BoothRenderer {
 
         context.fill(path, with: .color(fillColor))
 
-        if state.tab == .floorPlan {
-            drawOpenSideStrips(for: state, in: &context, transform: transform)
-        }
+        drawOpenSideStrips(for: state, in: &context, transform: transform)
 
         let outlineColor = state.hasObjectWarning ? Palette.canvasIssue : strokeColor
         let lineWidth: CGFloat = state.hasObjectWarning ? 2.0 : 1.0
@@ -52,18 +47,18 @@ enum BoothRenderer {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
 
-        if state.tab == .floorPlan, state.isGroupMember || state.isHoveredGroupMember {
+        if state.isGroupMember || state.isHoveredGroupMember {
             let opacity = state.isGroupMember ? 1.0 : 0.5
             context.stroke(path, with: .color(Palette.highlight.opacity(opacity)), lineWidth: 2.0)
         }
 
-        if state.isHovered, let categoryColor = state.categoryColor, state.tab == .floorPlan {
+        if state.isHovered, let categoryColor = state.categoryColor {
             drawCategoryDot(color: categoryColor, placement: state.booth.placement, in: &context, transform: transform)
         }
 
         if transform.scale >= 10.0 {
             let centerView = transform.toView(state.booth.placement.center)
-            let labelColor = (state.isSelected && state.tab == .floorPlan) ? Color.white : strokeColor
+            let labelColor = state.isSelected ? Color.white : strokeColor
             let text = Text(state.displayLabel)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)

@@ -31,11 +31,12 @@ enum PendingNavigationAction: Sendable, Equatable {
 @MainActor
 final class LayoutEditorViewModel {
     let projectID: UUID
-    private let session: any ProjectSessionProtocol
+    let session: any ProjectSessionProtocol
     private let onBack: () -> Void
 
     var tab: EditorTab = .floorPlan
     var activeLayer: EditorLayer = .structure
+    var showVisitorFlow: Bool = false
     var transientHint: String?
     @ObservationIgnored var transientHintTask: Task<Void, Never>?
     var tool: EditorTool = .select
@@ -290,21 +291,6 @@ final class LayoutEditorViewModel {
             executeHistoryAction(isUndo: true)
         case .performRedo:
             executeHistoryAction(isUndo: false)
-        }
-    }
-
-    private func executeSwitchLayout(_ layoutID: UUID) {
-        withSingleRefresh {
-            session.setActiveLayoutID(layoutID, for: projectID)
-            hasFittedTransform = false
-            applySelection(nil)
-        }
-    }
-
-    private func executeHistoryAction(isUndo: Bool) {
-        let edit = isUndo ? currentHistory.undo() : currentHistory.redo()
-        if let edit {
-            applyHistoryEdit(edit)
         }
     }
 }

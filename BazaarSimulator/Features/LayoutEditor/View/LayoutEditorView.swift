@@ -68,6 +68,7 @@ extension LayoutEditorView {
             legend: viewModel.legend,
             tab: viewModel.tab,
             activeLayer: viewModel.activeLayer,
+            showVisitorFlow: viewModel.showVisitorFlow,
             selectionID: viewModel.selectionID,
             hoverID: viewModel.hoverID,
             groupMemberIDs: viewModel.groupMemberIDs,

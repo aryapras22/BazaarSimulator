@@ -18,10 +18,7 @@ enum ObstacleRenderer {
 
         let fillColor: Color
         let strokeColor: Color
-        if state.tab == .flow {
-            fillColor = Palette.canvasFlowFill
-            strokeColor = Palette.canvasFlowLine
-        } else if state.isSelected {
+        if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else if object.kind == .wall || object.kind == .rail || object.kind == .block {
@@ -36,7 +33,7 @@ enum ObstacleRenderer {
         let outlineColor = state.hasWarning ? Palette.canvasIssue : strokeColor
         context.stroke(path, with: .color(outlineColor), lineWidth: state.hasWarning ? 2.0 : 1.2)
 
-        if object.kind == .stage, state.tab == .floorPlan {
+        if object.kind == .stage {
             drawStageFront(object: object, in: &context, transform: transform)
         }
 
@@ -46,7 +43,7 @@ enum ObstacleRenderer {
 
         if transform.scale >= 10.0, shouldDrawLabel(for: object.kind) {
             let centerView = transform.toView(object.placement.center)
-            let labelColor = (state.isSelected && state.tab == .floorPlan) ? Color.white : strokeColor
+            let labelColor = state.isSelected ? Color.white : strokeColor
             let text = Text(object.label)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)
@@ -72,7 +69,7 @@ enum ObstacleRenderer {
         let rect = CGRect(x: centerView.x - radius, y: centerView.y - radius, width: radius * 2, height: radius * 2)
         let path = Path(ellipseIn: rect)
         let fill = state.isSelected ? Palette.canvasSelection : Palette.canvasLine
-        context.fill(path, with: .color(state.tab == .flow ? Palette.canvasFlowLine : fill))
+        context.fill(path, with: .color(fill))
         if state.hasWarning {
             context.stroke(path, with: .color(Palette.canvasIssue), lineWidth: 2.0)
         } else if state.isHovered && !state.isSelected {

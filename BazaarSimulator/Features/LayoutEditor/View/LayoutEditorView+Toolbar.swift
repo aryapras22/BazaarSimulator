@@ -86,6 +86,15 @@ extension LayoutEditorView {
                         viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
                     }
                 )
+
+                Button {
+                    viewModel.showVisitorFlow.toggle()
+                } label: {
+                    Image(systemName: "figure.walk")
+                        .foregroundStyle(viewModel.showVisitorFlow ? Palette.highlight : Palette.textSecondary)
+                }
+                .help(viewModel.showVisitorFlow ? "Hide visitor flow" : "Show visitor flow")
+                .accessibilityLabel("Toggle visitor flow")
             }
         }
 

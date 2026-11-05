@@ -92,4 +92,19 @@ extension LayoutEditorViewModel: ToolContext {
         currentToolHandler.cancel(context: self)
         sealHistory()
     }
+
+    func executeSwitchLayout(_ layoutID: UUID) {
+        withSingleRefresh {
+            session.setActiveLayoutID(layoutID, for: projectID)
+            hasFittedTransform = false
+            applySelection(nil)
+        }
+    }
+
+    func executeHistoryAction(isUndo: Bool) {
+        let edit = isUndo ? currentHistory.undo() : currentHistory.redo()
+        if let edit {
+            applyHistoryEdit(edit)
+        }
+    }
 }

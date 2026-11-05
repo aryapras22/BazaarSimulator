@@ -9,6 +9,7 @@ struct ObjectDrawState: Sendable {
     let hasWarning: Bool
 }
 
+@MainActor
 enum SeatingRenderer {
     static func draw(
         _ state: ObjectDrawState,
@@ -20,10 +21,7 @@ enum SeatingRenderer {
 
         let fillColor: Color
         let strokeColor: Color
-        if state.tab == .flow {
-            fillColor = Palette.canvasFlowFill
-            strokeColor = Palette.canvasFlowLine
-        } else if state.isSelected {
+        if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
