@@ -5,6 +5,8 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
     case wall
     case room
     case floor
+    case row
+    case fill
     case library
 
     var id: Self { self }
@@ -15,6 +17,8 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .wall: return "Wall (W)"
         case .room: return "Room (R)"
         case .floor: return "Floor (F)"
+        case .row: return "Row (R)"
+        case .fill: return "Fill (F)"
         case .library: return "Library (B)"
         }
     }
@@ -25,6 +29,8 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .wall: return "line.diagonal"
         case .room: return "rectangle"
         case .floor: return "square.fill"
+        case .row: return "rectangle.split.3x1"
+        case .fill: return "square.grid.3x3"
         case .library: return "square.grid.2x2"
         }
     }
@@ -34,7 +40,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .structure:
             return [.select, .wall, .room, .floor, .library]
         case .booths:
-            return [.select, .library]
+            return [.select, .row, .fill, .library]
         }
     }
 }
@@ -68,21 +74,25 @@ struct ToolRail: View {
     }
 
     private func isItemActive(_ item: ToolRailItem) -> Bool {
-        switch item {
-        case .select:
-            return activeTool == .select
-        case .wall:
-            if case .drawWall = activeTool { return true }
-            return false
-        case .room:
-            if case .room = activeTool { return true }
-            return false
-        case .floor:
-            if case .floor = activeTool { return true }
-            return false
-        case .library:
-            if case .place = activeTool { return true }
+        switch (item, activeTool) {
+        case (.select, .select):
+            return true
+        case (.wall, .drawWall):
+            return true
+        case (.room, .room):
+            return true
+        case (.floor, .floor):
+            return true
+        case (.row, .row):
+            return true
+        case (.fill, .fill):
+            return true
+        case (.library, .place):
+            return true
+        case (.library, _):
             return isSidePanelOpen
+        default:
+            return false
         }
     }
 

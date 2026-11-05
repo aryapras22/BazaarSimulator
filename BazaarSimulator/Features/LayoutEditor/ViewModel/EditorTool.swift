@@ -4,6 +4,8 @@ enum EditorTool: Hashable, Sendable {
     case select
     case blockedArea
     case floor(itemID: String)
+    case row(sizeM: SIMD2<Double> = SIMD2(2.5, 2.5))
+    case fill(sizeM: SIMD2<Double> = SIMD2(2.5, 2.5), aisleWidthM: Double = 2.0)
     case place(LibraryRowDisplay.Source)
     case drawWall(itemID: String)
     case room(itemID: String)
@@ -16,6 +18,8 @@ enum EditorTool: Hashable, Sendable {
         case .select: return "Select"
         case .blockedArea: return "Blocked Area"
         case .floor: return "Floor"
+        case .row: return "Row"
+        case .fill: return "Fill"
         case .place: return "Place"
         case .drawWall: return "Draw Wall"
         case .room: return "Room"
@@ -28,6 +32,8 @@ enum EditorTool: Hashable, Sendable {
         case .select: return "cursorarrow"
         case .blockedArea: return "square.dashed"
         case .floor: return "square.fill"
+        case .row: return "rectangle.split.3x1"
+        case .fill: return "square.grid.3x3"
         case .place: return "plus.square"
         case .drawWall: return "line.diagonal"
         case .room: return "rectangle"

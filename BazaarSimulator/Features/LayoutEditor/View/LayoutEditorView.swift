@@ -237,16 +237,8 @@ extension LayoutEditorView {
                 handleToolRailSelection(.wall)
                 return .handled
             }
-            .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { _ in
-                guard viewModel.activeLayer == .structure else { return .ignored }
-                handleToolRailSelection(.room)
-                return .handled
-            }
-            .onKeyPress(characters: CharacterSet(charactersIn: "fF")) { _ in
-                guard viewModel.activeLayer == .structure else { return .ignored }
-                handleToolRailSelection(.floor)
-                return .handled
-            }
+            .onKeyPress(characters: CharacterSet(charactersIn: "rR")) { _ in handleRKey() }
+            .onKeyPress(characters: CharacterSet(charactersIn: "fF")) { _ in handleFKey() }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
                 guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
@@ -271,6 +263,28 @@ extension LayoutEditorView {
         return .ignored
     }
 
+    private func handleRKey() -> KeyPress.Result {
+        if viewModel.activeLayer == .structure {
+            handleToolRailSelection(.room)
+            return .handled
+        } else if viewModel.activeLayer == .booths {
+            handleToolRailSelection(.row)
+            return .handled
+        }
+        return .ignored
+    }
+
+    private func handleFKey() -> KeyPress.Result {
+        if viewModel.activeLayer == .structure {
+            handleToolRailSelection(.floor)
+            return .handled
+        } else if viewModel.activeLayer == .booths {
+            handleToolRailSelection(.fill)
+            return .handled
+        }
+        return .ignored
+    }
+
     private func openLibraryFiltered(to category: CatalogCategory) {
         withAnimation(.easeInOut(duration: 0.2)) {
             isSidePanelVisible = true
@@ -289,6 +303,10 @@ extension LayoutEditorView {
             viewModel.selectTool(.room(itemID: viewModel.selectedWallItemID))
         case .floor:
             viewModel.selectTool(.floor(itemID: "floor"))
+        case .row:
+            viewModel.selectTool(.row(sizeM: SIMD2(2.5, 2.5)))
+        case .fill:
+            viewModel.selectTool(.fill(sizeM: SIMD2(2.5, 2.5)))
         case .library:
             withAnimation(.easeInOut(duration: 0.2)) {
                 if !isSidePanelVisible {

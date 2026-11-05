@@ -27,6 +27,7 @@ struct CanvasDragState: Equatable, Sendable {
     var marqueeCurrent: SIMD2<Double>?
     var previewPlacements: [UUID: Placement] = [:]
     var previewInserts: [LayoutObject] = []
+    var previewWarningIDs: Set<UUID> = []
     var guides: [SnapGuide] = []
     var wallLengthChipText: String?
     var wallLengthChipWorld: SIMD2<Double>?

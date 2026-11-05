@@ -30,6 +30,10 @@ struct EditorHintStrip: View {
             return "Drag rectangle to create room walls · Escape to cancel"
         case .floor:
             return "Drag rectangle to define floor slab · Escape to cancel"
+        case .row:
+            return "Drag along wall or aisle to place row of booths · Escape to cancel"
+        case .fill:
+            return "Drag rectangle to fill region with booths · Escape to cancel"
         case .placeDoor:
             return "Click on wall to place door · Shift for free move · Escape to cancel"
         case .place:

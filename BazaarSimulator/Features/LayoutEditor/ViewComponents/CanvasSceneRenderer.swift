@@ -85,13 +85,45 @@ enum CanvasSceneRenderer {
                 )
             }
         }
-        for inserted in drag.previewInserts {
-            drawObject(inserted, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
-        }
+        drawPreviewInserts(
+            drag: drag,
+            snapshot: snapshot,
+            colorsByID: colorsByID,
+            transform: transform,
+            in: &context
+        )
         if let selectedObject, selectedObject.kind.layer == snapshot.activeLayer {
             drawSelectionDetails(selectedObject, drag: drag, in: &context, transform: transform)
         }
         WallNodeRenderer.draw(snapshot: snapshot, transform: transform, in: &context)
+    }
+
+    private static func drawPreviewInserts(
+        drag: CanvasDragState,
+        snapshot: CanvasDisplaySnapshot,
+        colorsByID: [UUID: LegendColor],
+        transform: CanvasTransform,
+        in context: inout GraphicsContext
+    ) {
+        for inserted in drag.previewInserts {
+            if inserted.kind == .booth {
+                let isWarning = drag.previewWarningIDs.contains(inserted.id)
+                let boothState = BoothDrawState(
+                    booth: inserted,
+                    displayLabel: BoothLabelFormatter.display(inserted.label),
+                    isSelected: false,
+                    isHovered: false,
+                    isGroupMember: false,
+                    isHoveredGroupMember: false,
+                    hasObjectWarning: isWarning,
+                    blockedSides: [],
+                    categoryColor: nil
+                )
+                BoothRenderer.draw(boothState, in: &context, transform: transform)
+            } else {
+                drawObject(inserted, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
+            }
+        }
     }
 
     private static func drawObject(
@@ -213,6 +245,10 @@ extension CanvasSceneRenderer {
         }
         if !drag.guides.isEmpty {
             drawGuides(drag.guides, in: &context, transform: transform)
+        }
+        if let text = drag.wallLengthChipText, let worldPoint = drag.wallLengthChipWorld, snapshot.selectionID == nil {
+            let viewPoint = transform.toView(worldPoint)
+            SelectionDimensionRenderer.drawSizeChip(text, near: CGPoint(x: viewPoint.x, y: viewPoint.y), in: &context)
         }
     }
 
