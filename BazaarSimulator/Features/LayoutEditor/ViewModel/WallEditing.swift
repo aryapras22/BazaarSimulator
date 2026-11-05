@@ -2,6 +2,105 @@ import Foundation
 import simd
 
 enum WallEditing {
+    struct WallAttributes: Sendable {
+        let kind: LayoutObjectKind
+        let thickness: Double
+        let height: Double
+        let catalogID: String
+
+        init(
+            kind: LayoutObjectKind = .wall,
+            thickness: Double = 0.2,
+            height: Double = 3.0,
+            catalogID: String = "wall"
+        ) {
+            self.kind = kind
+            self.thickness = thickness
+            self.height = height
+            self.catalogID = catalogID
+        }
+    }
+
+    static func findHostWall(
+        at point: SIMD2<Double>,
+        in layout: Layout,
+        tolerance: Double = 0.05
+    ) -> LayoutObject? {
+        for object in layout.objects where object.kind == .wall {
+            let halfL = object.placement.sizeM.x / 2.0
+            let local = LayoutGeometry.toLocal(point: point, in: object.placement)
+            let isInterior = local.x > -halfL + tolerance && local.x < halfL - tolerance
+            let isNearCenterline = abs(local.y) <= tolerance
+            if isInterior && isNearCenterline {
+                return object
+            }
+        }
+        return nil
+    }
+
+    static func planChainCommit(
+        points: [SIMD2<Double>],
+        attributes: WallAttributes,
+        in layout: Layout
+    ) -> (edit: LayoutEdit, createdWallIDs: [UUID]) {
+        guard points.count >= 2 else {
+            return (.batch([]), [])
+        }
+        var workingLayout = layout
+        var batchEdits: [LayoutEdit] = []
+
+        if let first = points.first, let host = findHostWall(at: first, in: workingLayout) {
+            let splitEdit = split(wall: host, at: first, in: workingLayout)
+            batchEdits.append(splitEdit)
+            workingLayout = LayoutEditing.apply(splitEdit, to: workingLayout)
+        }
+
+        let isClosed = points.count >= 3 && simd_distance(points.first!, points.last!) < 1e-4
+        if !isClosed, let last = points.last, let host = findHostWall(at: last, in: workingLayout) {
+            let splitEdit = split(wall: host, at: last, in: workingLayout)
+            batchEdits.append(splitEdit)
+            workingLayout = LayoutEditing.apply(splitEdit, to: workingLayout)
+        }
+
+        let newWalls = buildChainSegments(points: points, attributes: attributes)
+        let baseIndex = workingLayout.objects.count
+        for (offset, newWall) in newWalls.enumerated() {
+            batchEdits.append(.insert(newWall, index: baseIndex + offset))
+        }
+
+        return (.batch(batchEdits), newWalls.map(\.id))
+    }
+
+    private static func buildChainSegments(
+        points: [SIMD2<Double>],
+        attributes: WallAttributes
+    ) -> [LayoutObject] {
+        var newWalls: [LayoutObject] = []
+        for index in 0..<(points.count - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let vector = end - start
+            let length = simd_length(vector)
+            guard length > 1e-6 else { continue }
+            let center = (start + end) / 2.0
+            let rotation = atan2(vector.y, vector.x)
+            let newWall = LayoutObject(
+                id: UUID(),
+                kind: attributes.kind,
+                label: "Wall",
+                placement: Placement(
+                    center: center,
+                    sizeM: SIMD2<Double>(max(length, 0.001), attributes.thickness),
+                    rotationRadians: rotation
+                ),
+                catalogID: attributes.catalogID,
+                heightM: attributes.height
+            )
+            newWalls.append(newWall)
+        }
+        return newWalls
+    }
+
     static func split(
         wall: LayoutObject,
         at point: SIMD2<Double>,

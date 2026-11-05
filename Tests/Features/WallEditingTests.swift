@@ -184,4 +184,74 @@ struct WallEditingTests {
         #expect(reverted.objects.count == 1)
         #expect(reverted.objects.first?.placement == wall.placement)
     }
+
+    @Test("Starting a chain on a wall body splits host and undo restores one wall")
+    func chainStartingOnWallBodySplitsHost() throws {
+        let wall = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let layout = Self.makeLayout(objects: [wall])
+
+        let points = [SIMD2<Double>(5, 0), SIMD2<Double>(5, 6)]
+        let plan = WallEditing.planChainCommit(
+            points: points,
+            attributes: WallEditing.WallAttributes(),
+            in: layout
+        )
+        let updated = LayoutEditing.apply(plan.edit, to: layout)
+
+        #expect(updated.objects.count == 3)
+        let graphAfter = WallGraph(layout: updated)
+        let junction = try #require(graphAfter.nearestNode(to: SIMD2<Double>(5, 0), maximumDistance: 0.01))
+        #expect(junction.incidents.count == 3)
+        #expect(junction.isTNode == false)
+
+        let reverted = LayoutEditing.apply(LayoutEditing.inverse(of: plan.edit), to: updated)
+        #expect(reverted.objects.count == 1)
+        #expect(reverted.objects.first?.placement == wall.placement)
+    }
+
+    @Test("Ending a chain on a wall body splits host wall")
+    func chainEndingOnWallBodySplitsHost() throws {
+        let wallA = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let wallB = Self.makeWall(start: SIMD2<Double>(0, 10), end: SIMD2<Double>(10, 10))
+        let layout = Self.makeLayout(objects: [wallA, wallB])
+
+        let points = [SIMD2<Double>(5, 0), SIMD2<Double>(5, 10)]
+        let plan = WallEditing.planChainCommit(
+            points: points,
+            attributes: WallEditing.WallAttributes(),
+            in: layout
+        )
+        let updated = LayoutEditing.apply(plan.edit, to: layout)
+
+        #expect(updated.objects.count == 5) // 2 from wallA + 2 from wallB + 1 connecting wall
+
+        let reverted = LayoutEditing.apply(LayoutEditing.inverse(of: plan.edit), to: updated)
+        #expect(reverted.objects.count == 2)
+    }
+
+    @Test("Closing on first node creates closed loop and inserts all segments")
+    func closedLoopInsertsAllSegments() {
+        let layout = Self.makeLayout(objects: [])
+        let points = [
+            SIMD2<Double>(0, 0),
+            SIMD2<Double>(10, 0),
+            SIMD2<Double>(10, 8),
+            SIMD2<Double>(0, 8),
+            SIMD2<Double>(0, 0)
+        ]
+        let plan = WallEditing.planChainCommit(
+            points: points,
+            attributes: WallEditing.WallAttributes(),
+            in: layout
+        )
+        let updated = LayoutEditing.apply(plan.edit, to: layout)
+
+        #expect(updated.objects.count == 4)
+        let graphAfter = WallGraph(layout: updated)
+        #expect(graphAfter.nodes.count == 4)
+        #expect(graphAfter.nodes.allSatisfy { $0.incidents.count == 2 })
+
+        let reverted = LayoutEditing.apply(LayoutEditing.inverse(of: plan.edit), to: updated)
+        #expect(reverted.objects.isEmpty)
+    }
 }

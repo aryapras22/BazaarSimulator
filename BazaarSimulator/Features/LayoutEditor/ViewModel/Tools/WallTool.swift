@@ -26,6 +26,15 @@ final class WallTool: EditorToolHandling {
         )
         let snapped = snapResult.point
 
+        let reachM = max(Snapper.tolerance(pointsPerMetre: event.pointsPerMetre), 0.3)
+        if let first = drawing?.points.first,
+           (drawing?.points.count ?? 0) >= 3,
+           simd_distance(snapped, first) <= reachM {
+            drawing?.points.append(first)
+            finish(context: context)
+            return
+        }
+
         if drawing == nil {
             drawing = WallDrawing(points: [snapped], typedLength: "")
         } else if let last = drawing?.points.last, last != snapped {
@@ -39,6 +48,16 @@ final class WallTool: EditorToolHandling {
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
         let isShiftDown = event.modifiers.contains(.shift)
         let isFree = event.modifiers.contains(.option)
+
+        let reachM = max(Snapper.tolerance(pointsPerMetre: event.pointsPerMetre), 0.3)
+        if let first = drawing?.points.first,
+           (drawing?.points.count ?? 0) >= 3,
+           simd_distance(event.worldPoint, first) <= reachM {
+            currentPointer = first
+            updatePreview(context: context, lockAngle: false, guides: [])
+            return
+        }
+
         let snapResult = WallDrawing.snap(
             event.worldPoint,
             from: drawing?.points.last,
@@ -155,21 +174,22 @@ final class WallTool: EditorToolHandling {
         let thickness = item?.sizeM.y ?? 0.2
         let height = item?.heightM ?? 3.0
         let kind = item?.kind ?? .wall
-        let newObjects = drawing.objects(
+        let attributes = WallEditing.WallAttributes(
             kind: kind,
             thickness: thickness,
             height: height,
             catalogID: itemID
         )
 
-        if !newObjects.isEmpty {
-            let edits: [LayoutEdit] = newObjects.enumerated().map { index, object in
-                .insert(object, index: context.layout.objects.count + index)
-            }
-            context.applyEdit(.batch(edits))
-            if let lastID = newObjects.last?.id {
-                context.selectObject(lastID)
-            }
+        let plan = WallEditing.planChainCommit(
+            points: drawing.points,
+            attributes: attributes,
+            in: context.layout
+        )
+
+        context.applyEdit(plan.edit)
+        if let lastID = plan.createdWallIDs.last {
+            context.selectObject(lastID)
         }
 
         self.drawing = nil
