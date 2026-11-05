@@ -18,6 +18,7 @@ enum PendingNavigationAction: Sendable, Equatable {
     case selectObject(UUID?)
     case selectGroup(BoothGroupKind)
     case toggleBooth(UUID)
+    case selectBooths(ids: Set<UUID>, additive: Bool)
     case switchTool(EditorTool)
     case switchTab(EditorTab)
     case switchLayout(UUID)
@@ -257,7 +258,7 @@ final class LayoutEditorViewModel {
         switch action {
         case .selectObject(let objectID):
             applySelection(objectID)
-        case .selectGroup, .toggleBooth:
+        case .selectGroup, .toggleBooth, .selectBooths:
             executeGroupAction(action)
         case .switchTab(let newTab):
             tab = newTab

@@ -48,26 +48,30 @@ extension LayoutCanvasView {
 
     func handleDragChanged(_ value: DragGesture.Value) {
         if isDragCancelled { return }
-        if isDragSuppressed {
+        if isSpaceDown {
             applyPan(currentPoint: value.location, translation: value.translation)
             return
         }
+        if isDragSuppressed { return }
         if tool == .blockedArea {
             updateBlockedAreaDrag(value)
             return
         }
-        if activeResize == nil && activeDragObjectID == nil && lastPanLocation == nil {
+        if activeResize == nil && dragCandidateObjectID == nil && marqueeStartWorld == nil {
             startDragInteraction(value)
         }
         if activeResize != nil {
             updateResizeDrag(currentPoint: value.location)
             return
         }
-        if activeDragObjectID != nil {
-            updateObjectDrag(startLocation: value.startLocation, currentLocation: value.location)
+        if let candidateID = dragCandidateObjectID {
+            updateCandidateDrag(candidateID: candidateID, value: value)
             return
         }
-        applyPan(currentPoint: value.location, translation: value.translation)
+        if marqueeStartWorld != nil {
+            updateMarqueeDrag(value)
+            return
+        }
     }
 
     private func applyPan(currentPoint: CGPoint, translation: CGSize) {
@@ -87,6 +91,10 @@ extension LayoutCanvasView {
     }
 
     private func startDragInteraction(_ value: DragGesture.Value) {
+        if isSpaceDown {
+            lastPanLocation = value.startLocation
+            return
+        }
         let startWorld = transform.toWorld(SIMD2<Double>(value.startLocation.x, value.startLocation.y))
         if snapshot.tab == .floorPlan,
            let selectedID = snapshot.selectionID,
@@ -107,19 +115,38 @@ extension LayoutCanvasView {
         }
         guard let hitID = LayoutHitTester.object(at: startWorld, in: snapshot.layout, tab: snapshot.tab),
               let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
-              target.kind.isMovable else { return }
+              target.kind.isMovable else {
+            if tool == .select {
+                marqueeStartWorld = startWorld
+                marqueeCurrentWorld = startWorld
+            }
+            return
+        }
         if target.kind == .closedArea && snapshot.selectionID != hitID {
             return
         }
-        if snapshot.selectionID != hitID {
-            onSelect(hitID)
-            if snapshot.hasUnsavedChanges {
-                isDragSuppressed = true
-                return
+        dragCandidateObjectID = hitID
+    }
+
+    private func updateCandidateDrag(candidateID: UUID, value: DragGesture.Value) {
+        guard SelectGesture.isPastThreshold(value.translation) else { return }
+        if activeDragObjectID == nil {
+            if snapshot.selectionID != candidateID && !snapshot.groupMemberIDs.contains(candidateID) {
+                onSelect(candidateID)
+                if snapshot.hasUnsavedChanges {
+                    isDragSuppressed = true
+                    return
+                }
             }
+            activeDragObjectID = candidateID
         }
-        activeDragObjectID = hitID
-        activeDragDeltaWorld = .zero
+        updateObjectDrag(startLocation: value.startLocation, currentLocation: value.location)
+    }
+
+    private func updateMarqueeDrag(_ value: DragGesture.Value) {
+        let currentWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
+        marqueeCurrentWorld = currentWorld
+        dragPointerLocation = value.location
     }
 
     private func updateResizeDrag(currentPoint: CGPoint) {
@@ -141,6 +168,9 @@ extension LayoutCanvasView {
         let currentWorld = transform.toWorld(SIMD2<Double>(currentLocation.x, currentLocation.y))
         let startWorld = transform.toWorld(SIMD2<Double>(startLocation.x, startLocation.y))
         var rawDelta = currentWorld - startWorld
+        if NSEvent.modifierFlags.contains(.shift) {
+            rawDelta = SelectGesture.lockAxis(rawDelta)
+        }
         if let activeDragObjectID, let constrainDelta {
             rawDelta = constrainDelta(activeDragObjectID, rawDelta)
         }
@@ -185,53 +215,85 @@ extension LayoutCanvasView {
 
     func handleDragEnded(_ value: DragGesture.Value) {
         if isDragCancelled || isDragSuppressed {
-            isDragCancelled = false
-            isDragSuppressed = false
-            activeDragObjectID = nil
-            activeDragDeltaWorld = .zero
-            dragPointerLocation = nil
-            lastPanLocation = nil
-            drawingStartWorld = nil
-            drawingCurrentWorld = nil
-            activeResize = nil
+            resetDragState()
             return
         }
         if let resize = activeResize {
             onResizeEnded(resize.objectID, resize.preview)
-            activeResize = nil
-            dragPointerLocation = nil
+            resetDragState()
             return
         }
         if tool == .blockedArea {
-            if let start = drawingStartWorld, let current = drawingCurrentWorld {
-                let isOptionDown = NSEvent.modifierFlags.contains(.option)
-                if let placement = BlockedAreaDrawing.placement(
-                    from: start,
-                    to: current,
-                    snapped: !isOptionDown
-                ) {
-                    onDrawBlockedArea(placement)
-                }
-            }
-            drawingStartWorld = nil
-            drawingCurrentWorld = nil
+            finishBlockedAreaDrag()
+            resetDragState()
             return
         }
-        let distance = hypot(value.translation.width, value.translation.height)
-        if let draggedID = activeDragObjectID {
-            let isOptionDown = NSEvent.modifierFlags.contains(.option)
-            onDragEnded(draggedID, activeDragDeltaWorld, isOptionDown)
-            activeDragObjectID = nil
-            activeDragDeltaWorld = .zero
-            dragPointerLocation = nil
+        if lastPanLocation != nil {
+            resetDragState()
             return
         }
-        lastPanLocation = nil
-        if distance < 2.0 {
+        if let candidateID = dragCandidateObjectID {
+            finishCandidateDrag(candidateID: candidateID, value: value)
+            resetDragState()
+            return
+        }
+        if let start = marqueeStartWorld, let current = marqueeCurrentWorld {
+            finishMarqueeDrag(start: start, current: current, value: value)
+            resetDragState()
+            return
+        }
+        resetDragState()
+        if !SelectGesture.isPastThreshold(value.translation) {
             onInteract()
             let clickWorld = transform.toWorld(SIMD2<Double>(value.location.x, value.location.y))
             let hitID = LayoutHitTester.object(at: clickWorld, in: snapshot.layout, tab: snapshot.tab)
             handleClick(on: hitID)
         }
+    }
+
+    private func finishCandidateDrag(candidateID: UUID, value: DragGesture.Value) {
+        if SelectGesture.isPastThreshold(value.translation) {
+            if let draggedID = activeDragObjectID {
+                let isOptionDown = NSEvent.modifierFlags.contains(.option)
+                onDragEnded(draggedID, activeDragDeltaWorld, isOptionDown)
+            }
+        } else {
+            onInteract()
+            handleClick(on: candidateID)
+        }
+    }
+
+    private func finishMarqueeDrag(start: SIMD2<Double>, current: SIMD2<Double>, value: DragGesture.Value) {
+        if SelectGesture.isPastThreshold(value.translation) {
+            let booths = SelectGesture.touchedBooths(from: start, to: current, layout: snapshot.layout)
+            let isShiftDown = NSEvent.modifierFlags.contains(.shift)
+            onSelectBooths(booths, isShiftDown)
+        } else {
+            onInteract()
+            handleClick(on: nil)
+        }
+    }
+
+    private func finishBlockedAreaDrag() {
+        guard let start = drawingStartWorld, let current = drawingCurrentWorld else { return }
+        let isOptionDown = NSEvent.modifierFlags.contains(.option)
+        if let placement = BlockedAreaDrawing.placement(from: start, to: current, snapped: !isOptionDown) {
+            onDrawBlockedArea(placement)
+        }
+    }
+
+    private func resetDragState() {
+        isDragCancelled = false
+        isDragSuppressed = false
+        activeDragObjectID = nil
+        dragCandidateObjectID = nil
+        activeDragDeltaWorld = .zero
+        dragPointerLocation = nil
+        lastPanLocation = nil
+        drawingStartWorld = nil
+        drawingCurrentWorld = nil
+        marqueeStartWorld = nil
+        marqueeCurrentWorld = nil
+        activeResize = nil
     }
 }

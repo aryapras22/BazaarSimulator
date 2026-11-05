@@ -20,6 +20,8 @@ struct CanvasDragState {
     var placingSource: LibraryRowDisplay.Source?
     var wallDrawing: WallDrawing?
     var wallCurrentPointer: SIMD2<Double>?
+    var marqueeStart: SIMD2<Double>?
+    var marqueeCurrent: SIMD2<Double>?
 }
 
 enum CanvasSceneRenderer {
@@ -31,25 +33,7 @@ enum CanvasSceneRenderer {
         drag: CanvasDragState
     ) {
         FloorRenderer.draw(in: &context, size: size, transform: transform, layout: snapshot.layout)
-
-        let colorsByID = Dictionary(uniqueKeysWithValues: snapshot.legend.entries.map { ($0.id, $0.color) })
-        let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
-
-        var selectedObject: LayoutObject?
-        for var object in ordered {
-            if object.id == drag.objectID {
-                object.placement.center += drag.deltaWorld
-            } else if object.id == drag.resize?.objectID {
-                object.placement = drag.resize!.preview
-            }
-            if object.id == snapshot.selectionID {
-                selectedObject = object
-            }
-            drawObject(object, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
-        }
-        if let selectedObject {
-            drawSelectionDetails(selectedObject, drag: drag, tab: snapshot.tab, in: &context, transform: transform)
-        }
+        drawSceneObjects(in: &context, snapshot: snapshot, transform: transform, drag: drag)
 
         if snapshot.tab == .floorPlan {
             GroupOverlayRenderer.draw(snapshot.groupClusters, in: &context, transform: transform)
@@ -86,7 +70,62 @@ enum CanvasSceneRenderer {
             )
         }
 
+        if let start = drag.marqueeStart, let current = drag.marqueeCurrent {
+            drawMarqueePreview(start: start, current: current, in: &context, transform: transform)
+        }
+
         MarkerRenderer.draw(markers: snapshot.layout.markers, tab: snapshot.tab, in: &context, transform: transform)
+    }
+
+    private static func drawSceneObjects(
+        in context: inout GraphicsContext,
+        snapshot: CanvasDisplaySnapshot,
+        transform: CanvasTransform,
+        drag: CanvasDragState
+    ) {
+        let colorsByID = Dictionary(uniqueKeysWithValues: snapshot.legend.entries.map { ($0.id, $0.color) })
+        let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
+
+        var selectedObject: LayoutObject?
+        for var object in ordered {
+            if object.id == drag.objectID {
+                object.placement.center += drag.deltaWorld
+            } else if object.id == drag.resize?.objectID {
+                object.placement = drag.resize!.preview
+            }
+            if object.id == snapshot.selectionID {
+                selectedObject = object
+            }
+            drawObject(object, snapshot: snapshot, colorsByID: colorsByID, transform: transform, in: &context)
+        }
+        if let selectedObject {
+            drawSelectionDetails(selectedObject, drag: drag, tab: snapshot.tab, in: &context, transform: transform)
+        }
+    }
+
+    private static func drawMarqueePreview(
+        start: SIMD2<Double>,
+        current: SIMD2<Double>,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let viewStart = transform.toView(start)
+        let viewCurrent = transform.toView(current)
+        let delta = CGPoint(x: viewCurrent.x - viewStart.x, y: viewCurrent.y - viewStart.y)
+        guard SelectGesture.isPastThreshold(delta) else { return }
+        let rect = CGRect(
+            x: min(viewStart.x, viewCurrent.x),
+            y: min(viewStart.y, viewCurrent.y),
+            width: abs(viewCurrent.x - viewStart.x),
+            height: abs(viewCurrent.y - viewStart.y)
+        )
+        let path = Path(rect)
+        context.fill(path, with: .color(Palette.accent.opacity(0.12)))
+        context.stroke(
+            path,
+            with: .color(Palette.accent.opacity(0.85)),
+            style: StrokeStyle(lineWidth: 1.0, dash: [4, 4])
+        )
     }
 
     private static func drawDrawingPreview(

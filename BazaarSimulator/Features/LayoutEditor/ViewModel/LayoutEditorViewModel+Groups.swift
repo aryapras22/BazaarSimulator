@@ -72,12 +72,37 @@ extension LayoutEditorViewModel {
         performToggleBooth(boothID)
     }
 
+    func selectBooths(_ ids: Set<UUID>, additive: Bool = false) {
+        guard tab == .floorPlan, let layout = activeLayout else { return }
+        let boothIDs = ids.filter { id in
+            layout.objects.contains(where: { $0.id == id && $0.kind == .booth })
+        }
+        if hasUnsavedInspectorChanges {
+            pendingAction = .selectBooths(ids: boothIDs, additive: additive)
+            return
+        }
+        performSelectBooths(boothIDs, additive: additive)
+    }
+
     func executeGroupAction(_ action: PendingNavigationAction) {
         switch action {
         case .selectGroup(let kind): performSelectGroup(kind)
         case .toggleBooth(let boothID): performToggleBooth(boothID)
+        case .selectBooths(let ids, let additive): performSelectBooths(ids, additive: additive)
         default: break
         }
+    }
+
+    private func performSelectBooths(_ ids: Set<UUID>, additive: Bool) {
+        var members = ids
+        if additive {
+            var current = groupSelection?.memberIDs ?? []
+            if groupSelection == nil, let selectedObject, selectedObject.kind == .booth {
+                current = [selectedObject.id]
+            }
+            members = current.union(ids)
+        }
+        applyMemberSelection(members, kind: .custom)
     }
 
     private func performSelectGroup(_ kind: BoothGroupKind) {

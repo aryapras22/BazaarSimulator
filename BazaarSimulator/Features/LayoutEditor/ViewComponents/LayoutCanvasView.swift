@@ -33,6 +33,7 @@ struct LayoutCanvasView: View {
     var isFocused: FocusState<Bool>.Binding
     var excludedTrailingWidth: CGFloat = 0
     var onSelect: (UUID?) -> Void = { _ in }
+    var onSelectBooths: (Set<UUID>, Bool) -> Void = { _, _ in }
     var onHover: (UUID?) -> Void = { _ in }
     var onToggleSelection: (UUID) -> Void = { _ in }
     var onDoubleClick: (UUID, Bool) -> Void = { _, _ in }
@@ -40,6 +41,7 @@ struct LayoutCanvasView: View {
     var onDragEnded: (UUID, SIMD2<Double>, Bool) -> Void = { _, _, _ in }
     var onContextAction: (CanvasContextAction) -> Void = { _ in }
     var onInteract: () -> Void = {}
+    var onNudge: (SIMD2<Double>) -> Void = { _ in }
     var tool: EditorTool = .select
     var onDrawBlockedArea: (Placement) -> Void = { _ in }
     var onCancelTool: () -> Void = {}
@@ -58,15 +60,19 @@ struct LayoutCanvasView: View {
     var onWallFinish: () -> Void = {}
 
     @State var activeDragObjectID: UUID?
+    @State var dragCandidateObjectID: UUID?
     @State var activeDragDeltaWorld: SIMD2<Double> = .zero
     @State var activeResize: ActiveResize?
     @State var hoveredHandle: ResizeHandle?
     @State var isDragCancelled = false
     @State var isDragSuppressed = false
+    @State var isSpaceDown = false
     @State var lastPanLocation: CGPoint?
     @State var dragPointerLocation: CGPoint?
     @State var drawingStartWorld: SIMD2<Double>?
     @State var drawingCurrentWorld: SIMD2<Double>?
+    @State var marqueeStartWorld: SIMD2<Double>?
+    @State var marqueeCurrentWorld: SIMD2<Double>?
     @State var clickSequence = ClickSequence()
     @State var hoverTracker = HoverTracker()
     @State var lastHoverHit: UUID?
@@ -94,7 +100,9 @@ struct LayoutCanvasView: View {
                     placementCandidate: pointer?.placementCandidate,
                     placingSource: pointer?.placingSource,
                     wallDrawing: wallDrawing,
-                    wallCurrentPointer: pointer?.wallCurrentPointer
+                    wallCurrentPointer: pointer?.wallCurrentPointer,
+                    marqueeStart: marqueeStartWorld,
+                    marqueeCurrent: marqueeCurrentWorld
                 )
             )
         }
@@ -128,19 +136,25 @@ struct LayoutCanvasView: View {
         .gesture(canvasGesture)
         .simultaneousGesture(magnificationGesture)
         .overlay {
-            CanvasScrollCatcher(excludedTrailingWidth: excludedTrailingWidth) { delta, location, isPrecise, isCmd in
-                if !isPrecise || isCmd {
-                    let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
-                    transform = transform.zoomedForScroll(
-                        deltaY: Double(delta.height),
-                        isPrecise: isPrecise,
-                        around: anchor
-                    )
-                } else {
-                    let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
+            CanvasScrollCatcher(
+                excludedTrailingWidth: excludedTrailingWidth,
+                onScroll: { delta, location, isPrecise, isCmd in
+                    if !isPrecise || isCmd {
+                        let anchor = SIMD2<Double>(Double(location.x), Double(location.y))
+                        transform = transform.zoomedForScroll(
+                            deltaY: Double(delta.height),
+                            isPrecise: isPrecise,
+                            around: anchor
+                        )
+                    } else {
+                        let panDelta = SIMD2<Double>(Double(delta.width), Double(delta.height))
+                        transform = transform.panned(by: panDelta)
+                    }
+                },
+                onPan: { panDelta in
                     transform = transform.panned(by: panDelta)
                 }
-            }
+            )
         }
         .pointerStyle(canvasPointerStyle)
         .dropDestination(for: String.self) { items, location in
@@ -152,6 +166,23 @@ struct LayoutCanvasView: View {
         .focusable()
         .focusEffectDisabled()
         .focused(isFocused)
+        .onKeyPress(.space, phases: [.down, .up]) { press in
+            isSpaceDown = (press.phase == .down)
+            return .handled
+        }
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            let step = press.modifiers.contains(.shift)
+                ? LayoutEditorViewModel.shiftNudgeStepM
+                : LayoutEditorViewModel.gridSnapCellM
+            switch press.key {
+            case .upArrow: onNudge(SIMD2<Double>(0, -step))
+            case .downArrow: onNudge(SIMD2<Double>(0, step))
+            case .leftArrow: onNudge(SIMD2<Double>(-step, 0))
+            case .rightArrow: onNudge(SIMD2<Double>(step, 0))
+            default: return .ignored
+            }
+            return .handled
+        }
         .onKeyPress(.escape) {
             if activeResize != nil {
                 activeResize = nil
@@ -167,12 +198,19 @@ struct LayoutCanvasView: View {
                 drawingCurrentWorld = nil
                 return .handled
             }
+            if marqueeStartWorld != nil {
+                marqueeStartWorld = nil
+                marqueeCurrentWorld = nil
+                dragPointerLocation = nil
+                return .handled
+            }
             if tool == .blockedArea {
                 onCancelTool()
                 return .handled
             }
-            if activeDragObjectID != nil {
+            if activeDragObjectID != nil || dragCandidateObjectID != nil {
                 activeDragObjectID = nil
+                dragCandidateObjectID = nil
                 activeDragDeltaWorld = .zero
                 dragPointerLocation = nil
                 isDragCancelled = true

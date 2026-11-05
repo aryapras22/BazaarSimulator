@@ -223,4 +223,89 @@ struct LayoutEditorViewModelTests {
 
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
+
+    @Test("Select booths sets selection or group and additive unions with current members")
+    func selectBoothsWithoutUnsavedChanges() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test Market")
+        let boothA = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
+            heightM: 2.4
+        )
+        let boothB = LayoutObject(
+            kind: .booth,
+            label: "B2",
+            placement: Placement(center: SIMD2<Double>(10, 5), sizeM: SIMD2<Double>(2, 2)),
+            heightM: 2.4
+        )
+        let boothC = LayoutObject(
+            kind: .booth,
+            label: "B3",
+            placement: Placement(center: SIMD2<Double>(15, 5), sizeM: SIMD2<Double>(2, 2)),
+            heightM: 2.4
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(30, 30),
+            objects: [boothA, boothB, boothC]
+        )
+        session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+
+        viewModel.selectBooths([boothA.id])
+        #expect(viewModel.selectionID == boothA.id)
+        #expect(viewModel.groupSelection == nil)
+        #expect(!viewModel.hasUnsavedInspectorChanges)
+
+        viewModel.selectBooths([boothA.id, boothB.id])
+        #expect(viewModel.selectionID == nil)
+        #expect(viewModel.groupMemberIDs == [boothA.id, boothB.id])
+
+        viewModel.selectBooths([boothC.id], additive: true)
+        #expect(viewModel.groupMemberIDs == [boothA.id, boothB.id, boothC.id])
+
+        viewModel.selectBooths([])
+        #expect(viewModel.selectionID == nil)
+        #expect(viewModel.groupSelection == nil)
+    }
+
+    @Test("Select booths with unsaved changes prompts via pending action")
+    func selectBoothsWithUnsavedChangesPromptsPendingAction() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test Market")
+        let boothA = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
+            heightM: 2.4
+        )
+        let boothB = LayoutObject(
+            kind: .booth,
+            label: "B2",
+            placement: Placement(center: SIMD2<Double>(10, 5), sizeM: SIMD2<Double>(2, 2)),
+            heightM: 2.4
+        )
+        let layout = Layout(
+            name: "Test",
+            sizeM: SIMD2<Double>(30, 30),
+            objects: [boothA, boothB]
+        )
+        session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+
+        viewModel.selectObject(boothA.id)
+        #expect(!viewModel.hasUnsavedInspectorChanges)
+        viewModel.inspectorDraft?.widthM = 15.0
+        #expect(viewModel.hasUnsavedInspectorChanges)
+
+        viewModel.selectBooths([boothB.id])
+        #expect(viewModel.selectionID == boothA.id)
+        #expect(viewModel.pendingAction == .selectBooths(ids: [boothB.id], additive: false))
+
+        viewModel.executePendingAction()
+        #expect(viewModel.selectionID == boothB.id)
+        #expect(viewModel.pendingAction == nil)
+    }
 }

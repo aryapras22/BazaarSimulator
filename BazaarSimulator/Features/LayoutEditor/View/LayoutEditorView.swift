@@ -248,6 +248,7 @@ extension LayoutEditorView {
             isFocused: $isCanvasFocused,
             excludedTrailingWidth: inspectorInset,
             onSelect: { viewModel.selectObject($0) },
+            onSelectBooths: { ids, additive in viewModel.selectBooths(ids, additive: additive) },
             onHover: { viewModel.hoverID = $0 },
             onToggleSelection: { viewModel.toggleBoothInSelection($0) },
             onDoubleClick: { id, isOptionDown in
@@ -259,6 +260,7 @@ extension LayoutEditorView {
             },
             onContextAction: { viewModel.handleContextAction($0) },
             onInteract: { isCanvasFocused = true },
+            onNudge: { delta in viewModel.nudgeSelected(by: delta) },
             tool: viewModel.tool,
             onDrawBlockedArea: { viewModel.addBlockedArea($0) },
             onCancelTool: { viewModel.selectTool(.select) },
