@@ -10,6 +10,11 @@ enum WallDrawingRenderer {
         transform: CanvasTransform
     ) {
         let points = drawing.points
+        if points.isEmpty, let current = currentPointer {
+            drawHoverDot(at: current, in: &context, transform: transform)
+            return
+        }
+
         if points.count >= 2 {
             drawCommittedChain(points: points, in: &context, transform: transform)
         }
@@ -65,6 +70,23 @@ enum WallDrawingRenderer {
             height: radius * 2.0
         )
         context.fill(Path(ellipseIn: rect), with: .color(Palette.canvasLine))
+    }
+
+    private static func drawHoverDot(
+        at point: SIMD2<Double>,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let screenPoint = transform.toView(point)
+        let radius: CGFloat = 5.0
+        let rect = CGRect(
+            x: CGFloat(screenPoint.x) - radius,
+            y: CGFloat(screenPoint.y) - radius,
+            width: radius * 2.0,
+            height: radius * 2.0
+        )
+        context.fill(Path(ellipseIn: rect), with: .color(Palette.highlight))
+        context.stroke(Path(ellipseIn: rect), with: .color(Palette.surface), lineWidth: 1.5)
     }
 
     private static func drawAngleGuide(

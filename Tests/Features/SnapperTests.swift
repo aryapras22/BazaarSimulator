@@ -102,9 +102,9 @@ struct SnapperTests {
 
         let wallPointer = SIMD2<Double>(5.0, 0.05)
         let wallResult = Snapper.snap(point: wallPointer, layout: layout, pointsPerMetre: 10.0)
-        #expect(wallResult.kind == .wallFace)
+        #expect(wallResult.kind == .wallBody)
         #expect(!wallResult.guides.isEmpty)
-        #expect(wallResult.guides.first?.kind == .wallFace)
+        #expect(wallResult.guides.first?.kind == .wallBody)
 
         let alignPointer = SIMD2<Double>(5.03, 12.0)
         let alignResult = Snapper.snap(point: alignPointer, layout: layout, pointsPerMetre: 10.0)
@@ -112,5 +112,23 @@ struct SnapperTests {
         #expect(!alignResult.guides.isEmpty)
         #expect(alignResult.guides.first?.kind == .alignment)
         #expect(abs(alignResult.point.x - 5.0) < 1e-4)
+    }
+
+    @Test("Priority order: wallBody snaps to centerline between endpoints")
+    func wallBodySnapsToCenterline() {
+        let wallPlacement = Placement(
+            center: SIMD2<Double>(5.0, 0.0),
+            sizeM: SIMD2<Double>(10.0, 0.2),
+            rotationRadians: 0
+        )
+        let wall = LayoutObject(kind: .wall, label: "Wall", placement: wallPlacement)
+        let layout = makeLayout(objects: [wall], hall: [])
+
+        let pointer = SIMD2<Double>(4.0, 0.15)
+        let result = Snapper.snap(point: pointer, layout: layout, pointsPerMetre: 10.0)
+
+        #expect(result.kind == .wallBody)
+        #expect(abs(result.point.x - 4.0) < 1e-4)
+        #expect(abs(result.point.y - 0.0) < 1e-4)
     }
 }

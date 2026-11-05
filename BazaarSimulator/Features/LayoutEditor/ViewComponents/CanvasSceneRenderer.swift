@@ -186,6 +186,14 @@ extension CanvasSceneRenderer {
                 in: &context,
                 transform: transform
             )
+        } else if let pointer = drag.wallCurrentPointer {
+            WallDrawingRenderer.draw(
+                drawing: WallDrawing(),
+                currentPointer: pointer,
+                lockAngle: false,
+                in: &context,
+                transform: transform
+            )
         }
         if let start = drag.marqueeStart, let current = drag.marqueeCurrent {
             drawMarqueePreview(start: start, current: current, in: &context, transform: transform)

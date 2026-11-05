@@ -3,6 +3,7 @@ import simd
 
 enum SnapKind: String, Sendable, Equatable, Hashable, CaseIterable {
     case wallEndpoint
+    case wallBody
     case wallFace
     case boothEdge
     case boothCenter
@@ -47,6 +48,14 @@ enum Snapper {
 
         if let endpointSnap = snapWallEndpoints(point: point, segments: wallSegments, toleranceM: toleranceM) {
             return endpointSnap
+        }
+        if let bodySnap = snapWallBody(
+            point: point,
+            layout: layout,
+            toleranceM: toleranceM,
+            ignoringObjectID: ignoringObjectID
+        ) {
+            return bodySnap
         }
         if let faceSnap = snapWallFaces(point: point, segments: wallSegments, toleranceM: toleranceM) {
             return faceSnap
@@ -120,6 +129,40 @@ enum Snapper {
         guard let bestEndpoint, let bestSegment else { return nil }
         let guide = SnapGuide(start: bestSegment.start, end: bestSegment.end, kind: .wallEndpoint)
         return SnapResult(point: bestEndpoint, kind: .wallEndpoint, guides: [guide])
+    }
+
+    private static func snapWallBody(
+        point: SIMD2<Double>,
+        layout: Layout,
+        toleranceM: Double,
+        ignoringObjectID: UUID?
+    ) -> SnapResult? {
+        let reachM = max(toleranceM, 0.3)
+        var bestPoint: SIMD2<Double>?
+        var bestSegment: (start: SIMD2<Double>, end: SIMD2<Double>)?
+        var bestDist = reachM
+
+        for object in layout.objects where object.kind == .wall && object.id != ignoringObjectID {
+            let halfL = object.placement.sizeM.x / 2.0
+            let local = LayoutGeometry.toLocal(point: point, in: object.placement)
+
+            guard local.x > -halfL + toleranceM && local.x < halfL - toleranceM else { continue }
+            let distToCenterline = abs(local.y)
+            guard distToCenterline <= bestDist else { continue }
+
+            let centerLocal = SIMD2<Double>(local.x, 0)
+            let worldCenterline = LayoutGeometry.toWorld(local: centerLocal, in: object.placement)
+            let start = LayoutGeometry.toWorld(local: SIMD2<Double>(-halfL, 0), in: object.placement)
+            let end = LayoutGeometry.toWorld(local: SIMD2<Double>(halfL, 0), in: object.placement)
+
+            bestDist = distToCenterline
+            bestPoint = worldCenterline
+            bestSegment = (start, end)
+        }
+
+        guard let bestPoint, let bestSegment else { return nil }
+        let guide = SnapGuide(start: bestSegment.start, end: bestSegment.end, kind: .wallBody)
+        return SnapResult(point: bestPoint, kind: .wallBody, guides: [guide])
     }
 
     private static func snapWallFaces(
@@ -198,6 +241,17 @@ enum Snapper {
         return SnapResult(point: bestPoint, kind: bestKind, guides: guides)
     }
 
+    private static func snapGrid(point: SIMD2<Double>, toleranceM: Double) -> SnapResult? {
+        let gridX = (point.x / gridStepM).rounded() * gridStepM
+        let gridY = (point.y / gridStepM).rounded() * gridStepM
+        let gridPoint = SIMD2<Double>(gridX, gridY)
+        let dist = simd_distance(point, gridPoint)
+        guard dist <= toleranceM else { return nil }
+        return SnapResult(point: gridPoint, kind: .grid, guides: [])
+    }
+}
+
+extension Snapper {
     private static func snapAlignment(
         point: SIMD2<Double>,
         in layout: Layout,
@@ -259,14 +313,5 @@ enum Snapper {
         }
 
         return SnapResult(point: snappedPoint, kind: .alignment, guides: guides)
-    }
-
-    private static func snapGrid(point: SIMD2<Double>, toleranceM: Double) -> SnapResult? {
-        let gridX = (point.x / gridStepM).rounded() * gridStepM
-        let gridY = (point.y / gridStepM).rounded() * gridStepM
-        let gridPoint = SIMD2<Double>(gridX, gridY)
-        let dist = simd_distance(point, gridPoint)
-        guard dist <= toleranceM else { return nil }
-        return SnapResult(point: gridPoint, kind: .grid, guides: [])
     }
 }

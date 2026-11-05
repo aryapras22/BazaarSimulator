@@ -42,7 +42,7 @@ struct WallDrawing: Equatable, Sendable {
             isFree: false
         )
 
-        if snapResult.kind == .wallEndpoint || snapResult.kind == .wallFace {
+        if snapResult.kind == .wallEndpoint || snapResult.kind == .wallBody || snapResult.kind == .wallFace {
             return snapResult
         }
 
