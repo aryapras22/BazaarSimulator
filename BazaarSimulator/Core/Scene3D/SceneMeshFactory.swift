@@ -19,7 +19,11 @@ enum SceneMeshFactory {
         return result
     }
 
-    static func material(for key: SceneMaterialKey) -> SimpleMaterial {
+    static func material(for key: SceneMaterialKey) -> any RealityKit.Material {
+        // A lit floor reads grey under the scene light, so it is unlit to stay white.
+        if key.role == .floor && key.tint == nil {
+            return UnlitMaterial(color: NSColor(Palette.sceneFloor))
+        }
         if let tint = key.tint {
             let nsColor = NSColor(
                 calibratedRed: CGFloat(tint.red),
@@ -29,19 +33,21 @@ enum SceneMeshFactory {
             )
             return SimpleMaterial(color: nsColor, roughness: 0.8, isMetallic: false)
         }
-        let color: Color
-        switch key.role {
-        case .floor: color = Palette.sceneFloor
-        case .wall: color = Palette.sceneWall
-        case .panel, .fabric, .glass, .tabletop: color = Palette.scenePanel
-        case .counter, .fascia, .frame: color = Palette.sceneCounter
-        case .stage, .slab: color = Palette.sceneSlab
-        case .pillar: color = Palette.scenePillar
-        case .plant: color = Palette.scenePlant
-        case .sign: color = Palette.sceneSign
-        case .accent: color = Palette.highlight
+        return SimpleMaterial(color: NSColor(color(for: key.role)), roughness: 0.8, isMetallic: false)
+    }
+
+    private static func color(for role: MaterialRole) -> Color {
+        switch role {
+        case .floor: return Palette.sceneFloor
+        case .wall: return Palette.sceneWall
+        case .panel, .fabric, .glass, .tabletop: return Palette.scenePanel
+        case .counter, .fascia, .frame: return Palette.sceneCounter
+        case .stage, .slab: return Palette.sceneSlab
+        case .pillar: return Palette.scenePillar
+        case .plant: return Palette.scenePlant
+        case .sign: return Palette.sceneSign
+        case .accent: return Palette.highlight
         }
-        return SimpleMaterial(color: NSColor(color), roughness: 0.8, isMetallic: false)
     }
 
     static func outlineEntity(for boxes: [BoundingBox3D]) throws -> ModelEntity? {

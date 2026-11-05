@@ -60,7 +60,7 @@ enum Palette {
     static let primaryDisabledOnSurface = Color(hex: 0x50313B)
     static let primaryDisabledOnSurfaceText = Color(hex: 0xA7999D)
 
-    static let sceneFloor = Color(hex: 0xEEF2F6)
+    static let sceneFloor = Color(hex: 0xFFFFFF)
     static let sceneWall = Color(hex: 0xCAD5E2)
     static let scenePanel = Color(hex: 0xE8ECF2)
     static let sceneCounter = Color(hex: 0xCBD5E1)
