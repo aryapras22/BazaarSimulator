@@ -29,8 +29,37 @@ struct GroupInspector: View {
 
             RotationControl(degrees: rotationBinding, isMixed: display.rotation == .mixed)
 
-            Button("Reset open sides for \(display.memberCount) booths", action: onResetOpenSides)
-                .buttonStyle(SecondaryButtonStyle())
+            if let chairs = display.chairs {
+                chairsControl(chairs: chairs)
+            }
+
+            if display.boothCount > 0 {
+                Button("Reset open sides for \(display.boothCount) booths", action: onResetOpenSides)
+                    .buttonStyle(SecondaryButtonStyle())
+            }
+        }
+    }
+
+    private func chairsControl(chairs: MixedValue<Int>) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Chairs")
+                .font(Typography.inspectorLabel)
+                .foregroundStyle(Palette.textSecondary)
+
+            Picker("Chairs", selection: Binding(
+                get: {
+                    if case .shared(let count) = chairs { return count }
+                    return 0
+                },
+                set: { draft.chairs = .set($0) }
+            )) {
+                if case .mixed = chairs {
+                    Text("Mixed").tag(0)
+                }
+                Text("2 Chairs").tag(2)
+                Text("4 Chairs").tag(4)
+            }
+            .pickerStyle(.segmented)
         }
     }
 

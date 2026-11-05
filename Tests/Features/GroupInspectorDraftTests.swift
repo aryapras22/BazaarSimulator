@@ -53,4 +53,29 @@ struct GroupInspectorDraftTests {
     func freshDraftHasNoChanges() {
         #expect(!GroupInspectorDraft(memberIDs: []).hasChanges)
     }
+
+    @Test("Changing chairs updates table catalog ID and ignores booths")
+    func chairsChangeUpdatesTable() {
+        let table = LayoutObject(
+            kind: .table,
+            label: "T1",
+            placement: Placement(center: .zero, sizeM: SIMD2<Double>(1.2, 0.8)),
+            catalogID: "table-4"
+        )
+        let sampleBooth = booth("B1")
+
+        var draft = GroupInspectorDraft(memberIDs: [table.id, sampleBooth.id])
+        draft.chairs = .set(2)
+
+        let updatedTable = draft.applied(to: table)
+        let updatedBooth = draft.applied(to: sampleBooth)
+
+        #expect(updatedTable.catalogID == "table-2")
+        #expect(updatedBooth.catalogID == nil)
+        #expect(updatedBooth.kind == .booth)
+
+        draft.chairs = .set(4)
+        let backToFour = draft.applied(to: updatedTable)
+        #expect(backToFour.catalogID == "table-4")
+    }
 }

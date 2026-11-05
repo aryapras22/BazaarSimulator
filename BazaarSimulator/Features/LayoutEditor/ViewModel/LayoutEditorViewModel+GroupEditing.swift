@@ -26,13 +26,20 @@ extension LayoutEditorViewModel {
 
     var groupInspectorDisplay: GroupInspectorDisplay {
         let members = selectedGroupMembers.map { groupDraft?.applied(to: $0) ?? $0 }
+        let tableMembers = members.filter { $0.kind == .table }
+        let tableChairs: MixedValue<Int>? = tableMembers.isEmpty
+            ? nil
+            : MixedValue(tableMembers.map { $0.catalogID == "table-2" ? 2 : 4 })
+        let boothCount = members.filter { $0.kind == .booth }.count
         return GroupInspectorDisplay(
             category: MixedValue(members.map(\.categoryID)),
             width: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.x) }),
             length: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.y) }),
             rotation: MixedValue(members.map(\.placement.rotationDegrees)),
+            chairs: tableChairs,
             warningSummary: groupWarningSummary,
-            memberCount: members.count
+            memberCount: members.count,
+            boothCount: boothCount
         )
     }
 
