@@ -43,6 +43,13 @@ final class ImportQueue: ImportQueueing {
         startWorkerIfNeeded()
     }
 
+    /// Records a file that was already read elsewhere, such as the mock project seeded at launch.
+    func addFinished(_ file: ImportFile, legend: Legend?, layout: ExtractedLayout?) {
+        files.append(file)
+        legendsByFile[file.id] = legend
+        extractedLayouts[file.id] = layout
+    }
+
     func remove(fileID: UUID) {
         let wasCurrent = currentFileID == fileID
         files.removeAll { $0.id == fileID }
