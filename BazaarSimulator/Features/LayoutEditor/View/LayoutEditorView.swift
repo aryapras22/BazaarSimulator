@@ -6,7 +6,6 @@ struct LayoutEditorView: View {
     @State private var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
     @State private var pointer = CanvasPointer()
     @FocusState private var isCanvasFocused: Bool
-    @State var isShowing3DView: Bool = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -167,11 +166,6 @@ struct LayoutEditorView: View {
         .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
             Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
-        }
-        .sheet(isPresented: $isShowing3DView) {
-            if let layout = viewModel.activeLayout {
-                SimulationView(layout: layout, onDismiss: { isShowing3DView = false })
-            }
         }
     }
 

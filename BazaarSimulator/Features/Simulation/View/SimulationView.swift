@@ -22,6 +22,30 @@ struct SimulationView: View {
 
     private var headerOverlay: some View {
         HStack(spacing: Spacing.m) {
+            // Back button
+            if let onDismiss {
+                Button {
+                    onDismiss()
+                } label: {
+                    HStack(spacing: Spacing.xs) {
+                        Image(systemName: "chevron.left")
+                        Text("Analysis")
+                    }
+                    .font(Typography.body)
+                    .foregroundStyle(Palette.textPrimary)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.s)
+                    .background(Palette.surface.opacity(0.85))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Radius.s)
+                            .stroke(Palette.surfaceBorder, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back to Analysis")
+            }
+
             // Layout info badge
             VStack(alignment: .leading, spacing: 2) {
                 Text(layout.name.isEmpty ? "3D Venue" : layout.name)
@@ -61,22 +85,6 @@ struct SimulationView: View {
                 Capsule()
                     .stroke(Palette.surfaceBorder, lineWidth: 1)
             )
-
-            // Optional dismiss button
-            if let onDismiss {
-                Button {
-                    onDismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textPrimary)
-                        .frame(width: 28, height: 28)
-                        .background(Palette.surface.opacity(0.85))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close 3D View")
-            }
         }
     }
 }

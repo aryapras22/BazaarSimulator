@@ -15,8 +15,12 @@ final class ProjectScreenFactory {
     func makeLibraryViewModel() -> ProjectLibraryViewModel {
         ProjectLibraryViewModel(
             session: services.projectSession,
-            onOpenProject: { [weak router] id in
-                router?.showSetup(projectID: id)
+            onOpenProject: { [weak router, weak session = services.projectSession] id in
+                if let draft = session?.draft(for: id), !draft.layouts.isEmpty {
+                    router?.showAnalysis(projectID: id)
+                } else {
+                    router?.showSetup(projectID: id)
+                }
             }
         )
     }
@@ -30,7 +34,7 @@ final class ProjectScreenFactory {
             session: services.projectSession,
             importQueue: services.importQueue,
             onContinue: { [weak router] id in
-                router?.showReview(projectID: id)
+                router?.showAnalysis(projectID: id)
             }
         )
         setupViewModels[projectID] = created
@@ -45,7 +49,7 @@ final class ProjectScreenFactory {
             projectID: projectID,
             session: services.projectSession,
             onBack: { [weak router] in
-                router?.showSetup(projectID: projectID)
+                router?.showAnalysis(projectID: projectID)
             }
         )
         layoutEditorViewModels[projectID] = created
