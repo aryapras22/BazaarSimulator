@@ -6,6 +6,7 @@ final class ProjectScreenFactory {
     private let router: AppRouter
     private var setupViewModels: [UUID: ProjectSetupViewModel] = [:]
     private var layoutEditorViewModels: [UUID: LayoutEditorViewModel] = [:]
+    private var dashboardViewModels: [UUID: DashboardViewModel] = [:]
 
     init(services: AppServices, router: AppRouter) {
         self.services = services
@@ -56,12 +57,36 @@ final class ProjectScreenFactory {
         return created
     }
 
-    func makeParametersViewModel(projectID: UUID, onClose: @escaping () -> Void) -> ParametersViewModel {
+    func makeDashboardViewModel(projectID: UUID) -> DashboardViewModel {
+        if let existing = dashboardViewModels[projectID] {
+            return existing
+        }
+        let created = DashboardViewModel(
+            projectID: projectID,
+            session: services.projectSession,
+            onBack: { [weak router] in
+                router?.showReview(projectID: projectID)
+            },
+            onSimulate: { _ in },
+            onEdit: { [weak router] _ in
+                router?.showReview(projectID: projectID)
+            }
+        )
+        dashboardViewModels[projectID] = created
+        return created
+    }
+
+    func makeParametersViewModel(
+        projectID: UUID,
+        onClose: @escaping () -> Void,
+        onApply: (() -> Void)? = nil
+    ) -> ParametersViewModel {
         ParametersViewModel(
             projectID: projectID,
             session: services.projectSession,
             catalog: PresetCatalog.bundled(),
-            onClose: onClose
+            onClose: onClose,
+            onApply: onApply
         )
     }
 }

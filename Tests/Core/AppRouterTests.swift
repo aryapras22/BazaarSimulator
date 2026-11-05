@@ -59,6 +59,14 @@ struct AppRouterTests {
         #expect(router.destination == .simulation(projectID: id))
     }
 
+    @Test("Show compare sets destination to compare with projectID")
+    func showCompareSetsDestination() {
+        let id = UUID()
+        let router = AppRouter(destination: .review(projectID: id))
+        router.showCompare(projectID: id)
+        #expect(router.destination == .compare(projectID: id))
+    }
+
     @Test("Show empty resets destination to empty")
     func showEmptyResetsDestination() {
         let id = UUID()

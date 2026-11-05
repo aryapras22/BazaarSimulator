@@ -13,6 +13,7 @@ final class ParametersViewModel {
     let catalog: PresetCatalog
     private let session: any ProjectSessionProtocol
     private let onClose: () -> Void
+    private let onApply: (() -> Void)?
 
     private(set) var draft: EventParameters
     var isPeakEnabled: Bool
@@ -22,12 +23,14 @@ final class ParametersViewModel {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         catalog: PresetCatalog,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        onApply: (() -> Void)? = nil
     ) {
         self.projectID = projectID
         self.session = session
         self.catalog = catalog
         self.onClose = onClose
+        self.onApply = onApply
 
         let stored = session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         draft = stored
@@ -155,5 +158,6 @@ final class ParametersViewModel {
         }
         session.setEventParameters(result, for: projectID)
         onClose()
+        onApply?()
     }
 }
