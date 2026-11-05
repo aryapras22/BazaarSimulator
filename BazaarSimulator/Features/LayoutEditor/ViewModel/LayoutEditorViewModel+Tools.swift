@@ -27,6 +27,8 @@ extension LayoutEditorViewModel: ToolContext {
             return WallTool(itemID: itemID)
         case .room(let itemID):
             return RoomTool(itemID: itemID)
+        case .floor(let itemID):
+            return FloorTool(itemID: itemID)
         case .placeDoor(let itemID):
             return DoorTool(itemID: itemID)
         }

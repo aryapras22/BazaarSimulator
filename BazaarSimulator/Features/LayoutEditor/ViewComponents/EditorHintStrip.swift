@@ -28,6 +28,8 @@ struct EditorHintStrip: View {
             return "Click to place segment · Shift for angle lock · Return or double-click to finish · Escape to cancel"
         case .room:
             return "Drag rectangle to create room walls · Escape to cancel"
+        case .floor:
+            return "Drag rectangle to define floor slab · Escape to cancel"
         case .placeDoor:
             return "Click on wall to place door · Shift for free move · Escape to cancel"
         case .place:

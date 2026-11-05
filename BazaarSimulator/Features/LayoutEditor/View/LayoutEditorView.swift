@@ -204,7 +204,23 @@ extension LayoutEditorView {
 
     @ViewBuilder
     private func canvasView(proxy: GeometryProxy) -> some View {
-        makeLayoutCanvasView()
+        attachCanvasShortcuts(to: makeLayoutCanvasView())
+            .onAppear {
+                canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                viewModel.fitIfNeeded(in: canvasViewSize)
+                viewModel.refreshDerivedState()
+                isCanvasFocused = true
+            }
+            .onChange(of: proxy.size) { _, newSize in
+                canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+            }
+            .onChange(of: viewModel.activeLayoutID) { _, _ in
+                viewModel.fitIfNeeded(in: canvasViewSize)
+            }
+    }
+
+    private func attachCanvasShortcuts(to content: some View) -> some View {
+        content
             .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                 viewModel.deleteCurrentSelection()
                 return .handled
@@ -226,6 +242,11 @@ extension LayoutEditorView {
                 handleToolRailSelection(.room)
                 return .handled
             }
+            .onKeyPress(characters: CharacterSet(charactersIn: "fF")) { _ in
+                guard viewModel.activeLayer == .structure else { return .ignored }
+                handleToolRailSelection(.floor)
+                return .handled
+            }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
                 guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
@@ -239,18 +260,6 @@ extension LayoutEditorView {
                 guard viewModel.activeLayer == .structure else { return .ignored }
                 openLibraryFiltered(to: .structure)
                 return .handled
-            }
-            .onAppear {
-                canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
-                viewModel.fitIfNeeded(in: canvasViewSize)
-                viewModel.refreshDerivedState()
-                isCanvasFocused = true
-            }
-            .onChange(of: proxy.size) { _, newSize in
-                canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
-            }
-            .onChange(of: viewModel.activeLayoutID) { _, _ in
-                viewModel.fitIfNeeded(in: canvasViewSize)
             }
     }
 
@@ -278,6 +287,8 @@ extension LayoutEditorView {
             viewModel.selectTool(.drawWall(itemID: viewModel.selectedWallItemID))
         case .room:
             viewModel.selectTool(.room(itemID: viewModel.selectedWallItemID))
+        case .floor:
+            viewModel.selectTool(.floor(itemID: "floor"))
         case .library:
             withAnimation(.easeInOut(duration: 0.2)) {
                 if !isSidePanelVisible {

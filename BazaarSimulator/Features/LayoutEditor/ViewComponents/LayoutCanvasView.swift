@@ -199,7 +199,7 @@ struct LayoutCanvasView: View {
             return .frameResize(position: handle.pointerPosition)
         }
         switch tool {
-        case .place, .drawWall, .room, .blockedArea:
+        case .place, .drawWall, .room, .floor, .blockedArea:
             return .rectSelection
         default:
             return .default

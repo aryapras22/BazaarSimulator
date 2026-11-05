@@ -136,6 +136,8 @@ enum CanvasSceneRenderer {
             DoorRenderer.draw(objectState, in: &context, transform: transform)
         case .closedArea:
             BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
+        case .floor:
+            FloorSlabRenderer.draw(objectState, in: &context, transform: transform)
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }
@@ -172,11 +174,9 @@ extension CanvasSceneRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        if let start = drag.drawingStart, let current = drag.drawingCurrent {
+        if drag.drawingStart != nil, drag.drawingCurrent != nil {
             drawDrawingPreview(
-                start: start,
-                current: current,
-                snaps: !drag.isOptionDown,
+                drag: drag,
                 in: &context,
                 transform: transform
             )
@@ -262,12 +262,12 @@ extension CanvasSceneRenderer {
     }
 
     private static func drawDrawingPreview(
-        start: SIMD2<Double>,
-        current: SIMD2<Double>,
-        snaps: Bool,
+        drag: CanvasDragState,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
+        guard let start = drag.drawingStart, let current = drag.drawingCurrent else { return }
+        let snaps = !drag.isOptionDown
         let placement = BlockedAreaDrawing.placement(from: start, to: current, snapped: snaps)
         let preview = placement ?? BlockedAreaDrawing.previewPlacement(
             from: start,
@@ -275,14 +275,18 @@ extension CanvasSceneRenderer {
             snapped: snaps
         )
         let isBelowMinimum = placement == nil
-        let tempArea = LayoutObject(kind: .closedArea, label: "", placement: preview)
+        let tempArea = LayoutObject(kind: drag.drawingKind, label: "", placement: preview)
         let state = ObjectDrawState(
             object: tempArea,
             isSelected: !isBelowMinimum,
             isHovered: false,
             hasWarning: isBelowMinimum
         )
-        BlockedAreaRenderer.draw(state, in: &context, transform: transform)
+        if drag.drawingKind == .floor {
+            FloorSlabRenderer.draw(state, in: &context, transform: transform)
+        } else {
+            BlockedAreaRenderer.draw(state, in: &context, transform: transform)
+        }
 
         let pointerView = transform.toView(current)
         let text = "\(DimensionInput.text(for: preview.sizeM.x)) × \(DimensionInput.text(for: preview.sizeM.y)) m"

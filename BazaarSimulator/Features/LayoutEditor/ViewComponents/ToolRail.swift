@@ -4,6 +4,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
     case select
     case wall
     case room
+    case floor
     case library
 
     var id: Self { self }
@@ -13,6 +14,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .select: return "Select (V)"
         case .wall: return "Wall (W)"
         case .room: return "Room (R)"
+        case .floor: return "Floor (F)"
         case .library: return "Library (B)"
         }
     }
@@ -22,6 +24,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
         case .select: return "cursorarrow"
         case .wall: return "line.diagonal"
         case .room: return "rectangle"
+        case .floor: return "square.fill"
         case .library: return "square.grid.2x2"
         }
     }
@@ -29,7 +32,7 @@ enum ToolRailItem: CaseIterable, Identifiable, Sendable {
     static func items(for layer: EditorLayer) -> [ToolRailItem] {
         switch layer {
         case .structure:
-            return [.select, .wall, .room, .library]
+            return [.select, .wall, .room, .floor, .library]
         case .booths:
             return [.select, .library]
         }
@@ -73,6 +76,9 @@ struct ToolRail: View {
             return false
         case .room:
             if case .room = activeTool { return true }
+            return false
+        case .floor:
+            if case .floor = activeTool { return true }
             return false
         case .library:
             if case .place = activeTool { return true }

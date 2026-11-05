@@ -105,7 +105,11 @@ extension LayoutEditorViewModel {
             case .door:
                 selectTool(.placeDoor(itemID: id))
             case .drawArea:
-                selectTool(.blockedArea)
+                if item.kind == .floor {
+                    selectTool(.floor(itemID: id))
+                } else {
+                    selectTool(.blockedArea)
+                }
             case .point:
                 selectTool(.place(row.source))
             }

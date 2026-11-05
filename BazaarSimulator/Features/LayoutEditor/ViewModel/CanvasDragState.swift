@@ -15,6 +15,7 @@ struct CanvasDragState: Equatable, Sendable {
     var pointerLocation: CGPoint?
     var drawingStart: SIMD2<Double>?
     var drawingCurrent: SIMD2<Double>?
+    var drawingKind: LayoutObjectKind = .closedArea
     var isOptionDown: Bool = false
     var isShiftDown: Bool = false
     var resize: ActiveResize?
