@@ -249,6 +249,7 @@ struct LayoutEditorCoalesceIntegrationTests {
         let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [booth])
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.selectLayer(.booths)
 
         viewModel.selectObject(booth.id)
         viewModel.nudgeSelected(by: SIMD2<Double>(0.25, 0))
@@ -284,6 +285,7 @@ struct LayoutEditorCoalesceIntegrationTests {
         let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [boothA, boothB])
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.selectLayer(.booths)
 
         viewModel.selectObject(boothA.id)
         viewModel.nudgeSelected(by: SIMD2<Double>(0.25, 0))
@@ -307,6 +309,7 @@ struct LayoutEditorCoalesceIntegrationTests {
         let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [booth])
         session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.selectLayer(.booths)
 
         viewModel.selectObject(booth.id)
         viewModel.finishDraggingObject(id: booth.id, deltaWorld: SIMD2<Double>(1, 0))

@@ -109,6 +109,7 @@ struct LayoutEditorViewModelViewsTests {
             )
         )
 
+        viewModel.selectLayer(.booths)
         let viewSize = CGSize(width: 800, height: 600)
         let centerPoint = CGPoint(x: 400, y: 300)
         viewModel.handle3DClick(viewPoint: centerPoint, viewSize: viewSize)
@@ -117,17 +118,18 @@ struct LayoutEditorViewModelViewsTests {
     }
 
     @Test("Selection outline box is generated for selected object")
-    func selectionOutlineBoxGenerated() {
+    func selectionOutlineBoxGenerated() throws {
         let viewModel = Self.makeViewModel()
         let targetBooth = viewModel.activeLayout?.objects.first { $0.kind == .booth }
         #expect(targetBooth != nil)
         guard let targetBooth else { return }
 
+        viewModel.selectLayer(.booths)
         viewModel.selectObject(targetBooth.id)
         let outlines = viewModel.selectionOutlineBoxes
 
         #expect(outlines.count == 1)
-        let outline = outlines[0]
+        let outline = try #require(outlines.first)
         #expect(abs(outline.center.x - targetBooth.placement.center.x) < 1e-4)
         #expect(abs(outline.center.z - targetBooth.placement.center.y) < 1e-4)
         #expect(abs(outline.size.x - targetBooth.placement.sizeM.x) < 1e-4)
