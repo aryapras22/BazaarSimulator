@@ -18,6 +18,12 @@ struct LayoutObjectKindTests {
         #expect(kind.isSelectable)
     }
 
+    @Test("Booths, blocks and blocked areas resize by handles, walls and doors do not")
+    func resizeHandleKinds() {
+        #expect(LayoutObjectKind.allCases.filter(\.hasResizeHandles).map(\.rawValue).sorted()
+            == [LayoutObjectKind.block, .booth, .closedArea].map(\.rawValue).sorted())
+    }
+
     @Test("Decoding old project without floor succeeds")
     func decodingOldProjectWithoutFloorSucceeds() throws {
         let original = Layout(

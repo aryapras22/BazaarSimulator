@@ -69,8 +69,9 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         isMovable || isResizable
     }
 
+    /// Walls resize through their end nodes and doors are fitted to their wall, so neither gets box handles.
     var hasResizeHandles: Bool {
-        self == .closedArea
+        self == .closedArea || self == .booth || self == .block
     }
 
     var isStructural: Bool {
