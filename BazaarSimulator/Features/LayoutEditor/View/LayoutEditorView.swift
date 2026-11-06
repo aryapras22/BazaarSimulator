@@ -206,6 +206,9 @@ extension LayoutEditorView {
             .onChange(of: viewModel.activeLayoutID) { _, _ in
                 viewModel.fitIfNeeded(in: canvasViewSize)
             }
+            .onChange(of: viewModel.selectionID) { _, newID in
+                if newID != nil { isCanvasFocused = true }
+            }
     }
 
     private func attachCanvasShortcuts(to content: some View) -> some View {
