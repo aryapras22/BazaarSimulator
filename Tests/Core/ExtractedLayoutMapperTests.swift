@@ -114,7 +114,7 @@ struct ExtractedLayoutMapperTests {
 
     @Test("Symbol classes map to walls, doors, blocks and markers according to the symbol mapping")
     func symbolClassMapping() throws {
-        var items = [
+        let items = [
             DetectedItem(cls: "wall", box: [0, 0, 100, 10], segment: [0, 0, 100, 0], symbolClass: "wall.double"),
             DetectedItem(cls: "opening", box: [20, 20, 30, 30], symbolClass: "door.single_quarter"),
             DetectedItem(cls: "pillar", box: [60, 60, 20, 20], symbolClass: "column.solid_square"),
@@ -137,5 +137,28 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.markers.count == 2)
         #expect(layout.markers.contains { $0.kind == .spawn })
         #expect(layout.markers.contains { $0.kind == .exit })
+    }
+
+    @Test("A door symbol on the swing item adds no second door beside its opening")
+    func swingAndOpeningMakeOneDoor() {
+        let plan = DetectedPlan(items: [
+            DetectedItem(cls: "door", box: [0, 0, 30, 30], symbolClass: "door.single_quarter"),
+            DetectedItem(cls: "opening", box: [0, 25, 30, 5], symbolClass: "door.single_quarter")
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.filter { $0.kind == .door }.count == 1)
+    }
+
+    @Test("An unknown symbol class leaves the extractor's own class in charge")
+    func unknownSymbolClassFallsBack() {
+        let plan = DetectedPlan(items: [
+            DetectedItem(cls: "pillar", box: [0, 0, 20, 20], symbolClass: "mystery.shape")
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.map(\.label) == ["Pillar"])
     }
 }

@@ -1,5 +1,6 @@
 import Extractor
 import Foundation
+import os
 
 struct SymbolLegendStore: Sendable {
     static let shared = SymbolLegendStore()
@@ -7,23 +8,20 @@ struct SymbolLegendStore: Sendable {
     let symbols: SymbolLegend
 
     init(bundle: Bundle = .main) {
-        if let url = bundle.url(forResource: "legends", withExtension: "json", subdirectory: "symbols") ??
-            bundle.url(forResource: "legends", withExtension: "json") {
-            self.symbols = (try? SymbolLegend.load(from: url)) ?? .empty
-        } else {
-            let localURL = URL(fileURLWithPath: #filePath)
-                .deletingLastPathComponent()
-                .deletingLastPathComponent()
-                .deletingLastPathComponent()
-                .appendingPathComponent("Resources")
-                .appendingPathComponent("Legends")
-                .appendingPathComponent("symbols")
-                .appendingPathComponent("legends.json")
-            if FileManager.default.fileExists(atPath: localURL.path) {
-                self.symbols = (try? SymbolLegend.load(from: localURL)) ?? .empty
-            } else {
-                self.symbols = .empty
-            }
+        guard let url = bundle.url(forResource: "legends", withExtension: "json") else {
+            Logger.symbols.error("legends.json is missing from the bundle, reading without symbol legends")
+            symbols = .empty
+            return
+        }
+        do {
+            symbols = try SymbolLegend.load(from: url)
+        } catch {
+            Logger.symbols.error("legends.json did not load: \(error.localizedDescription)")
+            symbols = .empty
         }
     }
+}
+
+private extension Logger {
+    static let symbols = Logger(subsystem: "BazaarSimulator", category: "SymbolLegendStore")
 }

@@ -37,7 +37,12 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         name: String,
         onProgress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExtractedLayout {
-        let reading = try await PlanExtractor.plan(page, legend: legendPage, symbols: symbolStore.symbols, onProgress: onProgress)
+        let reading = try await PlanExtractor.plan(
+            page,
+            legend: legendPage,
+            symbols: symbolStore.symbols,
+            onProgress: onProgress
+        )
         let detected = DetectedPlan(items: reading.items.map(Self.detectedItem))
         guard let scale = ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
             throw FloorPlanReadingError.noBooths

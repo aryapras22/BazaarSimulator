@@ -45,14 +45,10 @@ enum ExtractedLayoutMapper {
         var markers: [LayoutMarker] = []
         for item in plan.items {
             let frame = rect(of: item, metres: metres, pixelsPerMetre: pixelsPerMetre)
-            if let sc = item.symbolClass {
-                if sc == "arrow.entry" {
-                    markers.append(LayoutMarker(kind: .spawn, label: "Entry", position: frame.center))
-                    continue
-                } else if sc == "arrow.exit" {
-                    markers.append(LayoutMarker(kind: .exit, label: "Exit", position: frame.center))
-                    continue
-                }
+            if let symbolClass = item.symbolClass,
+               case .marker(let kind, let label) = SymbolClassMapping.outcome(for: symbolClass) {
+                markers.append(LayoutMarker(kind: kind, label: label, position: frame.center))
+                continue
             }
             if let object = object(for: item, legend: legend, placement: frame, unlabeled: &unlabeled) {
                 objects.append(object)
@@ -99,14 +95,8 @@ enum ExtractedLayoutMapper {
     }
 
     private static func wallThickness(for item: DetectedItem, pixelsPerMetre: Double) -> Double {
-        if let sc = item.symbolClass {
-            switch sc {
-            case "wall.double": return 0.2
-            case "wall.medium": return 0.15
-            case "wall.thin": return 0.1
-            case "wall.thick": return 0.3
-            default: break
-            }
+        if let symbolClass = item.symbolClass, let thickness = SymbolClassMapping.wallThicknessM(for: symbolClass) {
+            return thickness
         }
         return max((item.widthPx ?? 0) / pixelsPerMetre, minWallThicknessM)
     }
@@ -138,39 +128,29 @@ enum ExtractedLayoutMapper {
         placement: Placement,
         unlabeled: inout Int
     ) -> LayoutObject? {
-        if let sc = item.symbolClass {
-            if sc.hasPrefix("wall.") {
+        if let symbolClass = item.symbolClass, let outcome = SymbolClassMapping.outcome(for: symbolClass) {
+            switch outcome {
+            case .wall:
                 return LayoutObject(kind: .wall, label: "Wall", placement: placement, reviewState: .detected)
-            }
-            if sc.hasPrefix("door.") || sc.hasPrefix("gate.") {
-                return LayoutObject(
-                    kind: .door,
-                    label: "Door",
-                    placement: placement,
-                    doorFlow: DoorFlow(direction: .both),
-                    reviewState: .detected
-                )
-            }
-            if sc.hasPrefix("column.") || sc.hasPrefix("stairs.") || sc.hasPrefix("restroom.")
-                || sc.hasPrefix("zone.stage_") || sc == "zone.service_room" || sc == "zone.unlabeled_block" {
-                let label: String
-                if sc.hasPrefix("column.") { label = "Pillar" }
-                else if sc.hasPrefix("stairs.") { label = "Stairs" }
-                else if sc.hasPrefix("restroom.") { label = "Restroom" }
-                else if sc.hasPrefix("zone.stage_") { label = "Stage" }
-                else if sc == "zone.service_room" { label = "Service Room" }
-                else { label = "Block" }
+            case .block(let label):
                 return LayoutObject(kind: .block, label: label, placement: placement, reviewState: .detected)
-            }
-            if sc.hasPrefix("table.") || sc.hasPrefix("seats.") || sc == "zone.neighboring_unit"
-                || sc == "zone.standing" || sc.hasPrefix("safety.") || sc == "info.desk"
-                || sc.hasPrefix("arrow.") {
+            case .dropped, .marker:
                 return nil
+            case .door:
+                break
             }
         }
 
-        let lowered = item.cls.lowercased()
-        switch lowered {
+        return classObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)
+    }
+
+    private static func classObject(
+        for item: DetectedItem,
+        legend: Legend,
+        placement: Placement,
+        unlabeled: inout Int
+    ) -> LayoutObject? {
+        switch item.cls.lowercased() {
         case "wall":
             return LayoutObject(kind: .wall, label: "Wall", placement: placement, reviewState: .detected)
         case "pillar":
