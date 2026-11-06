@@ -122,4 +122,34 @@ struct WallDrawingTests {
         viewModel.undo()
         #expect(viewModel.activeLayout?.objects.count == initialCount)
     }
+
+    @Test("Escape while drawing removes the last point, then cancels the tool")
+    func escapeStepsBackOnePoint() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+        session.setDraft(
+            ProjectDraft(name: "Test", legend: PreviewLayouts.sampleLegend, layouts: [PreviewLayouts.annyeong()]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.refreshDerivedState()
+        viewModel.selectTool(.drawWall(itemID: "wall"))
+        viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(10, 10)))
+        viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(14, 10)))
+
+        _ = viewModel.handleCanvasKey(.escape)
+        #expect(viewModel.tool == .drawWall(itemID: "wall"))
+
+        _ = viewModel.handleCanvasKey(.escape)
+        _ = viewModel.handleCanvasKey(.escape)
+        #expect(viewModel.tool == .select)
+    }
+
+    @Test("The live angle is the turn from the previous wall, or the direction from the x axis")
+    func liveAngle() {
+        let origin = SIMD2<Double>(0, 0)
+        #expect(WallDrawingRenderer.angleDegrees(from: origin, to: SIMD2(0, 5), previous: nil) == 90)
+        #expect(WallDrawingRenderer.angleDegrees(from: origin, to: SIMD2(5, 0), previous: SIMD2(0, 5)) == 90)
+        #expect(WallDrawingRenderer.angleDegrees(from: origin, to: SIMD2(5, 0), previous: SIMD2(-5, 0)) == 180)
+    }
 }

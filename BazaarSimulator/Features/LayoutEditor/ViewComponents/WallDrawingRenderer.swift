@@ -37,7 +37,7 @@ enum WallDrawingRenderer {
         drawLiveSegment(
             from: last,
             to: current,
-            typedLength: drawing.typedLength,
+            label: liveLabel(for: drawing, from: last, to: current),
             in: &context,
             transform: transform
         )
@@ -132,7 +132,7 @@ enum WallDrawingRenderer {
     private static func drawLiveSegment(
         from start: SIMD2<Double>,
         to end: SIMD2<Double>,
-        typedLength: String,
+        label: String,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
@@ -148,8 +148,32 @@ enum WallDrawingRenderer {
         let midScreen = transform.toView(midpoint)
         let chipLocation = CGPoint(x: CGFloat(midScreen.x) + 12.0, y: CGFloat(midScreen.y) + 12.0)
 
-        let length = simd_distance(start, end)
-        let lengthText = typedLength.isEmpty ? "\(DimensionInput.text(for: length)) m" : "\(typedLength) m"
-        SelectionDimensionRenderer.drawSizeChip(lengthText, near: chipLocation, in: &context)
+        SelectionDimensionRenderer.drawSizeChip(label, near: chipLocation, in: &context)
+    }
+
+    private static func liveLabel(
+        for drawing: WallDrawing,
+        from start: SIMD2<Double>,
+        to end: SIMD2<Double>
+    ) -> String {
+        let measured = DimensionInput.text(for: simd_distance(start, end))
+        let length = drawing.typedLength.isEmpty ? measured : drawing.typedLength
+        let previous = drawing.points.count >= 2 ? drawing.points[drawing.points.count - 2] : nil
+        let angle = angleDegrees(from: start, to: end, previous: previous).map { " · \($0)°" } ?? ""
+        return "\(length) m\(angle)"
+    }
+
+    /// The angle between the new segment and the one before it, or its direction from the x axis for the first.
+    static func angleDegrees(from start: SIMD2<Double>, to end: SIMD2<Double>, previous: SIMD2<Double>?) -> Int? {
+        let direction = end - start
+        guard simd_length(direction) > 1e-6 else { return nil }
+        guard let previous else {
+            let degrees = atan2(direction.y, direction.x) * 180 / .pi
+            return Int((degrees + 360).truncatingRemainder(dividingBy: 360).rounded()) % 360
+        }
+        let back = previous - start
+        guard simd_length(back) > 1e-6 else { return nil }
+        let cosine = simd_dot(direction, back) / (simd_length(direction) * simd_length(back))
+        return Int((acos(min(max(cosine, -1), 1)) * 180 / .pi).rounded())
     }
 }

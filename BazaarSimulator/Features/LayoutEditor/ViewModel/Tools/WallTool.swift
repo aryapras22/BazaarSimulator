@@ -116,7 +116,11 @@ final class WallTool: EditorToolHandling {
             return handleReturn(context: context)
 
         case .escape:
-            cancel(context: context)
+            if drawing?.points.isEmpty == false {
+                stepBack(context: context)
+            } else {
+                cancel(context: context)
+            }
             return true
 
         default:
@@ -129,6 +133,18 @@ final class WallTool: EditorToolHandling {
         currentPointer = nil
         context.clearPreview()
         context.switchTool(.select)
+    }
+
+    private func stepBack(context: ToolContext) {
+        drawing?.typedLength = ""
+        drawing?.points.removeLast()
+        if drawing?.points.isEmpty == true {
+            drawing = nil
+            currentPointer = nil
+            context.clearPreview()
+        } else {
+            recomputePointer(context: context)
+        }
     }
 
     private func handleDelete(context: ToolContext) -> Bool {
