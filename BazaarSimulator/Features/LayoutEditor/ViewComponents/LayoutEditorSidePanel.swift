@@ -27,7 +27,7 @@ struct LayoutEditorSidePanel: View {
         }
         .padding(Spacing.m)
         .frame(width: 280)
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Palette.surface)
         .overlay(alignment: .trailing) {
             Rectangle()
