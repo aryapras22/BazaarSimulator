@@ -71,7 +71,7 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.first { $0.kind == .door }?.doorFlow?.direction == .both)
     }
 
-    @Test("Structural legend classes become hall objects and never booths")
+    @Test("Stage and Blocked become hall objects, Entrance is dropped, none become booths")
     func structuralClasses() {
         let legend = Legend(entries: [food, LegendEntry(name: "Stage", color: LegendColor(red: 0, green: 0, blue: 1))])
         let plan = DetectedPlan(items: [
@@ -80,7 +80,7 @@ struct ExtractedLayoutMapperTests {
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.kind) == [.block, .closedArea, .block])
+        #expect(layout.objects.map(\.kind) == [.block, .closedArea])
     }
 
     @Test("Booths without an ID get U1, U2 labels")

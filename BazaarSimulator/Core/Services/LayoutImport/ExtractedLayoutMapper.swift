@@ -164,9 +164,7 @@ enum ExtractedLayoutMapper {
             )
         case "blocked":
             return LayoutObject(kind: .closedArea, label: "Blocked", placement: placement, reviewState: .detected)
-        case "entrance", "exit":
-            return LayoutObject(kind: .block, label: item.cls, placement: placement, reviewState: .detected)
-        case "door", "object", "pillar":
+        case "door", "object", "pillar", "entrance", "exit":
             return nil
         default:
             return legendObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)
