@@ -11,6 +11,7 @@ final class SelectTool: EditorToolHandling {
     private var activeResize: ActiveResize?
     var activeNodeDrag: ActiveNodeDrag?
     var activeMidpointDrag: ActiveMidpointDrag?
+    var activeHallEdge: Int?
     private var dragCandidateID: UUID?
     private var activeDragObjectID: UUID?
     private var activeDragDeltaWorld: SIMD2<Double> = .zero
@@ -65,6 +66,11 @@ final class SelectTool: EditorToolHandling {
     }
 
     func handleMove(_ event: CanvasPointerEvent, context: ToolContext) {
+        if let edge = activeHallEdge {
+            updateHallDrag(edge: edge, event: event, context: context)
+            return
+        }
+
         if let midpointDrag = activeMidpointDrag {
             updateMidpointDrag(event: event, midpointDrag: midpointDrag, context: context)
             return
@@ -96,6 +102,11 @@ final class SelectTool: EditorToolHandling {
     }
 
     func handleRelease(_ event: CanvasPointerEvent, context: ToolContext) {
+        if let edge = activeHallEdge {
+            finishHallDrag(edge: edge, event: event, context: context)
+            return
+        }
+
         if let midpointDrag = activeMidpointDrag {
             finishMidpointDrag(event: event, midpointDrag: midpointDrag, context: context)
             return
@@ -194,6 +205,7 @@ extension SelectTool {
     var isInteracting: Bool {
         isTypingLength
             || activeMidpointDrag != nil
+            || activeHallEdge != nil
             || activeNodeDrag != nil
             || activeResize != nil
             || dragCandidateID != nil
@@ -203,6 +215,7 @@ extension SelectTool {
 
     func resetGesture() {
         activeMidpointDrag = nil
+        activeHallEdge = nil
         activeNodeDrag = nil
         activeResize = nil
         dragCandidateID = nil

@@ -47,6 +47,11 @@ extension SelectTool {
             return true
         }
 
+        if let edge = HallEdges.edge(near: event.worldPoint, in: context.layout.hall, within: hitTolerance) {
+            activeHallEdge = edge
+            return true
+        }
+
         return false
     }
 

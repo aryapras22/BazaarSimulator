@@ -9,7 +9,11 @@ enum CanvasSceneRenderer {
         transform: CanvasTransform,
         drag: CanvasDragState
     ) {
-        FloorRenderer.draw(in: &context, size: size, transform: transform, layout: snapshot.layout)
+        var floorLayout = snapshot.layout
+        if let previewHall = drag.previewHall {
+            floorLayout.hall = previewHall
+        }
+        FloorRenderer.draw(in: &context, size: size, transform: transform, layout: floorLayout)
         drawSceneObjects(in: &context, snapshot: snapshot, transform: transform, drag: drag)
 
         if snapshot.activeLayer == .booths {
@@ -96,6 +100,7 @@ enum CanvasSceneRenderer {
             drawSelectionDetails(selectedObject, drag: drag, in: &context, transform: transform)
         }
         WallNodeRenderer.draw(snapshot: snapshot, transform: transform, in: &context)
+        HallEdgeHandleRenderer.draw(snapshot: snapshot, drag: drag, transform: transform, in: &context)
     }
 
     private static func drawPreviewInserts(
