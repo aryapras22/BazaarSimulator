@@ -208,6 +208,18 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.filter { $0.kind == .wall }.count == 2)
     }
 
+    @Test("A tall wall box is a rotated wall, so its length runs along its own x axis")
+    func tallWallBoxIsRotated() throws {
+        let plan = DetectedPlan(items: [DetectedItem(cls: "wall", box: [0, 0, 3, 100])])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        let wall = try #require(layout.objects.first)
+        #expect(abs(wall.placement.sizeM.x - 10) < 0.001)
+        #expect(abs(wall.placement.sizeM.y - 0.3) < 0.001)
+        #expect(wall.placement.rotationDegrees == 90)
+    }
+
     @Test("A tall thin wall box is long, not a stub, and joins a wall below it")
     func verticalWallsKeepTheirLength() throws {
         let plan = DetectedPlan(items: [

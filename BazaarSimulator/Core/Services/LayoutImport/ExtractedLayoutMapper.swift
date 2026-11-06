@@ -120,7 +120,11 @@ enum ExtractedLayoutMapper {
         }
         let topLeft = metres(item.box[0], item.box[1])
         let size = SIMD2<Double>(item.box[2], item.box[3]) / pixelsPerMetre
-        return Placement(center: topLeft + size / 2, sizeM: size)
+        let center = topLeft + size / 2
+        if isWall && size.y > size.x {
+            return Placement(center: center, sizeM: SIMD2(size.y, size.x), rotationRadians: .pi / 2)
+        }
+        return Placement(center: center, sizeM: size)
     }
 
     private static func object(
