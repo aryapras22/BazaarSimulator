@@ -182,8 +182,8 @@ struct OpenSideInferenceTests {
         #expect(OpenSideInference.isSideOpen(.top, of: booth, in: layout))
     }
 
-    @Test("An aisle booth with two clear sides gets the wider one")
-    func aisleBoothGetsWiderClearSide() {
+    @Test("An aisle booth opens every side that is not blocked")
+    func aisleBoothOpensEveryClearSide() {
         let booth = LayoutObject(
             kind: .booth,
             label: "B1",
@@ -212,7 +212,7 @@ struct OpenSideInferenceTests {
         )
 
         let defaultSide = OpenSideInference.defaultSide(for: booth, in: layout)
-        #expect(defaultSide == .right)
+        #expect(defaultSide == [.left, .right])
     }
 
     @Test("A corner booth gets one side")
