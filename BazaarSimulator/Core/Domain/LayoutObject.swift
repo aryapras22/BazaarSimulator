@@ -16,6 +16,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
     var reviewState: ReviewState
     var catalogID: String?
     var heightM: Double?
+    var attractiveness: Double
 
     init(
         id: UUID = UUID(),
@@ -27,7 +28,8 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         doorFlow: DoorFlow? = nil,
         reviewState: ReviewState = .confirmed,
         catalogID: String? = nil,
-        heightM: Double? = nil
+        heightM: Double? = nil,
+        attractiveness: Double = 1
     ) {
         self.id = id
         self.kind = kind
@@ -39,5 +41,6 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.reviewState = reviewState
         self.catalogID = catalogID
         self.heightM = heightM
+        self.attractiveness = attractiveness
     }
 }

@@ -13,6 +13,7 @@ struct InspectorDraft: Sendable, Equatable {
     var doorDirection: DoorDirection
     var doorConnection: DoorConnection
     var catalogID: String?
+    var attractiveness: Double
 
     init(object: LayoutObject) {
         self.objectID = object.id
@@ -27,6 +28,7 @@ struct InspectorDraft: Sendable, Equatable {
         self.doorDirection = object.doorFlow?.direction ?? .both
         self.doorConnection = object.doorFlow?.connection ?? .hallToLobby
         self.catalogID = object.catalogID
+        self.attractiveness = object.attractiveness
     }
 
     static func defaultHeight(for object: LayoutObject) -> Double {
@@ -53,6 +55,7 @@ struct InspectorDraft: Sendable, Equatable {
         updated.categoryID = categoryID
         updated.openSides = openSides
         updated.catalogID = catalogID
+        updated.attractiveness = attractiveness
         if original.heightM != nil || heightM != Self.defaultHeight(for: original) {
             updated.heightM = heightM
         }

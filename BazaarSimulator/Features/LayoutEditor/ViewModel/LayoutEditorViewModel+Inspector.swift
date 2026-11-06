@@ -52,6 +52,9 @@ extension LayoutEditorViewModel {
         if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
             return false
         }
+        if selected.kind == .booth && !AttractivenessField.range.contains(draft.attractiveness) {
+            return false
+        }
         return !issues.contains {
             $0.severity == .error && $0.objectIDs.contains(selected.id)
         }
