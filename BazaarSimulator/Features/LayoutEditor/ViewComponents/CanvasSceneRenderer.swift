@@ -53,6 +53,7 @@ enum CanvasSceneRenderer {
     ) {
         let colorsByID = Dictionary(uniqueKeysWithValues: snapshot.legend.entries.map { ($0.id, $0.color) })
         let ordered = LayoutHitTester.drawOrderedObjects(in: snapshot.layout)
+        let marqueeIDs = marqueeTouchedIDs(drag: drag, snapshot: snapshot, transform: transform)
 
         var selectedObject: LayoutObject?
         for var object in ordered {
@@ -71,22 +72,12 @@ enum CanvasSceneRenderer {
             if isInactive {
                 context.drawLayer { inactiveContext in
                     inactiveContext.opacity = 0.35
-                    drawObject(
-                        object,
-                        snapshot: snapshot,
-                        colorsByID: colorsByID,
-                        transform: transform,
-                        in: &inactiveContext
-                    )
+                    drawObject(object, snapshot: snapshot, colorsByID: colorsByID, marqueeIDs: marqueeIDs,
+                               transform: transform, in: &inactiveContext)
                 }
             } else {
-                drawObject(
-                    object,
-                    snapshot: snapshot,
-                    colorsByID: colorsByID,
-                    transform: transform,
-                    in: &context
-                )
+                drawObject(object, snapshot: snapshot, colorsByID: colorsByID, marqueeIDs: marqueeIDs,
+                           transform: transform, in: &context)
             }
         }
         drawPreviewInserts(
@@ -135,11 +126,15 @@ enum CanvasSceneRenderer {
         _ object: LayoutObject,
         snapshot: CanvasDisplaySnapshot,
         colorsByID: [UUID: LegendColor],
+        marqueeIDs: Set<UUID> = [],
         transform: CanvasTransform,
         in context: inout GraphicsContext
     ) {
         let isInactive = object.kind.layer != snapshot.activeLayer
-        let isSelected = !isInactive && object.id == snapshot.selectionID
+        let isMarqueed = !isInactive && marqueeIDs.contains(object.id)
+        let isGroupMember = !isInactive && snapshot.groupMemberIDs.contains(object.id)
+        let isHighlightedMember = object.kind != .booth && (isGroupMember || isMarqueed)
+        let isSelected = !isInactive && (object.id == snapshot.selectionID || isHighlightedMember)
         let isHovered = !isInactive && object.id == snapshot.hoverID
         let hasWarning = snapshot.issues.warningObjectIDs.contains(object.id)
         let ext = object.kind == .wall
@@ -160,8 +155,8 @@ enum CanvasSceneRenderer {
                 displayLabel: BoothLabelFormatter.display(object.label),
                 isSelected: isSelected,
                 isHovered: isHovered,
-                isGroupMember: !isInactive && snapshot.groupMemberIDs.contains(object.id),
-                isHoveredGroupMember: !isInactive && snapshot.hoveredGroupMemberIDs.contains(object.id),
+                isGroupMember: isGroupMember,
+                isHoveredGroupMember: isMarqueed || (!isInactive && snapshot.hoveredGroupMemberIDs.contains(object.id)),
                 hasObjectWarning: hasWarning,
                 blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
                 categoryColor: object.categoryID.flatMap { colorsByID[$0] }
@@ -251,6 +246,24 @@ extension CanvasSceneRenderer {
             let viewPoint = transform.toView(worldPoint)
             SelectionDimensionRenderer.drawSizeChip(text, near: CGPoint(x: viewPoint.x, y: viewPoint.y), in: &context)
         }
+    }
+
+    private static func marqueeTouchedIDs(
+        drag: CanvasDragState,
+        snapshot: CanvasDisplaySnapshot,
+        transform: CanvasTransform
+    ) -> Set<UUID> {
+        guard let start = drag.marqueeStart, let current = drag.marqueeCurrent else { return [] }
+        let viewStart = transform.toView(start)
+        let viewCurrent = transform.toView(current)
+        let delta = CGPoint(x: viewCurrent.x - viewStart.x, y: viewCurrent.y - viewStart.y)
+        guard SelectGesture.isPastThreshold(delta) else { return [] }
+        return SelectGesture.touchedObjects(
+            from: start,
+            to: current,
+            layout: snapshot.layout,
+            layer: snapshot.activeLayer
+        )
     }
 
     private static func drawMarqueePreview(
