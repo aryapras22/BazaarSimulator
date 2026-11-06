@@ -22,4 +22,5 @@ struct DetectedItem: Sendable, Equatable {
     /// so this ties them to a legend entry.
     var legendRgb: [Int] = []
     var chairs: Int?
+    var symbolClass: String?
 }

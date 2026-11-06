@@ -111,4 +111,31 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects[0].categoryID == fashion.id)
         #expect(layout.objects[1].kind == .block)
     }
+
+    @Test("Symbol classes map to walls, doors, blocks and markers according to the symbol mapping")
+    func symbolClassMapping() throws {
+        var items = [
+            DetectedItem(cls: "wall", box: [0, 0, 100, 10], segment: [0, 0, 100, 0], symbolClass: "wall.double"),
+            DetectedItem(cls: "opening", box: [20, 20, 30, 30], symbolClass: "door.single_quarter"),
+            DetectedItem(cls: "pillar", box: [60, 60, 20, 20], symbolClass: "column.solid_square"),
+            DetectedItem(cls: "misc", box: [90, 90, 20, 20], symbolClass: "stairs.boxed"),
+            DetectedItem(cls: "misc", box: [120, 120, 20, 20], symbolClass: "restroom.framed"),
+            DetectedItem(cls: "arrow", box: [150, 150, 20, 20], symbolClass: "arrow.entry"),
+            DetectedItem(cls: "arrow", box: [180, 180, 20, 20], symbolClass: "arrow.exit"),
+            DetectedItem(cls: "object", box: [200, 200, 20, 20], symbolClass: "table.blue_filled")
+        ]
+        let plan = DetectedPlan(items: items)
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.contains { $0.kind == .wall && $0.placement.sizeM.y == 0.2 })
+        #expect(layout.objects.contains { $0.kind == .door })
+        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Pillar" })
+        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stairs" })
+        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Restroom" })
+        #expect(!layout.objects.contains { $0.label == "table.blue_filled" })
+
+        #expect(layout.markers.count == 2)
+        #expect(layout.markers.contains { $0.kind == .spawn })
+        #expect(layout.markers.contains { $0.kind == .exit })
+    }
 }

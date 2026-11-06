@@ -7,6 +7,12 @@ enum FloorPlanReadingError: Error {
 }
 
 struct ExtractorFloorPlanReader: FloorPlanReading {
+    private let symbolStore: SymbolLegendStore
+
+    init(symbolStore: SymbolLegendStore = .shared) {
+        self.symbolStore = symbolStore
+    }
+
     func readLegend(_ page: CGImage) async throws -> Legend {
         let swatches = try await PlanExtractor.legend(in: page)
         let entries = swatches
@@ -31,7 +37,7 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         name: String,
         onProgress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExtractedLayout {
-        let reading = try await PlanExtractor.plan(page, legend: legendPage, onProgress: onProgress)
+        let reading = try await PlanExtractor.plan(page, legend: legendPage, symbols: symbolStore.symbols, onProgress: onProgress)
         let detected = DetectedPlan(items: reading.items.map(Self.detectedItem))
         guard let scale = ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
             throw FloorPlanReadingError.noBooths
@@ -50,7 +56,8 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             widthPx: item.width,
             kind: item.kind,
             legendRgb: item.legendRgb,
-            chairs: item.chairs
+            chairs: item.chairs,
+            symbolClass: item.symbolClass
         )
     }
 }
