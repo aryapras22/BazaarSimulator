@@ -229,6 +229,27 @@ struct WallEditingTests {
         #expect(reverted.objects.count == 2)
     }
 
+    @Test("A chain crossing a wall splits both at the crossing")
+    func chainCrossingWallSplitsBoth() throws {
+        let wall = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let layout = Self.makeLayout(objects: [wall])
+
+        let plan = WallEditing.planChainCommit(
+            points: [SIMD2<Double>(5, -4), SIMD2<Double>(5, 4)],
+            attributes: WallEditing.WallAttributes(),
+            in: layout
+        )
+        let updated = LayoutEditing.apply(plan.edit, to: layout)
+
+        #expect(updated.objects.count == 4)
+        let graph = WallGraph(layout: updated)
+        let junction = try #require(graph.nearestNode(to: SIMD2<Double>(5, 0), maximumDistance: 0.01))
+        #expect(junction.incidents.count == 4)
+
+        let reverted = LayoutEditing.apply(LayoutEditing.inverse(of: plan.edit), to: updated)
+        #expect(reverted.objects.count == 1)
+    }
+
     @Test("Closing on first node creates closed loop and inserts all segments")
     func closedLoopInsertsAllSegments() {
         let layout = Self.makeLayout(objects: [])

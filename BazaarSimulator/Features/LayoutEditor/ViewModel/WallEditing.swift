@@ -74,18 +74,13 @@ enum WallEditing {
         guard points.count >= 2 else {
             return (.batch([]), [])
         }
+        let points = pointsWithCrossings(points, in: layout)
         var workingLayout = layout
         var batchEdits: [LayoutEdit] = []
 
-        if let first = points.first, let host = findHostWall(at: first, in: workingLayout) {
-            let splitEdit = split(wall: host, at: first, in: workingLayout)
-            batchEdits.append(splitEdit)
-            workingLayout = LayoutEditing.apply(splitEdit, to: workingLayout)
-        }
-
-        let isClosed = points.count >= 3 && simd_distance(points.first!, points.last!) < 1e-4
-        if !isClosed, let last = points.last, let host = findHostWall(at: last, in: workingLayout) {
-            let splitEdit = split(wall: host, at: last, in: workingLayout)
+        for point in points {
+            guard let host = findHostWall(at: point, in: workingLayout) else { continue }
+            let splitEdit = split(wall: host, at: point, in: workingLayout)
             batchEdits.append(splitEdit)
             workingLayout = LayoutEditing.apply(splitEdit, to: workingLayout)
         }
