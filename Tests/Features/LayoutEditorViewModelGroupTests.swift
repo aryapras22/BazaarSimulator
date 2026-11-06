@@ -129,6 +129,23 @@ struct LayoutEditorViewModelGroupTests {
         #expect(viewModel.activeLayout == context.layout)
     }
 
+    @Test("Walls can be multi-selected on Structure and deleted at once, and booths cannot")
+    func structureMultiSelectDeletes() {
+        let context = Self.makeContext(layer: .structure)
+        let viewModel = context.viewModel
+        let layout = context.layout
+        let walls = layout.objects.filter { $0.kind == .wall }.prefix(2).map(\.id)
+        let booth = layout.objects.first { $0.kind == .booth }?.id
+
+        viewModel.selectBooths(Set(walls + [booth].compactMap { $0 }), additive: false)
+
+        #expect(viewModel.groupSelection?.memberIDs == Set(walls))
+        viewModel.deleteCurrentSelection()
+        #expect(viewModel.pendingGroupDelete == nil)
+        #expect(viewModel.activeLayout?.objects.count == layout.objects.count - walls.count)
+        #expect(viewModel.groupSelection == nil)
+    }
+
     @Test("Groups list is visible when nothing is selected on booths layer")
     func groupsListVisibilityAndRows() {
         let context = Self.makeContext()

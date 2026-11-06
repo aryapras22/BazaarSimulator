@@ -9,7 +9,7 @@ extension LayoutEditorViewModel {
 
     var groupSelectionTitle: String {
         guard let groupSelection else { return "" }
-        let count = "\(groupSelection.memberIDs.count) booths"
+        let count = "\(groupSelection.memberIDs.count) \(activeLayer == .booths ? "booths" : "objects")"
         switch groupSelection.kind {
         case .group(.name(let prefix)): return "Group \(prefix) · \(count)"
         case .group(.size(let key)): return "Size \(key.title) · \(count)"
@@ -57,13 +57,16 @@ extension LayoutEditorViewModel {
         selectGroup(bySize ? BoothGrouping.sizeKind(for: booth) : BoothGrouping.nameKind(for: booth))
     }
 
+    private func isMultiSelectable(_ object: LayoutObject) -> Bool {
+        object.kind.layer == activeLayer && object.kind.isSelectable
+    }
+
     func toggleBoothInSelection(_ boothID: UUID) {
-        guard activeLayer == .booths,
-              activeLayout?.objects.contains(where: { $0.id == boothID && $0.kind == .booth }) == true else {
+        guard activeLayout?.objects.contains(where: { $0.id == boothID && isMultiSelectable($0) }) == true else {
             return
         }
         var members = groupSelection?.memberIDs ?? []
-        if groupSelection == nil, let selectedObject, selectedObject.kind == .booth {
+        if groupSelection == nil, let selectedObject, isMultiSelectable(selectedObject) {
             members = [selectedObject.id]
         }
         if members.contains(boothID) {
@@ -75,14 +78,14 @@ extension LayoutEditorViewModel {
     }
 
     func selectBooths(_ ids: Set<UUID>, additive: Bool = false) {
-        guard activeLayer == .booths, let layout = activeLayout else { return }
+        guard let layout = activeLayout else { return }
         let boothIDs = ids.filter { id in
-            layout.objects.contains(where: { $0.id == id && $0.kind == .booth })
+            layout.objects.contains(where: { $0.id == id && isMultiSelectable($0) })
         }
         var members = boothIDs
         if additive {
             var current = groupSelection?.memberIDs ?? []
-            if groupSelection == nil, let selectedObject, selectedObject.kind == .booth {
+            if groupSelection == nil, let selectedObject, isMultiSelectable(selectedObject) {
                 current = [selectedObject.id]
             }
             members = current.union(boothIDs)

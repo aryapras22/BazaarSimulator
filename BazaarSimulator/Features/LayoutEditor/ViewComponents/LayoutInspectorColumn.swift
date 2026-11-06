@@ -66,16 +66,24 @@ struct LayoutInspectorColumn: View {
             get: { viewModel.groupDraft ?? GroupInspectorDraft(memberIDs: []) },
             set: { viewModel.updateGroupDraft($0) }
         )
+        let isBoothGroup = viewModel.activeLayer == .booths
         return InspectorPanel(title: viewModel.groupSelectionTitle) {
-            GroupInspector(
-                draft: draftBinding,
-                display: viewModel.groupInspectorDisplay,
-                categories: viewModel.categoryOptions,
-                sizeRange: viewModel.groupSizeRangeM,
-                onResetOpenSides: { viewModel.resetOpenSidesForGroup() }
-            )
+            if isBoothGroup {
+                GroupInspector(
+                    draft: draftBinding,
+                    display: viewModel.groupInspectorDisplay,
+                    categories: viewModel.categoryOptions,
+                    sizeRange: viewModel.groupSizeRangeM,
+                    onResetOpenSides: { viewModel.resetOpenSidesForGroup() }
+                )
+            } else {
+                Text("Drag-select or shift-click to add more. Press Delete to remove them.")
+                    .font(Typography.body)
+                    .foregroundStyle(Palette.textSecondary)
+            }
         } footer: {
-            Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) booths", role: .destructive) {
+            let noun = isBoothGroup ? "booths" : "objects"
+            Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) \(noun)", role: .destructive) {
                 viewModel.requestDeleteGroup()
             }
             .buttonStyle(.plain)

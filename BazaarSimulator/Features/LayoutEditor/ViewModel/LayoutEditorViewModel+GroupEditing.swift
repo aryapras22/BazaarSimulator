@@ -77,6 +77,10 @@ extension LayoutEditorViewModel {
 
     func requestDeleteGroup() {
         guard let groupSelection else { return }
+        if activeLayer == .structure {
+            deleteGroupSelection()
+            return
+        }
         pendingGroupDelete = groupSelection.memberIDs.count
     }
 
