@@ -12,7 +12,6 @@ enum SymbolClassMapping {
     }
 
     private static let blockLabels: [(prefix: String, label: String)] = [
-        ("column.", "Pillar"),
         ("stairs.", "Stairs"),
         ("restroom.", "Restroom"),
         ("zone.stage_", "Stage"),
@@ -21,7 +20,8 @@ enum SymbolClassMapping {
     ]
 
     private static let droppedPrefixes = [
-        "table.", "seats.", "safety.", "arrow.circulation", "info.desk", "zone.neighboring_unit", "zone.standing"
+        "column.", "table.", "seats.", "safety.", "arrow.circulation", "info.desk",
+        "zone.neighboring_unit", "zone.standing"
     ]
 
     private static let wallThicknessM: [String: Double] = [

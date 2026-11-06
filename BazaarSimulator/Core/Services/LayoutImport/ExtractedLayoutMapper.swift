@@ -55,6 +55,7 @@ enum ExtractedLayoutMapper {
             }
         }
 
+        objects = WallCleanup.apply(to: objects)
         let hall = hallPolygon(from: objects)
         let extent = hall.reduce(SIMD2<Double>.zero) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
         var layout = Layout(
@@ -153,8 +154,6 @@ enum ExtractedLayoutMapper {
         switch item.cls.lowercased() {
         case "wall":
             return LayoutObject(kind: .wall, label: "Wall", placement: placement, reviewState: .detected)
-        case "pillar":
-            return LayoutObject(kind: .block, label: "Pillar", placement: placement, reviewState: .detected)
         case "opening":
             return LayoutObject(
                 kind: .door,
@@ -167,7 +166,7 @@ enum ExtractedLayoutMapper {
             return LayoutObject(kind: .closedArea, label: "Blocked", placement: placement, reviewState: .detected)
         case "entrance", "exit":
             return LayoutObject(kind: .block, label: item.cls, placement: placement, reviewState: .detected)
-        case "door", "object":
+        case "door", "object", "pillar":
             return nil
         default:
             return legendObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)

@@ -15,7 +15,6 @@ enum MockLayoutMapper {
         objects.append(contentsOf: mapHallDoors(from: dto.doors))
         objects.append(contentsOf: mapOuterDoors(from: dto.outerDoors, gates: dto.gates, exitPt: dto.exitPt))
         objects.append(mapStage(from: dto.stage))
-        objects.append(contentsOf: mapColumns(from: dto.columns))
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
         objects.append(contentsOf: mapClosedAreas(from: dto.closed))
@@ -140,20 +139,6 @@ extension MockLayoutMapper {
             placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY),
             reviewState: .detected
         )
-    }
-
-    private static func mapColumns(from columns: [BazaarColumnDTO]) -> [LayoutObject] {
-        columns.enumerated().map { index, column in
-            LayoutObject(
-                kind: .block,
-                label: "P\(index + 1)",
-                placement: Placement(
-                    center: SIMD2<Double>(column.posX, column.posY),
-                    sizeM: SIMD2<Double>(column.diameter, column.diameter)
-                ),
-                reviewState: .detected
-            )
-        }
     }
 
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {

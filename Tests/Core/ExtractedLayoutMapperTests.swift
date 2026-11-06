@@ -129,7 +129,7 @@ struct ExtractedLayoutMapperTests {
 
         #expect(layout.objects.contains { $0.kind == .wall && $0.placement.sizeM.y == 0.2 })
         #expect(layout.objects.contains { $0.kind == .door })
-        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Pillar" })
+        #expect(!layout.objects.contains { $0.label == "Pillar" })
         #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stairs" })
         #expect(layout.objects.contains { $0.kind == .block && $0.label == "Restroom" })
         #expect(!layout.objects.contains { $0.label == "table.blue_filled" })
@@ -154,11 +154,66 @@ struct ExtractedLayoutMapperTests {
     @Test("An unknown symbol class leaves the extractor's own class in charge")
     func unknownSymbolClassFallsBack() {
         let plan = DetectedPlan(items: [
-            DetectedItem(cls: "pillar", box: [0, 0, 20, 20], symbolClass: "mystery.shape")
+            DetectedItem(cls: "blocked", box: [0, 0, 20, 20], symbolClass: "mystery.shape")
         ])
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.label) == ["Pillar"])
+        #expect(layout.objects.map(\.kind) == [.closedArea])
+    }
+
+    @Test("Pillars are dropped, with or without a symbol class")
+    func pillarsAreDropped() {
+        let plan = DetectedPlan(items: [
+            DetectedItem(cls: "pillar", box: [0, 0, 20, 20]),
+            DetectedItem(cls: "pillar", box: [40, 0, 20, 20], symbolClass: "column.hollow_circle")
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.isEmpty)
+    }
+
+    private func wall(_ left: Double, _ right: Double) -> DetectedItem {
+        DetectedItem(cls: "wall", box: [left, 0, right - left, 2], segment: [left, 0, right, 0], widthPx: 2)
+    }
+
+    @Test("A wall shorter than a metre is dropped")
+    func shortWallIsDropped() {
+        let plan = DetectedPlan(items: [wall(0, 50), wall(200, 205)])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.filter { $0.kind == .wall }.count == 1)
+    }
+
+    @Test("Two collinear walls with a small gap and no door become one wall")
+    func closeWallsJoin() throws {
+        let plan = DetectedPlan(items: [wall(0, 100), wall(105, 200)])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        let walls = layout.objects.filter { $0.kind == .wall }
+        #expect(walls.count == 1)
+        #expect(abs(try #require(walls.first).placement.sizeM.x - 20) < 0.001)
+    }
+
+    @Test("A door in the gap keeps the two walls apart")
+    func doorKeepsWallsApart() {
+        let door = DetectedItem(cls: "opening", box: [100, -5, 5, 12])
+        let plan = DetectedPlan(items: [wall(0, 100), wall(105, 200), door])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.filter { $0.kind == .wall }.count == 2)
+    }
+
+    @Test("Walls further apart than a metre stay separate")
+    func farWallsStaySeparate() {
+        let plan = DetectedPlan(items: [wall(0, 100), wall(130, 230)])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.filter { $0.kind == .wall }.count == 2)
     }
 }

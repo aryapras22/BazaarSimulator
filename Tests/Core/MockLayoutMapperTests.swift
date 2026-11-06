@@ -25,7 +25,7 @@ struct MockLayoutMapperTests {
         #expect(layout.zones.count == 2)
     }
 
-    @Test("Beyond maps to expected counts, with stages, pillars, rails and fixtures as blocks")
+    @Test("Beyond maps to expected counts, with stages, rails and fixtures as blocks")
     func beyondCounts() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
 
@@ -34,7 +34,7 @@ struct MockLayoutMapperTests {
         #expect(count(.booth, in: layout) == 154)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 6)
-        #expect(count(.block, in: layout) == 36)
+        #expect(count(.block, in: layout) == 13)
         #expect(count(.wall, in: layout) == 3)
         #expect(layout.zones.isEmpty)
         #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stage" })
