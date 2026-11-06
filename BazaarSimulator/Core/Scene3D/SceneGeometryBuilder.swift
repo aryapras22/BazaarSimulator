@@ -197,28 +197,12 @@ extension SceneGeometryBuilder {
         case .wall:
             let wallH = object.heightM ?? 3.0
             return [.box(center: SIMD3(0, wallH / 2.0, 0), size: SIMD3(size.x, wallH, size.y), yaw: 0, role: .wall)]
-        case .rail:
-            let railH = object.heightM ?? 1.1
-            return [.box(center: SIMD3(0, railH / 2.0, 0), size: SIMD3(size.x, railH, size.y), yaw: 0, role: .frame)]
         case .block:
             let blockH = object.heightM ?? 0.8
             return [.box(center: SIMD3(0, blockH / 2.0, 0), size: SIMD3(size.x, blockH, size.y), yaw: 0, role: .slab)]
         case .closedArea, .floor:
             let slabH = object.heightM ?? 0.05
             return [.box(center: SIMD3(0, slabH / 2.0, 0), size: SIMD3(size.x, slabH, size.y), yaw: 0, role: .slab)]
-        case .pillar:
-            let pillarH = object.heightM ?? 3.0
-            let rad = min(size.x, size.y) / 2.0
-            return [
-                .cylinder(center: SIMD3(0, pillarH / 2.0, 0), radius: rad, height: pillarH, segments: 16, role: .pillar)
-            ]
-        case .stage, .audienceArea:
-            let stageH = object.heightM ?? 0.8
-            return [.box(center: SIMD3(0, stageH / 2.0, 0), size: SIMD3(size.x, stageH, size.y), yaw: 0, role: .stage)]
-        case .table:
-            let tableH = object.heightM ?? 0.75
-            let tableID = object.catalogID ?? "table-4"
-            return ObjectShapes.shape(for: tableID, size: size, height: tableH)
         default:
             let defH = object.heightM ?? 1.0
             return [.box(center: SIMD3(0, defH / 2.0, 0), size: SIMD3(size.x, defH, size.y), yaw: 0, role: .counter)]

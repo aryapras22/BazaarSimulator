@@ -7,21 +7,21 @@ import Testing
 struct LayoutHitTesterTests {
     @Test("Topmost object wins when two objects overlap")
     func topmostObjectWins() {
-        let table = LayoutObject(
-            kind: .table,
-            label: "T1",
+        let block = LayoutObject(
+            kind: .block,
+            label: "K1",
             placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
         )
-        let booth = LayoutObject(
-            kind: .booth,
-            label: "B1",
+        let door = LayoutObject(
+            kind: .door,
+            label: "D1",
             placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
         )
-        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [table, booth])
+        let layout = Layout(name: "Test", sizeM: SIMD2<Double>(20, 20), objects: [block, door])
 
-        let hitID = LayoutHitTester.object(at: SIMD2<Double>(10, 10), in: layout, layer: .booths)
+        let hitID = LayoutHitTester.object(at: SIMD2<Double>(10, 10), in: layout, layer: .structure)
 
-        #expect(hitID == booth.id)
+        #expect(hitID == door.id)
     }
 
     @Test("A rotated booth is hit inside its rotated area and missed outside")

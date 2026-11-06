@@ -6,24 +6,12 @@ struct InspectorFields: Sendable {
     var primarySizeTitle: String
     var sizeDetailText: String?
     var showsRotation: Bool
-    var showsStageFront: Bool
     var showsHeight: Bool
-    var showsTableChairs: Bool
 
     static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
         switch kind {
-        case .table:
-            return InspectorFields(showsRotation: true, showsTableChairs: true)
-        case .fixture:
-            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true)
-        case .stage:
-            return InspectorFields(showsRotation: true, showsStageFront: true, showsHeight: true)
-        case .audienceArea:
-            return InspectorFields(showsLabel: true)
-        case .wall, .rail, .block:
+        case .wall, .block:
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
-        case .pillar:
-            return InspectorFields(showsSingleDimension: true, primarySizeTitle: "Diameter", sizeDetailText: nil)
         case .closedArea, .floor:
             return InspectorFields(showsLabel: true, showsRotation: true)
         case .booth, .door:
@@ -37,18 +25,14 @@ struct InspectorFields: Sendable {
         primarySizeTitle: String = "Size",
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
-        showsStageFront: Bool = false,
-        showsHeight: Bool = false,
-        showsTableChairs: Bool = false
+        showsHeight: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
         self.primarySizeTitle = primarySizeTitle
         self.sizeDetailText = sizeDetailText
         self.showsRotation = showsRotation
-        self.showsStageFront = showsStageFront
         self.showsHeight = showsHeight
-        self.showsTableChairs = showsTableChairs
     }
 }
 
@@ -97,76 +81,23 @@ struct GenericInspector: View {
             if fields.showsHeight {
                 HeightField(height: $draft.heightM)
             }
-
-            if fields.showsStageFront {
-                OpenSidesControl(
-                    sides: $draft.openSides,
-                    rotationDegrees: draft.rotationDegrees,
-                    allowsMultiple: false,
-                    title: "Front"
-                )
-            }
-
-            if fields.showsTableChairs {
-                chairsControl
-            }
-        }
-    }
-
-    private var chairsControl: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("Chairs")
-                .font(Typography.inspectorLabel)
-                .foregroundStyle(Palette.textSecondary)
-
-            Picker("Chairs", selection: Binding(
-                get: { draft.catalogID == "table-2" ? 2 : 4 },
-                set: { draft.catalogID = $0 == 2 ? "table-2" : "table-4" }
-            )) {
-                Text("2 Chairs").tag(2)
-                Text("4 Chairs").tag(4)
-            }
-            .pickerStyle(.segmented)
         }
     }
 }
 
-#Preview("Table Inspector") {
+#Preview("Block Inspector") {
     @Previewable @State var draft = InspectorDraft(
         object: LayoutObject(
-            kind: .table,
-            label: "T1",
-            placement: Placement(center: .init(10, 10), sizeM: .init(1, 1))
-        )
-    )
-    InspectorPanel(title: "Table T1") {
-        GenericInspector(
-            draft: $draft,
-            fields: .forKind(.table),
-            sizeRange: 0.5...50.0
-        )
-    } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-    }
-    .padding()
-    .background(Palette.background)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Fixture Inspector") {
-    @Previewable @State var draft = InspectorDraft(
-        object: LayoutObject(
-            kind: .fixture,
-            label: "CLAW MACHINES",
+            kind: .block,
+            label: "Block 1",
             placement: Placement(center: .init(10, 10), sizeM: .init(4, 2))
         )
     )
-    InspectorPanel(title: "CLAW MACHINES") {
+    InspectorPanel(title: "Block") {
         GenericInspector(
             draft: $draft,
-            fields: .forKind(.fixture),
-            sizeRange: 0.5...50.0
+            fields: .forKind(.block),
+            sizeRange: 0.1...50.0
         )
     } footer: {
         Button("Save Changes") {}

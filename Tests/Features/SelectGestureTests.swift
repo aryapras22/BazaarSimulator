@@ -62,9 +62,9 @@ struct SelectGestureTests {
             label: "B3",
             placement: Placement(center: SIMD2<Double>(25, 25), sizeM: SIMD2<Double>(2, 2))
         )
-        let tableInside = LayoutObject(
-            kind: .table,
-            label: "T1",
+        let blockInside = LayoutObject(
+            kind: .block,
+            label: "K1",
             placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(1, 1))
         )
         let wallInside = LayoutObject(
@@ -76,7 +76,7 @@ struct SelectGestureTests {
         let layout = Layout(
             name: "Test",
             sizeM: SIMD2<Double>(30, 30),
-            objects: [boothInside, boothIntersecting, boothOutside, tableInside, wallInside]
+            objects: [boothInside, boothIntersecting, boothOutside, blockInside, wallInside]
         )
 
         let marqueeStart = SIMD2<Double>(8, 8)
@@ -87,7 +87,7 @@ struct SelectGestureTests {
         #expect(touched.contains(boothInside.id))
         #expect(touched.contains(boothIntersecting.id))
         #expect(!touched.contains(boothOutside.id))
-        #expect(!touched.contains(tableInside.id))
+        #expect(!touched.contains(blockInside.id))
         #expect(!touched.contains(wallInside.id))
         #expect(touched.count == 2)
     }

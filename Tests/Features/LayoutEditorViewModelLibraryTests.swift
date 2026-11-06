@@ -36,30 +36,30 @@ struct LayoutEditorViewModelLibraryTests {
         #expect(structureRows.allSatisfy { $0.category.layer == .structure })
         #expect(structureRows.contains { $0.id == "wall" })
         #expect(structureRows.contains { $0.id == "door" })
-        #expect(structureRows.contains { $0.id == "stage" })
+        #expect(structureRows.contains { $0.id == "block" })
     }
 
     @Test("Search query filters rows by name and keywords")
     func searchFiltersRows() {
-        let viewModel = Self.makeViewModel()
-        viewModel.librarySearch = "round"
+        let viewModel = Self.makeViewModel(layer: .structure)
+        viewModel.librarySearch = "gate"
 
         let filtered = viewModel.libraryRows
         #expect(!filtered.isEmpty)
         #expect(filtered.allSatisfy { row in
-            row.title.lowercased().contains("round") ||
-            row.id.contains("round")
+            row.title.lowercased().contains("gate") ||
+            row.id.contains("gate")
         })
     }
 
     @Test("Category filter restricts rows to chosen category")
     func categoryFiltersRows() {
-        let viewModel = Self.makeViewModel()
-        viewModel.libraryCategory = .furniture
+        let viewModel = Self.makeViewModel(layer: .structure)
+        viewModel.libraryCategory = .structure
 
         let filtered = viewModel.libraryRows
         #expect(!filtered.isEmpty)
-        #expect(filtered.allSatisfy { $0.category == .furniture })
+        #expect(filtered.allSatisfy { $0.category == .structure })
     }
 
     @Test("startPlacing selects the right placement tool")
@@ -105,10 +105,8 @@ struct LayoutEditorViewModelLibraryTests {
     func catalogCategoryLayers() {
         #expect(CatalogCategory.structure.layer == .structure)
         #expect(CatalogCategory.project.layer == .booths)
-        #expect(CatalogCategory.furniture.layer == .booths)
-        #expect(CatalogCategory.decor.layer == .booths)
         #expect(CatalogCategory.categories(for: .structure) == [.structure])
-        #expect(CatalogCategory.categories(for: .booths) == [.project, .furniture, .decor])
+        #expect(CatalogCategory.categories(for: .booths) == [.project])
     }
 
     @Test("Template placement creates booth with size, category, inferred sides, and label N1")

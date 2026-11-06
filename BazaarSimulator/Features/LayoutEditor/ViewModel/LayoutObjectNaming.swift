@@ -5,12 +5,6 @@ enum LayoutObjectNaming {
         switch kind {
         case .booth:
             return nextPrefixedLabel(prefix: "N", kind: kind, in: layout)
-        case .table:
-            return nextPrefixedLabel(prefix: "T", kind: kind, in: layout)
-        case .fixture:
-            return nextPrefixedLabel(prefix: "Fixture ", kind: kind, in: layout)
-        case .rail:
-            return "Rail"
         case .closedArea:
             return "Blocked area"
         case .floor:

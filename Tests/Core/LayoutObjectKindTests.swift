@@ -12,7 +12,6 @@ struct LayoutObjectKindTests {
         #expect(kind.isMovable)
         #expect(kind.isResizable)
         #expect(kind.isRotatable)
-        #expect(kind.canBeAdded)
         #expect(kind.hasResizeHandles)
         #expect(kind.blocksWalking)
         #expect(kind.minimumDimensionM == 0.5)
@@ -27,7 +26,6 @@ struct LayoutObjectKindTests {
         #expect(kind.isMovable)
         #expect(kind.isResizable)
         #expect(kind.isRotatable)
-        #expect(kind.canBeAdded)
         #expect(kind.hasResizeHandles)
         #expect(!kind.blocksWalking)
         #expect(kind.minimumDimensionM == 0.5)
@@ -68,9 +66,9 @@ struct LayoutObjectKindTests {
     func eachKindBelongsToOneLayer(kind: LayoutObjectKind) {
         let layer = kind.layer
         switch kind {
-        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea, .floor:
+        case .wall, .block, .door, .closedArea, .floor:
             #expect(layer == .structure)
-        case .booth, .table, .fixture:
+        case .booth:
             #expect(layer == .booths)
         }
     }

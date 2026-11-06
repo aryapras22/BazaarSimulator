@@ -39,7 +39,7 @@ struct PlacementResolverTests {
             size: SIMD2<Double>(2, 2),
             at: SIMD2<Double>(10, 5.6),
             extraRotationDegrees: 0,
-            kind: .fixture,
+            kind: .block,
             in: layout,
             free: false
         )
@@ -64,7 +64,7 @@ struct PlacementResolverTests {
             size: SIMD2<Double>(2, 2),
             at: SIMD2<Double>(10, 5.6),
             extraRotationDegrees: 0,
-            kind: .fixture,
+            kind: .block,
             in: layout,
             free: true
         )
@@ -129,7 +129,7 @@ struct PlacementResolverTests {
             size: SIMD2<Double>(2, 2),
             at: SIMD2<Double>(10, 10),
             extraRotationDegrees: 0,
-            kind: .table,
+            kind: .block,
             in: layout,
             free: false
         )

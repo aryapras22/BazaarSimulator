@@ -87,7 +87,7 @@ enum Snapper {
     private static func collectWallSegments(in layout: Layout, ignoringObjectID: UUID?) -> [WallSegment] {
         var segments: [WallSegment] = []
         for object in layout.objects where object.id != ignoringObjectID {
-            guard object.kind == .wall || object.kind == .rail else { continue }
+            guard object.kind == .wall else { continue }
             let halfLength = object.placement.sizeM.x / 2.0
             let start = LayoutGeometry.toWorld(local: SIMD2<Double>(-halfLength, 0), in: object.placement)
             let end = LayoutGeometry.toWorld(local: SIMD2<Double>(halfLength, 0), in: object.placement)

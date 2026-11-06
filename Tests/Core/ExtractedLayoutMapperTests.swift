@@ -55,7 +55,7 @@ struct ExtractedLayoutMapperTests {
         #expect(abs(wall.placement.rotationRadians - atan2(4, 3)) < 0.001)
     }
 
-    @Test("Swing symbols, chairs and chair groups are dropped, openings become doors")
+    @Test("Swing symbols, chairs, chair groups and tables are dropped, openings become doors")
     func dropsSwingSymbolsAndChairs() {
         let plan = DetectedPlan(items: [
             item("door", [0, 0, 10, 10]),
@@ -67,7 +67,7 @@ struct ExtractedLayoutMapperTests {
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.kind).sorted { $0.rawValue < $1.rawValue } == [.door, .table])
+        #expect(layout.objects.map(\.kind).sorted { $0.rawValue < $1.rawValue } == [.door])
         #expect(layout.objects.first { $0.kind == .door }?.doorFlow?.direction == .both)
     }
 
@@ -80,7 +80,7 @@ struct ExtractedLayoutMapperTests {
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.kind) == [.stage, .closedArea, .fixture])
+        #expect(layout.objects.map(\.kind) == [.block, .closedArea, .block])
     }
 
     @Test("Booths without an ID get U1, U2 labels")
@@ -109,6 +109,6 @@ struct ExtractedLayoutMapperTests {
 
         #expect(layout.objects[0].kind == .booth)
         #expect(layout.objects[0].categoryID == fashion.id)
-        #expect(layout.objects[1].kind == .fixture)
+        #expect(layout.objects[1].kind == .block)
     }
 }

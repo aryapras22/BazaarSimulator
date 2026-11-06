@@ -34,9 +34,7 @@ struct InspectorDraft: Sendable, Equatable {
             return item.heightM
         }
         let heights: [LayoutObjectKind: Double] = [
-            .wall: 3.0, .pillar: 3.0, .booth: 2.4, .door: 2.1,
-            .rail: 1.0, .block: 1.2, .fixture: 1.2, .stage: 0.8,
-            .table: 0.75, .closedArea: 0.05, .floor: 0.05
+            .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05, .floor: 0.05
         ]
         return heights[object.kind] ?? 3.0
     }
@@ -44,9 +42,7 @@ struct InspectorDraft: Sendable, Equatable {
     func applied(to original: LayoutObject) -> LayoutObject {
         var updated = original
         updated.label = label
-        if kind == .pillar {
-            updated.placement.sizeM = .init(widthM, widthM)
-        } else if kind == .door {
+        if kind == .door {
             updated.placement.sizeM = .init(widthM, original.placement.sizeM.y)
         } else {
             updated.placement.sizeM = .init(widthM, lengthM)

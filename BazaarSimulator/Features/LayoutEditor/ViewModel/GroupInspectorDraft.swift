@@ -24,11 +24,10 @@ struct GroupInspectorDraft: Equatable, Sendable {
     var widthM: FieldChange<Double> = .unchanged
     var lengthM: FieldChange<Double> = .unchanged
     var rotationDegrees: FieldChange<Int> = .unchanged
-    var chairs: FieldChange<Int> = .unchanged
 
     var hasChanges: Bool {
         category != .unchanged || widthM != .unchanged || lengthM != .unchanged
-            || rotationDegrees != .unchanged || chairs != .unchanged
+            || rotationDegrees != .unchanged
     }
 
     func applied(to member: LayoutObject) -> LayoutObject {
@@ -37,9 +36,6 @@ struct GroupInspectorDraft: Equatable, Sendable {
         if case .set(let value) = widthM { updated.placement.sizeM.x = value }
         if case .set(let value) = lengthM { updated.placement.sizeM.y = value }
         if case .set(let value) = rotationDegrees { updated.placement.rotationDegrees = value }
-        if case .set(let count) = chairs, member.kind == .table {
-            updated.catalogID = count == 2 ? "table-2" : "table-4"
-        }
         return updated
     }
 }
@@ -49,7 +45,6 @@ struct GroupInspectorDisplay: Equatable, Sendable {
     let width: MixedValue<Double>
     let length: MixedValue<Double>
     let rotation: MixedValue<Int>
-    let chairs: MixedValue<Int>?
     let warningSummary: String?
     let memberCount: Int
     let boothCount: Int
@@ -59,7 +54,6 @@ struct GroupInspectorDisplay: Equatable, Sendable {
         width: MixedValue<Double>,
         length: MixedValue<Double>,
         rotation: MixedValue<Int>,
-        chairs: MixedValue<Int>? = nil,
         warningSummary: String?,
         memberCount: Int,
         boothCount: Int? = nil
@@ -68,7 +62,6 @@ struct GroupInspectorDisplay: Equatable, Sendable {
         self.width = width
         self.length = length
         self.rotation = rotation
-        self.chairs = chairs
         self.warningSummary = warningSummary
         self.memberCount = memberCount
         self.boothCount = boothCount ?? memberCount

@@ -50,12 +50,6 @@ enum LayoutHitTester {
         }
 
         switch object.kind {
-        case .pillar:
-            return LayoutGeometry.containsCircle(
-                center: object.placement.center,
-                diameter: object.placement.sizeM.x,
-                point: world
-            )
         case .door:
             return LayoutGeometry.contains(
                 object.placement,
@@ -71,13 +65,9 @@ enum LayoutHitTester {
         switch kind {
         case .floor: return -1
         case .closedArea: return 0
-        case .audienceArea: return 1
-        case .stage: return 2
-        case .table: return 3
-        case .fixture: return 4
-        case .wall, .rail, .block, .pillar: return 5
-        case .booth: return 6
-        case .door: return 7
+        case .wall, .block: return 1
+        case .booth: return 2
+        case .door: return 3
         }
     }
 }

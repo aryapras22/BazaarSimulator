@@ -18,10 +18,11 @@ extension LayoutCanvasView {
                 Divider()
                 Button("Delete", role: .destructive) { onContextAction(.delete(hitID)) }
             } else {
-                Button("Add Booth Here") { onContextAction(.addObject(kind: .booth, atWorld: hoverTracker.world)) }
-                Button("Add Table Here") { onContextAction(.addObject(kind: .table, atWorld: hoverTracker.world)) }
-                Button("Add Fixture Here") { onContextAction(.addObject(kind: .fixture, atWorld: hoverTracker.world)) }
-                Button("Add Rail Here") { onContextAction(.addObject(kind: .rail, atWorld: hoverTracker.world)) }
+                if snapshot.activeLayer == .booths {
+                    Button("Add Booth Here") { onContextAction(.addObject(kind: .booth, atWorld: hoverTracker.world)) }
+                } else {
+                    Button("Add Block Here") { onContextAction(.addObject(kind: .block, atWorld: hoverTracker.world)) }
+                }
             }
         }
     }

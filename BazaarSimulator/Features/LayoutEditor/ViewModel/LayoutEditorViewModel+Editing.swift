@@ -137,13 +137,10 @@ extension LayoutEditorViewModel {
     }
 
     func addObject(kind: LayoutObjectKind, at worldPoint: SIMD2<Double>) {
-        guard kind.canBeAdded, let layout = activeLayout else { return }
+        guard let layout = activeLayout else { return }
         let defaultSize: SIMD2<Double>
         switch kind {
         case .booth: defaultSize = SIMD2<Double>(2.0, 2.0)
-        case .table: defaultSize = SIMD2<Double>(1.0, 1.0)
-        case .fixture: defaultSize = SIMD2<Double>(2.0, 1.5)
-        case .rail: defaultSize = SIMD2<Double>(2.0, 0.25)
         case .closedArea, .floor: defaultSize = SIMD2<Double>(4.0, 4.0)
         default: defaultSize = SIMD2<Double>(2.0, 2.0)
         }

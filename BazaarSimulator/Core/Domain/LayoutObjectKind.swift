@@ -2,30 +2,18 @@ import Foundation
 
 enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case booth
-    case table
     case door
     case wall
-    case rail
     case block
-    case pillar
-    case fixture
-    case stage
-    case audienceArea
     case closedArea
     case floor
 
     var displayName: String {
         switch self {
         case .booth: return "Booth"
-        case .table: return "Table"
         case .door: return "Door"
         case .wall: return "Wall"
-        case .rail: return "Rail"
         case .block: return "Block"
-        case .pillar: return "Pillar"
-        case .fixture: return "Fixture"
-        case .stage: return "Stage"
-        case .audienceArea: return "Audience area"
         case .closedArea: return "Blocked area"
         case .floor: return "Floor"
         }
@@ -33,9 +21,9 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var layer: EditorLayer {
         switch self {
-        case .wall, .rail, .block, .pillar, .door, .closedArea, .stage, .audienceArea, .floor:
+        case .wall, .block, .door, .closedArea, .floor:
             return .structure
-        case .booth, .table, .fixture:
+        case .booth:
             return .booths
         }
     }
@@ -49,10 +37,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var isRotatable: Bool {
-        switch self {
-        case .door, .pillar: return false
-        default: return true
-        }
+        self != .door
     }
 
     var hasCategory: Bool {
@@ -60,7 +45,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasOpenSides: Bool {
-        self == .booth || self == .stage
+        self == .booth
     }
 
     var allowsMultipleOpenSides: Bool {
@@ -69,25 +54,16 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var blocksWalking: Bool {
         switch self {
-        case .door, .audienceArea, .floor: return false
+        case .door, .floor: return false
         default: return true
-        }
-    }
-
-    var canBeAdded: Bool {
-        switch self {
-        case .booth, .table, .rail, .fixture, .closedArea, .wall, .block, .pillar, .stage, .door, .floor:
-            return true
-        default:
-            return false
         }
     }
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .table, .fixture, .stage, .audienceArea, .closedArea, .floor: return 0.5
+        case .booth, .closedArea, .floor: return 0.5
         case .door: return 0.8
-        case .wall, .rail, .block, .pillar: return 0.1
+        case .wall, .block: return 0.1
         }
     }
 
@@ -101,7 +77,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var isStructural: Bool {
         switch self {
-        case .wall, .pillar, .closedArea, .floor: return true
+        case .wall, .block, .closedArea, .floor: return true
         default: return false
         }
     }

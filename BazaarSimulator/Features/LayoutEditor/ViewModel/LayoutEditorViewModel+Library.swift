@@ -203,10 +203,8 @@ extension LayoutEditorViewModel {
         in layout: Layout
     ) {
         let item = ObjectCatalog.item(itemID)
-        let kind = item?.kind ?? .fixture
-        let label = (kind == .fixture && item != nil)
-            ? item!.name
-            : nextLabel(for: kind, in: layout)
+        let kind = item?.kind ?? .block
+        let label = nextLabel(for: kind, in: layout)
         let object = LayoutObject(
             id: UUID(),
             kind: kind,
@@ -273,7 +271,7 @@ extension LayoutEditorViewModel {
             free: false
         )
         guard candidate.isValid else { return }
-        let label = (item.kind == .fixture) ? item.name : nextLabel(for: item.kind, in: layout)
+        let label = nextLabel(for: item.kind, in: layout)
         let object = LayoutObject(
             id: UUID(),
             kind: item.kind,

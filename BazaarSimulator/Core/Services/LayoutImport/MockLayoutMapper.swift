@@ -14,9 +14,7 @@ enum MockLayoutMapper {
         objects.append(mapLobbyWall(from: dto.wall))
         objects.append(contentsOf: mapHallDoors(from: dto.doors))
         objects.append(contentsOf: mapOuterDoors(from: dto.outerDoors, gates: dto.gates, exitPt: dto.exitPt))
-        objects.append(contentsOf: mapTables(from: dto.tables))
         objects.append(mapStage(from: dto.stage))
-        objects.append(mapAudienceArea(from: dto))
         objects.append(contentsOf: mapColumns(from: dto.columns))
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
@@ -135,48 +133,11 @@ enum MockLayoutMapper {
 }
 
 extension MockLayoutMapper {
-    private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
-        tables.enumerated().map { index, table in
-            LayoutObject(
-                kind: .table,
-                label: "T\(index + 1)",
-                placement: Placement(
-                    center: SIMD2<Double>(table.centerX, table.centerY),
-                    sizeM: SIMD2<Double>(table.width, table.height)
-                ),
-                reviewState: .detected,
-                catalogID: "table-4"
-            )
-        }
-    }
-
     private static func mapStage(from stage: BazaarStageDTO) -> LayoutObject {
-        let stagePlacement = placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY)
-        return LayoutObject(
-            kind: .stage,
-            label: "Stage",
-            placement: stagePlacement,
-            openSides: stageFace(from: stage.face),
-            reviewState: .detected,
-            catalogID: "stage"
-        )
-    }
-
-    private static func stageFace(from face: String) -> OpenSides {
-        switch face {
-        case "x0": return .left
-        case "x1": return .right
-        case "y0": return .top
-        case "y1": return .bottom
-        default: return .bottom
-        }
-    }
-
-    private static func mapAudienceArea(from dto: BazaarLayoutDTO) -> LayoutObject {
         LayoutObject(
-            kind: .audienceArea,
-            label: dto.kidsLabel ?? "Kids area",
-            placement: placement(from: dto.kids),
+            kind: .block,
+            label: "Stage",
+            placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY),
             reviewState: .detected
         )
     }
@@ -184,26 +145,20 @@ extension MockLayoutMapper {
     private static func mapColumns(from columns: [BazaarColumnDTO]) -> [LayoutObject] {
         columns.enumerated().map { index, column in
             LayoutObject(
-                kind: .pillar,
+                kind: .block,
                 label: "P\(index + 1)",
                 placement: Placement(
                     center: SIMD2<Double>(column.posX, column.posY),
                     sizeM: SIMD2<Double>(column.diameter, column.diameter)
                 ),
-                reviewState: .detected,
-                catalogID: "pillar-round"
+                reviewState: .detected
             )
         }
     }
 
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {
         pilasters.map { pilaster in
-            let kind: LayoutObjectKind
-            switch pilaster.kind.lowercased() {
-            case "rail": kind = .rail
-            case "block": kind = .block
-            default: kind = .wall
-            }
+            let kind: LayoutObjectKind = pilaster.kind.lowercased() == "wall" ? .wall : .block
             let pilasterPlacement = placement(
                 minX: pilaster.minX,
                 maxX: pilaster.maxX,
@@ -221,39 +176,18 @@ extension MockLayoutMapper {
 
     private static func mapFixtures(from fixtures: [BazaarFixtureDTO]) -> [LayoutObject] {
         fixtures.map { fixture in
-            let kind: LayoutObjectKind = fixture.kind.lowercased() == "stage" ? .stage : .fixture
-            let fixturePlacement = placement(
-                minX: fixture.minX,
-                maxX: fixture.maxX,
-                minY: fixture.minY,
-                maxY: fixture.maxY
-            )
-            let catalogID = fixtureCatalogID(for: fixture.label, kind: kind)
-            return LayoutObject(
-                kind: kind,
+            LayoutObject(
+                kind: .block,
                 label: fixture.label,
-                placement: fixturePlacement,
-                reviewState: .detected,
-                catalogID: catalogID
+                placement: placement(
+                    minX: fixture.minX,
+                    maxX: fixture.maxX,
+                    minY: fixture.minY,
+                    maxY: fixture.maxY
+                ),
+                reviewState: .detected
             )
         }
-    }
-
-    private static func fixtureCatalogID(for label: String, kind: LayoutObjectKind) -> String? {
-        let upper = label.uppercased()
-        if kind == .stage || upper.contains("EXT") {
-            return "stage-extension"
-        }
-        if upper.contains("DECOR") {
-            return "planter"
-        }
-        if upper.contains("DOORPRIZE") {
-            return "display-case"
-        }
-        if upper.contains("CLAW") {
-            return "claw-machine"
-        }
-        return nil
     }
 
     private static func mapClosedAreas(from closedAreas: [BazaarRectDTO]) -> [LayoutObject] {

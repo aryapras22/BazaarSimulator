@@ -118,7 +118,7 @@ enum ExtractedLayoutMapper {
         case "wall":
             return LayoutObject(kind: .wall, label: "Wall", placement: placement, reviewState: .detected)
         case "pillar":
-            return LayoutObject(kind: .pillar, label: "Pillar", placement: placement, reviewState: .detected)
+            return LayoutObject(kind: .block, label: "Pillar", placement: placement, reviewState: .detected)
         case "opening":
             return LayoutObject(
                 kind: .door,
@@ -130,15 +130,9 @@ enum ExtractedLayoutMapper {
         case "blocked":
             return LayoutObject(kind: .closedArea, label: "Blocked", placement: placement, reviewState: .detected)
         case "entrance", "exit":
-            return LayoutObject(kind: .fixture, label: item.cls, placement: placement, reviewState: .detected)
-        case "door":
+            return LayoutObject(kind: .block, label: item.cls, placement: placement, reviewState: .detected)
+        case "door", "object":
             return nil
-        case "object":
-            guard item.kind == "table" else { return nil }
-            let tableCatalogID = (item.chairs ?? 4) <= 2 && (item.chairs ?? 4) > 0 ? "table-2" : "table-4"
-            return LayoutObject(
-                kind: .table, label: "Table", placement: placement, reviewState: .detected, catalogID: tableCatalogID
-            )
         default:
             return legendObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)
         }
@@ -151,10 +145,10 @@ enum ExtractedLayoutMapper {
         unlabeled: inout Int
     ) -> LayoutObject {
         if isHallClass(item.cls) {
-            return LayoutObject(kind: .stage, label: "Stage", placement: placement, reviewState: .detected)
+            return LayoutObject(kind: .block, label: "Stage", placement: placement, reviewState: .detected)
         }
         guard isBooth(item) else {
-            return LayoutObject(kind: .fixture, label: item.cls, placement: placement, reviewState: .detected)
+            return LayoutObject(kind: .block, label: item.cls, placement: placement, reviewState: .detected)
         }
         unlabeled += item.id == nil ? 1 : 0
         return LayoutObject(
@@ -166,9 +160,9 @@ enum ExtractedLayoutMapper {
         )
     }
 
-    /// The bounding box of the walls and pillars, or of everything when no wall was found.
+    /// The bounding box of the walls, or of everything when no wall was found.
     private static func hallPolygon(from objects: [LayoutObject]) -> [SIMD2<Double>] {
-        let structure = objects.filter { $0.kind == .wall || $0.kind == .pillar }
+        let structure = objects.filter { $0.kind == .wall }
         let basis = structure.isEmpty ? objects : structure
         guard !basis.isEmpty else { return [] }
         let corners = basis.flatMap { LayoutGeometry.corners(of: $0.placement) }

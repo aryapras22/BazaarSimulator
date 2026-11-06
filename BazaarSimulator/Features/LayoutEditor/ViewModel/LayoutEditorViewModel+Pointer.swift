@@ -38,10 +38,6 @@ extension LayoutEditorViewModel {
             let direction = object.doorFlow?.direction.displayName ?? DoorDirection.entrance.displayName
             let title = DoorLabelFormatter.displayTitle(for: object, in: layout)
             return "\(title) · \(direction) · \(DimensionInput.text(for: size.x)) m"
-        case .pillar:
-            return "Pillar · \(DimensionInput.text(for: size.x)) m"
-        case .table:
-            return "Table \(object.label) · \(dimensions)"
         default:
             return "\(object.kind.displayName) · \(dimensions)"
         }

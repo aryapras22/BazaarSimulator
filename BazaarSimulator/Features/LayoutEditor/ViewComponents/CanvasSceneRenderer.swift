@@ -162,8 +162,6 @@ enum CanvasSceneRenderer {
                 categoryColor: object.categoryID.flatMap { colorsByID[$0] }
             )
             BoothRenderer.draw(boothState, in: &context, transform: transform)
-        case .table:
-            SeatingRenderer.draw(objectState, in: &context, transform: transform)
         case .door:
             DoorRenderer.draw(objectState, in: &context, transform: transform)
         case .closedArea:

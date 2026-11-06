@@ -78,7 +78,7 @@ final class PlaceTool: EditorToolHandling {
             return (.booth, SIMD2<Double>(template.sizeKey.shortM, template.sizeKey.longM))
         case .catalog(let itemID):
             let item = ObjectCatalog.item(itemID)
-            return (item?.kind ?? .fixture, item?.sizeM ?? SIMD2<Double>(2, 2))
+            return (item?.kind ?? .block, item?.sizeM ?? SIMD2<Double>(2, 2))
         }
     }
 
@@ -101,10 +101,8 @@ final class PlaceTool: EditorToolHandling {
 
         case .catalog(let itemID):
             let item = ObjectCatalog.item(itemID)
-            let kind = item?.kind ?? .fixture
-            let label = (kind == .fixture && item != nil)
-                ? item!.name
-                : LayoutObjectNaming.nextLabel(for: kind, in: context.layout)
+            let kind = item?.kind ?? .block
+            let label = LayoutObjectNaming.nextLabel(for: kind, in: context.layout)
             let object = LayoutObject(
                 id: UUID(),
                 kind: kind,

@@ -16,17 +16,12 @@ extension LayoutEditorViewModel {
         switch selected.kind {
         case .booth:
             return "Booth \(BoothLabelFormatter.display(draftLabel))"
-        case .table:
-            return "Table \(draftLabel)"
         case .door:
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
-        case .fixture, .audienceArea, .closedArea:
+        case .closedArea:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
-        case .stage:
-            let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? "Stage" : trimmed
-        case .wall, .rail, .block, .pillar, .floor:
+        case .wall, .block, .floor:
             return selected.kind.displayName
         }
     }
@@ -46,14 +41,14 @@ extension LayoutEditorViewModel {
         guard let draft = inspectorDraft, let selected = selectedObject else { return false }
         let range = sizeRangeM
         guard range.contains(draft.widthM) else { return false }
-        if selected.kind != .pillar && selected.kind != .door {
+        if selected.kind != .door {
             guard range.contains(draft.lengthM) else { return false }
         }
         let allowedRotations = [0, 90, 180, 270]
         if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
             return false
         }
-        let heightKinds: Set<LayoutObjectKind> = [.wall, .rail, .block, .booth, .stage, .fixture]
+        let heightKinds: Set<LayoutObjectKind> = [.wall, .block, .booth]
         if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
             return false
         }

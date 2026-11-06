@@ -147,10 +147,10 @@ struct LayoutValidatorTests {
         #expect(issues.contains { $0.kind == .belowMinimumSize && $0.severity == .error })
     }
 
-    @Test("A pillar just outside the hall edge is not flagged")
-    func pillarOutsideHallEdgeNotFlagged() {
+    @Test("A block just outside the hall edge is not flagged")
+    func blockOutsideHallEdgeNotFlagged() {
         let pillar = LayoutObject(
-            kind: .pillar,
+            kind: .block,
             label: "P1",
             placement: Placement(center: SIMD2<Double>(-0.1, 10), sizeM: SIMD2<Double>(0.5, 0.5))
         )
@@ -212,39 +212,15 @@ struct LayoutValidatorTests {
         })
     }
 
-    @Test("A table overlapping a blocked area warns")
-    func tableInBlockedAreaWarns() {
-        let table = LayoutObject(
-            kind: .table,
-            label: "T1",
-            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(1.5, 1.5))
-        )
-        let blocked = LayoutObject(
-            kind: .closedArea,
-            label: "Back of house",
-            placement: Placement(center: SIMD2<Double>(5.5, 5), sizeM: SIMD2<Double>(3, 3))
-        )
-        let layout = Layout(
-            name: "Test",
-            sizeM: SIMD2<Double>(20, 20),
-            hall: defaultHall,
-            objects: [table, blocked]
-        )
-
-        let issues = LayoutValidator.issues(in: layout)
-        #expect(issues.contains {
-            $0.kind == .overlappingObjects && Set($0.objectIDs) == [table.id, blocked.id]
-        })
-    }
-
     @Test("Touching by 0.05m is under overlap tolerance and clean")
     func touchUnderToleranceIsClean() {
         let table = LayoutObject(
-            kind: .table,
-            label: "T1",
-            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2))
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
+            openSides: .left
         )
-        // Table right edge is 6.0. Blocked area left edge is 6.0 - 0.05 = 5.95 -> center 7.45, width 3.0
+        // Booth right edge is 6.0. Blocked area left edge is 6.0 - 0.05 = 5.95 -> center 7.45, width 3.0
         let blocked = LayoutObject(
             kind: .closedArea,
             label: "Blocked",
@@ -255,29 +231,6 @@ struct LayoutValidatorTests {
             sizeM: SIMD2<Double>(20, 20),
             hall: defaultHall,
             objects: [table, blocked]
-        )
-
-        let issues = LayoutValidator.issues(in: layout)
-        #expect(!issues.contains { $0.kind == .overlappingObjects })
-    }
-
-    @Test("A fixture in a blocked area emits no overlap warning")
-    func fixtureInBlockedAreaEmitsNoWarning() {
-        let fixture = LayoutObject(
-            kind: .fixture,
-            label: "F1",
-            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(1, 1))
-        )
-        let blocked = LayoutObject(
-            kind: .closedArea,
-            label: "Back of house",
-            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(4, 4))
-        )
-        let layout = Layout(
-            name: "Test",
-            sizeM: SIMD2<Double>(20, 20),
-            hall: defaultHall,
-            objects: [fixture, blocked]
         )
 
         let issues = LayoutValidator.issues(in: layout)

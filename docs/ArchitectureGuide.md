@@ -215,7 +215,7 @@ All positions are in metres from the layout origin, never in PDF pixels. Import 
 ```swift
 struct LayoutObject: Codable, Identifiable, Sendable {
     var id = UUID()
-    var kind: LayoutObjectKind       // wall, door, booth, table, pillar, ...
+    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, floor
     var label: String                // "B-7", "NW"
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
@@ -296,7 +296,7 @@ enum ReadingMode { case modelOnly, agentic }   // raw model first, then with too
 ```
 
 Four backends (Apple on-device, Apple Private Cloud Compute, Qwen3-VL 4B, Gemma 4 E4B) sit behind this one protocol, so comparing them is a loop. A backend that cannot measure progress reports none, and its row shows an indeterminate bar. If the model cannot find a scale, the user calibrates by clicking two points and typing the real distance.
-The first backend in the code is `ExtractorFloorPlanReader`. It wraps the local `Extractor` package, which uses classical image processing and Vision instead of a model, so nothing is downloaded. The package reads pixels and no scale, so `ExtractedLayoutMapper` converts them to metres with a scale assumed from the median booth (2.5 m) until the user calibrates. It keeps booths, walls, pillars, wall openings (as doors), the stage, blocked areas, and tables, and drops swing symbols and chairs. Python and model options of the package stay off, because the sandbox cannot run them. `ImportQueue` is the real queue behind `ImportQueueing`; `ScriptedImportQueue` remains for previews and tests.
+The first backend in the code is `ExtractorFloorPlanReader`. It wraps the local `Extractor` package, which uses classical image processing and Vision instead of a model, so nothing is downloaded. The package reads pixels and no scale, so `ExtractedLayoutMapper` converts them to metres with a scale assumed from the median booth (2.5 m) until the user calibrates. It keeps booths, walls, wall openings (as doors), and blocked areas. Pillars, the stage, entrances, exits, and other unlabelled objects become blocks. It drops swing symbols, chairs, and tables. Python and model options of the package stay off, because the sandbox cannot run them. `ImportQueue` is the real queue behind `ImportQueueing`; `ScriptedImportQueue` remains for previews and tests.
 Extraction quality has been poor so far, so the editor must work without the reader. A user can place everything by hand in an empty layout.
 ### Simulation engine
 An `actor` owns all agent state. One engine instance serves one run. It advances in fixed steps, independent of how often the UI redraws, and publishes snapshots.

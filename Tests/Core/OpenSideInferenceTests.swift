@@ -79,7 +79,7 @@ struct OpenSideInferenceTests {
             placement: Placement(center: SIMD2<Double>(7.9, 10), sizeM: SIMD2<Double>(2, 4))
         )
         let rail = LayoutObject(
-            kind: .rail,
+            kind: .block,
             label: "Rail",
             placement: Placement(center: SIMD2<Double>(11.2, 10), sizeM: SIMD2<Double>(0.2, 4))
         )
@@ -163,12 +163,12 @@ struct OpenSideInferenceTests {
             placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
         )
         let obstacleA = LayoutObject(
-            kind: .fixture,
+            kind: .block,
             label: "F1",
             placement: Placement(center: SIMD2<Double>(9.5, 8.8), sizeM: SIMD2<Double>(1.0, 0.4))
         )
         let obstacleB = LayoutObject(
-            kind: .fixture,
+            kind: .block,
             label: "F2",
             placement: Placement(center: SIMD2<Double>(9.5, 8.8), sizeM: SIMD2<Double>(1.0, 0.4))
         )

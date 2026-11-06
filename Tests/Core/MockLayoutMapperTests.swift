@@ -17,45 +17,27 @@ struct MockLayoutMapperTests {
         let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
 
         #expect(count(.booth, in: layout) == 209)
-        #expect(count(.table, in: layout) == 26)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 4)
-        #expect(count(.stage, in: layout) == 1)
-        #expect(count(.audienceArea, in: layout) == 1)
-        #expect(count(.rail, in: layout) == 3)
+        #expect(count(.block, in: layout) == 5)
         #expect(count(.wall, in: layout) == 3)
-        #expect(count(.fixture, in: layout) == 1)
         #expect(layout.markers.count == 2)
         #expect(layout.zones.count == 2)
-
-        let stage = try #require(layout.objects.first { $0.kind == .stage })
-        #expect(stage.openSides == .left)
-
-        let audience = try #require(layout.objects.first { $0.kind == .audienceArea })
-        #expect(audience.label == "AUDIENCE")
     }
 
-    @Test("Beyond maps to expected counts and stage extensions")
+    @Test("Beyond maps to expected counts, with stages, pillars, rails and fixtures as blocks")
     func beyondCounts() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
 
         let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
 
         #expect(count(.booth, in: layout) == 154)
-        #expect(count(.table, in: layout) == 136)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 6)
-        #expect(count(.pillar, in: layout) == 23)
-        #expect(count(.block, in: layout) == 3)
-        #expect(count(.rail, in: layout) == 3)
+        #expect(count(.block, in: layout) == 36)
         #expect(count(.wall, in: layout) == 3)
-        #expect(count(.stage, in: layout) == 2)
-        #expect(count(.fixture, in: layout) == 5)
         #expect(layout.zones.isEmpty)
-
-        let mainStage = try #require(layout.objects.first { $0.kind == .stage && $0.label == "Stage" })
-        #expect(mainStage.openSides == .bottom)
-        #expect(layout.objects.contains { $0.kind == .stage && $0.label == "EXT" })
+        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stage" })
     }
 
     @Test("A rect maps to the right center and size")

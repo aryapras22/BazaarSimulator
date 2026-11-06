@@ -1,6 +1,14 @@
 import SwiftUI
 import simd
 
+struct ObjectDrawState: Sendable {
+    let object: LayoutObject
+    let isSelected: Bool
+    let isHovered: Bool
+    let hasWarning: Bool
+    var cornerExtensions: (start: Double, end: Double) = (0.0, 0.0)
+}
+
 enum ObstacleRenderer {
     static func draw(
         _ state: ObjectDrawState,
@@ -8,11 +16,6 @@ enum ObstacleRenderer {
         transform: CanvasTransform
     ) {
         let object = state.object
-        if object.kind == .pillar {
-            drawPillar(state, in: &context, transform: transform)
-            return
-        }
-
         let corners: [SIMD2<Double>]
         if object.kind == .wall, state.cornerExtensions.start > 0 || state.cornerExtensions.end > 0 {
             corners = WallCornerExtensions.extendedCorners(for: object, extensions: state.cornerExtensions)
@@ -26,7 +29,7 @@ enum ObstacleRenderer {
         if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
-        } else if object.kind == .wall || object.kind == .rail || object.kind == .block {
+        } else if object.kind == .wall || object.kind == .block {
             fillColor = Palette.canvasLine.opacity(0.25)
             strokeColor = Palette.canvasLine
         } else {
@@ -38,15 +41,11 @@ enum ObstacleRenderer {
         let outlineColor = state.hasWarning ? Palette.canvasIssue : strokeColor
         context.stroke(path, with: .color(outlineColor), lineWidth: state.hasWarning ? 2.0 : 1.2)
 
-        if object.kind == .stage {
-            drawStageFront(object: object, in: &context, transform: transform)
-        }
-
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
 
-        if transform.scale >= 10.0, shouldDrawLabel(for: object.kind) {
+        if transform.scale >= 10.0, object.kind == .block {
             let centerView = transform.toView(object.placement.center)
             let labelColor = state.isSelected ? Color.white : strokeColor
             let text = Text(object.label)
@@ -54,60 +53,5 @@ enum ObstacleRenderer {
                 .foregroundStyle(labelColor)
             context.draw(text, at: CGPoint(x: centerView.x, y: centerView.y), anchor: .center)
         }
-    }
-
-    private static func shouldDrawLabel(for kind: LayoutObjectKind) -> Bool {
-        switch kind {
-        case .fixture, .stage, .audienceArea: return true
-        default: return false
-        }
-    }
-
-    private static func drawPillar(
-        _ state: ObjectDrawState,
-        in context: inout GraphicsContext,
-        transform: CanvasTransform
-    ) {
-        let object = state.object
-        let centerView = transform.toView(object.placement.center)
-        let radius = max(2.0, (object.placement.sizeM.x / 2.0) * transform.scale)
-        let rect = CGRect(x: centerView.x - radius, y: centerView.y - radius, width: radius * 2, height: radius * 2)
-        let path = Path(ellipseIn: rect)
-        let fill = state.isSelected ? Palette.canvasSelection : Palette.canvasLine
-        context.fill(path, with: .color(fill))
-        if state.hasWarning {
-            context.stroke(path, with: .color(Palette.canvasIssue), lineWidth: 2.0)
-        } else if state.isHovered && !state.isSelected {
-            context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
-        }
-    }
-
-    private static func drawStageFront(
-        object: LayoutObject,
-        in context: inout GraphicsContext,
-        transform: CanvasTransform
-    ) {
-        let corners = LayoutGeometry.corners(of: object.placement)
-        guard corners.count == 4 else { return }
-        let edgeIndices: (Int, Int)?
-        if object.openSides.contains(.top) {
-            edgeIndices = (0, 1)
-        } else if object.openSides.contains(.right) {
-            edgeIndices = (1, 2)
-        } else if object.openSides.contains(.bottom) {
-            edgeIndices = (2, 3)
-        } else if object.openSides.contains(.left) {
-            edgeIndices = (3, 0)
-        } else {
-            edgeIndices = nil
-        }
-
-        guard let (startIdx, endIdx) = edgeIndices else { return }
-        let startView = transform.toView(corners[startIdx])
-        let endView = transform.toView(corners[endIdx])
-        var frontPath = Path()
-        frontPath.move(to: CGPoint(x: startView.x, y: startView.y))
-        frontPath.addLine(to: CGPoint(x: endView.x, y: endView.y))
-        context.stroke(frontPath, with: .color(Palette.highlight), lineWidth: 3.0)
     }
 }
