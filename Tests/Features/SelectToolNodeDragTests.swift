@@ -266,4 +266,27 @@ struct SelectToolNodeDragTests {
         #expect(simd_distance(ep1.end, SIMD2<Double>(15, 0)) < 0.05)
         #expect(simd_distance(ep2.start, SIMD2<Double>(15, 0)) < 0.05)
     }
+
+    @Test("Shift-dragging from a wall end draws a marquee instead of moving the end")
+    func shiftDragFromWallEndIsMarquee() {
+        let wall = Self.makeWall(start: SIMD2<Double>(0, 0), end: SIMD2<Double>(10, 0))
+        let context = NodeDragTestContext(layout: Self.makeLayout(objects: [wall]))
+        let tool = SelectTool()
+
+        tool.handlePress(
+            CanvasPointerEvent(worldPoint: SIMD2<Double>(10, 0), viewPoint: CGPoint(x: 100, y: 0), modifiers: .shift),
+            context: context
+        )
+        tool.handleMove(
+            CanvasPointerEvent(worldPoint: SIMD2<Double>(12, 3), viewPoint: CGPoint(x: 120, y: 30), modifiers: .shift),
+            context: context
+        )
+        #expect(context.preview?.marqueeStart == SIMD2<Double>(10, 0))
+
+        tool.handleRelease(
+            CanvasPointerEvent(worldPoint: SIMD2<Double>(12, 3), viewPoint: CGPoint(x: 120, y: 30), modifiers: .shift),
+            context: context
+        )
+        #expect(context.appliedEdits.isEmpty)
+    }
 }

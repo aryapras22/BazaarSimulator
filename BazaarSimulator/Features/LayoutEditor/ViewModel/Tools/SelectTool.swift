@@ -29,6 +29,11 @@ final class SelectTool: EditorToolHandling {
         pressViewPoint = event.viewPoint
         resetGesture()
 
+        if event.modifiers.contains(.shift) {
+            startMarquee(at: event.worldPoint)
+            return
+        }
+
         if handleStructurePress(event, context: context) {
             return
         }
@@ -54,12 +59,12 @@ final class SelectTool: EditorToolHandling {
         guard let hitID = event.hitObjectID,
               let target = context.layout.objects.first(where: { $0.id == hitID }),
               target.kind.isMovable else {
-            marqueeStartWorld = event.worldPoint
-            marqueeCurrentWorld = event.worldPoint
+            startMarquee(at: event.worldPoint)
             return
         }
 
         if target.kind == .closedArea && context.selectionID != hitID {
+            startMarquee(at: event.worldPoint)
             return
         }
         dragCandidateID = hitID
@@ -213,6 +218,11 @@ extension SelectTool {
             || marqueeStartWorld != nil
     }
 
+    private func startMarquee(at point: SIMD2<Double>) {
+        marqueeStartWorld = point
+        marqueeCurrentWorld = point
+    }
+
     func resetGesture() {
         activeMidpointDrag = nil
         activeHallEdge = nil
@@ -362,6 +372,10 @@ extension SelectTool {
                 layer: context.activeLayer
             )
             context.selectBooths(touched, additive: event.modifiers.contains(.shift))
+        } else if let hitID = event.hitObjectID {
+            if event.modifiers.contains(.shift) {
+                context.toggleSelection(hitID)
+            }
         } else {
             if let locked = LayoutHitTester.lockedObject(
                 at: event.worldPoint,
