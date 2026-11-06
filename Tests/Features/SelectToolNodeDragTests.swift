@@ -101,6 +101,7 @@ struct SelectToolNodeDragTests {
         )
         tool.handleMove(move, context: context)
         #expect(context.preview?.previewPlacements.count == 2)
+        #expect(context.preview?.wallLengthChipText != nil)
 
         let release = CanvasPointerEvent(
             worldPoint: SIMD2<Double>(10, -2),

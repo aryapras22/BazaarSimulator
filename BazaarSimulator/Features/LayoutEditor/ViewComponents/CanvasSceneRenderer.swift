@@ -56,6 +56,7 @@ enum CanvasSceneRenderer {
         let marqueeIDs = marqueeTouchedIDs(drag: drag, snapshot: snapshot, transform: transform)
 
         var selectedObject: LayoutObject?
+        var draggedObjects: [LayoutObject] = []
         for var object in ordered {
             guard !snapshot.hiddenLayers.contains(object.kind.layer) else { continue }
             if let previewPlacement = drag.previewPlacements[object.id] {
@@ -67,6 +68,8 @@ enum CanvasSceneRenderer {
             }
             if object.id == snapshot.selectionID {
                 selectedObject = object
+            } else if drag.previewPlacements[object.id] != nil {
+                draggedObjects.append(object)
             }
             let isInactive = object.kind.layer != snapshot.activeLayer
             if isInactive {
@@ -87,6 +90,9 @@ enum CanvasSceneRenderer {
             transform: transform,
             in: &context
         )
+        for dragged in draggedObjects {
+            SelectionDimensionRenderer.drawDimensions(for: dragged, in: &context, transform: transform)
+        }
         if let selectedObject, selectedObject.kind.layer == snapshot.activeLayer {
             drawSelectionDetails(selectedObject, drag: drag, in: &context, transform: transform)
         }

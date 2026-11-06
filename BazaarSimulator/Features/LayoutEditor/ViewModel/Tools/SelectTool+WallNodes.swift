@@ -98,11 +98,14 @@ extension SelectTool {
             }
         }
 
+        let draggedLength = nodeDrag.targetWallID.flatMap { previewPlacements[$0] }?.sizeM.x
         context.setPreview(CanvasDragState(
             pointerLocation: event.viewPoint,
             isOptionDown: isOptionDown,
             previewPlacements: previewPlacements,
-            guides: snapResult.guides
+            guides: snapResult.guides,
+            wallLengthChipText: draggedLength.map { "\(DimensionInput.text(for: $0)) m" },
+            wallLengthChipWorld: draggedLength == nil ? nil : newPosition
         ))
     }
 
