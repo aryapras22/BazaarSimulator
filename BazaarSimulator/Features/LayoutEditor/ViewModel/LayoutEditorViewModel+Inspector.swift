@@ -115,10 +115,6 @@ extension LayoutEditorViewModel {
         }
     }
 
-    var isSaveChangesEnabled: Bool {
-        hasUnsavedInspectorChanges && isInspectorDraftValid
-    }
-
     var layoutWithInspectorDraft: Layout? {
         guard var layout = activeLayout else { return nil }
         if let selected = selectedObject,
@@ -154,79 +150,46 @@ extension LayoutEditorViewModel {
     }
 
     func applyDoorAdvice() {
-        guard let advice = currentDoorAdvice else { return }
-        inspectorDraft?.doorDirection = advice.suggestedDirection
+        guard let advice = currentDoorAdvice, var draft = inspectorDraft else { return }
+        draft.doorDirection = advice.suggestedDirection
+        updateInspectorDraft(draft)
     }
 
-    func saveInspectorChanges() {
-        if groupSelection != nil {
-            saveGroupChanges()
-            return
-        }
-        guard isSaveChangesEnabled,
+    func updateInspectorDraft(_ draft: InspectorDraft) {
+        inspectorDraft = draft
+        applyInspectorDraft()
+    }
+
+    private func applyInspectorDraft() {
+        guard isInspectorDraftValid,
               let selected = selectedObject,
               let draft = inspectorDraft else {
             return
         }
-        withSingleRefresh {
-            if selected.kind == .wall,
-               let layout = activeLayout,
-               abs(draft.widthM - selected.placement.sizeM.x) > 1e-4 {
-                let graph = WallGraph(layout: layout)
+        let updated = draft.applied(to: selected)
+        if selected.kind == .wall,
+           let layout = activeLayout,
+           abs(draft.widthM - selected.placement.sizeM.x) > 1e-4 {
+            withSingleRefresh {
                 let edit = WallEditing.setWallLength(
                     wall: selected,
                     newLength: draft.widthM,
                     anchor: .start,
                     in: layout,
-                    graph: graph
+                    graph: WallGraph(layout: layout)
                 )
                 commitEdit(edit)
-                if let updatedWall = activeLayout?.objects.first(where: { $0.id == selected.id }) {
-                    let finalWall = draft.applied(to: updatedWall)
-                    if finalWall != updatedWall {
-                        commitEdit(.replace(before: updatedWall, after: finalWall))
+                if let lengthened = activeLayout?.objects.first(where: { $0.id == selected.id }) {
+                    let final = draft.applied(to: lengthened)
+                    if final != lengthened {
+                        commitEdit(.replace(before: lengthened, after: final))
                     }
+                    inspectorDraft = InspectorDraft(object: final)
                 }
-            } else {
-                let updated = draft.applied(to: selected)
-                commitEdit(.replace(before: selected, after: updated))
             }
-            if let refreshed = selectedObject {
-                inspectorDraft = InspectorDraft(object: refreshed)
-            }
+        } else if updated != selected {
+            commitEdit(.replace(before: selected, after: updated), coalesceKey: "inspector-\(selected.id)")
         }
-    }
-
-    func discardInspectorChanges() {
-        if let draft = groupDraft, groupSelection != nil {
-            groupDraft = GroupInspectorDraft(memberIDs: draft.memberIDs)
-        } else if let selected = selectedObject {
-            inspectorDraft = InspectorDraft(object: selected)
-        } else {
-            inspectorDraft = nil
-        }
-    }
-
-    func confirmPendingActionWithSave() {
-        guard isInspectorDraftValid else {
-            pendingAction = nil
-            return
-        }
-        withSingleRefresh {
-            saveInspectorChanges()
-            executePendingAction()
-        }
-    }
-
-    func confirmPendingActionWithDiscard() {
-        withSingleRefresh {
-            discardInspectorChanges()
-            executePendingAction()
-        }
-    }
-
-    func cancelPendingAction() {
-        pendingAction = nil
     }
 
     private func maxDoorWidthM(for door: LayoutObject) -> Double {

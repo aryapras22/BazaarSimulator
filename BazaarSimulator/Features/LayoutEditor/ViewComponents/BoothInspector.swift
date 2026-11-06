@@ -116,9 +116,7 @@ struct BoothGroupActions {
             )
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(true)
+        EmptyView()
     }
     .padding()
     .background(Palette.background)

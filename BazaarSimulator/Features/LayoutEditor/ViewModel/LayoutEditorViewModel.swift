@@ -14,19 +14,6 @@ struct DoorAdviceDisplay: Hashable, Sendable {
     let suggestedDirection: DoorDirection
 }
 
-enum PendingNavigationAction: Sendable, Equatable {
-    case selectObject(UUID?)
-    case selectGroup(BoothGroupKind)
-    case toggleBooth(UUID)
-    case selectBooths(ids: Set<UUID>, additive: Bool)
-    case switchTool(EditorTool)
-    case switchLayer(EditorLayer)
-    case switchLayout(UUID)
-    case navigateBack
-    case performUndo
-    case performRedo
-}
-
 @Observable
 @MainActor
 final class LayoutEditorViewModel {
@@ -81,7 +68,6 @@ final class LayoutEditorViewModel {
             if !isBatchingRefresh { refreshDerivedState() }
         }
     }
-    var pendingAction: PendingNavigationAction?
     var pendingGroupDelete: Int?
 
     private var historiesByLayoutID: [UUID: LayoutEditHistory] = [:]
@@ -141,12 +127,6 @@ final class LayoutEditorViewModel {
         currentHistory.seal()
     }
 
-    var hasUnsavedInspectorChanges: Bool {
-        if groupSelection != nil { return groupDraft?.hasChanges ?? false }
-        guard let selectedObject, let inspectorDraft else { return false }
-        return inspectorDraft.applied(to: selectedObject) != selectedObject
-    }
-
     func selectObject(_ objectID: UUID?) {
         if let objectID, let activeLayout {
             guard let target = activeLayout.objects.first(where: { $0.id == objectID }),
@@ -156,19 +136,11 @@ final class LayoutEditorViewModel {
             }
         }
         guard objectID != selectionID || groupSelection != nil else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .selectObject(objectID)
-            return
-        }
         applySelection(objectID)
     }
 
     func selectLayer(_ newLayer: EditorLayer) {
         guard newLayer != activeLayer else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchLayer(newLayer)
-            return
-        }
         activeLayer = newLayer
         tool = .select
         libraryCategory = nil
@@ -177,10 +149,6 @@ final class LayoutEditorViewModel {
 
     func selectLayout(_ layoutID: UUID) {
         guard layoutID != activeLayoutID else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchLayout(layoutID)
-            return
-        }
         withSingleRefresh {
             session.setActiveLayoutID(layoutID, for: projectID)
             hasFittedTransform = false
@@ -189,10 +157,6 @@ final class LayoutEditorViewModel {
     }
 
     func requestBack() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .navigateBack
-            return
-        }
         onBack()
     }
 
@@ -268,32 +232,6 @@ final class LayoutEditorViewModel {
                 selectionID = nil
                 inspectorDraft = nil
             }
-        }
-    }
-
-    func executePendingAction() {
-        guard let action = pendingAction else { return }
-        pendingAction = nil
-        switch action {
-        case .selectObject(let objectID):
-            applySelection(objectID)
-        case .selectGroup, .toggleBooth, .selectBooths:
-            executeGroupAction(action)
-        case .switchLayer(let newLayer):
-            activeLayer = newLayer
-            tool = .select
-            libraryCategory = nil
-            applySelection(nil)
-        case .switchTool(let newTool):
-            performSelectTool(newTool)
-        case .switchLayout(let layoutID):
-            executeSwitchLayout(layoutID)
-        case .navigateBack:
-            onBack()
-        case .performUndo:
-            executeHistoryAction(isUndo: true)
-        case .performRedo:
-            executeHistoryAction(isUndo: false)
         }
     }
 }

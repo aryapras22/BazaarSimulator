@@ -473,7 +473,7 @@ Window and navigation:
 Input:
 *   Menu bar commands in `AppCommands.swift` with shortcuts: Space for play and pause, Delete for removing the selected object, Cmd+Z and Cmd+Shift+Z for undo and redo.
 *   Editor interactions: click to select, drag to move, hover highlight, right-click menu, scroll or pinch to zoom. The Hi-Fi shows no palette, so how new items are added (right-click menu or a palette) is still open.
-*   Route every editor change through one place so undo is implemented once, for example by registering inverse operations with the window's `UndoManager`. Save Changes in the inspector commits through the same path, as one undoable change.
+*   Route every editor change through one place so undo is implemented once, for example by registering inverse operations with the window's `UndoManager`. Inspector edits commit through the same path as they are made, and consecutive edits to one object merge into one undoable change.
 Sandbox and entitlements:
 *   App Sandbox on. PDF import needs user-selected file read access. Add read-write only when export is built.
 *   Downloading model weights on first launch needs the outgoing network entitlement. Store weights in Application Support.
@@ -540,7 +540,7 @@ A type is too large when different methods use different subsets of its properti
 
 | Growing type | Split into |
 | ---| --- |
-| `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (edits held until Save Changes). The view model orchestrates them |
+| `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (field values being typed; a valid draft is applied at once). The view model orchestrates them |
 | `SimulationEngine` | `SpawnScheduler`, `NavigationGrid`, `ZoneMap`, `MovementModel`, `MetricsCollector` (already separate) |
 | `ParametersViewModel` | `MixEditor` (rescaling percentages to 100), `ParametersDraft` (form state held until Apply) |
 | `ProjectSetupViewModel` | `ImportQueue` (one file at a time, cancel) and a row state type per file |

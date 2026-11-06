@@ -25,7 +25,6 @@ struct CanvasDisplaySnapshot: Sendable {
     var groupMemberIDs: Set<UUID> = []
     var hoveredGroupMemberIDs: Set<UUID> = []
     var groupClusters: [GroupClusterDisplay] = []
-    var hasUnsavedChanges: Bool = false
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
     var hoverWorld: SIMD2<Double>?
 }

@@ -17,7 +17,7 @@ struct LayoutInspectorColumn: View {
     private func singleObjectInspector(for selected: LayoutObject) -> some View {
         let draftBinding = Binding<InspectorDraft>(
             get: { viewModel.inspectorDraft ?? InspectorDraft(object: selected) },
-            set: { viewModel.inspectorDraft = $0 }
+            set: { viewModel.updateInspectorDraft($0) }
         )
 
         return InspectorPanel(title: viewModel.inspectorTitle) {
@@ -52,18 +52,19 @@ struct LayoutInspectorColumn: View {
                 )
             }
         } footer: {
-            Button("Save Changes") {
-                viewModel.saveInspectorChanges()
+            Button("Delete \(selected.kind.displayName.lowercased())", role: .destructive) {
+                viewModel.deleteSelected()
             }
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(!viewModel.isSaveChangesEnabled)
+            .buttonStyle(.plain)
+            .font(Typography.body)
+            .foregroundStyle(Palette.destructive)
         }
     }
 
     private var groupInspector: some View {
         let draftBinding = Binding<GroupInspectorDraft>(
             get: { viewModel.groupDraft ?? GroupInspectorDraft(memberIDs: []) },
-            set: { viewModel.groupDraft = $0 }
+            set: { viewModel.updateGroupDraft($0) }
         )
         return InspectorPanel(title: viewModel.groupSelectionTitle) {
             GroupInspector(
@@ -74,20 +75,12 @@ struct LayoutInspectorColumn: View {
                 onResetOpenSides: { viewModel.resetOpenSidesForGroup() }
             )
         } footer: {
-            VStack(spacing: Spacing.s) {
-                Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) booths", role: .destructive) {
-                    viewModel.requestDeleteGroup()
-                }
-                .buttonStyle(.plain)
-                .font(Typography.body)
-                .foregroundStyle(Palette.destructive)
-
-                Button("Save Changes") {
-                    viewModel.saveInspectorChanges()
-                }
-                .buttonStyle(InspectorSaveButtonStyle())
-                .disabled(!viewModel.isSaveChangesEnabled)
+            Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) booths", role: .destructive) {
+                viewModel.requestDeleteGroup()
             }
+            .buttonStyle(.plain)
+            .font(Typography.body)
+            .foregroundStyle(Palette.destructive)
         }
     }
 

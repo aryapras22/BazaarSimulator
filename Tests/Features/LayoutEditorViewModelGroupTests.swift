@@ -93,16 +93,14 @@ struct LayoutEditorViewModelGroupTests {
         #expect(!context.viewModel.canUndo)
     }
 
-    @Test("A group save changes every member as one undo step")
-    func groupSaveIsOneUndoStep() throws {
+    @Test("A group edit changes every member as one undo step")
+    func groupEditIsOneUndoStep() throws {
         let context = Self.makeContext()
         let viewModel = context.viewModel
         let target = try booth(labelled: "A5", in: context.layout)
         let lifestyle = try #require(PreviewLayouts.sampleLegend.entries.last)
         viewModel.selectGroup(containing: target.id, bySize: false)
-        viewModel.groupDraft?.category = .set(lifestyle.id)
-
-        viewModel.saveInspectorChanges()
+        viewModel.editGroupDraft { $0.category = .set(lifestyle.id) }
 
         let members = viewModel.selectedGroupMembers
         #expect(members.count == 112)

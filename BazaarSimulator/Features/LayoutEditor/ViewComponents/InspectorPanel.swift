@@ -38,33 +38,12 @@ struct InspectorPanel<Content: View, Footer: View>: View {
     }
 }
 
-struct InspectorSaveButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Typography.body)
-            .foregroundStyle(isEnabled ? Color.white : Palette.primaryDisabledOnSurfaceText)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.s + 2)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.s)
-                    .fill(
-                        isEnabled
-                            ? Palette.accent.opacity(configuration.isPressed ? 0.85 : 1.0)
-                            : Palette.primaryDisabledOnSurface
-                    )
-            )
-    }
-}
-
 #Preview {
     InspectorPanel(title: "Preview Panel") {
         Text("Panel content")
             .foregroundStyle(Palette.textSecondary)
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
+        EmptyView()
     }
     .frame(height: 400)
     .preferredColorScheme(.dark)

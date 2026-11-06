@@ -41,16 +41,6 @@ struct LayoutEditorView: View {
             editorToolbar
         }
         .focusedSceneValue(\.editorCommandActions, commandActions)
-        .unsavedChangesDialog(
-            isPresented: Binding(
-                get: { viewModel.pendingAction != nil },
-                set: { if !$0 { viewModel.cancelPendingAction() } }
-            ),
-            canSave: viewModel.isInspectorDraftValid,
-            onSave: { viewModel.confirmPendingActionWithSave() },
-            onDiscard: { viewModel.confirmPendingActionWithDiscard() },
-            onCancel: { viewModel.cancelPendingAction() }
-        )
         .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
             Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
@@ -75,7 +65,6 @@ extension LayoutEditorView {
             groupMemberIDs: viewModel.groupMemberIDs,
             hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
             groupClusters: viewModel.groupClusters,
-            hasUnsavedChanges: viewModel.hasUnsavedInspectorChanges,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world
         )

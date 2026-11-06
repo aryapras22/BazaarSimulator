@@ -96,9 +96,7 @@ struct DoorInspector: View {
             onUseAdvice: {}
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(true)
+        EmptyView()
     }
     .padding()
     .background(Palette.background)
@@ -122,8 +120,7 @@ struct DoorInspector: View {
             onUseAdvice: {}
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
+        EmptyView()
     }
     .padding()
     .background(Palette.background)

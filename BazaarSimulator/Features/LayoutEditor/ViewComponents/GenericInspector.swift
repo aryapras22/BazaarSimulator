@@ -100,8 +100,7 @@ struct GenericInspector: View {
             sizeRange: 0.1...50.0
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
+        EmptyView()
     }
     .padding()
     .background(Palette.background)

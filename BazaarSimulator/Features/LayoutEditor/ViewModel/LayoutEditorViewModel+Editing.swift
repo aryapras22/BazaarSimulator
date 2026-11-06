@@ -163,14 +163,6 @@ extension LayoutEditorViewModel {
 
     func selectTool(_ newTool: EditorTool) {
         guard newTool != tool else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchTool(newTool)
-            return
-        }
-        performSelectTool(newTool)
-    }
-
-    func performSelectTool(_ newTool: EditorTool) {
         sealHistory()
         tool = newTool
         if case .drawWall(let itemID) = newTool {
@@ -203,19 +195,11 @@ extension LayoutEditorViewModel {
     }
 
     func undo() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .performUndo
-            return
-        }
         guard let edit = currentHistory.undo() else { return }
         applyHistoryEdit(edit)
     }
 
     func redo() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .performRedo
-            return
-        }
         guard let edit = currentHistory.redo() else { return }
         applyHistoryEdit(edit)
     }
@@ -262,7 +246,7 @@ extension LayoutEditorViewModel {
         if selectionID != id {
             selectObject(id)
         }
-        return pendingAction == nil && selectionID == id
+        return selectionID == id
     }
 
     func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {

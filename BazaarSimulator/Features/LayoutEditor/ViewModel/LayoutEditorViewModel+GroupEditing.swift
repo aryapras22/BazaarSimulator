@@ -51,8 +51,9 @@ extension LayoutEditorViewModel {
         }
     }
 
-    func saveGroupChanges() {
-        guard isSaveChangesEnabled, let draft = groupDraft else { return }
+    func updateGroupDraft(_ draft: GroupInspectorDraft) {
+        groupDraft = draft
+        guard draft.hasChanges, isGroupDraftValid else { return }
         let edits = selectedGroupMembers.compactMap { member -> LayoutEdit? in
             let updated = draft.applied(to: member)
             return updated == member ? nil : .replace(before: member, after: updated)

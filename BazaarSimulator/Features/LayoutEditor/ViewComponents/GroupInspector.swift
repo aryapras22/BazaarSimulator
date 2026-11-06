@@ -74,7 +74,7 @@ struct GroupInspector: View {
                 onResetOpenSides: {}
             )
         } footer: {
-            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle())
+            EmptyView()
         }
         InspectorPanel(title: "12 booths") {
             GroupInspector(
@@ -92,7 +92,7 @@ struct GroupInspector: View {
                 onResetOpenSides: {}
             )
         } footer: {
-            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle()).disabled(true)
+            EmptyView()
         }
     }
     .padding()

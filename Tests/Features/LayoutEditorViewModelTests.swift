@@ -157,38 +157,6 @@ struct LayoutEditorViewModelTests {
         #expect(!remainingIDs.contains(boothB.id))
     }
 
-    @Test("Context action on another object with unsaved changes asks first")
-    func contextActionOnAnotherObjectWithUnsavedChangesAsksFirst() throws {
-        let context = Self.makeContext()
-        let booths = context.layout.objects.filter { $0.kind == .booth }
-        let boothA = try #require(booths.first)
-        let boothB = try #require(booths.dropFirst().first)
-
-        context.viewModel.selectObject(boothA.id)
-        context.viewModel.inspectorDraft?.widthM = 4.0
-        context.viewModel.handleContextAction(.delete(boothB.id))
-
-        #expect(context.viewModel.pendingAction == .selectObject(boothB.id))
-        let remainingIDs = try #require(context.viewModel.activeLayout?.objects.map(\.id))
-        #expect(remainingIDs.contains(boothB.id))
-    }
-
-    @Test("Redo with unsaved changes asks first")
-    func redoWithUnsavedChangesAsksFirst() throws {
-        let context = Self.makeContext()
-        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
-
-        context.viewModel.selectObject(booth.id)
-        context.viewModel.nudgeSelected(by: SIMD2<Double>(1, 0))
-        context.viewModel.undo()
-        #expect(context.viewModel.canRedo)
-
-        context.viewModel.inspectorDraft?.widthM = 4.0
-        context.viewModel.redo()
-
-        #expect(context.viewModel.pendingAction == .performRedo)
-    }
-
     @Test("Duplicate labels never repeat")
     func duplicateLabelsNeverRepeat() throws {
         let session = ProjectSession()
@@ -214,15 +182,14 @@ struct LayoutEditorViewModelTests {
         #expect(viewModel.selectedObject?.label == "B6")
     }
 
-    @Test("Saving inspector changes updates issues for the saved layout")
-    func savingInspectorChangesUpdatesIssues() throws {
+    @Test("Inspector edits update issues for the edited layout")
+    func inspectorEditsUpdateIssues() throws {
         let context = Self.makeContext()
         let booths = context.layout.objects.filter { $0.kind == .booth }
         let boothA = try #require(booths.first)
 
         context.viewModel.selectObject(boothA.id)
-        context.viewModel.inspectorDraft?.widthM = 12.0
-        context.viewModel.saveInspectorChanges()
+        context.viewModel.editInspectorDraft { $0.widthM = 12.0 }
 
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
@@ -263,7 +230,6 @@ extension LayoutEditorViewModelTests {
         viewModel.selectBooths([boothA.id])
         #expect(viewModel.selectionID == boothA.id)
         #expect(viewModel.groupSelection == nil)
-        #expect(!viewModel.hasUnsavedInspectorChanges)
 
         viewModel.selectBooths([boothA.id, boothB.id])
         #expect(viewModel.selectionID == nil)
@@ -275,44 +241,5 @@ extension LayoutEditorViewModelTests {
         viewModel.selectBooths([])
         #expect(viewModel.selectionID == nil)
         #expect(viewModel.groupSelection == nil)
-    }
-
-    @Test("Select booths with unsaved changes prompts via pending action")
-    func selectBoothsWithUnsavedChangesPromptsPendingAction() throws {
-        let session = ProjectSession()
-        let project = session.createProject(named: "Test Market")
-        let boothA = LayoutObject(
-            kind: .booth,
-            label: "B1",
-            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
-            heightM: 2.4
-        )
-        let boothB = LayoutObject(
-            kind: .booth,
-            label: "B2",
-            placement: Placement(center: SIMD2<Double>(10, 5), sizeM: SIMD2<Double>(2, 2)),
-            heightM: 2.4
-        )
-        let layout = Layout(
-            name: "Test",
-            sizeM: SIMD2<Double>(30, 30),
-            objects: [boothA, boothB]
-        )
-        session.setDraft(ProjectDraft(name: "Test", layouts: [layout]), for: project.id)
-        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
-        viewModel.activeLayer = .booths
-
-        viewModel.selectObject(boothA.id)
-        #expect(!viewModel.hasUnsavedInspectorChanges)
-        viewModel.inspectorDraft?.widthM = 15.0
-        #expect(viewModel.hasUnsavedInspectorChanges)
-
-        viewModel.selectBooths([boothB.id])
-        #expect(viewModel.selectionID == boothA.id)
-        #expect(viewModel.pendingAction == .selectBooths(ids: [boothB.id], additive: false))
-
-        viewModel.executePendingAction()
-        #expect(viewModel.selectionID == boothB.id)
-        #expect(viewModel.pendingAction == nil)
     }
 }

@@ -6,70 +6,61 @@ import Testing
 @Suite
 @MainActor
 struct LayoutEditorViewModelInspectorTests {
-    @Test("Save is disabled until the draft changes")
-    func saveDisabledUntilDraftChanges() throws {
+    @Test("A valid inspector edit applies at once as an undoable edit")
+    func inspectorEditAppliesAtOnce() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
 
         context.viewModel.selectObject(booth.id)
-        #expect(!context.viewModel.isSaveChangesEnabled)
+        #expect(!context.viewModel.canUndo)
+        context.viewModel.editInspectorDraft { $0.widthM = 3.5 }
 
-        context.viewModel.inspectorDraft?.widthM = 3.0
-        #expect(context.viewModel.isSaveChangesEnabled)
-    }
-
-    @Test("Save commits one undoable edit and updates the session")
-    func saveCommitsOneUndoableEdit() throws {
-        let context = LayoutEditorViewModelTests.makeContext()
-        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
-
-        context.viewModel.selectObject(booth.id)
-        context.viewModel.inspectorDraft?.widthM = 3.5
-        context.viewModel.saveInspectorChanges()
-
-        #expect(!context.viewModel.isSaveChangesEnabled)
+        let edited = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
+        #expect(edited.placement.sizeM.x == 3.5)
         #expect(context.viewModel.canUndo)
-        let savedBooth = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
-        #expect(savedBooth.placement.sizeM.x == 3.5)
     }
 
-    @Test("Changing selection with unsaved changes requests confirmation; Discard drops and Save keeps")
-    func changingSelectionWithUnsavedChanges() throws {
+    @Test("Several edits to one object undo in one step")
+    func inspectorEditsCoalesce() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+
+        context.viewModel.selectObject(booth.id)
+        context.viewModel.editInspectorDraft { $0.widthM = 3.0 }
+        context.viewModel.editInspectorDraft { $0.widthM = 3.5 }
+        context.viewModel.editInspectorDraft { $0.label = "Renamed" }
+        context.viewModel.undo()
+
+        #expect(context.viewModel.activeLayout == context.layout)
+        #expect(!context.viewModel.canUndo)
+    }
+
+    @Test("Changing selection keeps the edit already applied")
+    func changingSelectionKeepsEdit() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let booths = context.layout.objects.filter { $0.kind == .booth }
         let firstBooth = try #require(booths.first)
         let secondBooth = try #require(booths.dropFirst().first)
 
         context.viewModel.selectObject(firstBooth.id)
-        context.viewModel.inspectorDraft?.widthM = 4.0
-
+        context.viewModel.editInspectorDraft { $0.widthM = 4.0 }
         context.viewModel.selectObject(secondBooth.id)
-        #expect(context.viewModel.pendingAction == .selectObject(secondBooth.id))
-        #expect(context.viewModel.selectionID == firstBooth.id)
 
-        context.viewModel.confirmPendingActionWithDiscard()
         #expect(context.viewModel.selectionID == secondBooth.id)
-        let unchangedFirst = try #require(context.viewModel.activeLayout?.objects.first { $0.id == firstBooth.id })
-        #expect(unchangedFirst.placement.sizeM.x == firstBooth.placement.sizeM.x)
-
-        context.viewModel.inspectorDraft?.widthM = 4.5
-        context.viewModel.selectObject(firstBooth.id)
-        context.viewModel.confirmPendingActionWithSave()
-        #expect(context.viewModel.selectionID == firstBooth.id)
-        let updatedSecond = try #require(context.viewModel.activeLayout?.objects.first { $0.id == secondBooth.id })
-        #expect(updatedSecond.placement.sizeM.x == 4.5)
+        let first = try #require(context.viewModel.activeLayout?.objects.first { $0.id == firstBooth.id })
+        #expect(first.placement.sizeM.x == 4.0)
     }
 
-    @Test("An invalid size disables Save")
-    func invalidSizeDisablesSave() throws {
+    @Test("An invalid size stays in the draft and never reaches the layout")
+    func invalidSizeIsNotApplied() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
 
         context.viewModel.selectObject(booth.id)
-        context.viewModel.inspectorDraft?.widthM = 0.2
+        context.viewModel.editInspectorDraft { $0.widthM = 0.2 }
 
         #expect(!context.viewModel.isInspectorDraftValid)
-        #expect(!context.viewModel.isSaveChangesEnabled)
+        #expect(context.viewModel.activeLayout == context.layout)
     }
 
     @Test("Toggling the screen-right edge of a booth rotated 90 degrees toggles its own top side")
@@ -85,8 +76,8 @@ struct LayoutEditorViewModelInspectorTests {
         #expect(updated == .top)
     }
 
-    @Test("Use advice sets the draft direction and Save applies it")
-    func useAdviceSetsDraftDirectionAndSaves() throws {
+    @Test("Use advice applies the suggested direction")
+    func useAdviceAppliesDirection() throws {
         let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
         let doorNW = try #require(
             context.layout.objects.first { $0.kind == .door && $0.label == "Door NW" }
@@ -97,17 +88,14 @@ struct LayoutEditorViewModelInspectorTests {
 
         context.viewModel.applyDoorAdvice()
         #expect(context.viewModel.inspectorDraft?.doorDirection == .entrance)
-        #expect(context.viewModel.isSaveChangesEnabled)
-
-        context.viewModel.saveInspectorChanges()
         let savedDoor = try #require(
             context.viewModel.activeLayout?.objects.first { $0.id == doorNW.id }
         )
         #expect(savedDoor.doorFlow?.direction == .entrance)
     }
 
-    @Test("Selecting an imported booth leaves Save disabled")
-    func selectingImportedBoothLeavesSaveDisabled() throws {
+    @Test("Selecting an imported booth changes nothing")
+    func selectingImportedBoothChangesNothing() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "annyeong-market-layout")
         let layout = MockLayoutMapper.layout(from: dto, legend: PreviewLayouts.sampleLegend)
         let session = ProjectSession()
@@ -121,7 +109,7 @@ struct LayoutEditorViewModelInspectorTests {
 
         viewModel.selectObject(firstBooth.id)
 
-        #expect(!viewModel.isSaveChangesEnabled)
+        #expect(!viewModel.canUndo)
     }
 
     @Test("Selecting a blocked area fills the draft")
@@ -134,25 +122,24 @@ struct LayoutEditorViewModelInspectorTests {
         #expect(viewModel.inspectorTitle == "Blocked area")
     }
 
-    @Test("Renaming a blocked area saves the label")
-    func renamingBlockedAreaSavesLabel() throws {
+    @Test("Renaming a blocked area applies the label")
+    func renamingBlockedAreaAppliesLabel() throws {
         let (viewModel, area) = try makeAnnyeongContext()
 
         viewModel.selectObject(area.id)
-        viewModel.inspectorDraft?.label = "Storage"
-        viewModel.saveInspectorChanges()
+        viewModel.editInspectorDraft { $0.label = "Storage" }
 
         #expect(viewModel.selectedObject?.label == "Storage")
     }
 
-    @Test("A blocked area narrower than 0.5 m cannot be saved")
-    func blockedAreaUnderMinimumCannotBeSaved() throws {
+    @Test("A blocked area narrower than 0.5 m is not applied")
+    func blockedAreaUnderMinimumIsNotApplied() throws {
         let (viewModel, area) = try makeAnnyeongContext()
 
         viewModel.selectObject(area.id)
-        viewModel.inspectorDraft?.widthM = 0.3
+        viewModel.editInspectorDraft { $0.widthM = 0.3 }
 
-        #expect(!viewModel.isSaveChangesEnabled)
+        #expect(viewModel.selectedObject?.placement.sizeM == area.placement.sizeM)
     }
 
     private func makeAnnyeongContext() throws -> (LayoutEditorViewModel, LayoutObject) {
@@ -168,8 +155,8 @@ struct LayoutEditorViewModelInspectorTests {
         return (viewModel, area)
     }
 
-    @Test("Saving wall length in inspector updates wall length and stretches neighbours")
-    func savingWallLengthInInspectorStretchesNeighbours() throws {
+    @Test("Editing wall length in the inspector updates wall length and stretches neighbours")
+    func editingWallLengthInInspectorStretchesNeighbours() throws {
         let wall1 = LayoutObject(
             kind: .wall,
             label: "Wall 1",
@@ -191,9 +178,7 @@ struct LayoutEditorViewModelInspectorTests {
         viewModel.selectObject(wall1.id)
         #expect(viewModel.inspectorDraft?.widthM == 10.0)
 
-        viewModel.inspectorDraft?.widthM = 15.0
-        #expect(viewModel.isSaveChangesEnabled)
-        viewModel.saveInspectorChanges()
+        viewModel.editInspectorDraft { $0.widthM = 15.0 }
 
         let savedWall1 = try #require(viewModel.activeLayout?.objects.first { $0.id == wall1.id })
         #expect(abs(savedWall1.placement.sizeM.x - 15.0) < 0.05)
