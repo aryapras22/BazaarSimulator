@@ -208,9 +208,23 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.filter { $0.kind == .wall }.count == 2)
     }
 
-    @Test("Walls further apart than a metre stay separate")
+    @Test("A tall thin wall box is long, not a stub, and joins a wall below it")
+    func verticalWallsKeepTheirLength() throws {
+        let plan = DetectedPlan(items: [
+            DetectedItem(cls: "wall", box: [0, 0, 2, 100]),
+            DetectedItem(cls: "wall", box: [0, 104, 2, 96])
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        let walls = layout.objects.filter { $0.kind == .wall }
+        #expect(walls.count == 1)
+        #expect(abs(try #require(walls.first).placement.sizeM.x - 20) < 0.001)
+    }
+
+    @Test("Walls with a gap of a metre or more stay separate")
     func farWallsStaySeparate() {
-        let plan = DetectedPlan(items: [wall(0, 100), wall(130, 230)])
+        let plan = DetectedPlan(items: [wall(0, 100), wall(110, 210)])
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
