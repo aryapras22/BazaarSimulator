@@ -73,7 +73,8 @@ extension LayoutEditorView {
                         set: { viewModel.selectLayer($0) }
                     ),
                     tabs: EditorLayer.allCases,
-                    title: \.title
+                    title: \.title,
+                    showsBackground: false
                 )
 
                 ViewPresetPicker(
@@ -84,7 +85,8 @@ extension LayoutEditorView {
                     onSelect: { preset in
                         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
                         viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
-                    }
+                    },
+                    showsBackground: false
                 )
             }
         }
@@ -106,14 +108,6 @@ extension LayoutEditorView {
                 }
                 .padding(.horizontal, Spacing.s)
                 .padding(.vertical, Spacing.xs)
-                .background(
-                    Capsule()
-                        .fill(Palette.surface)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(Palette.surfaceBorder, lineWidth: 1)
-                )
             }
         }
     }

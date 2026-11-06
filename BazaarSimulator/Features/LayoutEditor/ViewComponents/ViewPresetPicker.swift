@@ -3,6 +3,7 @@ import SwiftUI
 struct ViewPresetPicker: View {
     @Binding var selection: ViewPreset
     var onSelect: (ViewPreset) -> Void
+    var showsBackground = true
 
     var body: some View {
         SegmentedTabs(
@@ -14,7 +15,8 @@ struct ViewPresetPicker: View {
                 }
             ),
             tabs: ViewPreset.allCases,
-            title: \.title
+            title: \.title,
+            showsBackground: showsBackground
         )
     }
 }
