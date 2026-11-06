@@ -141,7 +141,7 @@ extension LayoutEditorViewModel {
         let defaultSize: SIMD2<Double>
         switch kind {
         case .booth: defaultSize = SIMD2<Double>(2.0, 2.0)
-        case .closedArea, .floor: defaultSize = SIMD2<Double>(4.0, 4.0)
+        case .closedArea: defaultSize = SIMD2<Double>(4.0, 4.0)
         default: defaultSize = SIMD2<Double>(2.0, 2.0)
         }
 

@@ -17,12 +17,10 @@ enum ObjectShapes {
         switch id {
         case "wall":
             return [Shapes.box(center: SIMD3(0, height / 2.0, 0), size: SIMD3(size.x, height, size.y), role: .wall)]
-        case "partition":
-            return [Shapes.box(center: SIMD3(0, height / 2.0, 0), size: SIMD3(size.x, height, size.y), role: .wall)]
         case "block":
             return [Shapes.box(center: SIMD3(0, height / 2.0, 0), size: SIMD3(size.x, height, size.y), role: .slab)]
-        case "door", "double-door", "gate":
-            return openingShape(size: size, height: height, isDouble: id != "door")
+        case "door":
+            return openingShape(size: size, height: height)
         case "blocked-area":
             return [Shapes.box(center: SIMD3(0, height / 2.0, 0), size: SIMD3(size.x, height, size.y), role: .slab)]
         default:
@@ -30,7 +28,7 @@ enum ObjectShapes {
         }
     }
 
-    private static func openingShape(size: SIMD2<Double>, height: Double, isDouble: Bool) -> [ShapePrimitive] {
+    private static func openingShape(size: SIMD2<Double>, height: Double) -> [ShapePrimitive] {
         let postW = min(0.08, size.x * 0.1)
         let lintelH = min(0.2, height * 0.1)
         let doorH = max(0, height - lintelH)
@@ -49,23 +47,10 @@ enum ObjectShapes {
         let innerW = max(0, size.x - 2.0 * postW)
         let thickness = min(0.04, size.y)
 
-        if isDouble {
-            let leafW = innerW / 2.0
-            let leaf1 = Shapes.box(
-                center: SIMD3(-leafW / 2.0, doorH / 2.0, 0),
-                size: SIMD3(leafW, doorH, thickness), role: .accent
-            )
-            let leaf2 = Shapes.box(
-                center: SIMD3(leafW / 2.0, doorH / 2.0, 0),
-                size: SIMD3(leafW, doorH, thickness), role: .accent
-            )
-            return [leftPost, rightPost, lintel, leaf1, leaf2]
-        } else {
-            let leaf = Shapes.box(
-                center: SIMD3(0, doorH / 2.0, 0),
-                size: SIMD3(innerW, doorH, thickness), role: .accent
-            )
-            return [leftPost, rightPost, lintel, leaf]
-        }
+        let leaf = Shapes.box(
+            center: SIMD3(0, doorH / 2.0, 0),
+            size: SIMD3(innerW, doorH, thickness), role: .accent
+        )
+        return [leftPost, rightPost, lintel, leaf]
     }
 }

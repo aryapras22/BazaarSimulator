@@ -168,40 +168,4 @@ struct SceneGeometryBuilderTests {
         beyondMesh.appendFloorPolygon(beyondHall)
         #expect(allTrianglesFaceUp(beyondMesh))
     }
-
-    @Test("A floor object generates upward-facing floor mesh triangles")
-    func floorObjectProducesFloorMesh() {
-        let floorObject = LayoutObject(
-            kind: .floor,
-            label: "Outdoor Deck",
-            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(6, 4))
-        )
-        let layout = Layout(
-            id: UUID(),
-            name: "Floor Slab Test",
-            sizeM: SIMD2<Double>(20, 20),
-            hall: [SIMD2<Double>(0, 0), SIMD2<Double>(5, 0), SIMD2<Double>(5, 5), SIMD2<Double>(0, 5)],
-            lobby: [],
-            objects: [floorObject],
-            markers: [],
-            zones: []
-        )
-
-        let geometry = SceneGeometryBuilder.build(layout: layout, legend: sampleLegend)
-        let floorMesh = geometry.meshes[SceneMaterialKey(role: .floor, tint: nil)] ?? TriangleMesh()
-        #expect(floorMesh.triangleCount > 0)
-
-        for start in stride(from: 0, to: floorMesh.indices.count, by: 3) {
-            let idxA = Int(floorMesh.indices[start])
-            let idxB = Int(floorMesh.indices[start + 1])
-            let idxC = Int(floorMesh.indices[start + 2])
-            let vertA = floorMesh.positions[idxA]
-            let vertB = floorMesh.positions[idxB]
-            let vertC = floorMesh.positions[idxC]
-            let edge1 = vertB - vertA
-            let edge2 = vertC - vertA
-            let normalY = edge1.z * edge2.x - edge1.x * edge2.z
-            #expect(normalY > 0)
-        }
-    }
 }

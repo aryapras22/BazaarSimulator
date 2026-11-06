@@ -21,7 +21,7 @@ extension LayoutEditorViewModel {
         case .closedArea:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
-        case .wall, .block, .floor:
+        case .wall, .block:
             return selected.kind.displayName
         }
     }

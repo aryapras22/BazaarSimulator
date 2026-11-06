@@ -3,7 +3,6 @@ import Foundation
 enum EditorTool: Hashable, Sendable {
     case select
     case blockedArea
-    case floor(itemID: String)
     case row(sizeM: SIMD2<Double> = SIMD2(2.5, 2.5))
     case fill(sizeM: SIMD2<Double> = SIMD2(2.5, 2.5), aisleWidthM: Double = 2.0)
     case place(LibraryRowDisplay.Source)
@@ -17,7 +16,6 @@ enum EditorTool: Hashable, Sendable {
         switch self {
         case .select: return "Select"
         case .blockedArea: return "Blocked Area"
-        case .floor: return "Floor"
         case .row: return "Row"
         case .fill: return "Fill"
         case .place: return "Place"
@@ -31,7 +29,6 @@ enum EditorTool: Hashable, Sendable {
         switch self {
         case .select: return "cursorarrow"
         case .blockedArea: return "square.dashed"
-        case .floor: return "square.fill"
         case .row: return "rectangle.split.3x1"
         case .fill: return "square.grid.3x3"
         case .place: return "plus.square"

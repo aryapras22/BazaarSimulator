@@ -21,8 +21,7 @@ enum ObjectCatalog {
         .wall: "wall",
         .block: "block",
         .door: "door",
-        .closedArea: "blocked-area",
-        .floor: "floor"
+        .closedArea: "blocked-area"
     ]
 
     static func defaultItemID(for kind: LayoutObjectKind) -> String? {
@@ -34,13 +33,7 @@ enum ObjectCatalog {
             id: "wall", name: "Wall", category: .structure, kind: .wall,
             sizeM: SIMD2(2.0, 0.2), heightM: 3.0, footprint: .rect,
             resize: .free, placement: .drawWall,
-            keywords: ["wall", "partition", "structure", "perimeter"], seats: []
-        ),
-        CatalogItem(
-            id: "partition", name: "Partition", category: .structure, kind: .wall,
-            sizeM: SIMD2(2.0, 0.1), heightM: 2.4, footprint: .rect,
-            resize: .free, placement: .drawWall,
-            keywords: ["partition", "divider", "screen", "wall"], seats: []
+            keywords: ["wall", "structure", "perimeter"], seats: []
         ),
         CatalogItem(
             id: "block", name: "Block", category: .structure, kind: .block,
@@ -55,28 +48,10 @@ enum ObjectCatalog {
             keywords: ["door", "entrance", "exit", "opening"], seats: []
         ),
         CatalogItem(
-            id: "double-door", name: "Double door", category: .structure, kind: .door,
-            sizeM: SIMD2(1.8, 0.2), heightM: 2.1, footprint: .rect,
-            resize: .none, placement: .door,
-            keywords: ["double door", "door", "entrance", "exit", "wide"], seats: []
-        ),
-        CatalogItem(
-            id: "gate", name: "Gate", category: .structure, kind: .door,
-            sizeM: SIMD2(3.0, 0.2), heightM: 2.1, footprint: .rect,
-            resize: .none, placement: .door,
-            keywords: ["gate", "entrance", "exit", "barrier", "portal"], seats: []
-        ),
-        CatalogItem(
             id: "blocked-area", name: "Blocked area", category: .structure, kind: .closedArea,
             sizeM: SIMD2(2.0, 2.0), heightM: 0.05, footprint: .rect,
             resize: .free, placement: .drawArea,
             keywords: ["blocked", "restricted", "closed", "void", "hazard"], seats: []
-        ),
-        CatalogItem(
-            id: "floor", name: "Floor", category: .structure, kind: .floor,
-            sizeM: SIMD2(4.0, 4.0), heightM: 0.05, footprint: .rect,
-            resize: .free, placement: .drawArea,
-            keywords: ["floor", "slab", "ground", "walkable", "deck"], seats: []
         )
     ]
 }

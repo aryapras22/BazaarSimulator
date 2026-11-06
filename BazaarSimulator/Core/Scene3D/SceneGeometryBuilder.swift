@@ -32,10 +32,6 @@ nonisolated enum SceneGeometryBuilder {
         if !layout.lobby.isEmpty {
             floorMesh.appendFloorPolygon(layout.lobby, heightY: 0.0)
         }
-        for object in layout.objects where object.kind == .floor {
-            let corners = LayoutGeometry.corners(of: object.placement)
-            floorMesh.appendFloorPolygon(corners, heightY: 0.0)
-        }
         appendMesh(key: SceneMaterialKey(role: .floor, tint: nil), mesh: floorMesh, into: &meshes)
     }
 
@@ -82,9 +78,7 @@ nonisolated enum SceneGeometryBuilder {
         into meshes: inout [SceneMaterialKey: TriangleMesh]
     ) {
         for object in layout.objects {
-            if object.kind == .floor {
-                continue
-            } else if object.kind == .booth {
+            if object.kind == .booth {
                 appendBooth(object, legend: legend, into: &meshes)
             } else if object.kind == .door {
                 appendDoor(object, into: &meshes)
@@ -200,7 +194,7 @@ extension SceneGeometryBuilder {
         case .block:
             let blockH = object.heightM ?? 0.8
             return [.box(center: SIMD3(0, blockH / 2.0, 0), size: SIMD3(size.x, blockH, size.y), yaw: 0, role: .slab)]
-        case .closedArea, .floor:
+        case .closedArea:
             let slabH = object.heightM ?? 0.05
             return [.box(center: SIMD3(0, slabH / 2.0, 0), size: SIMD3(size.x, slabH, size.y), yaw: 0, role: .slab)]
         default:

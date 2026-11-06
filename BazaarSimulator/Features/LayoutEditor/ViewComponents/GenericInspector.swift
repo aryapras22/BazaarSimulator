@@ -12,7 +12,7 @@ struct InspectorFields: Sendable {
         switch kind {
         case .wall, .block:
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
-        case .closedArea, .floor:
+        case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true)
         case .booth, .door:
             return InspectorFields()

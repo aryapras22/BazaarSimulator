@@ -42,13 +42,13 @@ struct LayoutEditorViewModelLibraryTests {
     @Test("Search query filters rows by name and keywords")
     func searchFiltersRows() {
         let viewModel = Self.makeViewModel(layer: .structure)
-        viewModel.librarySearch = "gate"
+        viewModel.librarySearch = "door"
 
         let filtered = viewModel.libraryRows
         #expect(!filtered.isEmpty)
         #expect(filtered.allSatisfy { row in
-            row.title.lowercased().contains("gate") ||
-            row.id.contains("gate")
+            row.title.lowercased().contains("door") ||
+            row.id.contains("door")
         })
     }
 
@@ -97,7 +97,7 @@ struct LayoutEditorViewModelLibraryTests {
 
     @Test("ToolRailItem filters items by active layer")
     func toolRailItemsByLayer() {
-        #expect(ToolRailItem.items(for: .structure) == [.select, .wall, .room, .floor, .library])
+        #expect(ToolRailItem.items(for: .structure) == [.select, .wall, .room, .library])
         #expect(ToolRailItem.items(for: .booths) == [.select, .row, .fill, .library])
     }
 

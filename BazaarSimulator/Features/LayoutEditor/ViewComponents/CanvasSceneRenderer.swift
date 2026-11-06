@@ -166,8 +166,6 @@ enum CanvasSceneRenderer {
             DoorRenderer.draw(objectState, in: &context, transform: transform)
         case .closedArea:
             BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
-        case .floor:
-            FloorSlabRenderer.draw(objectState, in: &context, transform: transform)
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }
@@ -316,11 +314,7 @@ extension CanvasSceneRenderer {
             isHovered: false,
             hasWarning: isBelowMinimum
         )
-        if drag.drawingKind == .floor {
-            FloorSlabRenderer.draw(state, in: &context, transform: transform)
-        } else {
-            BlockedAreaRenderer.draw(state, in: &context, transform: transform)
-        }
+        BlockedAreaRenderer.draw(state, in: &context, transform: transform)
 
         let pointerView = transform.toView(current)
         let text = "\(DimensionInput.text(for: preview.sizeM.x)) × \(DimensionInput.text(for: preview.sizeM.y)) m"

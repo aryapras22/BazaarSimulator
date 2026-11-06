@@ -275,14 +275,9 @@ extension LayoutEditorView {
     }
 
     private func handleFKey() -> KeyPress.Result {
-        if viewModel.activeLayer == .structure {
-            handleToolRailSelection(.floor)
-            return .handled
-        } else if viewModel.activeLayer == .booths {
-            handleToolRailSelection(.fill)
-            return .handled
-        }
-        return .ignored
+        guard viewModel.activeLayer == .booths else { return .ignored }
+        handleToolRailSelection(.fill)
+        return .handled
     }
 
     private func openLibraryFiltered(to category: CatalogCategory) {
@@ -301,8 +296,6 @@ extension LayoutEditorView {
             viewModel.selectTool(.drawWall(itemID: viewModel.selectedWallItemID))
         case .room:
             viewModel.selectTool(.room(itemID: viewModel.selectedWallItemID))
-        case .floor:
-            viewModel.selectTool(.floor(itemID: "floor"))
         case .row:
             viewModel.selectTool(.row(sizeM: SIMD2(2.5, 2.5)))
         case .fill:

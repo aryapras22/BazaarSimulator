@@ -6,7 +6,6 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case wall
     case block
     case closedArea
-    case floor
 
     var displayName: String {
         switch self {
@@ -15,13 +14,12 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .wall: return "Wall"
         case .block: return "Block"
         case .closedArea: return "Blocked area"
-        case .floor: return "Floor"
         }
     }
 
     var layer: EditorLayer {
         switch self {
-        case .wall, .block, .door, .closedArea, .floor:
+        case .wall, .block, .door, .closedArea:
             return .structure
         case .booth:
             return .booths
@@ -54,14 +52,14 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var blocksWalking: Bool {
         switch self {
-        case .door, .floor: return false
+        case .door: return false
         default: return true
         }
     }
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .closedArea, .floor: return 0.5
+        case .booth, .closedArea: return 0.5
         case .door: return 0.8
         case .wall, .block: return 0.1
         }
@@ -72,12 +70,12 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasResizeHandles: Bool {
-        self == .closedArea || self == .floor
+        self == .closedArea
     }
 
     var isStructural: Bool {
         switch self {
-        case .wall, .block, .closedArea, .floor: return true
+        case .wall, .block, .closedArea: return true
         default: return false
         }
     }

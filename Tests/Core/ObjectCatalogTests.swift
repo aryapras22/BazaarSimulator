@@ -9,14 +9,14 @@ struct ObjectCatalogTests {
     func uniqueItemIDs() {
         let ids = ObjectCatalog.items.map(\.id)
         let uniqueIDs = Set(ids)
-        #expect(ids.count == 8)
+        #expect(ids.count == 4)
         #expect(uniqueIDs.count == ids.count)
     }
 
     @Test("Item search matches names and keywords case-insensitively")
     func itemSearch() {
-        let gateResults = ObjectCatalog.search("GATE")
-        #expect(gateResults.map(\.id) == ["gate"])
+        let gateResults = ObjectCatalog.search("DOOR")
+        #expect(gateResults.map(\.id) == ["door"])
 
         let emptyResults = ObjectCatalog.search("   ")
         #expect(emptyResults.count == ObjectCatalog.items.count)

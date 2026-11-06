@@ -18,29 +18,6 @@ struct LayoutObjectKindTests {
         #expect(kind.isSelectable)
     }
 
-    @Test("Floor kind facts")
-    func floorKindFacts() {
-        let kind = LayoutObjectKind.floor
-
-        #expect(kind.displayName == "Floor")
-        #expect(kind.isMovable)
-        #expect(kind.isResizable)
-        #expect(kind.isRotatable)
-        #expect(kind.hasResizeHandles)
-        #expect(!kind.blocksWalking)
-        #expect(kind.minimumDimensionM == 0.5)
-        #expect(kind.isSelectable)
-        #expect(kind.isStructural)
-    }
-
-    @Test("Floor catalog entry is in structure category")
-    func floorCatalogEntry() {
-        #expect(ObjectCatalog.defaultItemID(for: .floor) == "floor")
-        let item = ObjectCatalog.item("floor")
-        #expect(item?.kind == .floor)
-        #expect(item?.category == .structure)
-    }
-
     @Test("Decoding old project without floor succeeds")
     func decodingOldProjectWithoutFloorSucceeds() throws {
         let original = Layout(
@@ -66,7 +43,7 @@ struct LayoutObjectKindTests {
     func eachKindBelongsToOneLayer(kind: LayoutObjectKind) {
         let layer = kind.layer
         switch kind {
-        case .wall, .block, .door, .closedArea, .floor:
+        case .wall, .block, .door, .closedArea:
             #expect(layer == .structure)
         case .booth:
             #expect(layer == .booths)

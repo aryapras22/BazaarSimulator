@@ -143,11 +143,8 @@ enum LayoutGeometry {
 
     static func isPlacementInsideWalkableFloor(_ placement: Placement, in layout: Layout) -> Bool {
         let pts = corners(of: placement) + [placement.center]
-        let floorObjects = layout.objects.filter { $0.kind == .floor }
         return pts.allSatisfy { point in
-            polygonContains(layout.hall, point: point)
-                || polygonContains(layout.lobby, point: point)
-                || floorObjects.contains { contains($0.placement, point: point) }
+            polygonContains(layout.hall, point: point) || polygonContains(layout.lobby, point: point)
         }
     }
 
