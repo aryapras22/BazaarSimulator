@@ -93,6 +93,28 @@ struct LayoutEditorViewModelGroupTests {
         #expect(!context.viewModel.canUndo)
     }
 
+    @Test("Context delete on a group member asks to delete the whole group")
+    func contextDeleteOnGroupMemberKeepsGroupSelection() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+        let memberCount = context.viewModel.groupMemberIDs.count
+
+        context.viewModel.handleContextAction(.delete(target.id))
+
+        #expect(context.viewModel.groupMemberIDs.count == memberCount)
+        #expect(context.viewModel.pendingGroupDelete == memberCount)
+        #expect(context.viewModel.activeLayout == context.layout)
+    }
+
+    @Test("Arrow keys are left to the canvas so Shift can widen the nudge step")
+    func selectToolLeavesArrowKeysToTheCanvas() {
+        let context = Self.makeContext()
+
+        #expect(!context.viewModel.handleCanvasKey(.leftArrow))
+        #expect(!context.viewModel.handleCanvasKey(.upArrow))
+    }
+
     @Test("A group edit changes every member as one undo step")
     func groupEditIsOneUndoStep() throws {
         let context = Self.makeContext()

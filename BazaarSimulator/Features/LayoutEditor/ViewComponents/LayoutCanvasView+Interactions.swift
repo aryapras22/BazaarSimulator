@@ -8,10 +8,13 @@ extension LayoutCanvasView {
             if let hitID,
                 let target = snapshot.layout.objects.first(where: { $0.id == hitID }),
                 target.kind.isMovable {
-                if target.kind.isRotatable {
+                let isInGroupSelection = snapshot.groupMemberIDs.contains(hitID)
+                if target.kind.isRotatable && !isInGroupSelection {
                     Button("Rotate 90°") { onContextAction(.rotate(hitID)) }
                 }
-                Button("Duplicate") { onContextAction(.duplicate(hitID)) }
+                if !isInGroupSelection {
+                    Button("Duplicate") { onContextAction(.duplicate(hitID)) }
+                }
                 if target.kind == .booth {
                     Button("Reset open sides") { onContextAction(.resetOpenSides(hitID)) }
                 }

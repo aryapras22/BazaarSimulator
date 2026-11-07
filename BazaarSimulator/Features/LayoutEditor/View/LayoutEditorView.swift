@@ -78,6 +78,7 @@ extension LayoutEditorView {
             canUndo: viewModel.canUndo,
             canRedo: viewModel.canRedo,
             hasSelection: isMovable || viewModel.groupSelection != nil,
+            canDuplicate: isMovable,
             canRotate: isRotatable,
             undo: { viewModel.undo() },
             redo: { viewModel.redo() },

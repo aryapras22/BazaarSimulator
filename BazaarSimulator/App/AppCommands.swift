@@ -4,6 +4,7 @@ struct EditorCommandActions {
     var canUndo: Bool
     var canRedo: Bool
     var hasSelection: Bool
+    var canDuplicate: Bool
     var canRotate: Bool
     var undo: () -> Void
     var redo: () -> Void
@@ -53,7 +54,7 @@ struct AppCommands: Commands {
                 actions?.duplicateSelected()
             }
             .keyboardShortcut("d", modifiers: .command)
-            .disabled(!(actions?.hasSelection ?? false))
+            .disabled(!(actions?.canDuplicate ?? false))
 
             Button("Rotate 90°") {
                 actions?.rotateSelected()

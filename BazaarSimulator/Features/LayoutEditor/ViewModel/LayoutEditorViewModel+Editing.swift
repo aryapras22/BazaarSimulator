@@ -224,6 +224,7 @@ extension LayoutEditorViewModel {
     }
 
     func handleContextAction(_ action: CanvasContextAction) {
+        if handleGroupContextAction(action) { return }
         switch action {
         case .rotate(let id):
             guard prepareContextTarget(id) else { return }
@@ -239,6 +240,19 @@ extension LayoutEditorViewModel {
             deleteSelected()
         case let .addObject(kind, worldPoint):
             addObject(kind: kind, at: worldPoint)
+        }
+    }
+
+    private func handleGroupContextAction(_ action: CanvasContextAction) -> Bool {
+        switch action {
+        case .resetOpenSides(let id) where groupMemberIDs.contains(id):
+            resetOpenSidesForGroup()
+            return true
+        case .delete(let id) where groupMemberIDs.contains(id):
+            deleteCurrentSelection()
+            return true
+        default:
+            return false
         }
     }
 
