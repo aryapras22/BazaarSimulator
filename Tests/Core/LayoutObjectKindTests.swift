@@ -18,10 +18,18 @@ struct LayoutObjectKindTests {
         #expect(kind.isSelectable)
     }
 
-    @Test("Booths, blocks and blocked areas resize by handles, walls and doors do not")
+    @Test("A table keeps its model size and turns by eighths, like seating, while booths turn by quarters")
+    func tableFacts() {
+        #expect(!LayoutObjectKind.table.isResizable)
+        #expect(LayoutObjectKind.table.rotationStepDegrees == 45)
+        #expect(LayoutObjectKind.seating.rotationStepDegrees == 45)
+        #expect(LayoutObjectKind.booth.rotationStepDegrees == 90)
+    }
+
+    @Test("Booths, blocks, blocked areas and seating resize by handles, walls, doors and tables do not")
     func resizeHandleKinds() {
         #expect(LayoutObjectKind.allCases.filter(\.hasResizeHandles).map(\.rawValue).sorted()
-            == [LayoutObjectKind.block, .booth, .closedArea].map(\.rawValue).sorted())
+            == [LayoutObjectKind.block, .booth, .closedArea, .seating].map(\.rawValue).sorted())
     }
 
     @Test("Decoding old project without floor succeeds")
@@ -51,7 +59,7 @@ struct LayoutObjectKindTests {
         switch kind {
         case .wall, .block, .door, .closedArea:
             #expect(layer == .structure)
-        case .booth:
+        case .booth, .table, .seating:
             #expect(layer == .booths)
         }
     }

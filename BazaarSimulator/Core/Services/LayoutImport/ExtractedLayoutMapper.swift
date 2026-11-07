@@ -62,7 +62,7 @@ enum ExtractedLayoutMapper {
         }
 
         objects = WallCleanup.apply(to: objects)
-        let furniture = furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
+        objects += furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         let hall = hallPolygon(from: objects)
         let extent = hall.reduce(SIMD2<Double>.zero) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
         var layout = Layout(
@@ -72,7 +72,6 @@ enum ExtractedLayoutMapper {
             hall: hall,
             objects: objects,
             markers: markers,
-            furniture: furniture,
             source: LayoutSource(
                 name: name,
                 note: "Read from the PDF. Scale taken from \(scaleBasis) "

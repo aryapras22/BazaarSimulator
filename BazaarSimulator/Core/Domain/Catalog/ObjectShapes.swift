@@ -6,6 +6,12 @@ enum ObjectShapes {
         if let shape = structureShape(for: id, size: size, height: height) {
             return shape
         }
+        if let model = FurnitureModels.table(id) {
+            return tableShape(model, size: size, height: height)
+        }
+        if id == FurnitureModels.seatingBlockID {
+            return seatingShape(size: size)
+        }
         return [Shapes.box(center: SIMD3(0, height / 2.0, 0), size: SIMD3(size.x, height, size.y), role: .frame)]
     }
 
@@ -26,6 +32,42 @@ enum ObjectShapes {
         default:
             return nil
         }
+    }
+
+    private static func tableShape(_ model: TableModel, size: SIMD2<Double>, height: Double) -> [ShapePrimitive] {
+        let topThickness = 0.04
+        let top: ShapePrimitive
+        switch model.shape {
+        case .round:
+            top = .cylinder(
+                center: SIMD3(0, height - topThickness / 2, 0), radius: size.x / 2, height: topThickness,
+                segments: 24, role: .tabletop
+            )
+        case .rect:
+            top = Shapes.box(
+                center: SIMD3(0, height - topThickness / 2, 0),
+                size: SIMD3(size.x, topThickness, size.y),
+                role: .tabletop
+            )
+        }
+        let pedestal = Shapes.box(
+            center: SIMD3(0, (height - topThickness) / 2, 0),
+            size: SIMD3(0.1, height - topThickness, 0.1),
+            role: .frame
+        )
+        return [top, pedestal] + FurnitureModels.seatOffsets(of: model).map(chairShape)
+    }
+
+    private static func seatingShape(size: SIMD2<Double>) -> [ShapePrimitive] {
+        FurnitureModels.gridOffsets(for: size).map(chairShape)
+    }
+
+    private static func chairShape(at offset: SIMD2<Double>) -> ShapePrimitive {
+        Shapes.box(
+            center: SIMD3(offset.x, FurnitureModels.chairHeightM / 2, offset.y),
+            size: SIMD3(FurnitureModels.chairSizeM.x, FurnitureModels.chairHeightM, FurnitureModels.chairSizeM.y),
+            role: .fabric
+        )
     }
 
     private static func openingShape(size: SIMD2<Double>, height: Double) -> [ShapePrimitive] {

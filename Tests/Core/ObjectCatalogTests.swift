@@ -9,7 +9,7 @@ struct ObjectCatalogTests {
     func uniqueItemIDs() {
         let ids = ObjectCatalog.items.map(\.id)
         let uniqueIDs = Set(ids)
-        #expect(ids.count == 4)
+        #expect(ids.count == ObjectCatalog.structureItems.count + ObjectCatalog.furnitureItems.count)
         #expect(uniqueIDs.count == ids.count)
     }
 
@@ -41,8 +41,10 @@ struct ObjectCatalogTests {
             let primitives = item.shape(size: item.sizeM, height: item.heightM)
             #expect(!primitives.isEmpty, "Item \(item.id) should produce primitives")
 
-            let halfW = item.sizeM.x / 2.0
-            let halfD = item.sizeM.y / 2.0
+            // The chairs of a table stand just outside its top, and count as part of the item.
+            let chairReach = item.kind == .table ? FurnitureModels.chairGapM + FurnitureModels.chairSizeM.x : 0
+            let halfW = item.sizeM.x / 2.0 + chairReach
+            let halfD = item.sizeM.y / 2.0 + chairReach
 
             for primitive in primitives {
                 let bounds = primitive.bounds

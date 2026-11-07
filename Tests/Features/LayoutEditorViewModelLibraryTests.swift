@@ -105,8 +105,9 @@ struct LayoutEditorViewModelLibraryTests {
     func catalogCategoryLayers() {
         #expect(CatalogCategory.structure.layer == .structure)
         #expect(CatalogCategory.project.layer == .booths)
+        #expect(CatalogCategory.furniture.layer == .booths)
         #expect(CatalogCategory.categories(for: .structure) == [.structure])
-        #expect(CatalogCategory.categories(for: .booths) == [.project])
+        #expect(CatalogCategory.categories(for: .booths) == [.project, .furniture])
     }
 
     @Test("Template placement creates booth with size, category, inferred sides, and label N1")

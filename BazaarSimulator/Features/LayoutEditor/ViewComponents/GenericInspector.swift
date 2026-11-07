@@ -14,7 +14,7 @@ struct InspectorFields: Sendable {
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true)
-        case .booth, .door:
+        case .booth, .door, .table, .seating:
             return InspectorFields()
         }
     }

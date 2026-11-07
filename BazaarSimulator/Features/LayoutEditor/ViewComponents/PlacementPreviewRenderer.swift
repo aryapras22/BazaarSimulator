@@ -97,6 +97,13 @@ enum PlacementPreviewRenderer {
             context.fill(path, with: .color(Palette.canvasLineGlow))
             context.stroke(path, with: .color(outlineColor), lineWidth: outlineWidth)
         }
+
+        guard let item, item.kind == .table || item.kind == .seating else { return }
+        let furniture = LayoutObject(kind: item.kind, label: "", placement: placement, catalogID: itemID)
+        for chair in FurnitureModels.chairs(of: furniture) {
+            let path = FloorRenderer.polygonPath(for: LayoutGeometry.corners(of: chair), transform: transform)
+            context.stroke(path, with: .color(outlineColor.opacity(0.7)), lineWidth: 1)
+        }
     }
 
     private static func drawSizeChip(

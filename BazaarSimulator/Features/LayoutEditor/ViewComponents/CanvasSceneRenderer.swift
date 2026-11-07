@@ -20,7 +20,6 @@ enum CanvasSceneRenderer {
             layout: floorLayout,
             gridLine: snapshot.background.gridLine
         )
-        FurnitureRenderer.draw(snapshot.layout.furniture, in: &context, transform: transform)
         drawSceneObjects(in: &context, snapshot: snapshot, transform: transform, drag: drag)
 
         if snapshot.activeLayer == .booths {
@@ -185,6 +184,8 @@ enum CanvasSceneRenderer {
             DoorRenderer.draw(objectState, in: &context, transform: transform)
         case .closedArea:
             BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
+        case .table, .seating:
+            SeatingRenderer.draw(objectState, in: &context, transform: transform)
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }

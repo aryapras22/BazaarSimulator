@@ -32,9 +32,9 @@ struct GroupInspectorDraft: Equatable, Sendable {
 
     func applied(to member: LayoutObject) -> LayoutObject {
         var updated = member
-        if case .set(let value) = category { updated.categoryID = value }
-        if case .set(let value) = widthM { updated.placement.sizeM.x = value }
-        if case .set(let value) = lengthM { updated.placement.sizeM.y = value }
+        if case .set(let value) = category, member.kind.hasCategory { updated.categoryID = value }
+        if case .set(let value) = widthM, member.kind.isResizable { updated.placement.sizeM.x = value }
+        if case .set(let value) = lengthM, member.kind.isResizable { updated.placement.sizeM.y = value }
         if case .set(let value) = rotationDegrees { updated.placement.rotationDegrees = value }
         return updated
     }

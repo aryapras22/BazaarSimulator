@@ -18,7 +18,7 @@ extension LayoutEditorViewModel {
             return "Booth \(BoothLabelFormatter.display(draftLabel))"
         case .door:
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
-        case .closedArea:
+        case .closedArea, .table, .seating:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
         case .wall, .block:
@@ -44,8 +44,8 @@ extension LayoutEditorViewModel {
         if selected.kind != .door {
             guard range.contains(draft.lengthM) else { return false }
         }
-        let allowedRotations = [0, 90, 180, 270]
-        if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
+        let rotationStep = selected.kind.rotationStepDegrees
+        if selected.kind.isRotatable && draft.rotationDegrees % rotationStep != 0 {
             return false
         }
         let heightKinds: Set<LayoutObjectKind> = [.wall, .block, .booth]

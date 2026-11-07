@@ -215,7 +215,7 @@ All positions are in metres from the layout origin, never in PDF pixels. Import 
 ```swift
 struct LayoutObject: Codable, Identifiable, Sendable {
     var id = UUID()
-    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, floor
+    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating
     var label: String                // "B-7", "NW"
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
@@ -234,7 +234,7 @@ struct Placement: Codable, Sendable {
 | Type | Purpose |
 | ---| --- |
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
-| `Layout` | Name, width, depth, a list of `LayoutObject`, and the tables and chairs read from the plan as `LayoutFurniture`, which editing and validation leave alone. One per floor plan PDF |
+| `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
 | `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
 | `EventParameters` | Total visitors per day, event hours, peak periods, bazaar type, `VisitorMix`, group size. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |

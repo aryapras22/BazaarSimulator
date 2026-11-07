@@ -81,27 +81,28 @@ struct ExtractedLayoutMapperTests {
         #expect(abs(door.placement.rotationRadians - .pi / 2) < 0.001)
     }
 
-    @Test("Tables and chairs are kept as furniture, not objects, and chairs link to the table in their group")
-    func keepsTablesAndChairs() throws {
+    @Test("A table becomes a standard model fitted to its chairs, and chairs without a table become seating")
+    func keepsTablesAndChairsAsStandardModels() throws {
         let plan = DetectedPlan(items: [
             item("object", [0, 0, 100, 100], kind: "chair_group"),
             item("object", [40, 40, 20, 20], kind: "table"),
-            item("object", [10, 10, 10, 10], kind: "chair"),
-            item("object", [200, 0, 100, 100], kind: "chair_group"),
-            item("object", [210, 10, 10, 10], kind: "chair"),
-            item("object", [500, 500, 10, 10], kind: "chair")
+            item("object", [48, 5, 4, 4], kind: "chair"),
+            item("object", [48, 91, 4, 4], kind: "chair"),
+            item("object", [200, 0, 40, 40], kind: "chair_group"),
+            item("object", [200, 0, 4, 4], kind: "chair"),
+            item("object", [236, 36, 4, 4], kind: "chair"),
+            item("object", [500, 500, 4, 4], kind: "chair")
         ])
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.isEmpty)
-        let table = try #require(layout.furniture.first { $0.kind == .table })
-        let chairs = layout.furniture.filter { $0.kind == .chair }
-        #expect(chairs.count == 3)
-        #expect(chairs[0].tableID == table.id)
-        #expect(chairs[1].tableID == nil)
-        #expect(chairs[2].tableID == nil)
-        #expect(table.placement.sizeM == SIMD2(2, 2))
+        let table = try #require(layout.objects.first { $0.kind == .table })
+        #expect(table.catalogID == "table-rect-2")
+        #expect(table.placement.sizeM == FurnitureModels.table("table-rect-2")?.sizeM)
+        let blocks = layout.objects.filter { $0.kind == .seating }
+        #expect(blocks.count == 2)
+        #expect(blocks.allSatisfy { $0.catalogID == FurnitureModels.seatingBlockID })
+        #expect(blocks.map { FurnitureModels.chairs(of: $0).count }.sorted() == [1, 64])
     }
 
     @Test("A block takes the legend category with its colour")
@@ -114,20 +115,6 @@ struct ExtractedLayoutMapperTests {
 
         #expect(layout.objects.first?.kind == .block)
         #expect(layout.objects.first?.categoryID == interactive.id)
-    }
-
-    @Test("A layout saved without furniture still decodes")
-    func decodesLayoutWithoutFurniture() throws {
-        let layout = Layout(name: "Old", sizeM: SIMD2(10, 10))
-        var json = try #require(
-            JSONSerialization.jsonObject(with: JSONEncoder().encode(layout)) as? [String: Any]
-        )
-        json.removeValue(forKey: "furniture")
-
-        let decoded = try JSONDecoder().decode(Layout.self, from: JSONSerialization.data(withJSONObject: json))
-
-        #expect(decoded.furniture.isEmpty)
-        #expect(decoded.name == "Old")
     }
 
     @Test("Stage and Blocked become hall objects, Entrance is dropped, none become booths")

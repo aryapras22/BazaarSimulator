@@ -3,9 +3,13 @@ import SwiftUI
 struct RotationControl: View {
     @Binding var degrees: Int
     var isMixed: Bool = false
+    var stepDegrees: Int = 90
 
-    private static let options = [0, 90, 180, 270]
     private static let mixedTag = -1
+
+    private var options: [Int] {
+        Array(stride(from: 0, to: 360, by: stepDegrees))
+    }
 
     private var pickerSelection: Binding<Int> {
         Binding(
@@ -27,7 +31,7 @@ struct RotationControl: View {
                     if isMixed {
                         Text("Mixed").tag(Self.mixedTag)
                     }
-                    ForEach(Self.options, id: \.self) { angle in
+                    ForEach(options, id: \.self) { angle in
                         Text("\(angle)°").tag(angle)
                     }
                 }
@@ -37,15 +41,15 @@ struct RotationControl: View {
                 .fixedSize()
 
                 Button {
-                    degrees = (degrees + 90) % 360
+                    degrees = (degrees + stepDegrees) % 360
                 } label: {
-                    Label("Rotate 90 degrees", systemImage: "rotate.right")
+                    Label("Rotate \(stepDegrees) degrees", systemImage: "rotate.right")
                         .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.circle)
                 .controlSize(.large)
-                .help("Rotate 90 degrees")
+                .help("Rotate \(stepDegrees) degrees")
             }
         }
     }

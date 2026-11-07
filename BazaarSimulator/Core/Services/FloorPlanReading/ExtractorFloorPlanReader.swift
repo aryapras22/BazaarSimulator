@@ -71,8 +71,7 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
     private static func logLedger(of plan: DetectedPlan, layout: Layout) {
         let raw = Dictionary(grouping: plan.items) { $0.kind ?? $0.cls }.mapValues(\.count)
         let summary = raw.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
-        let kept = "\(layout.objects.count) objects and \(layout.furniture.count) furniture"
-        Logger.reading.info("read \(plan.items.count) items (\(summary)), kept \(kept)")
+        Logger.reading.info("read \(plan.items.count) items (\(summary)), kept \(layout.objects.count) objects")
     }
 
     private static func detectedItem(_ item: PlanItem) -> DetectedItem {

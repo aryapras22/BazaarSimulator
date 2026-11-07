@@ -39,6 +39,10 @@ struct LayoutInspectorColumn: View {
                     advice: viewModel.currentDoorAdvice,
                     onUseAdvice: { viewModel.applyDoorAdvice() }
                 )
+            case .table:
+                TableInspector(draft: draftBinding, titleIssues: viewModel.selectedTitleIssues)
+            case .seating:
+                SeatingInspector(draft: draftBinding, titleIssues: viewModel.selectedTitleIssues)
             case .wall:
                 WallInspector(
                     draft: draftBinding,

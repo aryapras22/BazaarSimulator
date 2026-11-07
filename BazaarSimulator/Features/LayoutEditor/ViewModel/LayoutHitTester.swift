@@ -3,6 +3,8 @@ import simd
 
 enum LayoutHitTester {
     static let doorToleranceM: Double = 0.3
+    /// Reaches the chairs around a table, so a click on a chair selects its table.
+    static let tableToleranceM = FurnitureModels.chairGapM + FurnitureModels.chairSizeM.x
 
     static func object(
         at world: SIMD2<Double>,
@@ -56,6 +58,8 @@ enum LayoutHitTester {
                 point: world,
                 tolerance: doorToleranceM
             )
+        case .table:
+            return LayoutGeometry.contains(object.placement, point: world, tolerance: tableToleranceM)
         default:
             return LayoutGeometry.contains(object.placement, point: world)
         }
@@ -64,8 +68,8 @@ enum LayoutHitTester {
     private static func drawRank(for kind: LayoutObjectKind) -> Int {
         switch kind {
         case .closedArea: return 0
-        case .wall, .block: return 1
-        case .booth: return 2
+        case .wall, .block, .seating: return 1
+        case .booth, .table: return 2
         case .door: return 3
         }
     }
