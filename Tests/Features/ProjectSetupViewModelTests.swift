@@ -142,7 +142,9 @@ struct ProjectSetupViewModelTests {
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
         #expect(viewModel.legendEntries.isEmpty)
 
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        for _ in 0..<100 where viewModel.legendEntries.isEmpty {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
 
         #expect(!viewModel.legendEntries.isEmpty)
         #expect(viewModel.hasLegend)
