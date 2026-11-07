@@ -27,9 +27,17 @@ struct SimulationPlayerView: View {
                 let frame = SimulationFrame(size: geometry.size, planAspect: viewModel.planAspect)
 
                 ZStack(alignment: .topLeading) {
-                    SimulationPlanView(viewModel: viewModel, time: time)
-                        .frame(width: frame.plan.width, height: frame.plan.height)
-                        .position(x: frame.plan.midX, y: frame.plan.midY)
+                    switch viewModel.viewStyle {
+                    case .twoD:
+                        SimulationPlanView(viewModel: viewModel, time: time)
+                            .frame(width: frame.plan.width, height: frame.plan.height)
+                            .position(x: frame.plan.midX, y: frame.plan.midY)
+                    case .threeD:
+                        scene(at: time)
+                            .frame(width: frame.stage.width, height: frame.stage.height)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .position(x: frame.stage.midX, y: frame.stage.midY)
+                    }
 
                     SimulationInfoPanel(
                         layoutName: viewModel.layoutID.name,
@@ -55,6 +63,16 @@ struct SimulationPlayerView: View {
                     .accessibilityLabel("Simulation overlay")
                     .frame(width: frame.tabs.width, height: frame.tabs.height)
                     .position(x: frame.tabs.midX, y: frame.tabs.midY)
+
+                    SegmentedTabBar(
+                        options: SimulationViewStyle.allCases,
+                        selection: $viewModel.viewStyle,
+                        title: \.title,
+                        style: .simulation
+                    )
+                    .accessibilityLabel("View style")
+                    .frame(width: frame.styleSwitch.width, height: frame.styleSwitch.height)
+                    .position(x: frame.styleSwitch.midX, y: frame.styleSwitch.midY)
 
                     Text(viewModel.mode.summary(windowText: viewModel.windowText))
                         .font(.system(size: 11.5))
@@ -87,6 +105,14 @@ struct SimulationPlayerView: View {
         .onAppear { if !reduceMotion { clock.play() } }
     }
 
+    @ViewBuilder
+    private func scene(at time: Double) -> some View {
+        if let venue = viewModel.venue() {
+            Metal3DSceneView(venue: venue, frame: viewModel.sceneFrame(at: time))
+                .accessibilityLabel("\(viewModel.layoutID.name) in 3D")
+        }
+    }
+
     private func notice(_ text: String, showsProgress: Bool) -> some View {
         VStack(spacing: 14) {
             if showsProgress { ProgressView() }
@@ -104,8 +130,13 @@ private struct SimulationFrame {
     static let panelWidth = SimulationInfoPanel.width
     static let summaryCenterY: CGFloat = 79
 
+    static let styleSwitchWidth: CGFloat = 132
+
     let plan: CGRect
+    /// The 3D scene: everything to the right of the panel, above the playback bar.
+    let stage: CGRect
     let tabs: CGRect
+    let styleSwitch: CGRect
     let bar: CGRect
 
     init(size: CGSize, planAspect: CGFloat) {
@@ -117,8 +148,13 @@ private struct SimulationFrame {
         let planCenter = max(mid + 61.75, panelRight + 16 + planWidth / 2)
         plan = CGRect(x: planCenter - planWidth / 2, y: 103, width: planWidth, height: planHeight)
 
+        let stageLeft = panelRight + 16
+        stage = CGRect(x: stageLeft, y: 103, width: max(size.width - stageLeft - 20, 240), height: planHeight)
+
+        styleSwitch = CGRect(x: size.width - 20 - Self.styleSwitchWidth, y: 16, width: Self.styleSwitchWidth, height: 44.5)
         let tabCenter = mid + 69.5
-        let tabWidth = max(min(919, 2 * (tabCenter - panelRight - 24), 2 * (size.width - 20 - tabCenter)), 360)
+        let tabRoom = min(2 * (tabCenter - panelRight - 24), 2 * (styleSwitch.minX - 16 - tabCenter))
+        let tabWidth = max(min(919, tabRoom), 360)
         tabs = CGRect(x: tabCenter - tabWidth / 2, y: 16, width: tabWidth, height: 44.5)
 
         bar = CGRect(

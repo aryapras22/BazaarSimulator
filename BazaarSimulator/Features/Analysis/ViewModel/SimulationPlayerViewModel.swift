@@ -4,6 +4,7 @@ import SwiftUI
 
 /// A visitor placed on the plan: where, as a share of the plan, and who.
 struct DrawnVisitor {
+    let id: Int
     let typeIndex: Int
     let point: CGPoint
     let people: Int
@@ -30,11 +31,13 @@ final class SimulationPlayerViewModel {
     private let catalog: PresetCatalog
 
     var mode: SimulationMode = .congestion
+    var viewStyle: SimulationViewStyle = .twoD
     var hoveredSpot: Int?
     private(set) var phase: Phase = .loading
     private(set) var result: SimulationResult?
     private var cachedCoverage: [Double]?
     private var cachedWalkablePath: Path?
+    @ObservationIgnored private var cachedVenue: SimulationVenue?
 
     init(
         projectID: UUID,
@@ -58,6 +61,7 @@ final class SimulationPlayerViewModel {
             phase = .needsLayouts
         case .ready(let loaded):
             result = loaded
+            cachedVenue = nil
             phase = loaded.replay(for: layoutID) == nil ? .needsLayouts : .ready
         case .cancelled:
             break
@@ -121,7 +125,7 @@ final class SimulationPlayerViewModel {
             let target = nextByID[visitor.id] ?? visitor.position
             let meters = visitor.position + (target - visitor.position) * blend
             let fraction = plan.fraction(of: SIMD2(Double(meters.x), Double(meters.y)))
-            return DrawnVisitor(typeIndex: visitor.typeIndex, point: CGPoint(x: fraction.x, y: fraction.y), people: visitor.people)
+            return DrawnVisitor(id: visitor.id, typeIndex: visitor.typeIndex, point: CGPoint(x: fraction.x, y: fraction.y), people: visitor.people)
         }
     }
 
@@ -192,6 +196,72 @@ final class SimulationPlayerViewModel {
             }
         }
         return density
+    }
+
+    // MARK: 3D
+
+    /// The venue for the 3D view, built the first time it is needed.
+    func venue() -> SimulationVenue? {
+        if let cachedVenue { return cachedVenue }
+        guard let layout else { return nil }
+        let venue = SimulationVenue(id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan)
+        cachedVenue = venue
+        return venue
+    }
+
+    /// What the 3D scene shows at `playback`: the visitors, and the overlay for the chosen mode.
+    func sceneFrame(at playback: Double) -> SimulationSceneFrame {
+        let plan = plan
+        func meters(_ share: CGPoint) -> (x: Double, z: Double) {
+            (plan.origin.x + Double(share.x) * plan.size.x, plan.origin.y + Double(share.y) * plan.size.y)
+        }
+
+        var frame = SimulationSceneFrame()
+        frame.visitors = visitors(at: playback).map { visitor in
+            let place = meters(visitor.point)
+            return SimulationSceneFrame.Visitor(
+                id: visitor.id, x: place.x, z: place.z, typeIndex: visitor.typeIndex, people: visitor.people
+            )
+        }
+
+        switch mode {
+        case .congestion:
+            frame.spots = (outcome?.spots ?? []).map { spot in
+                let density = spot.density(at: progress(at: playback))
+                let place = meters(spot.location)
+                return SimulationSceneFrame.Spot(
+                    number: spot.number, x: place.x, z: place.z,
+                    level: min(density / SeverityGrade.f.lowerDensity, 1),
+                    grade: SeverityGrade.grade(forDensity: density)
+                )
+            }
+        case .density:
+            guard let mask = replay?.walkable else { break }
+            frame.overlay = FieldImage.pixels(
+                kind: .density,
+                values: heatDensity(at: playback).map(Float.init),
+                columns: Self.heatColumns,
+                rows: heatRows,
+                mask: mask
+            )
+        case .footfall:
+            guard let replay else { break }
+            let counts = footfall(at: playback)
+            let busiest = Float(max(counts.max() ?? 1, 1))
+            let tile = replay.footfallTileM
+            frame.overlay = FieldImage.pixels(
+                kind: .footfall,
+                values: counts.map { Float($0) / busiest },
+                columns: replay.footfallColumns,
+                rows: replay.footfallRows,
+                scale: SIMD2(
+                    Float(plan.size.x / (Double(replay.footfallColumns) * tile)),
+                    Float(plan.size.y / (Double(replay.footfallRows) * tile))
+                ),
+                mask: replay.walkable
+            )
+        }
+        return frame
     }
 
     /// How often each tile of floor has been walked by `playback`.

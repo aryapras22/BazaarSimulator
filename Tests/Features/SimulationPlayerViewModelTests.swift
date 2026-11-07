@@ -218,3 +218,90 @@ struct PlaybackClockTests {
         #expect(clock.time(at: start.addingTimeInterval(605)) == 5)
     }
 }
+
+
+@MainActor
+@Suite
+struct SimulationPlayerSceneTests {
+    private let catalog = PresetCatalog(
+        visitorTypes: TestLayouts.visitorTypes,
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+    )
+
+    private func loadedModel() async -> SimulationPlayerViewModel {
+        var parameters = TestLayouts.parameters
+        parameters.totalVisitors = 400
+        parameters.peakPeriods = [TimeRange(startMinute: 11 * 60, endMinute: 12 * 60)]
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: [TestLayouts.hall(), TestLayouts.hall()]), for: project.id)
+        session.setEventParameters(parameters, for: project.id)
+        let model = SimulationPlayerViewModel(
+            projectID: project.id, layoutID: .one, session: session,
+            analysisService: AnalysisService(), catalog: catalog
+        )
+        await model.load()
+        return model
+    }
+
+    @Test("It starts in 2D")
+    func startsFlat() async {
+        #expect(await loadedModel().viewStyle == .twoD)
+        #expect(SimulationViewStyle.allCases.map(\.title) == ["2D", "3D"])
+    }
+
+    @Test("There is a 3D venue once the simulation has loaded, and it is built once")
+    func venueIsBuiltOnce() async throws {
+        let model = await loadedModel()
+        let first = try #require(model.venue())
+        #expect(first.id == model.venue()?.id)
+        #expect(first.blocks.count >= TestLayouts.hall().objects.count)
+        #expect(first.plan == model.plan)
+    }
+
+    @Test("Visitors are placed in layout meters, inside the plan")
+    func visitorsInMeters() async {
+        let model = await loadedModel()
+        let plan = model.plan
+        let frame = model.sceneFrame(at: 60)
+        #expect(frame.visitors.count == model.visitors(at: 60).count)
+        #expect(!frame.visitors.isEmpty)
+        for visitor in frame.visitors {
+            #expect(visitor.x >= plan.origin.x && visitor.x <= plan.origin.x + plan.size.x)
+            #expect(visitor.z >= plan.origin.y && visitor.z <= plan.origin.y + plan.size.y)
+        }
+        #expect(Set(frame.visitors.map(\.id)).count == frame.visitors.count)
+    }
+
+    @Test("Congestion marks the watched spots, with no floor overlay")
+    func congestion() async {
+        let model = await loadedModel()
+        model.mode = .congestion
+        let frame = model.sceneFrame(at: 60)
+        #expect(frame.spots.count == model.outcome?.spots.count)
+        #expect(frame.overlay == nil)
+        #expect(frame.spots.allSatisfy { (0...1).contains($0.level) })
+    }
+
+    @Test("Crowd density and busiest path paint the floor, with no spot markers")
+    func overlays() async throws {
+        let model = await loadedModel()
+        let mask = try #require(model.replay?.walkable)
+        for mode in [SimulationMode.density, .footfall] {
+            model.mode = mode
+            let frame = model.sceneFrame(at: 120)
+            let overlay = try #require(frame.overlay, "\(mode)")
+            #expect(overlay.width == mask.columns && overlay.height == mask.rows)
+            #expect(frame.spots.isEmpty)
+        }
+    }
+
+    @Test("Visitors appear in every mode")
+    func visitorsEverywhere() async {
+        let model = await loadedModel()
+        for mode in SimulationMode.allCases {
+            model.mode = mode
+            #expect(!model.sceneFrame(at: 60).visitors.isEmpty, "\(mode)")
+        }
+    }
+}

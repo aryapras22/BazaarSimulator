@@ -35,7 +35,6 @@ struct RootView: View {
         .appBackground()
         .preferredColorScheme(.dark)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        .toolbarVisibility(.hidden, for: .windowToolbar)
         .windowToolbarFullScreenVisibility(.onHover)
         .sheet(item: parametersRequest) { request in
             ParametersSheet {
