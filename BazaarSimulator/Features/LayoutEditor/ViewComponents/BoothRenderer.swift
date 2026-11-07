@@ -11,6 +11,7 @@ struct BoothDrawState: Sendable {
     let hasObjectWarning: Bool
     let blockedSides: OpenSides
     let categoryColor: LegendColor?
+    var heatFill: Color?
 }
 
 enum BoothRenderer {
@@ -30,7 +31,7 @@ enum BoothRenderer {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
-            fillColor = Palette.canvasBoothFill
+            fillColor = state.heatFill ?? Palette.canvasBoothFill
             strokeColor = Palette.canvasLine
         }
 

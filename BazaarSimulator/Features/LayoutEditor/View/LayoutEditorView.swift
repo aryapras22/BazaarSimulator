@@ -70,7 +70,8 @@ extension LayoutEditorView {
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world,
-            background: viewModel.canvasBackground
+            background: viewModel.canvasBackground,
+            showsAttractiveness: viewModel.showsAttractiveness
         )
     }
 
@@ -122,6 +123,7 @@ extension LayoutEditorView {
                 message: viewModel.transientHint,
                 showReadouts: viewModel.viewPreset == .plan,
                 background: $viewModel.canvasBackground,
+                showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
                 onZoomIn: {
                     if viewModel.viewPreset == .plan {
                         viewModel.zoomIn(in: canvasViewSize)

@@ -21,6 +21,13 @@ struct LayoutEditorViewModelViewsTests {
         return viewModel
     }
 
+    @Test("The attractiveness scale clamps values outside 0 to 10")
+    func attractivenessScaleClamps() {
+        #expect(AttractivenessScale.fraction(of: -3) == 0)
+        #expect(AttractivenessScale.fraction(of: 5) == 0.5)
+        #expect(AttractivenessScale.fraction(of: 40) == 1)
+    }
+
     @Test("A resize refits the canvas until the user zooms or pans")
     func resizeRefitsOnlyWhileUntouched() {
         let viewModel = Self.makeViewModel()

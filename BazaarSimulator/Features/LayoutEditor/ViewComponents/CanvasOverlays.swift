@@ -7,6 +7,7 @@ struct CanvasOverlays: View {
     var message: String?
     var showReadouts: Bool = true
     @Binding var background: CanvasBackground
+    var showsAttractiveness: Binding<Bool>?
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onFit: () -> Void
@@ -24,6 +25,9 @@ struct CanvasOverlays: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
                     if showReadouts {
+                        if let showsAttractiveness {
+                            AttractivenessLegend(isOn: showsAttractiveness)
+                        }
                         CanvasBackgroundSwatches(selection: $background)
                     }
                     CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)

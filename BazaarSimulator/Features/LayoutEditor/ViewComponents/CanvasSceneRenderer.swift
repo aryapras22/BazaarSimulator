@@ -171,7 +171,10 @@ enum CanvasSceneRenderer {
                 isHoveredGroupMember: isMarqueed || (!isInactive && snapshot.hoveredGroupMemberIDs.contains(object.id)),
                 hasObjectWarning: hasWarning,
                 blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
-                categoryColor: object.categoryID.flatMap { colorsByID[$0] }
+                categoryColor: object.categoryID.flatMap { colorsByID[$0] },
+                heatFill: snapshot.showsAttractiveness && snapshot.activeLayer == .booths
+                    ? AttractivenessScale.color(for: object.attractiveness)
+                    : nil
             )
             BoothRenderer.draw(boothState, in: &context, transform: transform)
         case .door:

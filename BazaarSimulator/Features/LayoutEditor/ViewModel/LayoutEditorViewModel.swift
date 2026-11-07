@@ -48,6 +48,7 @@ final class LayoutEditorViewModel {
     var dragState = CanvasDragState()
     @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
+    var showsAttractiveness = false
     var hasFittedTransform = false
     @ObservationIgnored var autoFitTransform: CanvasTransform?
     var viewPreset: ViewPreset = .plan
