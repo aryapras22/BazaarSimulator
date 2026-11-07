@@ -7,29 +7,39 @@ struct CanvasZoomControls: View {
 
     var body: some View {
         VStack(spacing: Spacing.s) {
-            zoomButton("+", accessibilityLabel: "Zoom in", action: onZoomIn)
-            zoomButton("−", accessibilityLabel: "Zoom out", action: onZoomOut)
-            zoomButton("fit", accessibilityLabel: "Zoom to fit", action: onFit)
+            zoomButton("Zoom in", systemImage: "plus", help: "Zoom in (⌘=)", action: onZoomIn)
+            zoomButton("Zoom out", systemImage: "minus", help: "Zoom out (⌘-)", action: onZoomOut)
+            zoomButton(
+                "Zoom to fit",
+                systemImage: "arrow.up.left.and.arrow.down.right",
+                help: "Zoom to fit (⌘0)",
+                action: onFit
+            )
         }
     }
 
-    private func zoomButton(_ title: String, accessibilityLabel: String, action: @escaping () -> Void) -> some View {
+    private func zoomButton(
+        _ title: String,
+        systemImage: String,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(Typography.body)
-                .foregroundStyle(Palette.textPrimary)
-                .frame(width: 36, height: 36)
-                .background(Circle().fill(Palette.surface))
-                .overlay(Circle().stroke(Palette.surfaceBorder, lineWidth: 1))
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+                .frame(width: 20, height: 20)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .help(help)
     }
 }
 
 #Preview("Zoom controls") {
-    CanvasZoomControls(onZoomIn: {}, onZoomOut: {}, onFit: {})
-        .padding()
-        .background(Palette.background)
-        .preferredColorScheme(.dark)
+    GlassEffectContainer(spacing: Spacing.s) {
+        CanvasZoomControls(onZoomIn: {}, onZoomOut: {}, onFit: {})
+    }
+    .padding()
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
 }

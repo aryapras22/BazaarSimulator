@@ -10,8 +10,7 @@ struct CanvasBackgroundSwatches: View {
             }
         }
         .padding(Spacing.s)
-        .background(Capsule().fill(Palette.surface))
-        .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
+        .glassEffect(.regular, in: Capsule())
     }
 
     private func swatch(for background: CanvasBackground) -> some View {
@@ -34,8 +33,10 @@ struct CanvasBackgroundSwatches: View {
 }
 
 #Preview {
-    CanvasBackgroundSwatches(selection: .constant(.grey))
-        .padding()
+    GlassEffectContainer(spacing: Spacing.s) {
+        CanvasBackgroundSwatches(selection: .constant(.grey))
+    }
+    .padding()
         .background(Palette.background)
         .preferredColorScheme(.dark)
 }

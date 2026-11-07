@@ -4,90 +4,44 @@ extension LayoutEditorView {
     @ToolbarContentBuilder
     var editorToolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
-            HStack(spacing: Spacing.m) {
-                Button {
-                    viewModel.requestBack()
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .accessibilityLabel("Back to Project Setup")
-                .help("Back to Project Setup")
+            Button {
+                viewModel.requestBack()
+            } label: {
+                Label("Back to Project Setup", systemImage: "chevron.left")
+            }
+            .help("Back to Project Setup")
+        }
 
-                HStack(spacing: Spacing.xs) {
-                    Text(viewModel.projectName)
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textPrimary)
-
-                    Text("·")
-                        .foregroundStyle(Palette.textSecondary)
-
-                    if viewModel.layouts.count > 1 {
-                        Menu {
-                            ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { index, item in
-                                Button("Layout \(index + 1) · \(item.name)") {
-                                    viewModel.selectLayout(item.id)
-                                }
-                            }
-                        } label: {
-                            let activeIndex = viewModel.layouts.firstIndex {
-                                $0.id == viewModel.activeLayoutID
-                            } ?? 0
-                            let activeName = viewModel.activeLayout?.name ?? ""
-                            Text("Layout \(activeIndex + 1) · \(activeName)")
-                                .font(Typography.body)
-                        }
-                    } else {
-                        Text(viewModel.activeLayout?.name ?? "")
-                            .font(Typography.body)
-                            .foregroundStyle(Palette.textSecondary)
-                    }
-                }
-
-                HStack(spacing: Spacing.xs) {
-                    Button {
-                        viewModel.undo()
-                    } label: {
-                        Image(systemName: "arrow.uturn.backward")
-                    }
-                    .disabled(!viewModel.canUndo)
-                    .help("Undo (⌘Z)")
-                    .accessibilityLabel("Undo")
-
-                    Button {
-                        viewModel.redo()
-                    } label: {
-                        Image(systemName: "arrow.uturn.forward")
-                    }
-                    .disabled(!viewModel.canRedo)
-                    .help("Redo (⇧⌘Z)")
-                    .accessibilityLabel("Redo")
-                }
+        if viewModel.layouts.count > 1 {
+            ToolbarItem(placement: .navigation) {
+                layoutMenu
             }
         }
 
-        ToolbarItem(placement: .principal) {
-            HStack(spacing: Spacing.m) {
-                SegmentedTabs(
-                    selection: Binding(
-                        get: { viewModel.activeLayer },
-                        set: { viewModel.selectLayer($0) }
-                    ),
-                    tabs: EditorLayer.allCases,
-                    title: \.title,
-                    showsBackground: false
-                )
+        ToolbarSpacer(.fixed, placement: .navigation)
 
-                ViewPresetPicker(
-                    selection: Binding(
-                        get: { viewModel.viewPreset },
-                        set: { _ in }
-                    ),
-                    onSelect: { preset in
-                        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
-                    },
-                    showsBackground: false
-                )
+        ToolbarItemGroup(placement: .navigation) {
+            Button {
+                viewModel.undo()
+            } label: {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+            }
+            .disabled(!viewModel.canUndo)
+            .help("Undo (⌘Z)")
+
+            Button {
+                viewModel.redo()
+            } label: {
+                Label("Redo", systemImage: "arrow.uturn.forward")
+            }
+            .disabled(!viewModel.canRedo)
+            .help("Redo (⇧⌘Z)")
+        }
+
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: Spacing.l) {
+                layerPicker
+                viewPresetPicker
             }
         }
 
@@ -96,20 +50,67 @@ extension LayoutEditorView {
                 HStack(spacing: Spacing.xs) {
                     Text(placingChipTitle)
                         .font(Typography.caption)
-                        .foregroundStyle(Palette.textPrimary)
                     Button {
                         viewModel.selectTool(.select)
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(Typography.caption)
-                            .foregroundStyle(Palette.textSecondary)
+                        Label("Stop placing", systemImage: "xmark.circle.fill")
+                            .labelStyle(.iconOnly)
                     }
                     .buttonStyle(.plain)
+                    .help("Stop placing (Esc)")
                 }
-                .padding(.horizontal, Spacing.s)
-                .padding(.vertical, Spacing.xs)
             }
         }
+    }
+
+    private var layoutMenu: some View {
+        Menu {
+            ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { index, item in
+                Button("Layout \(index + 1) · \(item.name)") {
+                    viewModel.selectLayout(item.id)
+                }
+            }
+        } label: {
+            let activeIndex = viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0
+            Text("Layout \(activeIndex + 1) · \(viewModel.activeLayout?.name ?? "")")
+        }
+        .help("Switch layout")
+    }
+
+    private var layerPicker: some View {
+        Picker(
+            "Layer",
+            selection: Binding(get: { viewModel.activeLayer }, set: { viewModel.selectLayer($0) })
+        ) {
+            ForEach(EditorLayer.allCases, id: \.self) { layer in
+                Text(layer.title).tag(layer)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .help("Layer (⌘1 Structure, ⌘2 Booths)")
+    }
+
+    private var viewPresetPicker: some View {
+        Picker(
+            "View",
+            selection: Binding(
+                get: { viewModel.viewPreset },
+                set: { preset in
+                    let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                    viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
+                }
+            )
+        ) {
+            ForEach(ViewPreset.allCases, id: \.self) { preset in
+                Text(preset.title).tag(preset)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .help("View (1 Plan, 2 3D)")
     }
 
     private var placingChipTitle: String? {

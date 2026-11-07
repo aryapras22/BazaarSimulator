@@ -23,16 +23,18 @@ struct CanvasOverlays: View {
                     EditorHintStrip(tool: tool, message: message)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: Spacing.s) {
-                    if showReadouts {
-                        if let showsAttractiveness {
-                            AttractivenessLegend(isOn: showsAttractiveness)
+                GlassEffectContainer(spacing: Spacing.s) {
+                    VStack(alignment: .trailing, spacing: Spacing.s) {
+                        if showReadouts {
+                            if let showsAttractiveness {
+                                AttractivenessLegend(isOn: showsAttractiveness)
+                            }
+                            CanvasBackgroundSwatches(selection: $background)
                         }
-                        CanvasBackgroundSwatches(selection: $background)
-                    }
-                    CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
-                    if showReadouts {
-                        CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                        CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
+                        if showReadouts {
+                            CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                        }
                     }
                 }
             }

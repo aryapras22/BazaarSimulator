@@ -7,6 +7,7 @@ struct LayoutEditorView: View {
     @State private var pointer = CanvasPointer()
     @State private var isSidePanelVisible = true
     @FocusState private var isCanvasFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 0) {
@@ -23,7 +24,7 @@ struct LayoutEditorView: View {
                 LayoutEditorSidePanel(
                     viewModel: viewModel,
                     onClose: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(panelAnimation) {
                             isSidePanelVisible = false
                         }
                     }
@@ -40,6 +41,8 @@ struct LayoutEditorView: View {
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background)
+        .navigationTitle(viewModel.projectName)
+        .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
         .toolbar {
             editorToolbar
         }
@@ -52,6 +55,10 @@ struct LayoutEditorView: View {
 }
 
 extension LayoutEditorView {
+    private var panelAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.2)
+    }
+
     var canvasSize: CGSize {
         CGSize(width: canvasViewSize.x, height: canvasViewSize.y)
     }
@@ -284,7 +291,7 @@ extension LayoutEditorView {
     }
 
     private func openLibraryFiltered(to category: CatalogCategory) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(panelAnimation) {
             isSidePanelVisible = true
             viewModel.inspectorPanelTab = .library
             viewModel.libraryCategory = category
@@ -304,7 +311,7 @@ extension LayoutEditorView {
         case .fill:
             viewModel.selectTool(.fill(sizeM: SIMD2(2.5, 2.5)))
         case .library:
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(panelAnimation) {
                 if !isSidePanelVisible {
                     isSidePanelVisible = true
                     viewModel.inspectorPanelTab = .library
