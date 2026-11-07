@@ -11,8 +11,11 @@ enum WallConnections {
     static let isolationM = 1.0
     static let cornerReachM = 2.0
     static let touchM = 0.3
+    static let stackedReachM = 0.8
     static let minDoorWidthM = 0.7
     static let doorReachM = 2.0
+    static let doorTouchM = 0.5
+    static let doorGapReachM = 2.5
 
     /// A wall as a segment between its two ends.
     private struct Segment {
@@ -60,25 +63,104 @@ enum WallConnections {
 
     static func apply(to objects: [LayoutObject]) -> [LayoutObject] {
         var segments = objects.filter { $0.kind == .wall }.map { Segment($0) }
-        segments = dropFrameLines(segments)
+        let doors = objects.filter { $0.kind == .door && isWideEnough($0) }
+        segments = mergeStacked(dropFrameLines(segments))
         segments = dropTicks(segments)
-        segments = dropFloating(connectCorners(segments))
-        let walls = segments.map { segment in
+        segments = dropFloating(connectCorners(segments), doors: doors)
+        let seated = seatedDoors(in: objects, on: segments)
+        let walls = closeDoorGaps(segments, doors: seated).map { segment in
             var wall = segment.wall
             wall.placement = segment.placement
             return wall
         }
-        return objects.filter { $0.kind != .wall && $0.kind != .door } + walls + seatedDoors(in: objects, on: segments)
+        return objects.filter { $0.kind != .wall && $0.kind != .door } + walls + seated
     }
 
-    /// A wall that touches no other wall is not part of the building. When no wall touches another, the plan has no
-    /// structure to judge against, so all stay.
-    private static func dropFloating(_ segments: [Segment]) -> [Segment] {
+    /// A door end with no wall against it gets the nearest wall on the same line stretched up to it.
+    private static func closeDoorGaps(_ segments: [Segment], doors: [LayoutObject]) -> [Segment] {
+        var result = segments
+        for door in doors {
+            let size = door.placement.sizeM
+            let angle = door.placement.rotationRadians + (size.y > size.x ? .pi / 2 : 0)
+            let direction = SIMD2(cos(angle), sin(angle))
+            for point in ends(of: door) where !result.contains(where: { $0.distance(to: point) <= touchM }) {
+                var best: (index: Int, atEnd: Bool)?
+                var bestGap = doorGapReachM
+                for index in result.indices {
+                    let wall = result[index]
+                    let cross = wall.direction.x * direction.y - wall.direction.y * direction.x
+                    guard abs(cross) < sin(5 * .pi / 180), wall.locate(point).across <= touchM else { continue }
+                    let atEnd = wall.locate(point).along > wall.length
+                    let gap = simd_length(point - (atEnd ? wall.end : wall.start))
+                    if gap <= bestGap {
+                        bestGap = gap
+                        best = (index, atEnd)
+                    }
+                }
+                guard let best else { continue }
+                if best.atEnd { result[best.index].end = point } else { result[best.index].start = point }
+            }
+        }
+        return result
+    }
+
+    private static func ends(of door: LayoutObject) -> [SIMD2<Double>] {
+        let size = door.placement.sizeM
+        let angle = door.placement.rotationRadians + (size.y > size.x ? .pi / 2 : 0)
+        let along = SIMD2(cos(angle), sin(angle)) * (max(size.x, size.y) / 2)
+        return [door.placement.center - along, door.placement.center + along]
+    }
+
+    private static func isWideEnough(_ door: LayoutObject) -> Bool {
+        max(door.placement.sizeM.x, door.placement.sizeM.y) >= minDoorWidthM
+    }
+
+    /// Two parallel walls drawn on top of each other are one thick wall, as the two edges of a double line.
+    private static func mergeStacked(_ segments: [Segment]) -> [Segment] {
+        var result = segments
+        var merged = true
+        while merged {
+            merged = false
+            search: for first in result.indices {
+                for second in result.indices where second > first {
+                    if let joined = stack(result[first], result[second]) {
+                        result[first] = joined
+                        result.remove(at: second)
+                        merged = true
+                        break search
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    private static func stack(_ first: Segment, _ second: Segment) -> Segment? {
+        guard isParallel(first, second) else { return nil }
+        let normal = SIMD2(-first.direction.y, first.direction.x)
+        let across = simd_dot((second.start + second.end) / 2 - first.start, normal)
+        let startAlong = simd_dot(second.start - first.start, first.direction)
+        let endAlong = simd_dot(second.end - first.start, first.direction)
+        let overlap = min(first.length, max(startAlong, endAlong)) - max(0, min(startAlong, endAlong))
+        guard abs(across) <= stackedReachM, overlap >= min(first.length, second.length) / 2 else { return nil }
+        let low = min(0, startAlong, endAlong)
+        let high = max(first.length, startAlong, endAlong)
+        var joined = first
+        joined.start = first.start + first.direction * low + normal * (across / 2)
+        joined.end = first.start + first.direction * high + normal * (across / 2)
+        joined.thickness = abs(across) + max(first.thickness, second.thickness)
+        return joined
+    }
+
+    /// A wall that touches no other wall and no door is not part of the building. When none touches anything, the plan
+    /// has no structure to judge against, so all stay.
+    private static func dropFloating(_ segments: [Segment], doors: [LayoutObject]) -> [Segment] {
+        let doorEnds = doors.flatMap(ends(of:))
         func touches(_ first: Segment, _ second: Segment) -> Bool {
             [second.start, second.end].contains { first.distance(to: $0) <= touchM }
         }
         let attached = segments.indices.filter { index in
-            segments.indices.contains { other in
+            doorEnds.contains { segments[index].distance(to: $0) <= doorTouchM } || segments.indices.contains { other in
                 other != index
                     && (touches(segments[index], segments[other]) || touches(segments[other], segments[index]))
             }

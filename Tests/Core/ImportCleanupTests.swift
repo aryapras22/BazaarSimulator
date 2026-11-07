@@ -111,4 +111,45 @@ struct ImportCleanupTests {
 
         #expect(layout.objects.filter { $0.kind == .door }.count == 1)
     }
+
+    @Test("Two parallel walls on top of each other become one thick wall")
+    func stackedWallsBecomeOne() throws {
+        let layout = layoutOf([
+            wall(0, 300),
+            DetectedItem(cls: "wall", box: [0, 8, 300, 2], segment: [0, 8, 300, 8], widthPx: 2),
+            DetectedItem(cls: "wall", box: [0, 0, 2, 100], segment: [1, 0, 1, 100], widthPx: 2)
+        ])
+
+        let walls = layout.objects.filter { $0.kind == .wall }
+        #expect(walls.count == 2)
+        let thick = try #require(walls.first { abs($0.placement.sizeM.x - 30) < 0.01 })
+        #expect(abs(thick.placement.sizeM.y - 1.0) < 0.01)
+    }
+
+    @Test("A wall piece beside a door stays, so the door has a wall on each side")
+    func wallBesideDoorStays() {
+        let layout = layoutOf([
+            wall(0, 100),
+            wall(150, 175),
+            wall(300, 400),
+            DetectedItem(cls: "opening", box: [100, -2, 50, 6]),
+            DetectedItem(cls: "opening", box: [175, -2, 125, 6])
+        ])
+
+        #expect(layout.objects.filter { $0.kind == .wall }.count == 3)
+    }
+
+    @Test("A wall is stretched up to a door that has no wall on one side")
+    func wallReachesDoor() throws {
+        let layout = layoutOf([
+            wall(0, 100),
+            DetectedItem(cls: "wall", box: [0, 0, 2, 100], segment: [1, 0, 1, 100], widthPx: 2),
+            DetectedItem(cls: "opening", box: [100, -2, 50, 6])
+        ])
+
+        let walls = layout.objects.filter { $0.kind == .wall }
+        let door = try #require(layout.objects.first { $0.kind == .door })
+        let reach = walls.map { $0.placement.center.x + $0.placement.sizeM.x / 2 }.max() ?? 0
+        #expect(abs(reach - (door.placement.center.x - door.placement.sizeM.x / 2)) < 0.05)
+    }
 }
