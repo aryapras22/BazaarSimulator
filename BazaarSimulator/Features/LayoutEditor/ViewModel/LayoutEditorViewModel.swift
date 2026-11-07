@@ -49,6 +49,7 @@ final class LayoutEditorViewModel {
     @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
     var hasFittedTransform = false
+    @ObservationIgnored var autoFitTransform: CanvasTransform?
     var viewPreset: ViewPreset = .plan
     var cameraRig = CameraRig(
         pose: CameraPose(target: .zero, azimuth: 0, polar: CameraRig.minPolar, distance: 30, fieldOfViewDegrees: 46)

@@ -215,7 +215,15 @@ extension LayoutEditorViewModel {
     func fitToView(in viewSize: SIMD2<Double>) {
         guard let layout = activeLayout else { return }
         transform = CanvasTransform.fitting(layoutSize: layout.sizeM, in: viewSize)
+        autoFitTransform = transform
         hasFittedTransform = true
+    }
+
+    /// The canvas size is not final when the editor first appears, so the first fit can be off.
+    /// Fitting again on resize is safe only while the user has not zoomed or panned since the last fit.
+    func refitIfUntouched(in viewSize: SIMD2<Double>) {
+        guard hasFittedTransform, transform == autoFitTransform else { return }
+        fitToView(in: viewSize)
     }
 
     func fitIfNeeded(in viewSize: SIMD2<Double>) {

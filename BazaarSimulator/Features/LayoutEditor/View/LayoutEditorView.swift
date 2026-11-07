@@ -201,16 +201,19 @@ extension LayoutEditorView {
     private func canvasView(proxy: GeometryProxy) -> some View {
         attachCanvasShortcuts(to: makeLayoutCanvasView())
             .onAppear {
-                canvasViewSize = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
-                viewModel.fitIfNeeded(in: canvasViewSize)
+                let size = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                canvasViewSize = size
+                viewModel.fitIfNeeded(in: size)
                 viewModel.refreshDerivedState()
                 isCanvasFocused = true
             }
-            .onChange(of: proxy.size) { _, newSize in
-                canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+            .onGeometryChange(for: CGSize.self, of: \.size) { newSize in
+                let size = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+                canvasViewSize = size
+                viewModel.refitIfUntouched(in: size)
             }
             .onChange(of: viewModel.activeLayoutID) { _, _ in
-                viewModel.fitIfNeeded(in: canvasViewSize)
+                viewModel.fitIfNeeded(in: SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height)))
             }
             .onChange(of: viewModel.selectionID) { _, newID in
                 if newID != nil { isCanvasFocused = true }

@@ -21,6 +21,21 @@ struct LayoutEditorViewModelViewsTests {
         return viewModel
     }
 
+    @Test("A resize refits the canvas until the user zooms or pans")
+    func resizeRefitsOnlyWhileUntouched() {
+        let viewModel = Self.makeViewModel()
+        let layoutSize = viewModel.layout.sizeM
+        viewModel.fitToView(in: SIMD2<Double>(960, 640))
+
+        viewModel.refitIfUntouched(in: SIMD2<Double>(1400, 900))
+        #expect(viewModel.transform == CanvasTransform.fitting(layoutSize: layoutSize, in: SIMD2<Double>(1400, 900)))
+
+        viewModel.transform = viewModel.transform.panned(by: SIMD2<Double>(20, 0))
+        let panned = viewModel.transform
+        viewModel.refitIfUntouched(in: SIMD2<Double>(600, 400))
+        #expect(viewModel.transform == panned)
+    }
+
     private static func geometry(
         of viewModel: LayoutEditorViewModel,
         newerThan version: Int
