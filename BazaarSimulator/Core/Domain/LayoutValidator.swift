@@ -77,7 +77,8 @@ enum LayoutValidator {
         let hasWalkable = !layout.hall.isEmpty || !layout.lobby.isEmpty
         guard hasWalkable else { return [] }
         var issues: [LayoutIssue] = []
-        for object in layout.objects where object.kind.isMovable && !object.kind.isStructural {
+        // Doors sit in a wall line, which can fall in the gap between hall and lobby or just past their edge.
+        for object in layout.objects where object.kind.isMovable && !object.kind.isStructural && object.kind != .door {
             var inset = object.placement
             inset.sizeM = SIMD2<Double>(
                 max(0.01, inset.sizeM.x - 2 * floorToleranceM),
