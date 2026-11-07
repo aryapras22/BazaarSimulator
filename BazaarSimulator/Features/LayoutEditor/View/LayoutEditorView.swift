@@ -13,7 +13,7 @@ struct LayoutEditorView: View {
             ToolRail(
                 layer: viewModel.activeLayer,
                 activeTool: viewModel.tool,
-                isSidePanelOpen: isSidePanelVisible,
+                isSidePanelOpen: isSidePanelVisible && viewModel.inspectorPanelTab == .library,
                 onSelect: { railItem in
                     handleToolRailSelection(railItem)
                 }
@@ -301,6 +301,8 @@ extension LayoutEditorView {
                     if viewModel.activeLayer == .booths, let first = viewModel.cachedBoothTemplates.first {
                         viewModel.selectTool(.place(.template(first)))
                     }
+                } else if viewModel.inspectorPanelTab != .library {
+                    viewModel.inspectorPanelTab = .library
                 } else {
                     isSidePanelVisible = false
                 }
