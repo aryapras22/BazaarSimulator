@@ -27,6 +27,7 @@ struct LayoutObjectTests {
 
         #expect(object.catalogID == nil)
         #expect(object.heightM == nil)
+        #expect(object.attractiveness == 1)
         #expect(object.label == "B1")
         #expect(object.kind == .booth)
     }

@@ -44,3 +44,21 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.attractiveness = attractiveness
     }
 }
+
+extension LayoutObject {
+    /// Layouts saved before attractiveness existed have no value for it, so they read as the default.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        kind = try container.decode(LayoutObjectKind.self, forKey: .kind)
+        label = try container.decode(String.self, forKey: .label)
+        placement = try container.decode(Placement.self, forKey: .placement)
+        categoryID = try container.decodeIfPresent(LegendEntry.ID.self, forKey: .categoryID)
+        openSides = try container.decode(OpenSides.self, forKey: .openSides)
+        doorFlow = try container.decodeIfPresent(DoorFlow.self, forKey: .doorFlow)
+        reviewState = try container.decode(ReviewState.self, forKey: .reviewState)
+        catalogID = try container.decodeIfPresent(String.self, forKey: .catalogID)
+        heightM = try container.decodeIfPresent(Double.self, forKey: .heightM)
+        attractiveness = try container.decodeIfPresent(Double.self, forKey: .attractiveness) ?? 1
+    }
+}
