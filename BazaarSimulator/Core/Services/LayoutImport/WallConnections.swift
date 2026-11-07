@@ -2,16 +2,17 @@ import Foundation
 import simd
 
 /// Removes the noise the extractor leaves around walls and doors and joins what is left: window frame lines beside a
-/// wall, thin tick marks, walls that stop short of a corner, doors too narrow to walk through, and doors that sit
-/// beside a wall instead of in it. Runs after `WallCleanup` has joined collinear walls.
+/// wall, thin tick marks, walls that stop short of a corner, walls and doors that connect to nothing, and doors too
+/// narrow to walk through. Runs after `WallCleanup` has joined collinear walls.
 enum WallConnections {
     static let frameReachM = 1.5
     static let tickMaxLengthM = 3.0
     static let tickMaxThicknessM = 0.12
     static let isolationM = 1.0
-    static let cornerReachM = 1.0
+    static let cornerReachM = 2.0
+    static let touchM = 0.3
     static let minDoorWidthM = 0.7
-    static let doorReachM = 0.5
+    static let doorReachM = 2.0
 
     /// A wall as a segment between its two ends.
     private struct Segment {
@@ -61,13 +62,28 @@ enum WallConnections {
         var segments = objects.filter { $0.kind == .wall }.map { Segment($0) }
         segments = dropFrameLines(segments)
         segments = dropTicks(segments)
-        segments = connectCorners(segments)
+        segments = dropFloating(connectCorners(segments))
         let walls = segments.map { segment in
             var wall = segment.wall
             wall.placement = segment.placement
             return wall
         }
         return objects.filter { $0.kind != .wall && $0.kind != .door } + walls + seatedDoors(in: objects, on: segments)
+    }
+
+    /// A wall that touches no other wall is not part of the building. When no wall touches another, the plan has no
+    /// structure to judge against, so all stay.
+    private static func dropFloating(_ segments: [Segment]) -> [Segment] {
+        func touches(_ first: Segment, _ second: Segment) -> Bool {
+            [second.start, second.end].contains { first.distance(to: $0) <= touchM }
+        }
+        let attached = segments.indices.filter { index in
+            segments.indices.contains { other in
+                other != index
+                    && (touches(segments[index], segments[other]) || touches(segments[other], segments[index]))
+            }
+        }
+        return attached.isEmpty ? segments : attached.map { segments[$0] }
     }
 
     private static func isParallel(_ first: Segment, _ second: Segment) -> Bool {
@@ -136,21 +152,21 @@ enum WallConnections {
         return (reach, target)
     }
 
-    /// Drops doors too narrow to pass, and lays each remaining door on the wall beside it.
+    /// Drops doors too narrow to pass and doors with no wall within reach, and lays the rest on their wall.
     private static func seatedDoors(in objects: [LayoutObject], on segments: [Segment]) -> [LayoutObject] {
         objects.filter { $0.kind == .door }.compactMap { door in
             let size = door.placement.sizeM
             let width = max(size.x, size.y)
             guard width >= minDoorWidthM else { return nil }
             let centre = door.placement.center
-            let reach = width / 2
+            let reach = width / 2 + doorReachM
             let host = segments
                 .filter { wall in
                     let spot = wall.locate(centre)
                     return spot.across <= doorReachM && spot.along >= -reach && spot.along <= wall.length + reach
                 }
                 .min { $0.locate(centre).across < $1.locate(centre).across }
-            guard let host else { return door }
+            guard let host else { return segments.isEmpty ? door : nil }
             let located = host.locate(centre)
             var seated = door
             seated.placement = Placement(

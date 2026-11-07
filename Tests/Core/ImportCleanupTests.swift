@@ -86,4 +86,29 @@ struct ImportCleanupTests {
         #expect(door.placement.rotationRadians == 0)
         #expect(abs(door.placement.center.y - host.placement.center.y) < 0.001)
     }
+
+    @Test("A wall and a door that connect to nothing are dropped once other walls are connected")
+    func floatingWallsAndDoorsAreDropped() {
+        let layout = layoutOf([
+            wall(0, 300),
+            DetectedItem(cls: "wall", box: [0, 0, 2, 200], segment: [1, 0, 1, 200], widthPx: 2),
+            DetectedItem(cls: "wall", box: [900, 900, 200, 2], segment: [900, 900, 1100, 900], widthPx: 2),
+            DetectedItem(cls: "opening", box: [100, -2, 30, 6]),
+            DetectedItem(cls: "opening", box: [900, 700, 30, 6])
+        ])
+
+        #expect(layout.objects.filter { $0.kind == .wall }.count == 2)
+        #expect(layout.objects.filter { $0.kind == .door }.count == 1)
+    }
+
+    @Test("A door in the middle of a wall gap stays and lies on the wall line")
+    func doorInGapStays() {
+        let layout = layoutOf([
+            wall(0, 100),
+            wall(160, 300),
+            DetectedItem(cls: "opening", box: [105, -2, 50, 6])
+        ])
+
+        #expect(layout.objects.filter { $0.kind == .door }.count == 1)
+    }
 }

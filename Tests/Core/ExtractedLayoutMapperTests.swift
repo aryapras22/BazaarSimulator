@@ -162,7 +162,7 @@ struct ExtractedLayoutMapperTests {
     func symbolClassMapping() throws {
         let items = [
             DetectedItem(cls: "wall", box: [0, 0, 100, 10], segment: [0, 0, 100, 0], symbolClass: "wall.double"),
-            DetectedItem(cls: "opening", box: [20, 20, 30, 30], symbolClass: "door.single_quarter"),
+            DetectedItem(cls: "opening", box: [20, 0, 30, 10], symbolClass: "door.single_quarter"),
             DetectedItem(cls: "pillar", box: [60, 60, 20, 20], symbolClass: "column.solid_square"),
             DetectedItem(cls: "misc", box: [90, 90, 20, 20], symbolClass: "stairs.boxed"),
             DetectedItem(cls: "misc", box: [120, 120, 20, 20], symbolClass: "restroom.framed"),
