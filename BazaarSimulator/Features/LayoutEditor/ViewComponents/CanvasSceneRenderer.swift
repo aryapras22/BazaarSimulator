@@ -134,6 +134,11 @@ enum CanvasSceneRenderer {
         }
     }
 
+    private static func attractivenessDisplay(for snapshot: CanvasDisplaySnapshot) -> AttractivenessDisplay {
+        guard snapshot.activeLayer == .booths else { return .hidden }
+        return snapshot.showsAttractiveness ? .heat : .dot
+    }
+
     private static func drawObject(
         _ object: LayoutObject,
         snapshot: CanvasDisplaySnapshot,
@@ -172,9 +177,7 @@ enum CanvasSceneRenderer {
                 hasObjectWarning: hasWarning,
                 blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
                 categoryColor: object.categoryID.flatMap { colorsByID[$0] },
-                heatFill: snapshot.showsAttractiveness && snapshot.activeLayer == .booths
-                    ? AttractivenessScale.color(for: object.attractiveness)
-                    : nil
+                attractiveness: attractivenessDisplay(for: snapshot)
             )
             BoothRenderer.draw(boothState, in: &context, transform: transform)
         case .door:

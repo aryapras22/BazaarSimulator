@@ -1,6 +1,14 @@
 import SwiftUI
 
+enum AttractivenessDisplay: Sendable {
+    case hidden
+    case dot
+    case heat
+}
+
 enum AttractivenessScale {
+    static let defaultValue: Double = 1
+
     static func fraction(of value: Double) -> Double {
         let range = AttractivenessField.range
         return min(max((value - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
