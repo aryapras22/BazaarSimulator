@@ -32,7 +32,7 @@ struct LibraryRow: View {
                     Text(row.detail)
                         .font(Typography.caption)
                         .foregroundStyle(Palette.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
 
                 Spacer(minLength: 0)
