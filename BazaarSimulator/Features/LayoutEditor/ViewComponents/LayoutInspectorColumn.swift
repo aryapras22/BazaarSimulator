@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LayoutInspectorColumn: View {
     @Bindable var viewModel: LayoutEditorViewModel
+    let onFocusIssue: (LayoutIssue) -> Void
 
     var body: some View {
         if let selected = viewModel.selectedObject,
@@ -148,20 +149,7 @@ struct LayoutInspectorColumn: View {
                         .foregroundStyle(Palette.textPrimary)
                 }
             } else {
-                let errors = viewModel.issues.filter { $0.severity == .error }.count
-                let warnings = viewModel.issues.filter { $0.severity == .warning }.count
-                HStack(spacing: Spacing.s) {
-                    if errors > 0 {
-                        Text("\(errors) error\(errors == 1 ? "" : "s")")
-                            .font(Typography.caption)
-                            .foregroundStyle(Palette.destructive)
-                    }
-                    if warnings > 0 {
-                        Text("\(warnings) warning\(warnings == 1 ? "" : "s")")
-                            .font(Typography.caption)
-                            .foregroundStyle(Palette.highlight)
-                    }
-                }
+                ValidationIssueList(issues: viewModel.issues, onFocus: onFocusIssue)
             }
         }
     }
@@ -176,7 +164,7 @@ struct LayoutInspectorColumn: View {
         for: project.id
     )
     let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
-    return LayoutInspectorColumn(viewModel: viewModel)
+    return LayoutInspectorColumn(viewModel: viewModel, onFocusIssue: { _ in })
         .frame(height: 600)
         .preferredColorScheme(.dark)
 }
@@ -191,7 +179,7 @@ struct LayoutInspectorColumn: View {
     )
     let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
     viewModel.selectObject(layout.objects.first { $0.kind == .booth }?.id)
-    return LayoutInspectorColumn(viewModel: viewModel)
+    return LayoutInspectorColumn(viewModel: viewModel, onFocusIssue: { _ in })
         .frame(height: 600)
         .preferredColorScheme(.dark)
 }

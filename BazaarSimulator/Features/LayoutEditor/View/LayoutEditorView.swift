@@ -33,7 +33,10 @@ struct LayoutEditorView: View {
 
             viewportArea
 
-            LayoutInspectorColumn(viewModel: viewModel)
+            LayoutInspectorColumn(
+                viewModel: viewModel,
+                onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
+            )
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background)

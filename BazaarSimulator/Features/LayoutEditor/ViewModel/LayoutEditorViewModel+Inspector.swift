@@ -80,6 +80,18 @@ extension LayoutEditorViewModel {
         return CanvasIssueSnapshot(warningObjectIDs: warningIDs, blockedSidesByBoothID: blockedByBooth)
     }
 
+    func focusIssue(_ issue: LayoutIssue, in viewSize: SIMD2<Double>) {
+        guard let layout = activeLayout,
+              let target = issue.objectIDs.lazy.compactMap({ id in layout.objects.first { $0.id == id } }).first else {
+            return
+        }
+        if target.kind.layer != activeLayer {
+            selectLayer(target.kind.layer)
+        }
+        selectObject(target.id)
+        transform = transform.centered(on: target.placement.center, in: viewSize)
+    }
+
     var selectedTitleIssues: [String] {
         guard let selectedID = selectionID else { return [] }
         return issues.compactMap { issue in

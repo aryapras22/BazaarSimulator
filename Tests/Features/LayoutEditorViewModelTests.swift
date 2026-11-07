@@ -142,6 +142,33 @@ struct LayoutEditorViewModelTests {
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
 
+    @Test("Focusing an issue switches layer, selects its object and centres it")
+    func focusIssueSelectsAndCentres() throws {
+        let context = Self.makeContext(layer: .structure)
+        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+        let issue = LayoutIssue(severity: .warning, kind: .noOpenSides, objectIDs: [booth.id], message: "No open side")
+        let viewSize = SIMD2<Double>(800, 600)
+
+        context.viewModel.focusIssue(issue, in: viewSize)
+
+        #expect(context.viewModel.activeLayer == .booths)
+        #expect(context.viewModel.selectionID == booth.id)
+        let onScreen = context.viewModel.transform.toView(booth.placement.center)
+        #expect(simd_distance(onScreen, viewSize / 2.0) < 1e-6)
+    }
+
+    @Test("Focusing an issue with no objects changes nothing")
+    func focusIssueWithoutObjectsIsIgnored() {
+        let context = Self.makeContext(layer: .structure)
+        let issue = LayoutIssue(severity: .warning, kind: .missingHallDoorEntry, objectIDs: [], message: "No entrance")
+        let before = context.viewModel.transform
+
+        context.viewModel.focusIssue(issue, in: SIMD2<Double>(800, 600))
+
+        #expect(context.viewModel.activeLayer == .structure)
+        #expect(context.viewModel.transform == before)
+    }
+
     @Test("Context delete on another object deletes that object")
     func contextDeleteOnAnotherObjectDeletesTarget() throws {
         let context = Self.makeContext()

@@ -53,6 +53,10 @@ struct CanvasTransform: Hashable, Sendable {
         return zoomed(by: pow(base, clampedDelta), around: anchorView)
     }
 
+    func centered(on world: SIMD2<Double>, in viewSize: SIMD2<Double>) -> CanvasTransform {
+        CanvasTransform(scale: scale, offset: viewSize / 2.0 - world * scale)
+    }
+
     func panned(by delta: SIMD2<Double>) -> CanvasTransform {
         CanvasTransform(scale: scale, offset: offset + delta)
     }
