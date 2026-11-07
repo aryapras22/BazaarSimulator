@@ -180,18 +180,6 @@ final class SelectTool: EditorToolHandling {
                 return true
             }
             return false
-        case .upArrow:
-            context.nudgeSelected(by: SIMD2<Double>(0, -0.25))
-            return true
-        case .downArrow:
-            context.nudgeSelected(by: SIMD2<Double>(0, 0.25))
-            return true
-        case .leftArrow:
-            context.nudgeSelected(by: SIMD2<Double>(-0.25, 0))
-            return true
-        case .rightArrow:
-            context.nudgeSelected(by: SIMD2<Double>(0.25, 0))
-            return true
         default:
             return false
         }
