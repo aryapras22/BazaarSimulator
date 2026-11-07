@@ -1,0 +1,14 @@
+{
+  "originHash" : "be7a275fc095ab2272880c35dbe5b15c6cf69926c012dcfe3250913d7c60a89b",
+  "pins" : [
+    {
+      "identity" : "bazaar-layout-extractor",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/aryapras22/bazaar-layout-extractor.git",
+      "state" : {
+        "revision" : "f4af17d21f1f7a73b5e42627d6cd1d6fa78b0e43"
+      }
+    }
+  ],
+  "version" : 3
+}

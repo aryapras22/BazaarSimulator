@@ -219,7 +219,7 @@
 			mainGroup = 42C7C20E3094562600513D5B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				42C7C2AF3094562600513D5B /* XCLocalSwiftPackageReference "../bazaar/floor-plan-extractor/legend-only" */,
+				42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 42C7C2183094562600513D5B /* Products */;
@@ -526,17 +526,21 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		42C7C2AF3094562600513D5B /* XCLocalSwiftPackageReference "../bazaar/floor-plan-extractor/legend-only" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../bazaar/floor-plan-extractor/legend-only";
+/* Begin XCRemoteSwiftPackageReference section */
+		42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aryapras22/bazaar-layout-extractor.git";
+			requirement = {
+				kind = revision;
+				revision = f4af17d21f1f7a73b5e42627d6cd1d6fa78b0e43;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		42C7C2B03094562600513D5B /* Extractor */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 42C7C2AF3094562600513D5B /* XCLocalSwiftPackageReference "../bazaar/floor-plan-extractor/legend-only" */;
+			package = 42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */;
 			productName = Extractor;
 		};
 /* End XCSwiftPackageProductDependency section */
