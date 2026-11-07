@@ -20,6 +20,7 @@ enum CanvasSceneRenderer {
             layout: floorLayout,
             gridLine: snapshot.background.gridLine
         )
+        FurnitureRenderer.draw(snapshot.layout.furniture, in: &context, transform: transform)
         drawSceneObjects(in: &context, snapshot: snapshot, transform: transform, drag: drag)
 
         if snapshot.activeLayer == .booths {

@@ -1,12 +1,16 @@
 import CoreGraphics
 import Extractor
 import Foundation
+import os
 
 enum FloorPlanReadingError: Error {
     case noBooths
 }
 
 struct ExtractorFloorPlanReader: FloorPlanReading {
+    /// The legend table's own header words, which the extractor can read as classes.
+    private static let legendHeaderWords: Set<String> = ["class", "symbol"]
+
     private let symbolStore: SymbolLegendStore
 
     init(symbolStore: SymbolLegendStore = .shared) {
@@ -16,7 +20,10 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
     func readLegend(_ page: CGImage) async throws -> Legend {
         let swatches = try await PlanExtractor.legend(in: page)
         let entries = swatches
-            .filter { !ExtractedLayoutMapper.isHallClass($0.label) }
+            .filter { swatch in
+                !ExtractedLayoutMapper.isHallClass(swatch.label)
+                    && !Self.legendHeaderWords.contains(swatch.label.lowercased())
+            }
             .map { swatch in
                 LegendEntry(
                     name: swatch.label,
@@ -43,13 +50,29 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             symbols: symbolStore.symbols,
             onProgress: onProgress
         )
-        let detected = DetectedPlan(items: reading.items.map(Self.detectedItem))
-        guard let scale = ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
+        let items = await PlanPrintedText.relabelingDecor(reading.items.map(Self.detectedItem), on: page)
+        let detected = DetectedPlan(items: items)
+        let printedScale = await PlanPrintedText.pixelsPerMetre(from: items, on: page)
+        guard let scale = printedScale ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
             throw FloorPlanReadingError.noBooths
         }
-        return ExtractedLayout(
-            layout: ExtractedLayoutMapper.layout(from: detected, legend: legend, pixelsPerMetre: scale, name: name)
+        let layout = ExtractedLayoutMapper.layout(
+            from: detected,
+            legend: legend,
+            pixelsPerMetre: scale,
+            name: name,
+            scaleBasis: printedScale == nil ? "booth size" : "printed sizes"
         )
+        Self.logLedger(of: detected, layout: layout)
+        return ExtractedLayout(layout: layout)
+    }
+
+    /// Items that came in against what reached the layout, so a class the mapper discards shows up in the log.
+    private static func logLedger(of plan: DetectedPlan, layout: Layout) {
+        let raw = Dictionary(grouping: plan.items) { $0.kind ?? $0.cls }.mapValues(\.count)
+        let summary = raw.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+        let kept = "\(layout.objects.count) objects and \(layout.furniture.count) furniture"
+        Logger.reading.info("read \(plan.items.count) items (\(summary)), kept \(kept)")
     }
 
     private static func detectedItem(_ item: PlanItem) -> DetectedItem {
@@ -65,4 +88,8 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             symbolClass: item.symbolClass
         )
     }
+}
+
+private extension Logger {
+    static let reading = Logger(subsystem: "BazaarSimulator", category: "ExtractorFloorPlanReader")
 }

@@ -234,7 +234,7 @@ struct Placement: Codable, Sendable {
 | Type | Purpose |
 | ---| --- |
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
-| `Layout` | Name, width, depth, and a list of `LayoutObject`. One per floor plan PDF |
+| `Layout` | Name, width, depth, a list of `LayoutObject`, and the tables and chairs read from the plan as `LayoutFurniture`, which editing and validation leave alone. One per floor plan PDF |
 | `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
 | `EventParameters` | Total visitors per day, event hours, peak periods, bazaar type, `VisitorMix`, group size. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |

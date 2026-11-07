@@ -149,17 +149,20 @@ final class ImportQueue: ImportQueueing {
     }
 
     private func readPlan(_ file: ImportFile) async throws -> ExtractedLayout {
-        let readLegendFile = files(for: file.projectID).first { $0.kind == .legend && legendsByFile[$0.id] != nil }
-        guard let legendFile = readLegendFile, let legend = legend(for: file.projectID) else {
-            throw PDFImportError.unreadable
+        let readLegends = files(for: file.projectID).compactMap { legendFile -> (file: ImportFile, legend: Legend)? in
+            guard legendFile.kind == .legend, let legend = legendsByFile[legendFile.id] else { return nil }
+            return (legendFile, legend)
         }
-        let legendPage = try pdf.renderFirstPage(of: legendFile.url)
+        guard !readLegends.isEmpty else { throw PDFImportError.unreadable }
         let page = try pdf.renderFirstPage(of: file.url)
+        let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend)) ?? 0
+        let chosen = readLegends[match]
+        let legendPage = try pdf.renderFirstPage(of: chosen.file.url)
         let fileID = file.id
         return try await reader.readPlan(
             page,
             legendPage: legendPage,
-            legend: legend,
+            legend: chosen.legend,
             name: file.url.deletingPathExtension().lastPathComponent
         ) { [weak self] progress in
             Task { @MainActor in self?.reportProgress(progress, for: fileID) }

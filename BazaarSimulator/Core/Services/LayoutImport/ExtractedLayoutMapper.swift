@@ -30,7 +30,8 @@ enum ExtractedLayoutMapper {
         legend: Legend,
         pixelsPerMetre: Double,
         id: UUID = UUID(),
-        name: String
+        name: String,
+        scaleBasis: String = "booth size"
     ) -> Layout {
         let origin = SIMD2<Double>(
             plan.items.map { $0.box[0] }.min() ?? 0,
@@ -43,8 +44,13 @@ enum ExtractedLayoutMapper {
         var unlabeled = 0
         var objects: [LayoutObject] = []
         var markers: [LayoutMarker] = []
+        let swingDoors = swingDoorsNotOnOpenings(in: plan.items)
         for item in plan.items {
             let frame = rect(of: item, metres: metres, pixelsPerMetre: pixelsPerMetre)
+            if item.cls == "door" {
+                if swingDoors.contains(item) { objects.append(swingDoor(from: frame)) }
+                continue
+            }
             if let symbolClass = item.symbolClass,
                case .marker(let kind, let label) = SymbolClassMapping.outcome(for: symbolClass) {
                 markers.append(LayoutMarker(kind: kind, label: label, position: frame.center))
@@ -56,6 +62,7 @@ enum ExtractedLayoutMapper {
         }
 
         objects = WallCleanup.apply(to: objects)
+        let furniture = furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         let hall = hallPolygon(from: objects)
         let extent = hall.reduce(SIMD2<Double>.zero) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
         var layout = Layout(
@@ -65,9 +72,10 @@ enum ExtractedLayoutMapper {
             hall: hall,
             objects: objects,
             markers: markers,
+            furniture: furniture,
             source: LayoutSource(
                 name: name,
-                note: "Read from the PDF. Scale assumed from booth size "
+                note: "Read from the PDF. Scale taken from \(scaleBasis) "
                     + "(\(DimensionInput.text(for: pixelsPerMetre)) px/m)."
             )
         )
@@ -185,7 +193,13 @@ enum ExtractedLayoutMapper {
             return LayoutObject(kind: .block, label: "Stage", placement: placement, reviewState: .detected)
         }
         guard isBooth(item) else {
-            return LayoutObject(kind: .block, label: item.cls, placement: placement, reviewState: .detected)
+            return LayoutObject(
+                kind: .block,
+                label: item.cls,
+                placement: placement,
+                categoryID: category(for: item, in: legend)?.id,
+                reviewState: .detected
+            )
         }
         unlabeled += item.id == nil ? 1 : 0
         return LayoutObject(

@@ -55,20 +55,79 @@ struct ExtractedLayoutMapperTests {
         #expect(abs(wall.placement.rotationRadians - atan2(4, 3)) < 0.001)
     }
 
-    @Test("Swing symbols, chairs, chair groups and tables are dropped, openings become doors")
-    func dropsSwingSymbolsAndChairs() {
+    @Test("A swing symbol on a wall gap is the same door as the opening, so only one door is made")
+    func swingSymbolOnOpeningMakesOneDoor() {
         let plan = DetectedPlan(items: [
             item("door", [0, 0, 10, 10]),
-            item("object", [0, 0, 10, 10], kind: "chair"),
-            item("object", [0, 0, 10, 10], kind: "chair_group"),
-            item("object", [0, 0, 20, 20], kind: "table"),
             item("opening", [0, 0, 30, 5])
         ])
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.kind).sorted { $0.rawValue < $1.rawValue } == [.door])
-        #expect(layout.objects.first { $0.kind == .door }?.doorFlow?.direction == .both)
+        #expect(layout.objects.map(\.kind) == [.door])
+        #expect(layout.objects.first?.doorFlow?.direction == .both)
+    }
+
+    @Test("A swing symbol away from any opening becomes a thin detected door along its long side")
+    func lonelySwingSymbolBecomesDoor() throws {
+        let plan = DetectedPlan(items: [item("door", [100, 0, 20, 40])])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        let door = try #require(layout.objects.first)
+        #expect(door.kind == .door)
+        #expect(door.reviewState == .detected)
+        #expect(door.placement.sizeM == SIMD2(4, 0.3))
+        #expect(abs(door.placement.rotationRadians - .pi / 2) < 0.001)
+    }
+
+    @Test("Tables and chairs are kept as furniture, not objects, and chairs link to the table in their group")
+    func keepsTablesAndChairs() throws {
+        let plan = DetectedPlan(items: [
+            item("object", [0, 0, 100, 100], kind: "chair_group"),
+            item("object", [40, 40, 20, 20], kind: "table"),
+            item("object", [10, 10, 10, 10], kind: "chair"),
+            item("object", [200, 0, 100, 100], kind: "chair_group"),
+            item("object", [210, 10, 10, 10], kind: "chair"),
+            item("object", [500, 500, 10, 10], kind: "chair")
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.isEmpty)
+        let table = try #require(layout.furniture.first { $0.kind == .table })
+        let chairs = layout.furniture.filter { $0.kind == .chair }
+        #expect(chairs.count == 3)
+        #expect(chairs[0].tableID == table.id)
+        #expect(chairs[1].tableID == nil)
+        #expect(chairs[2].tableID == nil)
+        #expect(table.placement.sizeM == SIMD2(2, 2))
+    }
+
+    @Test("A block takes the legend category with its colour")
+    func blockCategory() throws {
+        let interactive = LegendEntry(name: "Interactive space I", color: LegendColor(red: 1, green: 0.7, blue: 0.1))
+        let legend = Legend(entries: [food, interactive])
+        let plan = DetectedPlan(items: [item("Interactive space I", [0, 0, 50, 50], rgb: [255, 178, 26])])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.first?.kind == .block)
+        #expect(layout.objects.first?.categoryID == interactive.id)
+    }
+
+    @Test("A layout saved without furniture still decodes")
+    func decodesLayoutWithoutFurniture() throws {
+        let layout = Layout(name: "Old", sizeM: SIMD2(10, 10))
+        var json = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(layout)) as? [String: Any]
+        )
+        json.removeValue(forKey: "furniture")
+
+        let decoded = try JSONDecoder().decode(Layout.self, from: JSONSerialization.data(withJSONObject: json))
+
+        #expect(decoded.furniture.isEmpty)
+        #expect(decoded.name == "Old")
     }
 
     @Test("Stage and Blocked become hall objects, Entrance is dropped, none become booths")

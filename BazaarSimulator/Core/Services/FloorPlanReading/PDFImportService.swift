@@ -15,7 +15,9 @@ struct PDFImportService: PDFImporting {
     static let longSidePixels = 2800
 
     func renderFirstPage(of url: URL) throws -> CGImage {
-        guard let page = PDFDocument(url: url)?.page(at: 0) else { throw PDFImportError.unreadable }
+        // The page draws from its document, so the document has to outlive the draw call below.
+        let document = PDFDocument(url: url)
+        guard let page = document?.page(at: 0) else { throw PDFImportError.unreadable }
         let bounds = page.bounds(for: .mediaBox)
         guard bounds.width > 0, bounds.height > 0 else { throw PDFImportError.unreadable }
 
@@ -32,7 +34,7 @@ struct PDFImportService: PDFImporting {
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         context.scaleBy(x: scale, y: scale)
         context.translateBy(x: -bounds.minX, y: -bounds.minY)
-        page.draw(with: .mediaBox, to: context)
+        withExtendedLifetime(document) { page.draw(with: .mediaBox, to: context) }
         guard let image = context.makeImage() else { throw PDFImportError.unreadable }
         return image
     }
