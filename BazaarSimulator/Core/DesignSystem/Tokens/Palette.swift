@@ -31,6 +31,10 @@ enum Palette {
     static let primaryDisabledText = Color(hex: 0x46444F)
 
     static let canvasGridLine = Color(hex: 0x071327)
+    static let canvasBackgroundAutoCAD = Color(hex: 0x212830)
+    static let canvasGridLineAutoCAD = Color(hex: 0x3A434F)
+    static let canvasBackgroundWhite = Color(hex: 0xFFFFFF)
+    static let canvasGridLineWhite = Color(hex: 0xDCE3EC)
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
     static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)

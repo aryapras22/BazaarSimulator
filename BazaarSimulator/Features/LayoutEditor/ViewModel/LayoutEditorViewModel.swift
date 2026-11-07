@@ -20,6 +20,12 @@ final class LayoutEditorViewModel {
     let projectID: UUID
     let session: any ProjectSessionProtocol
     private let onBack: () -> Void
+    @ObservationIgnored private let defaults: UserDefaults
+    static let canvasBackgroundKey = "layoutEditor.canvasBackground"
+
+    var canvasBackground: CanvasBackground {
+        didSet { defaults.set(canvasBackground.rawValue, forKey: Self.canvasBackgroundKey) }
+    }
 
     var activeLayer: EditorLayer = .structure
     var hiddenLayers: Set<EditorLayer> = []
@@ -75,10 +81,14 @@ final class LayoutEditorViewModel {
     init(
         projectID: UUID,
         session: any ProjectSessionProtocol,
+        defaults: UserDefaults = .standard,
         onBack: @escaping () -> Void = {}
     ) {
         self.projectID = projectID
         self.session = session
+        self.defaults = defaults
+        self.canvasBackground = defaults.string(forKey: Self.canvasBackgroundKey)
+            .flatMap(CanvasBackground.init(rawValue:)) ?? .standard
         self.onBack = onBack
         refreshTemplates()
     }

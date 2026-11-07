@@ -69,7 +69,8 @@ extension LayoutEditorView {
             hoveredGroupMemberIDs: viewModel.hoveredGroupMemberIDs,
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
-            hoverWorld: pointer.world
+            hoverWorld: pointer.world,
+            background: viewModel.canvasBackground
         )
     }
 
@@ -120,6 +121,7 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 showReadouts: viewModel.viewPreset == .plan,
+                background: $viewModel.canvasBackground,
                 onZoomIn: {
                     if viewModel.viewPreset == .plan {
                         viewModel.zoomIn(in: canvasViewSize)

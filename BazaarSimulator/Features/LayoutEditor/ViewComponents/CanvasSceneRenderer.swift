@@ -13,7 +13,13 @@ enum CanvasSceneRenderer {
         if let previewHall = drag.previewHall {
             floorLayout.hall = previewHall
         }
-        FloorRenderer.draw(in: &context, size: size, transform: transform, layout: floorLayout)
+        FloorRenderer.draw(
+            in: &context,
+            size: size,
+            transform: transform,
+            layout: floorLayout,
+            gridLine: snapshot.background.gridLine
+        )
         drawSceneObjects(in: &context, snapshot: snapshot, transform: transform, drag: drag)
 
         if snapshot.activeLayer == .booths {

@@ -6,6 +6,7 @@ struct CanvasOverlays: View {
     var tool: EditorTool = .select
     var message: String?
     var showReadouts: Bool = true
+    @Binding var background: CanvasBackground
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onFit: () -> Void
@@ -22,6 +23,9 @@ struct CanvasOverlays: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
+                    if showReadouts {
+                        CanvasBackgroundMenu(selection: $background)
+                    }
                     CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
                     if showReadouts {
                         CanvasScaleBar(pointsPerMetre: pointsPerMetre)

@@ -27,6 +27,7 @@ struct CanvasDisplaySnapshot: Sendable {
     var groupClusters: [GroupClusterDisplay] = []
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
     var hoverWorld: SIMD2<Double>?
+    var background: CanvasBackground = .standard
 }
 
 struct LayoutCanvasView: View {
@@ -71,7 +72,7 @@ struct LayoutCanvasView: View {
                 drag: dragState
             )
         }
-        .background(Palette.background)
+        .background(snapshot.background.fill)
         .contentShape(Rectangle())
         .onHover { isHovering in
             guard !isHovering else { return }

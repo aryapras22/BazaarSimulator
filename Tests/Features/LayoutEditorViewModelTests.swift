@@ -142,6 +142,36 @@ struct LayoutEditorViewModelTests {
         #expect(context.viewModel.issues.contains { $0.kind == .overlappingObjects })
     }
 
+    @Test("The canvas background starts as the default and is remembered across view models")
+    func canvasBackgroundIsRemembered() throws {
+        let suiteName = "canvas-background-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+        let first = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
+        #expect(first.canvasBackground == .standard)
+
+        first.canvasBackground = .autoCAD
+        let second = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
+
+        #expect(second.canvasBackground == .autoCAD)
+    }
+
+    @Test("An unknown stored canvas background falls back to the default")
+    func unknownCanvasBackgroundFallsBack() throws {
+        let suiteName = "canvas-background-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("neon", forKey: LayoutEditorViewModel.canvasBackgroundKey)
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
+
+        #expect(viewModel.canvasBackground == .standard)
+    }
+
     @Test("Focusing an issue switches layer, selects its object and centres it")
     func focusIssueSelectsAndCentres() throws {
         let context = Self.makeContext(layer: .structure)
