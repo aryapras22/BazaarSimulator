@@ -126,6 +126,29 @@ struct ProjectSetupViewModelTests {
         #expect(!viewModel.legendEntries.contains(where: { $0.id == entryToRemove.id }))
     }
 
+    @Test("A legend entry keeps the booth type the user picks, and the draft carries it")
+    @MainActor
+    func legendEntryKeepsPickedBoothType() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        let entry = try #require(viewModel.legendEntries.first { $0.type == .fnb })
+
+        viewModel.setLegendEntryType(id: entry.id, to: .fashion)
+        viewModel.continueToReview()
+
+        #expect(viewModel.legendEntries.first { $0.id == entry.id }?.type == .fashion)
+        #expect(session.draft(for: project.id)?.legend.entries.first { $0.id == entry.id }?.type == .fashion)
+    }
+
     @Test("Legend entries appear once async legend read finishes")
     @MainActor
     func legendEntriesAppearOnceAsyncReadFinishes() async {
@@ -218,18 +241,18 @@ struct ProjectSetupViewModelTests {
         #expect(viewModel.statusText == "Ready to continue")
     }
 
-    @Test("Continue writes the draft to ProjectSession and invokes onContinue")
+    @Test("Continue writes the draft to ProjectSession and stays on the setup page")
     @MainActor
     func continueWritesDraftToSession() {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        var continuedProjectID: UUID?
+        var openedProjectID: UUID?
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            onContinue: { continuedProjectID = $0 }
+            onContinue: { openedProjectID = $0 }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -242,7 +265,7 @@ struct ProjectSetupViewModelTests {
         #expect(session.draft(for: project.id)?.name == "Super Bazaar")
         #expect(session.draft(for: project.id)?.legend.entries.count == 3)
         #expect(session.draft(for: project.id)?.layouts.count == 1)
-        #expect(continuedProjectID == project.id)
+        #expect(openedProjectID == nil)
     }
 }
 

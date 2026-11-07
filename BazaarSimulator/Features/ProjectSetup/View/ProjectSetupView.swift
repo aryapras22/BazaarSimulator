@@ -139,6 +139,8 @@ struct ProjectSetupView: View {
                             blue: entry.color.blue,
                             opacity: 1.0
                         ),
+                        type: entry.type,
+                        onTypeChange: { viewModel.setLegendEntryType(id: entry.id, to: $0) },
                         onRemove: { viewModel.removeLegendEntry(id: entry.id) }
                     )
                 }

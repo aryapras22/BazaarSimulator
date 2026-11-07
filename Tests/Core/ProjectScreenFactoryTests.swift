@@ -63,7 +63,7 @@ struct ProjectScreenFactoryTests {
         let draft = try #require(services.projectSession.draft(for: activeID))
 
         #expect(services.projectSession.projects.count == 1)
-        #expect(services.initialDestination == .analysis(projectID: activeID))
+        #expect(services.initialDestination == .setup(projectID: activeID))
         #expect(draft.layouts.count == 2)
         #expect(!draft.layouts[0].objects.isEmpty)
         #expect(!draft.layouts[1].objects.isEmpty)

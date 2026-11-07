@@ -25,6 +25,12 @@ struct PlanFileRow: View {
 
             PlanRowStatusView(status: display.status)
 
+            if let onEdit {
+                Button("Edit", action: onEdit)
+                    .buttonStyle(.secondary)
+                    .disabled(!display.isDone)
+            }
+
             menuButton
         }
         .padding(.vertical, Spacing.m)
@@ -51,11 +57,6 @@ struct PlanFileRow: View {
         Menu {
             if case .failed = display.status, let onRetry {
                 Button("Retry", action: onRetry)
-            }
-
-            if let onEdit {
-                Button("Edit", action: onEdit)
-                    .disabled(!display.isDone)
             }
 
             Button("Delete", role: .destructive, action: onDelete)

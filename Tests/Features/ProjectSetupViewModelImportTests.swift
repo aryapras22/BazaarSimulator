@@ -167,12 +167,11 @@ extension ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        var continued = false
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            onContinue: { _ in continued = true }
+            onContinue: { _ in }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -187,7 +186,6 @@ extension ProjectSetupViewModelTests {
 
         viewModel.continueToReview()
 
-        #expect(!continued)
         #expect(viewModel.bannerMessage == "Some floor plans could not be read")
         #expect(session.draft(for: project.id) == nil)
     }

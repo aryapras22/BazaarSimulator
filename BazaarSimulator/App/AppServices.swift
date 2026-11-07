@@ -24,7 +24,7 @@ final class AppServices {
             if let readQueue = queue as? ImportQueue {
                 Self.copyFinishedFiles(of: projectID, from: scripted, into: readQueue)
             }
-            initialDestination = .analysis(projectID: projectID)
+            initialDestination = .setup(projectID: projectID)
         } else {
             initialDestination = .empty
         }
