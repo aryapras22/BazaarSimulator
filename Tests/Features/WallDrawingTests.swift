@@ -145,6 +145,27 @@ struct WallDrawingTests {
         #expect(viewModel.tool == .select)
     }
 
+    @Test("Switching layer mid-wall drops the half-drawn chain")
+    func switchingLayerDropsWallPreview() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+        session.setDraft(
+            ProjectDraft(name: "Test", legend: PreviewLayouts.sampleLegend, layouts: [PreviewLayouts.annyeong()]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.refreshDerivedState()
+        viewModel.selectTool(.drawWall(itemID: "wall"))
+        viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(10, 10)))
+        viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(14, 10)))
+
+        viewModel.selectLayer(.booths)
+
+        #expect(viewModel.tool == .select)
+        #expect(viewModel.wallDrawing == nil)
+        #expect(viewModel.dragState.wallDrawing == nil)
+    }
+
     @Test("The live angle is the turn from the previous wall, or the direction from the x axis")
     func liveAngle() {
         let origin = SIMD2<Double>(0, 0)

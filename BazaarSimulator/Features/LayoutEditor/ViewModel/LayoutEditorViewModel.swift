@@ -142,7 +142,7 @@ final class LayoutEditorViewModel {
     func selectLayer(_ newLayer: EditorLayer) {
         guard newLayer != activeLayer else { return }
         activeLayer = newLayer
-        tool = .select
+        selectTool(.select)
         libraryCategory = nil
         applySelection(nil)
     }
