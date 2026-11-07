@@ -7,9 +7,9 @@ extension LayoutEditorView {
             Button {
                 viewModel.requestBack()
             } label: {
-                Label("Back to Project Setup", systemImage: "chevron.left")
+                Label("Back to Analysis", systemImage: "chevron.left")
             }
-            .help("Back to Project Setup")
+            .help("Back to Analysis")
         }
 
         if viewModel.layouts.count > 1 {

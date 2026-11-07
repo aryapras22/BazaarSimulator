@@ -273,12 +273,13 @@ extension ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        var continuedProjectID: UUID?
+        var editedProjectID: UUID?
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            onContinue: { continuedProjectID = $0 }
+            onContinue: { _ in },
+            onEdit: { editedProjectID = $0 }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -293,7 +294,7 @@ extension ProjectSetupViewModelTests {
         let draft = try #require(session.draft(for: project.id))
         #expect(draft.layouts.count == 2)
         #expect(session.activeLayoutID(for: project.id) == targetFile.id)
-        #expect(continuedProjectID == project.id)
+        #expect(editedProjectID == project.id)
     }
 
     @Test("editLayout is ignored when the layout file is still reading")
@@ -302,12 +303,13 @@ extension ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: false)
-        var continuedProjectID: UUID?
+        var editedProjectID: UUID?
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            onContinue: { continuedProjectID = $0 }
+            onContinue: { _ in },
+            onEdit: { editedProjectID = $0 }
         )
 
         let readingID = UUID()
@@ -323,6 +325,6 @@ extension ProjectSetupViewModelTests {
 
         #expect(session.draft(for: project.id) == nil)
         #expect(session.activeLayoutID(for: project.id) == nil)
-        #expect(continuedProjectID == nil)
+        #expect(editedProjectID == nil)
     }
 }

@@ -165,29 +165,7 @@ enum VenueSceneBuilder {
                 position: SCNVector3(posX, height / 2, posZ)
             )
 
-        case .pillar:
-            let height: CGFloat = 3.5
-            let radius = min(width, depth) / 2
-            let color = NSColor(calibratedRed: 0.35, green: 0.38, blue: 0.45, alpha: 1.0)
-            node = makeCylinderNode(
-                radius: radius,
-                height: height,
-                color: color,
-                position: SCNVector3(posX, height / 2, posZ)
-            )
-
-        case .stage:
-            let height: CGFloat = 0.5
-            let color = NSColor(calibratedRed: 0.52, green: 0.40, blue: 0.72, alpha: 1.0)
-            node = makeBoxNode(
-                width: width,
-                height: height,
-                length: depth,
-                color: color,
-                position: SCNVector3(posX, height / 2, posZ)
-            )
-
-        case .closedArea, .block, .fixture, .rail, .audienceArea:
+        case .closedArea, .block, .seating:
             let height: CGFloat = 0.15
             let color = NSColor(calibratedRed: 0.18, green: 0.22, blue: 0.30, alpha: 1.0)
             node = makeBoxNode(

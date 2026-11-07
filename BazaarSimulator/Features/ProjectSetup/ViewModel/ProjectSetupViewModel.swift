@@ -10,6 +10,7 @@ final class ProjectSetupViewModel {
     private let session: any ProjectSessionProtocol
     private let importQueue: any ImportQueueing
     private let onContinue: (UUID) -> Void
+    private let onEdit: (UUID) -> Void
 
     var projectName: String {
         get { session.projects.first { $0.id == projectID }?.name ?? "" }
@@ -39,12 +40,14 @@ final class ProjectSetupViewModel {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         importQueue: any ImportQueueing,
-        onContinue: @escaping (UUID) -> Void
+        onContinue: @escaping (UUID) -> Void,
+        onEdit: @escaping (UUID) -> Void = { _ in }
     ) {
         self.projectID = projectID
         self.session = session
         self.importQueue = importQueue
         self.onContinue = onContinue
+        self.onEdit = onEdit
     }
 
     var legendFiles: [ImportFile] {
@@ -219,7 +222,7 @@ final class ProjectSetupViewModel {
         let draft = buildDraft(from: extractedLayouts)
         session.setDraft(draft, for: projectID)
         session.setActiveLayoutID(fileID, for: projectID)
-        onContinue(projectID)
+        onEdit(projectID)
     }
 
     func continueToReview() {
@@ -232,6 +235,7 @@ final class ProjectSetupViewModel {
         }
 
         session.setDraft(buildDraft(from: extractedLayouts), for: projectID)
+        onContinue(projectID)
     }
 
     private func buildDraft(from extractedLayouts: [ExtractedLayout]) -> ProjectDraft {
