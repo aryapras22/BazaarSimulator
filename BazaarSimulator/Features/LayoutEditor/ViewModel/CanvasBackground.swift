@@ -2,7 +2,7 @@ import Foundation
 
 enum CanvasBackground: String, CaseIterable, Identifiable, Sendable {
     case standard
-    case autoCAD
+    case grey
     case white
 
     var id: Self { self }
@@ -10,7 +10,7 @@ enum CanvasBackground: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .standard: return "Default"
-        case .autoCAD: return "AutoCAD"
+        case .grey: return "Grey"
         case .white: return "White"
         }
     }

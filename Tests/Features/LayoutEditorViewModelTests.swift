@@ -152,10 +152,10 @@ struct LayoutEditorViewModelTests {
         let first = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
         #expect(first.canvasBackground == .standard)
 
-        first.canvasBackground = .autoCAD
+        first.canvasBackground = .grey
         let second = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
 
-        #expect(second.canvasBackground == .autoCAD)
+        #expect(second.canvasBackground == .grey)
     }
 
     @Test("An unknown stored canvas background falls back to the default")

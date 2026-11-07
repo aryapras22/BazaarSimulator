@@ -24,7 +24,7 @@ struct CanvasOverlays: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: Spacing.s) {
                     if showReadouts {
-                        CanvasBackgroundMenu(selection: $background)
+                        CanvasBackgroundSwatches(selection: $background)
                     }
                     CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
                     if showReadouts {

@@ -4,7 +4,7 @@ extension CanvasBackground {
     var fill: Color {
         switch self {
         case .standard: return Palette.background
-        case .autoCAD: return Palette.canvasBackgroundAutoCAD
+        case .grey: return Palette.canvasBackgroundGrey
         case .white: return Palette.canvasBackgroundWhite
         }
     }
@@ -12,7 +12,7 @@ extension CanvasBackground {
     var gridLine: Color {
         switch self {
         case .standard: return Palette.canvasGridLine
-        case .autoCAD: return Palette.canvasGridLineAutoCAD
+        case .grey: return Palette.canvasGridLineGrey
         case .white: return Palette.canvasGridLineWhite
         }
     }
