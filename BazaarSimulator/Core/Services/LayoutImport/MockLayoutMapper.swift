@@ -15,6 +15,10 @@ enum MockLayoutMapper {
         objects.append(contentsOf: mapHallDoors(from: dto.doors))
         objects.append(contentsOf: mapOuterDoors(from: dto.outerDoors, gates: dto.gates, exitPt: dto.exitPt))
         objects.append(mapStage(from: dto.stage))
+        objects.append(contentsOf: mapTables(from: dto.tables))
+        if dto.kidsSeats != false {
+            objects.append(mapAudienceSeating(from: dto.kids))
+        }
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
         objects.append(contentsOf: mapClosedAreas(from: dto.closed))
@@ -138,6 +142,31 @@ extension MockLayoutMapper {
             label: "Stage",
             placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY),
             reviewState: .detected
+        )
+    }
+
+    /// The file gives each table as a square dot, so it becomes the round standard table closest in size.
+    private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
+        let rounds = FurnitureModels.tables.filter { $0.shape == .round }
+        return tables.enumerated().map { index, table in
+            let model = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            return LayoutObject(
+                kind: .table,
+                label: "Table \(index + 1)",
+                placement: Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM),
+                reviewState: .detected,
+                catalogID: model.id
+            )
+        }
+    }
+
+    private static func mapAudienceSeating(from area: BazaarRectDTO) -> LayoutObject {
+        LayoutObject(
+            kind: .seating,
+            label: "Audience seating",
+            placement: placement(from: area),
+            reviewState: .detected,
+            catalogID: FurnitureModels.seatingBlockID
         )
     }
 

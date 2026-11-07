@@ -21,6 +21,8 @@ struct MockLayoutMapperTests {
         #expect(count(.closedArea, in: layout) == 4)
         #expect(count(.block, in: layout) == 5)
         #expect(count(.wall, in: layout) == 3)
+        #expect(count(.table, in: layout) == 26)
+        #expect(count(.seating, in: layout) == 0)
         #expect(layout.markers.count == 2)
         #expect(layout.zones.count == 2)
     }
@@ -36,6 +38,8 @@ struct MockLayoutMapperTests {
         #expect(count(.closedArea, in: layout) == 6)
         #expect(count(.block, in: layout) == 13)
         #expect(count(.wall, in: layout) == 3)
+        #expect(count(.table, in: layout) == 136)
+        #expect(count(.seating, in: layout) == 1)
         #expect(layout.zones.isEmpty)
         #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stage" })
     }
