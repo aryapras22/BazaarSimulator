@@ -2,8 +2,8 @@ import Foundation
 
 /// A whole-percent share per visitor type. The shares always add up to 100.
 /// Changing one share rescales the unlocked others; locked shares never move.
-struct VisitorMix: Codable, Sendable, Equatable {
-    struct Share: Codable, Sendable, Equatable, Identifiable {
+struct VisitorMix: Codable, Sendable, Hashable {
+    struct Share: Codable, Sendable, Hashable, Identifiable {
         let id: String
         var percent: Int
         var isLocked: Bool = false

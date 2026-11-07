@@ -175,8 +175,8 @@ BazaarSimulation/
 │   ├── Services/
 │   │   ├── PDFImportService.swift
 │   │   └── FloorPlanReading/            # Protocol, registry, four reader backends
-│   ├── Simulation/                      # Engine, SpawnScheduler, NavigationGrid, ZoneMap, MovementModel, MetricsCollector
-│   ├── Analysis/                        # AnalysisService, RecommendationBuilder
+│   ├── Simulation/                      # CrowdSimulation, SpawnScheduler, NavigationGrid, SpotSelector, SeededGenerator, SimulationInput
+│   ├── Analysis/                        # AnalysisService, LayoutAnalysis (raw measurements)
 │   ├── Session/
 │   │   └── ProjectSession.swift
 │   └── DesignSystem/
@@ -242,7 +242,7 @@ struct Placement: Codable, Sendable {
 | `LayoutAnalysis` | Results of one full run: density and risk level per zone, flow rate over the day, congestion, duration |
 | `Recommendation` | The better layout for one metric and the plain-language text shown in "Our choice" |
 
-The Hi-Fi presets are Socializer, Family Member, Stroller, and Purpose Buyer, each with a one-line description of how it moves. Presets and any edited type are the same `VisitorType`, stored as bundled JSON. The parameters follow the ODD persona table in the project docs: walking speed, planned stops, impulse weight, queue tolerance, stay budget, dwell time, and interests (legend category and weight pairs, empty means no preference). The simulator reads only these parameters, so any parameter beyond them needs an engine change first. The Hi-Fi has an edit control per type but no way to add a new type.
+The Hi-Fi presets are Socializer, Family Member, Stroller, and Purpose Buyer, each with a one-line description of how it moves. Presets and any edited type are the same `VisitorType`, stored as bundled JSON. The parameters follow the ODD persona table in the project docs: walking speed, planned stops, impulse weight, queue tolerance, stay budget, dwell time, and interests (legend category and weight pairs, empty means no preference). The walking speed, planned stops, and dwell time are in `visitor_types.json` and are read by `CrowdSimulation` today. The other parameters in the persona table are not read yet, so any parameter beyond the three needs an engine change first. The Hi-Fi has an edit control per type but no way to add a new type.
 
 `EventParameters.bazaarType` selects a bundled preset that seeds the starting mix and visitor total. The user can change both afterwards.
 
@@ -316,15 +316,19 @@ protocol SimulationEngineProtocol: Sendable {
 
 Metrics follow the four Analysis tabs. Crowd Density is people per square metre per zone, shown as a risk level. Flow Rate is visitors per minute through the doors over the day, summarized as low, average, and peak. Congestion is where and for how long visitors are slowed or queue. Duration is how long a visitor needs to see everything. Footfall appears only as a 3D overlay and counts visits per cell. Exact definitions come from the metrics research, not from the Hi-Fi.
 ### Analysis
-`AnalysisService` returns one `LayoutAnalysis` per layout. For each layout it creates a fresh engine from the factory in `AppServices` and calls `runToEnd()`. Results are cached in memory under a key made from the layout, the parameters, and the seed, so changing any of them makes the next request recompute.
+`AnalysisService` returns one `LayoutAnalysis` per layout. For each layout it builds a `CrowdSimulation` from a `SimulationInput` and runs it to the end. Results are cached in memory under the input itself (layout, parameters, visitor types, seed, busiest window), so changing any of them makes the next request recompute. The simulation runs in slices of 200 steps with a `Task.yield()` between them, so the interface keeps responding.
 
 ```swift
-protocol AnalysisServiceProtocol: Sendable {
-    func analyses(for project: Project) async throws -> [LayoutAnalysis]
+protocol AnalysisServiceProtocol: AnyObject {
+    func analyses(for layouts: [Layout], parameters: EventParameters,
+                  visitorTypes: [VisitorType], focus: TimeRange) async -> [LayoutAnalysis]
 }
 ```
 
-`RecommendationBuilder` is a pure type. Given the analyses and a metric, it picks the better layout and builds the "Our choice" card: a headline value per layout and the plain-language "What this means" lines. The wording lives in a bundled JSON file, not in Swift.
+`LayoutAnalysis` holds raw measurements only: the density and people count of each monitored spot every 10 seconds of the event, the people passing the doors each minute, the area of floor the plan shows, and the replay of the busiest window. It knows nothing about grades or wording. The Analysis feature turns the measurements into the compare page: `OutcomeBuilder` reads the busiest window and the day series from them, and `CompareRulesEngine` applies the rules in the Compare Page Insight Rules.
+
+`CrowdSimulation` is the engine for these runs. It is a seeded, fixed-step simulation over a `NavigationGrid` of 0.5 m cells: groups arrive from `SpawnScheduler` (rate, group size, and visitor mix come from `EventParameters`), walk the shortest way to a few booths using each type's speed, stops, and dwell time, and slow down as the floor under them fills. After the run, `SpotSelector` picks up to four monitored spots, the most crowded blocks of floor in the busiest window. While it runs, the busiest window is also recorded as a `SimulationReplay`: a frame every 6 seconds with each visitor group's position, and how often each tile of floor has been walked. The simulator in `Features/Analysis` plays that replay over a drawn plan of the layout, with three overlays (congestion grades, crowd density, busiest path), so what it shows is the same event the numbers came from. The SceneKit 3D view in `Features/Simulation` is not connected to this run.
+
 ### Cross-feature state
 The editor, parameters, overview, analysis, and simulation all work on the same project. That state lives in one injected object in `Core/Session/`.
 

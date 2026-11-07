@@ -52,6 +52,7 @@ enum Palette {
     static let visitorSeries2 = Color(hex: 0x2878D4)
     static let visitorSeries3 = Color(hex: 0x76B4FF)
     static let visitorSeries4 = Color(hex: 0xFFFFFF)
+    static let visitorSeriesColors = [visitorSeries1, visitorSeries2, visitorSeries3, visitorSeries4]
     static let fieldOnSurface = Color(hex: 0x3F4D64)
     static let fieldOnSurfaceBorder = Color(hex: 0x47556B)
     static let popoverOnSurface = Color(hex: 0x4F5D73)

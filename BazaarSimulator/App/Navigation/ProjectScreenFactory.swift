@@ -35,7 +35,8 @@ final class ProjectScreenFactory {
             session: services.projectSession,
             importQueue: services.importQueue,
             onContinue: { [weak router] id in
-                router?.showAnalysis(projectID: id)
+                // Parameters come first. The analysis opens when they are applied.
+                router?.showParameters(projectID: id)
             }
         )
         setupViewModels[projectID] = created
@@ -61,15 +62,28 @@ final class ProjectScreenFactory {
         if let existing = dashboardViewModels[projectID] {
             return existing
         }
+        let session = services.projectSession
+        /// Layout 1 and Layout 2 on the compare page are the project's first two layouts.
+        func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
+            let layouts = session.draft(for: projectID)?.layouts ?? []
+            if layout.rawValue - 1 < layouts.count {
+                session.setActiveLayoutID(layouts[layout.rawValue - 1].id, for: projectID)
+            }
+            show(projectID)
+        }
         let created = DashboardViewModel(
             projectID: projectID,
-            session: services.projectSession,
+            session: session,
+            analysisService: services.analysisService,
+            catalog: services.presetCatalog,
             onBack: { [weak router] in
-                router?.showReview(projectID: projectID)
+                router?.showSetup(projectID: projectID)
             },
-            onSimulate: { _ in },
-            onEdit: { [weak router] _ in
-                router?.showReview(projectID: projectID)
+            onSimulate: { [weak router] layout in
+                router?.requestSimulation(projectID: projectID, layout: layout)
+            },
+            onEdit: { [weak router] layout in
+                open(layout) { router?.showEditor(projectID: $0) }
             }
         )
         dashboardViewModels[projectID] = created
@@ -84,7 +98,7 @@ final class ProjectScreenFactory {
         ParametersViewModel(
             projectID: projectID,
             session: services.projectSession,
-            catalog: PresetCatalog.bundled(),
+            catalog: services.presetCatalog,
             onClose: onClose,
             onApply: onApply
         )

@@ -27,6 +27,7 @@ struct DashboardView<ParametersSheet: View>: View {
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
+        .task { viewModel.startSimulation() }
     }
 }
 
@@ -55,32 +56,72 @@ struct DashboardContent: View {
                 onOpenParameters: { viewModel.isParametersPresented = true }
             )
 
-            HStack(alignment: .top, spacing: CardSpacing.gap) {
-                ForEach(LayoutID.allCases) { layout in
-                    LayoutComparisonCard(
-                        layout: layout,
-                        outcome: viewModel.outcome(for: layout),
-                        peakHourText: viewModel.simulationResult.peakHourText,
-                        metrics: metrics,
-                        onSimulate: { viewModel.onSimulate(layout) },
-                        onEdit: { viewModel.onEdit(layout) }
-                    )
-                }
+            switch viewModel.phase {
+            case .loading:
+                RunningNotice(text: "Running the simulation…", showsProgress: true)
+            case .needsTwoLayouts(let count):
+                RunningNotice(
+                    text: count == 0
+                        ? "Add two layouts to compare them."
+                        : "Add a second layout to compare. This project has \(count).",
+                    showsProgress: false
+                )
+            case .ready:
+                comparison
             }
-            .padding(.top, metrics.headerToCards)
-
-            AnalysisSection(
-                tab: $viewModel.tab,
-                content: viewModel.activeContent,
-                metrics: metrics
-            )
-            .padding(.top, metrics.cardsToAnalysis)
-
-            Spacer(minLength: 0)
         }
         .padding(.leading, DashboardMetrics.horizontalPadding.leading)
         .padding(.trailing, DashboardMetrics.horizontalPadding.trailing)
         .padding(.top, metrics.topPadding)
+    }
+
+    @ViewBuilder
+    private var comparison: some View {
+        HStack(alignment: .top, spacing: CardSpacing.gap) {
+            ForEach(LayoutID.allCases) { layout in
+                LayoutComparisonCard(
+                    layout: layout,
+                    outcome: viewModel.outcome(for: layout),
+                    floorPlan: viewModel.floorPlan(for: layout),
+                    plan: viewModel.plan(for: layout),
+                    peakHourText: viewModel.peakHourText,
+                    metrics: metrics,
+                    onSimulate: { viewModel.onSimulate(layout) },
+                    onEdit: { viewModel.onEdit(layout) }
+                )
+            }
+        }
+        .padding(.top, metrics.headerToCards)
+
+        if let content = viewModel.activeContent {
+            AnalysisSection(
+                tab: $viewModel.tab,
+                content: content,
+                metrics: metrics
+            )
+            .padding(.top, metrics.cardsToAnalysis)
+        }
+
+        Spacer(minLength: 0)
+    }
+}
+
+/// Shown instead of the comparison while the simulation runs, or when there is nothing to compare.
+private struct RunningNotice: View {
+    let text: String
+    let showsProgress: Bool
+
+    var body: some View {
+        VStack(spacing: 14) {
+            if showsProgress {
+                ProgressView()
+            }
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundStyle(.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -3,6 +3,9 @@ import SwiftUI
 struct LayoutComparisonCard: View {
     let layout: LayoutID
     let outcome: LayoutOutcome
+    /// The layout and the part of it the plan shows, drawn behind the spots.
+    var floorPlan: Layout?
+    var plan: PlanFrame = .unit
     var peakHourText: String = "14:00"
     var metrics: DashboardMetrics = .reference
     var onSimulate: () -> Void = {}
@@ -73,10 +76,15 @@ struct LayoutComparisonCard: View {
     }
 
     private var floorPlanImage: some View {
-        Image(layout.floorPlanAssetName)
-            .resizable()
-            .interpolation(.high)
-            .aspectRatio(contentMode: .fit)
+        Group {
+            if let floorPlan {
+                LayoutPlanCanvas(layout: floorPlan, plan: plan)
+                    .equatable()
+                    .aspectRatio(CGFloat(plan.size.x / max(plan.size.y, 1)), contentMode: .fit)
+            } else {
+                Color.clear.aspectRatio(FloorPlan.aspectRatio, contentMode: .fit)
+            }
+        }
             .overlay {
                 HotspotOverlay(
                     layout: layout,

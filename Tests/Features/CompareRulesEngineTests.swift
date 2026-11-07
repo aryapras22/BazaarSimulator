@@ -116,29 +116,6 @@ struct CompareRulesEngineTests {
         #expect(content.chartTitle == "Flow Rate Throughout the Day")
     }
 
-    @Test("SimulationRunner scales with total visitors")
-    func simulationRunnerScales() {
-        let defaultResult = SimulationRunner.run(parameters: nil)
-        #expect(defaultResult.outcomes[.one] != nil)
-        #expect(defaultResult.outcomes[.two] != nil)
-        #expect(defaultResult.peakHourText == "14:00")
-
-        let customMix = VisitorMix(equalSplitOf: ["socializer", "stroller", "family_member", "purpose_buyer"])
-        let params = EventParameters(
-            totalVisitors: 10000,
-            eventHours: TimeRange(startMinute: 600, endMinute: 1200),
-            peakPeriods: [TimeRange(startMinute: 720, endMinute: 840)], // 12:00
-            bazaarTypeID: "craft_fair",
-            mix: customMix,
-            groupSize: 2
-        )
-        let scaledResult = SimulationRunner.run(parameters: params)
-        #expect(scaledResult.peakHourText == "12:00")
-        let p1 = scaledResult.outcomes[.one]!.worstSpot.peakDensity
-        let pDefault = defaultResult.outcomes[.one]!.worstSpot.peakDensity
-        #expect(p1 > pDefault)
-    }
-
     @Test("A full tie on Crowd Density goes to Layout 1, whatever the spot numbers")
     func crowdDensityTieGoesToLayoutOne() {
         func spot(_ number: Int) -> SpotOutcome {

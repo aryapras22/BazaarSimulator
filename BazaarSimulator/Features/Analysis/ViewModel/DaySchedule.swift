@@ -1,18 +1,55 @@
 import Foundation
 
-/// The values of one layout's busiest spot, and its door flow, at one moment of the day.
-struct DayValues: Sendable, Equatable {
-    var worstDensity: Double
-    var heavyMinutes: Double
-    var jammedSpots: Double
-    var flowRate: Double
-}
-
 /// Where the day starts, peaks, and ends (hours), and the sample hours the charts and tables use.
 struct DaySchedule: Sendable, Equatable {
+    static let defaultEventHours = TimeRange(startMinute: 10 * 60, endMinute: 18 * 60)
+    static let defaultPeakMinute = 14 * 60
+    static let defaultWindowMinutes = 10.0
+
     let startHour: Double
     let peakHour: Double
     let endHour: Double
+    let windowMinutes: Double
+
+    init(startHour: Double, peakHour: Double, endHour: Double, windowMinutes: Double = Self.defaultWindowMinutes) {
+        self.startHour = startHour
+        self.peakHour = peakHour
+        self.endHour = endHour
+        self.windowMinutes = windowMinutes
+    }
+
+    /// The schedule for a project. Anything the parameters do not give falls back to the simulator's
+    /// own value: event hours of 10:00 to 18:00, and a busiest time of 14:00.
+    init(parameters: EventParameters, windowMinutes: Double = Self.defaultWindowMinutes) {
+        let hours = parameters.eventHours.durationMinutes > 0 ? parameters.eventHours : Self.defaultEventHours
+        let peak = Self.peakMinute(in: parameters.peakPeriods, hours: hours, windowMinutes: windowMinutes)
+        self.init(
+            startHour: Double(hours.startMinute) / 60,
+            peakHour: Double(peak) / 60,
+            endHour: Double(hours.endMinute) / 60,
+            windowMinutes: windowMinutes
+        )
+    }
+
+    /// The first peak period that overlaps the event, else 14:00. Always inside the event hours, and
+    /// moved earlier if needed so the whole window fits before closing.
+    static func peakMinute(in periods: [TimeRange], hours: TimeRange, windowMinutes: Double) -> Int {
+        let earliest = hours.startMinute
+        let latest = max(hours.endMinute - Int(windowMinutes), earliest)
+        let requested = periods
+            .sorted { $0.startMinute < $1.startMinute }
+            .first { $0.endMinute > earliest && $0.startMinute < hours.endMinute }?
+            .startMinute ?? defaultPeakMinute
+        return min(max(requested, earliest), latest)
+    }
+
+    var peakMinute: Int { Int((peakHour * 60).rounded()) }
+    var peakText: String { TimeRange.format(peakMinute) }
+
+    /// The busiest window as minutes of the day.
+    var window: TimeRange {
+        TimeRange(startMinute: peakMinute, endMinute: peakMinute + Int(windowMinutes))
+    }
 
     /// Every 2 hours from the start, plus the end when it is a full hour past the last one,
     /// plus the busiest hour so the day values at that hour can equal the window values.
@@ -25,41 +62,5 @@ struct DaySchedule: Sendable, Equatable {
             hours.append(peakHour)
         }
         return hours.sorted()
-    }
-
-    /// Straight lines from the start values up to the peak values, then down to the end values.
-    /// At the peak hour the result is exactly `peak`, so tables, tiles, and charts agree.
-    func values(at hour: Double, start: DayValues, peak: DayValues, end: DayValues) -> DayValues {
-        if hour == peakHour { return peak }
-        if hour < peakHour {
-            let span = peakHour - startHour
-            return Self.blend(start, peak, span > 0 ? (hour - startHour) / span : 1)
-        }
-        let span = endHour - peakHour
-        return Self.blend(peak, end, span > 0 ? (hour - peakHour) / span : 1)
-    }
-
-    func dayPoints(start: DayValues, peak: DayValues, end: DayValues) -> [DayPoint] {
-        sampleHours.map { hour in
-            let value = values(at: hour, start: start, peak: peak, end: end)
-            return DayPoint(
-                hour: hour,
-                worstDensity: value.worstDensity,
-                heavyMinutes: value.heavyMinutes,
-                jammedSpots: Int(value.jammedSpots.rounded()),
-                flowRate: value.flowRate.rounded()
-            )
-        }
-    }
-
-    private static func blend(_ from: DayValues, _ to: DayValues, _ fraction: Double) -> DayValues {
-        let t = min(max(fraction, 0), 1)
-        func mix(_ a: Double, _ b: Double) -> Double { a + (b - a) * t }
-        return DayValues(
-            worstDensity: mix(from.worstDensity, to.worstDensity),
-            heavyMinutes: mix(from.heavyMinutes, to.heavyMinutes),
-            jammedSpots: mix(from.jammedSpots, to.jammedSpots),
-            flowRate: mix(from.flowRate, to.flowRate)
-        )
     }
 }

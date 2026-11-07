@@ -10,8 +10,20 @@ struct BazaarSimulatorApp: App {
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 1280, height: 800)
+        // No system title bar or toolbar material over the content, in a window or in full screen.
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             AppCommands()
         }
+
+        // The simulator opens in its own window, titled with the bazaar and the layout.
+        WindowGroup("Simulation", id: SimulationWindowContent.windowID, for: SimulationRequest.self) { $request in
+            if let request {
+                SimulationWindowContent(request: request, services: services)
+            }
+        }
+        .defaultSize(width: 1546, height: 1008)
+        .windowResizability(.contentMinSize)
     }
 }
