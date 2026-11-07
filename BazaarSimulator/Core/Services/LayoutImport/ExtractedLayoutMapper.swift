@@ -61,8 +61,9 @@ enum ExtractedLayoutMapper {
             }
         }
 
-        objects = WallCleanup.apply(to: objects)
+        objects = WallConnections.apply(to: WallCleanup.apply(to: objects))
         objects += furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
+        objects = TableSpacing.apply(to: objects)
         let hall = hallPolygon(from: objects)
         let extent = hall.reduce(SIMD2<Double>.zero) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
         var layout = Layout(
