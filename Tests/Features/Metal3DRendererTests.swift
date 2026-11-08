@@ -257,6 +257,53 @@ struct Metal3DRendererTests {
         #expect(first.x > first.y && second.y > second.x && near(second, again, 0.001))
     }
 
+    @Test("A booth seen from the front has a cream counter under a colored awning")
+    func boothLooksLikeABooth() throws {
+        let booth = LayoutObject(
+            kind: .booth, label: "B3",
+            placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(4, 3)),
+            openSides: [.bottom]
+        )
+        let scene = venue(VenueGeometry.blocks(for: booth))
+        let camera = OrbitCamera(target: SIMD3(0, 1, 0), yaw: 0, pitch: 0.35, distance: 11)
+        let picture = try draw(venue: scene, camera: camera)
+        let viewport = SIMD2(Float(size.x), Float(size.y))
+
+        let counter = picture.pixel(try #require(camera.project(SIMD3(0, 0.6, 1.3), viewport: viewport)))
+        #expect(counter.x > 0.55 && counter.y > 0.5 && counter.z > 0.35, "the counter is cream")
+        let awning = picture.pixel(try #require(camera.project(SIMD3(0, 2.35, 1.6), viewport: viewport)))
+        #expect(awning.z > awning.x, "the awning is blue")
+        let post = picture.pixel(try #require(camera.project(SIMD3(-1.94, 1.8, 1.44), viewport: viewport)))
+        #expect(post.x < 0.3 && post.y < 0.3 && post.z < 0.35, "a dark post stands at the corner")
+    }
+
+    @Test("A doorway is open: wall on both sides, a gap between, and a colored leaf standing in it")
+    func doorwayIsOpen() throws {
+        let wall = LayoutObject(
+            kind: .wall, label: "Wall", placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(12, 0.4))
+        )
+        let door = LayoutObject(
+            kind: .door, label: "Door A", placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(2, 0.6)),
+            doorFlow: DoorFlow(direction: .entrance)
+        )
+        let layout = Layout(name: "T", sizeM: SIMD2(12, 8), hall: [], objects: [wall, door])
+        let scene = venue(Array(VenueGeometry.blocks(for: layout).dropFirst()))
+        let camera = OrbitCamera(target: SIMD3(0, 1.4, 0), yaw: 0, pitch: 0.2, distance: 16)
+        let picture = try draw(venue: scene, camera: camera)
+        let viewport = SIMD2(Float(size.x), Float(size.y))
+
+        func at(_ x: Float, _ y: Float, _ z: Float) throws -> SIMD3<Double> {
+            picture.pixel(try #require(camera.project(SIMD3(x, y, z), viewport: viewport)))
+        }
+        let wallColor = SIMD3<Double>(0.28, 0.32, 0.40)
+        #expect(!near(try at(-4, 1.5, 0.2), background, 0.03), "wall on the left")
+        #expect(!near(try at(4, 1.5, 0.2), background, 0.03), "wall on the right")
+        #expect(near(try at(0.75, 1.4, 0), background, 0.04), "the doorway is open")
+        let leaf = try at(-0.45, 1.0, 0.55)
+        #expect(leaf.y > leaf.x && leaf.y > leaf.z, "the open leaf is green, for an entrance")
+        _ = wallColor
+    }
+
     @Test("A real layout draws, with its booths standing above the floor")
     func realLayout() throws {
         let layout = TestLayouts.hall()
