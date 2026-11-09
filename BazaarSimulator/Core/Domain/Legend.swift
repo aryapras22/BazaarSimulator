@@ -8,14 +8,14 @@ struct LegendColor: Sendable, Hashable, Codable {
 
 enum BoothType: String, Sendable, Hashable, Codable, CaseIterable {
     case fnb
-    case fashion
-    case lifestyleAndHobbies
+    case goods
+    case others
 
     var displayName: String {
         switch self {
         case .fnb: "FNB"
-        case .fashion: "Fashion"
-        case .lifestyleAndHobbies: "Lifestyle & Hobbies"
+        case .goods: "Goods"
+        case .others: "Others"
         }
     }
 }

@@ -128,7 +128,7 @@ struct ProjectSetupViewModelTests {
 
     @Test("A legend entry keeps the booth type the user picks, and the draft carries it")
     @MainActor
-    func legendEntryKeepsPickedBoothType() throws {
+    func legendEntryKeepsPickedCategory() throws {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
@@ -142,11 +142,11 @@ struct ProjectSetupViewModelTests {
         viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
         let entry = try #require(viewModel.legendEntries.first { $0.type == .fnb })
 
-        viewModel.setLegendEntryType(id: entry.id, to: .fashion)
+        viewModel.setLegendEntryType(id: entry.id, to: .goods)
         viewModel.continueToReview()
 
-        #expect(viewModel.legendEntries.first { $0.id == entry.id }?.type == .fashion)
-        #expect(session.draft(for: project.id)?.legend.entries.first { $0.id == entry.id }?.type == .fashion)
+        #expect(viewModel.legendEntries.first { $0.id == entry.id }?.type == .goods)
+        #expect(session.draft(for: project.id)?.legend.entries.first { $0.id == entry.id }?.type == .goods)
     }
 
     @Test("Legend entries appear once async legend read finishes")
