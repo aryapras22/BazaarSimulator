@@ -48,8 +48,6 @@ struct RootView: View {
         case .empty:
             EmptyWorkspaceView()
         case .setup(let projectID):
-            Text("open project setup view") // debug
-            // The crash is happening here bruh
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
         case .analysis(let projectID), .review(let projectID):
@@ -65,13 +63,8 @@ struct RootView: View {
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)
         case .simulation(let projectID):
-            let activeID = services.projectSession.activeLayoutID(for: projectID)
-            let layout = (activeID != nil ? services.projectSession.layout(id: activeID!, in: projectID) : nil)
-                ?? services.projectSession.draft(for: projectID)?.layouts.first
-                ?? PreviewLayouts.beyond()
-
             SimulationView(
-                layout: layout,
+                viewModel: factory.makeSimulationViewModel(projectID: projectID),
                 onDismiss: { router.showAnalysis(projectID: projectID) }
             )
             .id(projectID)

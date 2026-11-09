@@ -5,6 +5,7 @@ struct ProjectSetupView: View {
     @Bindable var viewModel: ProjectSetupViewModel
     @State private var importTarget: ImportFileKind?
     @State private var lastImportTarget: ImportFileKind?
+    @State private var showParameterModal = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -43,6 +44,15 @@ struct ProjectSetupView: View {
             case .floorPlan:
                 viewModel.addFloorPlanFiles(urls: urls)
             }
+        }
+        .sheet(isPresented: $showParameterModal) {
+            EditParameterView(
+                projectID: viewModel.projectID,
+                session: viewModel.session,
+                onApply: {
+                    viewModel.finishSetup()
+                }
+            )
         }
     }
 
@@ -216,7 +226,9 @@ struct ProjectSetupView: View {
             .disabled(!viewModel.isCancelEnabled)
 
             Button("Continue") {
-                viewModel.continueToReview()
+                if viewModel.saveDraftToSession() {
+                    showParameterModal = true
+                }
             }
             .buttonStyle(.primary)
             .disabled(!viewModel.isContinueEnabled)

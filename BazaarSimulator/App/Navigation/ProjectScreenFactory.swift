@@ -55,4 +55,27 @@ final class ProjectScreenFactory {
         layoutEditorViewModels[projectID] = created
         return created
     }
+
+    func makeSimulationViewModel(projectID: UUID) -> SimulationViewModel {
+        let session = services.projectSession
+        let layouts = session.draft(for: projectID)?.layouts ?? []
+        let activeID = session.activeLayoutID(for: projectID)
+        let layout = (activeID.flatMap { session.layout(id: $0, in: projectID) })
+            ?? layouts.first
+            ?? PreviewLayouts.beyond()
+        let savedResult = session.simulationResult(for: layout.id, in: projectID)
+        let settings = session.parameters(for: projectID).toSimulationSettings()
+        return SimulationViewModel(
+            layout: layout,
+            availableLayouts: layouts,
+            savedResult: savedResult,
+            engine: SimulationEngine(layout: layout, settings: settings),
+            onLayoutSelected: { [weak session] selectedID in
+                session?.setActiveLayoutID(selectedID, for: projectID)
+            },
+            resultProvider: { [weak session] layoutID in
+                session?.simulationResult(for: layoutID, in: projectID)
+            }
+        )
+    }
 }

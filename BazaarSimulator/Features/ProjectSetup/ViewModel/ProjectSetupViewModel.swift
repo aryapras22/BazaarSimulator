@@ -7,7 +7,7 @@ final class ProjectSetupViewModel {
     private static let maxFloorPlans = 6
 
     let projectID: UUID
-    private let session: any ProjectSessionProtocol
+    let session: any ProjectSessionProtocol
     private let importQueue: any ImportQueueing
     private let onContinue: (UUID) -> Void
 
@@ -198,13 +198,14 @@ final class ProjectSetupViewModel {
         importQueue.cancel(projectID: projectID)
     }
 
-    func continueToReview() {
-        guard isContinueEnabled else { return }
+    @discardableResult
+    func saveDraftToSession() -> Bool {
+        guard isContinueEnabled else { return false }
 
         let extractedLayouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
         guard extractedLayouts.count == floorPlanFiles.count else {
             bannerMessage = "Some floor plans could not be read"
-            return
+            return false
         }
 
         let existingLayouts = session.draft(for: projectID)?.layouts ?? []
@@ -220,6 +221,15 @@ final class ProjectSetupViewModel {
         )
 
         session.setDraft(draft, for: projectID)
+        return true
+    }
+
+    func finishSetup() {
+        onContinue(projectID)
+    }
+
+    func continueToReview() {
+        guard saveDraftToSession() else { return }
         onContinue(projectID)
     }
 
