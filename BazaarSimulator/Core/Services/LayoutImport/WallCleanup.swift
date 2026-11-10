@@ -8,6 +8,9 @@ enum WallCleanup {
     static let minLengthM = 1.0
     static let maxGapM = 0.6
     static let maxAngleRadians = 5.0 * .pi / 180
+    /// Walls read from the sample plans are at most 0.5 m thick. The boxes of 1.25 m and more are not walls.
+    static let maxThicknessM = 1.0
+    private static let lineSlackM = 0.1
 
     /// A wall as a line: centre, unit direction along its length, length and thickness. Extracted boxes are not
     /// rotated, so a vertical wall is a box taller than wide and its length is the larger side.
@@ -47,7 +50,10 @@ enum WallCleanup {
 
     static func apply(to objects: [LayoutObject]) -> [LayoutObject] {
         let doors = objects.filter { $0.kind == .door }
-        var walls = objects.filter { $0.kind == .wall && max($0.placement.sizeM.x, $0.placement.sizeM.y) >= minLengthM }
+        let read = objects.filter { $0.kind == .wall && Line($0.placement).length >= minLengthM }
+        let thin = read.filter { Line($0.placement).thickness <= maxThicknessM }
+        let fat = read.filter { Line($0.placement).thickness > maxThicknessM }
+        var walls = thin + fat.compactMap { onNeighbourLine($0, among: thin) }
         var merged = true
         while merged {
             merged = false
@@ -63,6 +69,34 @@ enum WallCleanup {
             }
         }
         return objects.filter { $0.kind != .wall } + walls
+    }
+
+    /// A box thicker than any wall is a wall line with columns or door jambs drawn against one side, or the outline of
+    /// a stair or a shaft. It becomes a wall on the long edge that continues the line of a real wall, as thick as that
+    /// wall, and it goes when neither edge does.
+    private static func onNeighbourLine(_ fat: LayoutObject, among thin: [LayoutObject]) -> LayoutObject? {
+        let box = Line(fat.placement)
+        let normal = SIMD2(-box.direction.y, box.direction.x)
+        var best: (offEdge: Double, line: Line)?
+        for wall in thin {
+            let line = Line(wall.placement)
+            let cross = box.direction.x * line.direction.y - box.direction.y * line.direction.x
+            guard abs(cross) < sin(maxAngleRadians) else { continue }
+            let offset = simd_dot(line.center - box.center, normal)
+            let offEdge = abs(abs(offset) - box.thickness / 2)
+            let isCloser = best.map { offEdge < $0.offEdge } ?? true
+            guard offEdge <= line.thickness / 2 + lineSlackM, isCloser else { continue }
+            best = (offEdge, Line(
+                center: box.center + normal * offset,
+                direction: box.direction,
+                length: box.length,
+                thickness: line.thickness
+            ))
+        }
+        guard let best else { return nil }
+        var wall = fat
+        wall.placement = best.line.placement
+        return wall
     }
 
     private static func join(_ first: LayoutObject, _ second: LayoutObject, doors: [LayoutObject]) -> LayoutObject? {

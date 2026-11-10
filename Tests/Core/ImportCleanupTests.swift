@@ -87,6 +87,21 @@ struct ImportCleanupTests {
         #expect(abs(door.placement.center.y - host.placement.center.y) < 0.001)
     }
 
+    @Test("A wall box thicker than a wall becomes a wall on the edge that continues a wall, or is dropped")
+    func fatWallBoxes() throws {
+        let layout = layoutOf([
+            wall(0, 100),
+            DetectedItem(cls: "wall", box: [100, -1, 200, 25]),
+            DetectedItem(cls: "wall", box: [0, 300, 200, 25])
+        ])
+
+        let walls = layout.objects.filter { $0.kind == .wall }
+        let joined = try #require(walls.first)
+        #expect(walls.count == 1)
+        #expect(abs(joined.placement.sizeM.x - 30) < 0.001)
+        #expect(abs(joined.placement.sizeM.y - 0.2) < 0.001)
+    }
+
     @Test("A wall and a door that connect to nothing are dropped once other walls are connected")
     func floatingWallsAndDoorsAreDropped() {
         let layout = layoutOf([

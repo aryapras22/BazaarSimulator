@@ -33,7 +33,7 @@ struct ExtractedLayoutMapperTruthTests {
         PlanCase(plan: "plan5", expected: nil),
         PlanCase(plan: "plan6", expected: LayoutScore(
             sizeRatio: 0.83, truthBooths: 289, boothsFound: 272, boothLabelsRight: 272, extraBooths: 0,
-            truthDoors: 4, doorsFound: 2, extraDoors: 34, hallOverlap: 0.71
+            truthDoors: 4, doorsFound: 2, extraDoors: 34, hallOverlap: 0.72
         ))
     ]
 
