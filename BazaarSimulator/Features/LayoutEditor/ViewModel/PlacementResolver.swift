@@ -278,7 +278,7 @@ enum PlacementResolver {
         }
 
         if overlapsBlocked {
-            return (false, "Overlaps blocked area")
+            return (false, "Overlaps restricted area")
         }
 
         let overlapped = layout.objects.first { other in

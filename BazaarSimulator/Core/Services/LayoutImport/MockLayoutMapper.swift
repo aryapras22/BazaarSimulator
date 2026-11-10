@@ -208,7 +208,7 @@ extension MockLayoutMapper {
         closedAreas.map { rect in
             LayoutObject(
                 kind: .closedArea,
-                label: "Blocked area",
+                label: "Restricted area",
                 placement: placement(from: rect),
                 reviewState: .detected
             )

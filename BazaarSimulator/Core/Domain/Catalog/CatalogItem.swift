@@ -6,27 +6,10 @@ enum CatalogCategory: String, CaseIterable, Hashable, Sendable {
     case furniture
     case structure
 
-    var title: String {
-        switch self {
-        case .project: return "From this project"
-        case .furniture: return "Furniture"
-        case .structure: return "Structure"
-        }
-    }
-
     var layer: EditorLayer {
         switch self {
         case .structure: return .structure
         case .project, .furniture: return .booths
-        }
-    }
-
-    static func categories(for layer: EditorLayer) -> [CatalogCategory] {
-        switch layer {
-        case .structure:
-            return [.structure]
-        case .booths:
-            return [.project, .furniture]
         }
     }
 }

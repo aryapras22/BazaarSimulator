@@ -38,7 +38,6 @@ final class LayoutEditorViewModel {
     var groupSelection: GroupSelection?
     var hoveredGroup: BoothGroupKind?
     var librarySearch: String = ""
-    var libraryCategory: CatalogCategory?
     var inspectorPanelTab: InspectorPanelTab = .library
     var cachedBoothTemplates: [BoothTemplate] = []
     var placementRotationDegrees: Int = 0
@@ -155,7 +154,6 @@ final class LayoutEditorViewModel {
         guard newLayer != activeLayer else { return }
         activeLayer = newLayer
         selectTool(.select)
-        libraryCategory = nil
         applySelection(nil)
     }
 

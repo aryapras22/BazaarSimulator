@@ -6,7 +6,7 @@ extension LayoutEditorViewModel {
         let key = boothTemplateKey()
         guard key != templateKey else { return }
         templateKey = key
-        cachedBoothTemplates = BoothTemplates.templates(layouts: layouts, legend: legend)
+        cachedBoothTemplates = [BoothTemplates.standard(layouts: layouts)]
     }
 
     /// Hashes only what `BoothTemplates` reads, so moving a booth leaves the key unchanged.
@@ -14,11 +14,9 @@ extension LayoutEditorViewModel {
         var hasher = Hasher()
         for layout in layouts {
             for object in layout.objects where object.kind == .booth {
-                hasher.combine(object.categoryID)
                 hasher.combine(BoothGrouping.sizeKey(of: object.placement))
             }
         }
-        hasher.combine(legend.entries.map(\.id))
         return hasher.finalize()
     }
 
@@ -27,29 +25,26 @@ extension LayoutEditorViewModel {
 
         if activeLayer == .booths {
             let templateRows = cachedBoothTemplates.map { template -> LibraryRowDisplay in
-                let categoryName = legend.entries.first { $0.id == template.categoryID }?.name ?? "Booth"
-                let title = "\(categoryName) booth"
                 let shortText = DimensionInput.text(for: template.sizeKey.shortM)
                 let longText = DimensionInput.text(for: template.sizeKey.longM)
                 let detail = "\(shortText) × \(longText) m · \(template.count) placed"
-                let tint = legend.entries.first { $0.id == template.categoryID }?.color
                 return LibraryRowDisplay(
                     id: template.id,
                     source: .template(template),
-                    title: title,
+                    title: "Booth",
                     detail: detail,
                     category: .project,
                     footprint: .rect,
                     sizeM: SIMD2(template.sizeKey.shortM, template.sizeKey.longM),
                     openSides: [.bottom],
                     seats: [],
-                    tint: tint
+                    tint: nil
                 )
             }
             rows.append(contentsOf: templateRows)
         }
 
-        let catalogRows = ObjectCatalog.items
+        let catalogRows = ObjectCatalog.libraryItems
             .filter { $0.category.layer == activeLayer }
             .map { item -> LibraryRowDisplay in
                 let detail: String
@@ -72,10 +67,6 @@ extension LayoutEditorViewModel {
                 )
             }
         rows.append(contentsOf: catalogRows)
-
-        if let selectedCategory = libraryCategory, selectedCategory.layer == activeLayer {
-            rows = rows.filter { $0.category == selectedCategory }
-        }
 
         let trimmedSearch = librarySearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !trimmedSearch.isEmpty {

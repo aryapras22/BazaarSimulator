@@ -10,10 +10,8 @@ struct LayoutEditorSidePanel: View {
 
             if viewModel.inspectorPanelTab == .library {
                 LibraryPanel(
-                    layer: viewModel.activeLayer,
                     rows: viewModel.libraryRows,
                     searchText: $viewModel.librarySearch,
-                    selectedCategory: $viewModel.libraryCategory,
                     onSelect: { viewModel.startPlacing($0) }
                 )
             } else {

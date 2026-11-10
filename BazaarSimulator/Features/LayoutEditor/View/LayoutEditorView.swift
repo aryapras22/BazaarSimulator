@@ -251,7 +251,7 @@ extension LayoutEditorView {
             .onKeyPress(characters: CharacterSet(charactersIn: "fF")) { _ in handleFKey() }
             .onKeyPress(characters: CharacterSet(charactersIn: "dD")) { _ in
                 guard viewModel.activeLayer == .structure else { return .ignored }
-                openLibraryFiltered(to: .structure)
+                openLibrary()
                 return .handled
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "bB")) { _ in
@@ -260,7 +260,7 @@ extension LayoutEditorView {
             }
             .onKeyPress(characters: CharacterSet(charactersIn: "xX")) { _ in
                 guard viewModel.activeLayer == .structure else { return .ignored }
-                openLibraryFiltered(to: .structure)
+                openLibrary()
                 return .handled
             }
     }
@@ -290,11 +290,10 @@ extension LayoutEditorView {
         return .handled
     }
 
-    private func openLibraryFiltered(to category: CatalogCategory) {
+    private func openLibrary() {
         withAnimation(panelAnimation) {
             isSidePanelVisible = true
             viewModel.inspectorPanelTab = .library
-            viewModel.libraryCategory = category
         }
     }
 
