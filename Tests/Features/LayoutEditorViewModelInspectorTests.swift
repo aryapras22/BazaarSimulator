@@ -133,7 +133,7 @@ struct LayoutEditorViewModelInspectorTests {
         viewModel.selectObject(area.id)
 
         #expect(viewModel.inspectorDraft?.kind == .closedArea)
-        #expect(viewModel.inspectorTitle == "Blocked area")
+        #expect(viewModel.inspectorTitle == "Restricted area")
     }
 
     @Test("Renaming a blocked area applies the label")

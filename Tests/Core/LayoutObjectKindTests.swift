@@ -8,7 +8,7 @@ struct LayoutObjectKindTests {
     func blockedAreaKindFacts() {
         let kind = LayoutObjectKind.closedArea
 
-        #expect(kind.displayName == "Blocked area")
+        #expect(kind.displayName == "Restricted area")
         #expect(kind.isMovable)
         #expect(kind.isResizable)
         #expect(kind.isRotatable)
