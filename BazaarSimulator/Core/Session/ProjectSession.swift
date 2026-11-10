@@ -19,6 +19,12 @@ protocol ProjectSessionProtocol: AnyObject {
     func updateLayout(_ layout: Layout, in projectID: UUID)
     func activeLayoutID(for projectID: UUID) -> Layout.ID?
     func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID)
+
+    func parameters(for projectID: UUID) -> EventParameters
+    func setParameters(_ parameters: EventParameters, for projectID: UUID)
+    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> SimulationResult?
+    func setSimulationResult(_ result: SimulationResult, for layoutID: Layout.ID, in projectID: UUID)
+    func runSimulations(for projectID: UUID)
 }
 
 @Observable
@@ -28,6 +34,8 @@ final class ProjectSession: ProjectSessionProtocol {
     private(set) var activeProjectID: UUID?
     private var drafts: [UUID: ProjectDraft] = [:]
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
+    private var parametersByProject: [UUID: EventParameters] = [:]
+    private var simulationResultsByProject: [UUID: [Layout.ID: SimulationResult]] = [:]
 
     var activeProject: ProjectSummary? {
         projects.first { $0.id == activeProjectID }
@@ -87,5 +95,42 @@ final class ProjectSession: ProjectSessionProtocol {
     func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID) {
         guard drafts[projectID]?.layouts.contains(where: { $0.id == id }) == true else { return }
         activeLayoutIDs[projectID] = id
+    }
+
+    // MARK: - Parameters & Simulation Results
+
+    func parameters(for projectID: UUID) -> EventParameters {
+        parametersByProject[projectID] ?? EventParameters()
+    }
+
+    func setParameters(_ parameters: EventParameters, for projectID: UUID) {
+        parametersByProject[projectID] = parameters
+    }
+
+    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> SimulationResult? {
+        simulationResultsByProject[projectID]?[layoutID]
+    }
+
+    func setSimulationResult(_ result: SimulationResult, for layoutID: Layout.ID, in projectID: UUID) {
+        var projectMap = simulationResultsByProject[projectID] ?? [:]
+        projectMap[layoutID] = result
+        simulationResultsByProject[projectID] = projectMap
+    }
+
+    func runSimulations(for projectID: UUID) {
+        guard let layouts = drafts[projectID]?.layouts, !layouts.isEmpty else { return }
+        let settings = parameters(for: projectID).toSimulationSettings()
+        var projectMap: [Layout.ID: SimulationResult] = [:]
+
+        for layout in layouts {
+            let engine = SimulationEngine(layout: layout, settings: settings)
+            let result = engine.runWithRecordedFootage(
+                durationMinutes: settings.durationMinutes,
+                frameIntervalSeconds: 5.0
+            )
+            projectMap[layout.id] = result
+        }
+
+        simulationResultsByProject[projectID] = projectMap
     }
 }
