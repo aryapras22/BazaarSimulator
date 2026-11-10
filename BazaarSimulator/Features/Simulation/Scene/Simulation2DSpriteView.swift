@@ -240,14 +240,14 @@ final class Venue2DScene: SKScene {
         case .table:
             node.fillColor = NSColor(calibratedRed: 0.35, green: 0.38, blue: 0.45, alpha: 1.0)
             node.strokeColor = .clear
-        case .stage:
-            node.fillColor = NSColor(calibratedRed: 0.45, green: 0.24, blue: 0.62, alpha: 1.0)
+        case .seating:
+            node.fillColor = NSColor(calibratedRed: 0.35, green: 0.24, blue: 0.50, alpha: 0.75)
             node.strokeColor = .clear
         case .door:
             let isExit = object.doorFlow?.direction == .exit
             node.fillColor = isExit ? NSColor.systemRed : NSColor.systemGreen
             node.strokeColor = .clear
-        default:
+        case .wall, .block, .closedArea:
             node.fillColor = NSColor(calibratedRed: 0.28, green: 0.32, blue: 0.40, alpha: 1.0)
             node.strokeColor = .clear
         }
@@ -323,7 +323,7 @@ final class Venue2DScene: SKScene {
 
         // Clear booth and obstacle footprints from the heatmap texture so it never bleeds into booths
         context.setBlendMode(.clear)
-        for object in layout.objects where object.kind != .door && object.kind != .audienceArea {
+        for object in layout.objects where object.kind.blocksWalking {
             let cx = CGFloat(object.placement.center.x * pixelsPerMetre)
             let cy = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
             let w = CGFloat(object.placement.sizeM.x * pixelsPerMetre)

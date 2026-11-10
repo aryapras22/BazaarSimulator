@@ -179,16 +179,14 @@ struct LayoutHeatmapCanvas: View {
                 )
             case .table:
                 context.fill(Path(ellipseIn: rect), with: .color(Color.gray.opacity(0.6)))
-            case .stage:
-                let stageColor = Color.purple.opacity(0.55)
-                context.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(stageColor))
+            case .seating:
+                let seatingColor = Color.purple.opacity(0.45)
+                context.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(seatingColor))
             case .door:
                 let doorColor: Color = object.doorFlow?.direction == .exit ? .red : .green
                 context.fill(Path(rect), with: .color(doorColor.opacity(0.9)))
-            case .wall, .pillar, .closedArea, .block, .fixture, .rail:
+            case .wall, .closedArea, .block:
                 context.fill(Path(rect), with: .color(Color.white.opacity(0.25)))
-            case .audienceArea:
-                context.stroke(Path(rect), with: .color(Color.purple.opacity(0.35)), lineWidth: 1)
             }
         }
     }
