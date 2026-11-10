@@ -44,15 +44,8 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         name: String,
         onProgress: @escaping @Sendable (Double) -> Void
     ) async throws -> ExtractedLayout {
-        let reading = try await PlanExtractor.plan(
-            page,
-            legend: legendPage,
-            symbols: symbolStore.symbols,
-            onProgress: onProgress
-        )
-        let items = await PlanPrintedText.relabelingDecor(reading.items.map(Self.detectedItem), on: page)
-        let detected = DetectedPlan(items: items)
-        let printedScale = await PlanPrintedText.pixelsPerMetre(from: items, on: page)
+        let detected = try await detectPlan(page, legendPage: legendPage, onProgress: onProgress)
+        let printedScale = detected.printedPixelsPerMetre
         guard let scale = printedScale ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
             throw FloorPlanReadingError.noBooths
         }
@@ -65,6 +58,25 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         )
         Self.logLedger(of: detected, layout: layout)
         return ExtractedLayout(layout: layout)
+    }
+
+    /// Everything read from the page before it is mapped to metres.
+    func detectPlan(
+        _ page: CGImage,
+        legendPage: CGImage,
+        onProgress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> DetectedPlan {
+        let reading = try await PlanExtractor.plan(
+            page,
+            legend: legendPage,
+            symbols: symbolStore.symbols,
+            onProgress: onProgress
+        )
+        let items = await PlanPrintedText.relabelingDecor(reading.items.map(Self.detectedItem), on: page)
+        return DetectedPlan(
+            items: items,
+            printedPixelsPerMetre: await PlanPrintedText.pixelsPerMetre(from: items, on: page)
+        )
     }
 
     /// Items that came in against what reached the layout, so a class the mapper discards shows up in the log.
