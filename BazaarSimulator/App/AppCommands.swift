@@ -65,7 +65,6 @@ struct AppCommands: Commands {
             Button("Delete") {
                 actions?.deleteSelected()
             }
-            .keyboardShortcut(.delete, modifiers: .command)
             .disabled(!(actions?.hasSelection ?? false))
         }
 
