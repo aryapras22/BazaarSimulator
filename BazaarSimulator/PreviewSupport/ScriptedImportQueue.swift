@@ -158,7 +158,7 @@ final class ScriptedImportQueue: ImportQueueing {
                 LegendEntry(
                     name: "Lifestyle & Hobbies",
                     color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0),
-                    type: .others
+                    type: .goods
                 )
             ])
             legendsByFile[file.id] = defaultLegend

@@ -31,7 +31,7 @@ final class ProjectSetupViewModel {
             .filter { !removedLegendEntryIDs.contains($0.id) }
             .map { entry in
                 var typed = entry
-                if let type = legendEntryTypes[entry.id] { typed.type = type }
+                typed.type = legendEntryTypes[entry.id] ?? entry.type ?? CategoryMatcher.defaultType(for: entry)
                 return typed
             }
     }

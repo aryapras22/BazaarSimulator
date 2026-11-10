@@ -41,6 +41,11 @@ enum CategoryMatcher {
         legend.entries.first(where: isFood)
     }
 
+    /// The booth type a legend entry starts with before the user picks one.
+    static func defaultType(for entry: LegendEntry) -> BoothType {
+        isFood(entry) ? .fnb : .goods
+    }
+
     private static func isFood(_ entry: LegendEntry) -> Bool {
         let lowered = entry.name.lowercased()
         return foodKeywords.contains { lowered.contains($0) }
