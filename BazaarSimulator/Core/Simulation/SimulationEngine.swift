@@ -115,7 +115,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         let clockDt = totalDurationSeconds / Double(totalSteps)
         let agentDt = min(1.0, max(0.5, clockDt))
 
-        let desiredFrameCount = min(240, max(30, Int(totalDurationSeconds / max(1.0, frameIntervalSeconds))))
+        let desiredFrameCount = min(600, max(60, Int(totalDurationSeconds / max(1.0, frameIntervalSeconds))))
         let stepsPerFrame = max(1, totalSteps / desiredFrameCount)
         var frames: [SimulationFrame] = []
 

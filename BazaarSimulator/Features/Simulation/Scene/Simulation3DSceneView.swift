@@ -60,22 +60,23 @@ struct Simulation3DSceneView: NSViewRepresentable {
         }
 
         for visitor in visitors {
-            let node: SCNNode
-            if let existing = coordinator.visitorNodes[visitor.id] {
-                node = existing
-            } else {
-                let created = makeVisitorNode(for: visitor)
-                rootNode.addChildNode(created)
-                coordinator.visitorNodes[visitor.id] = created
-                node = created
-            }
-
-            node.position = SCNVector3(
+            let targetPos = SCNVector3(
                 CGFloat(visitor.position.x),
                 0.65,
                 CGFloat(visitor.position.y)
             )
-            node.geometry?.firstMaterial?.diffuse.contents = color(for: visitor.state)
+            if let existing = coordinator.visitorNodes[visitor.id] {
+                SCNTransaction.begin()
+                SCNTransaction.animationDuration = 0.055
+                existing.position = targetPos
+                SCNTransaction.commit()
+                existing.geometry?.firstMaterial?.diffuse.contents = color(for: visitor.state)
+            } else {
+                let created = makeVisitorNode(for: visitor)
+                created.position = targetPos
+                rootNode.addChildNode(created)
+                coordinator.visitorNodes[visitor.id] = created
+            }
         }
     }
 

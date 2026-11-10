@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import simd
 
 /// ViewModel that connects the 3D SimulationView to either saved simulation footage or a live SimulationEngine.
 @Observable
@@ -25,6 +26,7 @@ final class SimulationViewModel {
 
     var speedMultiplier: Double = 5.0
     var showHeatmap = true
+    var is3DMode = true
 
     init(
         layout: Layout,
@@ -95,6 +97,7 @@ final class SimulationViewModel {
         guard !recordedFrames.isEmpty else { return }
         let clamped = min(max(0, index), recordedFrames.count - 1)
         currentFrameIndex = clamped
+        playbackAccumulator = 0
         applyFrame(recordedFrames[clamped])
     }
 
@@ -164,16 +167,30 @@ final class SimulationViewModel {
 
     func tick(realSeconds: Double) {
         if hasRecordedFootage && isPlayingRecordedFootage {
-            guard isRunning else { return }
-            playbackAccumulator += realSeconds * max(1.0, speedMultiplier / 2.5)
-            if playbackAccumulator >= 0.12 {
-                playbackAccumulator = 0
+            guard isRunning, !recordedFrames.isEmpty else { return }
+            playbackAccumulator += realSeconds * max(1.2, speedMultiplier * 0.55)
+
+            while playbackAccumulator >= 1.0 {
+                playbackAccumulator -= 1.0
                 if currentFrameIndex + 1 < recordedFrames.count {
                     currentFrameIndex += 1
-                    applyFrame(recordedFrames[currentFrameIndex])
                 } else {
+                    currentFrameIndex = recordedFrames.count - 1
+                    playbackAccumulator = 0
+                    applyFrame(recordedFrames[currentFrameIndex])
                     isRunning = false
+                    return
                 }
+            }
+
+            if currentFrameIndex + 1 < recordedFrames.count {
+                applyInterpolatedFrame(
+                    from: recordedFrames[currentFrameIndex],
+                    to: recordedFrames[currentFrameIndex + 1],
+                    progress: playbackAccumulator
+                )
+            } else {
+                applyFrame(recordedFrames[currentFrameIndex])
             }
             return
         }
@@ -190,6 +207,7 @@ final class SimulationViewModel {
         isPlayingRecordedFootage = true
         isRunning = true
         currentFrameIndex = 0
+        playbackAccumulator = 0
         if let first = result.frames.first {
             applyFrame(first)
         }
@@ -199,6 +217,26 @@ final class SimulationViewModel {
         visitors = frame.visitors
         metrics = frame.metrics
         densityCells = frame.densityCells
+    }
+
+    private func applyInterpolatedFrame(
+        from current: SimulationFrame,
+        to next: SimulationFrame,
+        progress: Double
+    ) {
+        let nextByID = Dictionary(uniqueKeysWithValues: next.visitors.map { ($0.id, $0.position) })
+        let factor = min(1.0, max(0.0, progress))
+        visitors = current.visitors.map { visitor in
+            guard let nextPos = nextByID[visitor.id],
+                  simd_distance(visitor.position, nextPos) < 12.0 else {
+                return visitor
+            }
+            var copy = visitor
+            copy.position = simd_mix(visitor.position, nextPos, SIMD2<Double>(repeating: factor))
+            return copy
+        }
+        metrics = current.metrics
+        densityCells = current.densityCells
     }
 
     private func syncStateFromEngine() {

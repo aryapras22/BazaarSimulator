@@ -18,14 +18,23 @@ struct SimulationView: View {
 
     var body: some View {
         ZStack {
-            // 3D SceneKit viewport
-            Simulation3DSceneView(
-                layout: viewModel.layout,
-                visitors: viewModel.visitors,
-                densityCells: viewModel.densityCells,
-                showHeatmap: viewModel.showHeatmap
-            )
-            .ignoresSafeArea()
+            if viewModel.is3DMode {
+                Simulation3DSceneView(
+                    layout: viewModel.layout,
+                    visitors: viewModel.visitors,
+                    densityCells: viewModel.densityCells,
+                    showHeatmap: viewModel.showHeatmap
+                )
+                .ignoresSafeArea()
+            } else {
+                Simulation2DSpriteView(
+                    layout: viewModel.layout,
+                    visitors: viewModel.visitors,
+                    densityCells: viewModel.densityCells,
+                    showHeatmap: viewModel.showHeatmap
+                )
+                .ignoresSafeArea()
+            }
 
             // Top and bottom HUD overlays
             VStack {
@@ -61,10 +70,38 @@ struct SimulationView: View {
 
             layoutInfoBadge
 
+            viewModeTogglePill
+
             Spacer()
 
             metricsBadge
         }
+    }
+
+    private var viewModeTogglePill: some View {
+        HStack(spacing: 2) {
+            modeOptionButton(title: "2D", isSelected: !viewModel.is3DMode) {
+                viewModel.is3DMode = false
+            }
+            modeOptionButton(title: "3D", isSelected: viewModel.is3DMode) {
+                viewModel.is3DMode = true
+            }
+        }
+        .padding(3)
+        .background(Palette.surface.opacity(0.88), in: Capsule())
+        .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
+    }
+
+    private func modeOptionButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Typography.caption)
+                .foregroundStyle(isSelected ? Palette.textPrimary : Palette.textSecondary)
+                .padding(.horizontal, Spacing.m)
+                .padding(.vertical, 5)
+                .background(isSelected ? Palette.accent.opacity(0.4) : Color.clear, in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func backButton(action: @escaping () -> Void) -> some View {
