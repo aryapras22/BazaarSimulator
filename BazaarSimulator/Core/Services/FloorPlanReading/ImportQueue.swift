@@ -122,6 +122,9 @@ final class ImportQueue: ImportQueueing {
     }
 
     private func read(_ file: ImportFile) async {
+        // Files from the file picker are sandbox-scoped and unreadable without this; dropped files return false.
+        let scoped = file.url.startAccessingSecurityScopedResource()
+        defer { if scoped { file.url.stopAccessingSecurityScopedResource() } }
         setState(.reading(progress: nil), for: file.id)
         do {
             switch file.kind {
