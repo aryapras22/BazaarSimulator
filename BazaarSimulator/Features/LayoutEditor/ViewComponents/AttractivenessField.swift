@@ -2,7 +2,11 @@ import SwiftUI
 
 struct AttractivenessField: View {
     static let range: ClosedRange<Double> = 1...5
-    static let sliderStep: Double = 0.5
+    static let sliderStep: Double = 1
+
+    static func isValid(_ value: Double) -> Bool {
+        range.contains(value) && value == value.rounded()
+    }
 
     @Binding var value: Double
 
@@ -21,7 +25,7 @@ struct AttractivenessField: View {
                     .accessibilityLabel("Attractiveness")
 
                 TextField("Attractiveness", text: $text)
-                    .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !Self.range.contains(value)))
+                    .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !Self.isValid(value)))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 64)
                     .focused($isFocused)

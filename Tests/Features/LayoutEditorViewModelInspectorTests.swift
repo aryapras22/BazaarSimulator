@@ -20,18 +20,19 @@ struct LayoutEditorViewModelInspectorTests {
         #expect(context.viewModel.canUndo)
     }
 
-    @Test("A booth starts at attractiveness 1, a valid edit applies and a negative one does not")
+    @Test("A booth starts at attractiveness 1, a whole number from 1 to 5 applies and a negative or fractional one does not")
     func attractivenessEdit() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
         #expect(booth.attractiveness == 1)
 
         context.viewModel.selectObject(booth.id)
-        context.viewModel.editInspectorDraft { $0.attractiveness = 2.5 }
+        context.viewModel.editInspectorDraft { $0.attractiveness = 3 }
         context.viewModel.editInspectorDraft { $0.attractiveness = -1 }
+        context.viewModel.editInspectorDraft { $0.attractiveness = 2.5 }
 
         let edited = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
-        #expect(edited.attractiveness == 2.5)
+        #expect(edited.attractiveness == 3)
     }
 
     @Test("Several edits to one object undo in one step")

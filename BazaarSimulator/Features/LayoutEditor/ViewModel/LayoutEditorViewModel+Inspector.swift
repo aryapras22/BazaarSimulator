@@ -52,7 +52,7 @@ extension LayoutEditorViewModel {
         if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
             return false
         }
-        if selected.kind == .booth && !AttractivenessField.range.contains(draft.attractiveness) {
+        if selected.kind == .booth && !AttractivenessField.isValid(draft.attractiveness) {
             return false
         }
         return !issues.contains {
