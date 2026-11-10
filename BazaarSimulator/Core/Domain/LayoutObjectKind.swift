@@ -1,62 +1,51 @@
 import Foundation
 
-enum LayoutObjectTab: String, Codable, CaseIterable, Hashable, Sendable {
-    case floorPlan
-    case flow
-}
-
 enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case booth
-    case table
     case door
     case wall
-    case rail
     case block
-    case pillar
-    case fixture
-    case stage
-    case audienceArea
     case closedArea
+    case table
+    case seating
 
     var displayName: String {
         switch self {
         case .booth: return "Booth"
-        case .table: return "Table"
         case .door: return "Door"
         case .wall: return "Wall"
-        case .rail: return "Rail"
         case .block: return "Block"
-        case .pillar: return "Pillar"
-        case .fixture: return "Fixture"
-        case .stage: return "Stage"
-        case .audienceArea: return "Audience area"
         case .closedArea: return "Blocked area"
+        case .table: return "Table"
+        case .seating: return "Seating"
         }
     }
 
-    var tab: LayoutObjectTab {
+    var layer: EditorLayer {
         switch self {
-        case .door: return .flow
-        default: return .floorPlan
+        case .wall, .block, .door, .closedArea:
+            return .structure
+        case .booth, .table, .seating:
+            return .booths
         }
     }
 
     var isMovable: Bool {
-        switch self {
-        case .door: return false
-        default: return true
-        }
-    }
-
-    var isResizable: Bool {
         true
     }
 
+    /// A table takes its size from its standard model.
+    var isResizable: Bool {
+        self != .table
+    }
+
     var isRotatable: Bool {
-        switch self {
-        case .door, .pillar: return false
-        default: return true
-        }
+        self != .door
+    }
+
+    /// Tables and seating stand at any eighth of a turn, as plans draw them. Everything else turns by quarters.
+    var rotationStepDegrees: Int {
+        self == .table || self == .seating ? 45 : 90
     }
 
     var hasCategory: Bool {
@@ -64,7 +53,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasOpenSides: Bool {
-        self == .booth || self == .stage
+        self == .booth
     }
 
     var allowsMultipleOpenSides: Bool {
@@ -73,23 +62,16 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var blocksWalking: Bool {
         switch self {
-        case .door, .audienceArea: return false
+        case .door, .seating: return false
         default: return true
-        }
-    }
-
-    var canBeAdded: Bool {
-        switch self {
-        case .booth, .table, .rail, .fixture, .closedArea: return true
-        default: return false
         }
     }
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .table, .fixture, .stage, .audienceArea, .closedArea: return 0.5
+        case .booth, .closedArea, .table, .seating: return 0.5
         case .door: return 0.8
-        case .wall, .rail, .block, .pillar: return 0.1
+        case .wall, .block: return 0.1
         }
     }
 
@@ -97,13 +79,14 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         isMovable || isResizable
     }
 
+    /// Walls resize through their end nodes and doors are fitted to their wall, so neither gets box handles.
     var hasResizeHandles: Bool {
-        self == .closedArea
+        self == .closedArea || self == .booth || self == .block || self == .seating
     }
 
     var isStructural: Bool {
         switch self {
-        case .wall, .pillar, .closedArea: return true
+        case .wall, .block, .closedArea: return true
         default: return false
         }
     }

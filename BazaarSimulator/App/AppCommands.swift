@@ -4,6 +4,7 @@ struct EditorCommandActions {
     var canUndo: Bool
     var canRedo: Bool
     var hasSelection: Bool
+    var canDuplicate: Bool
     var canRotate: Bool
     var undo: () -> Void
     var redo: () -> Void
@@ -13,6 +14,8 @@ struct EditorCommandActions {
     var zoomIn: () -> Void
     var zoomOut: () -> Void
     var fitToView: () -> Void
+    var selectStructureLayer: () -> Void
+    var selectBoothsLayer: () -> Void
 }
 
 private struct EditorCommandActionsKey: FocusedValueKey {
@@ -51,7 +54,7 @@ struct AppCommands: Commands {
                 actions?.duplicateSelected()
             }
             .keyboardShortcut("d", modifiers: .command)
-            .disabled(!(actions?.hasSelection ?? false))
+            .disabled(!(actions?.canDuplicate ?? false))
 
             Button("Rotate 90°") {
                 actions?.rotateSelected()
@@ -83,6 +86,20 @@ struct AppCommands: Commands {
                 actions?.fitToView()
             }
             .keyboardShortcut("0", modifiers: .command)
+            .disabled(actions == nil)
+        }
+
+        CommandMenu("Layer") {
+            Button("Structure") {
+                actions?.selectStructureLayer()
+            }
+            .keyboardShortcut("1", modifiers: .command)
+            .disabled(actions == nil)
+
+            Button("Booths") {
+                actions?.selectBoothsLayer()
+            }
+            .keyboardShortcut("2", modifiers: .command)
             .disabled(actions == nil)
         }
     }

@@ -14,13 +14,29 @@ extension LayoutEditorViewModel {
         }
         guard simd_length(deltaWorld) > 1e-4 else { return }
 
+        if before.kind == .door {
+            if let host = DoorHosting.nearestHost(to: before.placement.center, in: layout, reach: 0.3),
+               let newPlacement = DoorHosting.placement(
+                   width: before.placement.sizeM.x,
+                   on: host,
+                   near: before.placement.center + deltaWorld
+               ) {
+                var after = before
+                after.placement = newPlacement
+                after.doorFlow?.connection = DoorHosting.connection(for: newPlacement.center, on: host, in: layout)
+                guard after != before else { return }
+                commitEdit(.replace(before: before, after: after), coalesceKey: "drag-\(id)")
+            }
+            return
+        }
+
         var after = before
         after.placement.center += deltaWorld
         if !freeMove {
             after.placement = after.placement.snapped(toGrid: Self.gridSnapCellM)
         }
         guard after != before else { return }
-        commitEdit(.replace(before: before, after: after))
+        commitEdit(.replace(before: before, after: after), coalesceKey: "drag-\(id)")
     }
 
     func finishResizingObject(id: UUID, to placement: Placement) {
@@ -28,7 +44,7 @@ extension LayoutEditorViewModel {
               current.kind.isResizable else { return }
         var updated = current
         updated.placement = placement
-        commitEdit(.replace(before: current, after: updated))
+        commitEdit(.replace(before: current, after: updated), coalesceKey: "resize-\(id)")
         if selectionID == id {
             inspectorDraft?.widthM = placement.sizeM.x
             inspectorDraft?.lengthM = placement.sizeM.y
@@ -36,10 +52,28 @@ extension LayoutEditorViewModel {
     }
 
     func nudgeSelected(by deltaWorld: SIMD2<Double>) {
-        guard let before = selectedObject, before.kind.isMovable else { return }
+        guard let before = selectedObject, before.kind.isMovable, let layout = activeLayout else { return }
+        let key = "nudge-\(before.id)"
+        if before.kind == .door {
+            if let host = DoorHosting.nearestHost(to: before.placement.center, in: layout, reach: 0.3),
+               let newPlacement = DoorHosting.placement(
+                   width: before.placement.sizeM.x,
+                   on: host,
+                   near: before.placement.center + deltaWorld
+               ) {
+                var after = before
+                after.placement = newPlacement
+                guard after != before else { return }
+                withSingleRefresh {
+                    commitEdit(.replace(before: before, after: after), coalesceKey: key)
+                    applySelection(after.id)
+                }
+            }
+            return
+        }
         var after = before
         after.placement.center += deltaWorld
-        commitEdit(.replace(before: before, after: after))
+        commitEdit(.replace(before: before, after: after), coalesceKey: key)
     }
 
     func rotateSelected() {
@@ -75,8 +109,9 @@ extension LayoutEditorViewModel {
         }
         var copy = selected
         copy.id = UUID()
+        let prefix = BoothGrouping.namePrefix(of: selected.label)
         copy.label = selected.kind == .booth
-            ? nextPrefixedLabel(prefix: BoothGrouping.namePrefix(of: selected.label), kind: .booth, in: layout)
+            ? LayoutObjectNaming.nextPrefixedLabel(prefix: prefix, kind: .booth, in: layout)
             : nextLabel(for: selected.kind, in: layout)
         copy.placement.center += SIMD2<Double>(Self.duplicateOffsetM, Self.duplicateOffsetM)
         withSingleRefresh {
@@ -92,7 +127,7 @@ extension LayoutEditorViewModel {
             return
         }
         var after = before
-        after.openSides = OpenSideInference.infer(for: before, in: layout)
+        after.openSides = OpenSideInference.defaultSide(for: before, in: layout)
         withSingleRefresh {
             if after != before {
                 commitEdit(.replace(before: before, after: after))
@@ -102,13 +137,10 @@ extension LayoutEditorViewModel {
     }
 
     func addObject(kind: LayoutObjectKind, at worldPoint: SIMD2<Double>) {
-        guard kind.canBeAdded, let layout = activeLayout else { return }
+        guard let layout = activeLayout else { return }
         let defaultSize: SIMD2<Double>
         switch kind {
         case .booth: defaultSize = SIMD2<Double>(2.0, 2.0)
-        case .table: defaultSize = SIMD2<Double>(1.0, 1.0)
-        case .fixture: defaultSize = SIMD2<Double>(2.0, 1.5)
-        case .rail: defaultSize = SIMD2<Double>(2.0, 0.25)
         case .closedArea: defaultSize = SIMD2<Double>(4.0, 4.0)
         default: defaultSize = SIMD2<Double>(2.0, 2.0)
         }
@@ -121,7 +153,7 @@ extension LayoutEditorViewModel {
             placement: placement
         )
         if kind == .booth {
-            newObject.openSides = OpenSideInference.infer(for: newObject, in: layout)
+            newObject.openSides = OpenSideInference.defaultSide(for: newObject, in: layout)
         }
         withSingleRefresh {
             commitEdit(.insert(newObject, index: layout.objects.count))
@@ -131,16 +163,19 @@ extension LayoutEditorViewModel {
 
     func selectTool(_ newTool: EditorTool) {
         guard newTool != tool else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchTool(newTool)
-            return
-        }
-        performSelectTool(newTool)
-    }
-
-    func performSelectTool(_ newTool: EditorTool) {
+        sealHistory()
         tool = newTool
-        if newTool == .blockedArea {
+        if case .drawWall(let itemID) = newTool {
+            selectedWallItemID = itemID
+        } else if case .room(let itemID) = newTool {
+            selectedWallItemID = itemID
+        }
+        placementRotationDegrees = 0
+        placementPreview = nil
+        wallDrawing = nil
+        dragState = CanvasDragState()
+        activeToolHandler = nil
+        if newTool == .blockedArea || newTool != .select {
             applySelection(nil)
         }
     }
@@ -160,19 +195,11 @@ extension LayoutEditorViewModel {
     }
 
     func undo() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .performUndo
-            return
-        }
         guard let edit = currentHistory.undo() else { return }
         applyHistoryEdit(edit)
     }
 
     func redo() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .performRedo
-            return
-        }
         guard let edit = currentHistory.redo() else { return }
         applyHistoryEdit(edit)
     }
@@ -188,7 +215,15 @@ extension LayoutEditorViewModel {
     func fitToView(in viewSize: SIMD2<Double>) {
         guard let layout = activeLayout else { return }
         transform = CanvasTransform.fitting(layoutSize: layout.sizeM, in: viewSize)
+        autoFitTransform = transform
         hasFittedTransform = true
+    }
+
+    /// The canvas size is not final when the editor first appears, so the first fit can be off.
+    /// Fitting again on resize is safe only while the user has not zoomed or panned since the last fit.
+    func refitIfUntouched(in viewSize: SIMD2<Double>) {
+        guard hasFittedTransform, transform == autoFitTransform else { return }
+        fitToView(in: viewSize)
     }
 
     func fitIfNeeded(in viewSize: SIMD2<Double>) {
@@ -197,6 +232,7 @@ extension LayoutEditorViewModel {
     }
 
     func handleContextAction(_ action: CanvasContextAction) {
+        if handleGroupContextAction(action) { return }
         switch action {
         case .rotate(let id):
             guard prepareContextTarget(id) else { return }
@@ -215,36 +251,27 @@ extension LayoutEditorViewModel {
         }
     }
 
+    private func handleGroupContextAction(_ action: CanvasContextAction) -> Bool {
+        switch action {
+        case .resetOpenSides(let id) where groupMemberIDs.contains(id):
+            resetOpenSidesForGroup()
+            return true
+        case .delete(let id) where groupMemberIDs.contains(id):
+            deleteCurrentSelection()
+            return true
+        default:
+            return false
+        }
+    }
+
     private func prepareContextTarget(_ id: UUID) -> Bool {
         if selectionID != id {
             selectObject(id)
         }
-        return pendingAction == nil && selectionID == id
+        return selectionID == id
     }
 
-    private func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
-        switch kind {
-        case .booth:
-            return nextPrefixedLabel(prefix: "N", kind: kind, in: layout)
-        case .table:
-            return nextPrefixedLabel(prefix: "T", kind: kind, in: layout)
-        case .fixture:
-            return nextPrefixedLabel(prefix: "Fixture ", kind: kind, in: layout)
-        case .rail:
-            return "Rail"
-        case .closedArea:
-            return "Blocked area"
-        default:
-            let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
-            return "\(kind.displayName) \(existingCount)"
-        }
-    }
-
-    private func nextPrefixedLabel(prefix: String, kind: LayoutObjectKind, in layout: Layout) -> String {
-        let highest = layout.objects
-            .filter { $0.kind == kind && $0.label.hasPrefix(prefix) }
-            .compactMap { Int($0.label.dropFirst(prefix.count)) }
-            .max() ?? 0
-        return "\(prefix)\(highest + 1)"
+    func nextLabel(for kind: LayoutObjectKind, in layout: Layout) -> String {
+        LayoutObjectNaming.nextLabel(for: kind, in: layout)
     }
 }

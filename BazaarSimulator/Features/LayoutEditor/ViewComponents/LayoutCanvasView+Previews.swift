@@ -12,7 +12,7 @@ import simd
         snapshot: CanvasDisplaySnapshot(
             layout: layout,
             legend: PreviewLayouts.sampleLegend,
-            tab: .floorPlan,
+            activeLayer: .booths,
             selectionID: layout.objects.first { $0.kind == .booth }?.id
         ),
         transform: $transform,
@@ -22,7 +22,7 @@ import simd
     .preferredColorScheme(.dark)
 }
 
-#Preview("Beyond Flow") {
+#Preview("Beyond Visitor Flow") {
     @Previewable @State var transform = CanvasTransform.fitting(
         layoutSize: PreviewLayouts.beyond().sizeM,
         in: SIMD2<Double>(900, 650)
@@ -33,7 +33,8 @@ import simd
         snapshot: CanvasDisplaySnapshot(
             layout: layout,
             legend: PreviewLayouts.sampleLegend,
-            tab: .flow,
+            activeLayer: .structure,
+            showVisitorFlow: true,
             selectionID: layout.objects.first { $0.kind == .door }?.id
         ),
         transform: $transform,
@@ -52,7 +53,7 @@ import simd
         snapshot: CanvasDisplaySnapshot(
             layout: layout,
             legend: PreviewLayouts.sampleLegend,
-            tab: .floorPlan,
+            activeLayer: .booths,
             selectionID: boothID,
             issues: CanvasIssueSnapshot(
                 warningObjectIDs: [boothID],

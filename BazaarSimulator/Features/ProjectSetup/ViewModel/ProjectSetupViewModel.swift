@@ -10,6 +10,7 @@ final class ProjectSetupViewModel {
     let session: any ProjectSessionProtocol
     private let importQueue: any ImportQueueing
     private let onContinue: (UUID) -> Void
+    private let onEdit: (UUID) -> Void
 
     var projectName: String {
         get { session.projects.first { $0.id == projectID }?.name ?? "" }
@@ -17,6 +18,7 @@ final class ProjectSetupViewModel {
     }
 
     private var removedLegendEntryIDs: Set<UUID> = []
+    private var legendEntryTypes: [UUID: BoothType] = [:]
     private(set) var bannerMessage: String?
 
     var isStatusError: Bool {
@@ -25,19 +27,27 @@ final class ProjectSetupViewModel {
 
     var legendEntries: [LegendEntry] {
         guard let queueLegend = importQueue.legend(for: projectID) else { return [] }
-        return queueLegend.entries.filter { !removedLegendEntryIDs.contains($0.id) }
+        return queueLegend.entries
+            .filter { !removedLegendEntryIDs.contains($0.id) }
+            .map { entry in
+                var typed = entry
+                if let type = legendEntryTypes[entry.id] { typed.type = type }
+                return typed
+            }
     }
 
     init(
         projectID: UUID,
         session: any ProjectSessionProtocol,
         importQueue: any ImportQueueing,
-        onContinue: @escaping (UUID) -> Void
+        onContinue: @escaping (UUID) -> Void,
+        onEdit: @escaping (UUID) -> Void = { _ in }
     ) {
         self.projectID = projectID
         self.session = session
         self.importQueue = importQueue
         self.onContinue = onContinue
+        self.onEdit = onEdit
     }
 
     var legendFiles: [ImportFile] {
@@ -173,6 +183,10 @@ final class ProjectSetupViewModel {
         removedLegendEntryIDs.insert(id)
     }
 
+    func setLegendEntryType(id: UUID, to type: BoothType) {
+        legendEntryTypes[id] = type
+    }
+
     func deleteFloorPlan(id: UUID) {
         bannerMessage = nil
         importQueue.remove(fileID: id)
@@ -201,6 +215,21 @@ final class ProjectSetupViewModel {
     @discardableResult
     func saveDraftToSession() -> Bool {
         guard isContinueEnabled else { return false }
+    func editLayout(fileID: UUID) {
+        guard let file = floorPlanFiles.first(where: { $0.id == fileID }) else { return }
+        guard case .done = file.state else { return }
+
+        let extractedLayouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
+        guard extractedLayouts.contains(where: { $0.layout.id == fileID }) else { return }
+
+        let draft = buildDraft(from: extractedLayouts)
+        session.setDraft(draft, for: projectID)
+        session.setActiveLayoutID(fileID, for: projectID)
+        onEdit(projectID)
+    }
+
+    func continueToReview() {
+        guard isContinueEnabled else { return }
 
         let extractedLayouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id) }
         guard extractedLayouts.count == floorPlanFiles.count else {
@@ -208,9 +237,14 @@ final class ProjectSetupViewModel {
             return false
         }
 
+        session.setDraft(buildDraft(from: extractedLayouts), for: projectID)
+        onContinue(projectID)
+    }
+
+    private func buildDraft(from extractedLayouts: [ExtractedLayout]) -> ProjectDraft {
         let existingLayouts = session.draft(for: projectID)?.layouts ?? []
         let finalLegend = Legend(entries: legendEntries)
-        let draft = ProjectDraft(
+        return ProjectDraft(
             name: projectName.trimmingCharacters(in: .whitespacesAndNewlines),
             legend: finalLegend,
             layouts: DraftLayoutMerger.merged(

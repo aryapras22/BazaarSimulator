@@ -20,6 +20,11 @@ struct PlanRowDisplay: Equatable, Sendable, Identifiable {
         return false
     }
 
+    var isDone: Bool {
+        if case .done = status { return true }
+        return false
+    }
+
     init(
         id: UUID,
         title: String,

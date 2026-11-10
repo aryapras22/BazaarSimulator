@@ -26,13 +26,15 @@ extension LayoutEditorViewModel {
 
     var groupInspectorDisplay: GroupInspectorDisplay {
         let members = selectedGroupMembers.map { groupDraft?.applied(to: $0) ?? $0 }
+        let boothCount = members.filter { $0.kind == .booth }.count
         return GroupInspectorDisplay(
             category: MixedValue(members.map(\.categoryID)),
             width: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.x) }),
             length: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.y) }),
             rotation: MixedValue(members.map(\.placement.rotationDegrees)),
             warningSummary: groupWarningSummary,
-            memberCount: members.count
+            memberCount: members.count,
+            boothCount: boothCount
         )
     }
 
@@ -49,8 +51,9 @@ extension LayoutEditorViewModel {
         }
     }
 
-    func saveGroupChanges() {
-        guard isSaveChangesEnabled, let draft = groupDraft else { return }
+    func updateGroupDraft(_ draft: GroupInspectorDraft) {
+        groupDraft = draft
+        guard draft.hasChanges, isGroupDraftValid else { return }
         let edits = selectedGroupMembers.compactMap { member -> LayoutEdit? in
             let updated = draft.applied(to: member)
             return updated == member ? nil : .replace(before: member, after: updated)
@@ -65,7 +68,7 @@ extension LayoutEditorViewModel {
         guard let layout = activeLayout else { return }
         let edits = selectedGroupMembers.compactMap { member -> LayoutEdit? in
             var updated = member
-            updated.openSides = OpenSideInference.infer(for: member, in: layout)
+            updated.openSides = OpenSideInference.defaultSide(for: member, in: layout)
             return updated == member ? nil : .replace(before: member, after: updated)
         }
         guard !edits.isEmpty else { return }
@@ -74,6 +77,10 @@ extension LayoutEditorViewModel {
 
     func requestDeleteGroup() {
         guard let groupSelection else { return }
+        if activeLayer == .structure {
+            deleteGroupSelection()
+            return
+        }
         pendingGroupDelete = groupSelection.memberIDs.count
     }
 

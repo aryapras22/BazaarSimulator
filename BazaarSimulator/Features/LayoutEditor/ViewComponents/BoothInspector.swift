@@ -32,6 +32,10 @@ struct BoothInspector: View {
                 range: sizeRange
             )
 
+            HeightField(height: $draft.heightM)
+
+            AttractivenessField(value: $draft.attractiveness)
+
             RotationControl(degrees: $draft.rotationDegrees)
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -114,9 +118,7 @@ struct BoothGroupActions {
             )
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(true)
+        EmptyView()
     }
     .padding()
     .background(Palette.background)

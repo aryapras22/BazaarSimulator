@@ -126,6 +126,29 @@ struct ProjectSetupViewModelTests {
         #expect(!viewModel.legendEntries.contains(where: { $0.id == entryToRemove.id }))
     }
 
+    @Test("A legend entry keeps the booth type the user picks, and the draft carries it")
+    @MainActor
+    func legendEntryKeepsPickedBoothType() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        let entry = try #require(viewModel.legendEntries.first { $0.type == .fnb })
+
+        viewModel.setLegendEntryType(id: entry.id, to: .fashion)
+        viewModel.continueToReview()
+
+        #expect(viewModel.legendEntries.first { $0.id == entry.id }?.type == .fashion)
+        #expect(session.draft(for: project.id)?.legend.entries.first { $0.id == entry.id }?.type == .fashion)
+    }
+
     @Test("Legend entries appear once async legend read finishes")
     @MainActor
     func legendEntriesAppearOnceAsyncReadFinishes() async {
@@ -142,7 +165,9 @@ struct ProjectSetupViewModelTests {
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
         #expect(viewModel.legendEntries.isEmpty)
 
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        for _ in 0..<100 where viewModel.legendEntries.isEmpty {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
 
         #expect(!viewModel.legendEntries.isEmpty)
         #expect(viewModel.hasLegend)

@@ -4,7 +4,6 @@ import simd
 struct BoothDrawState: Sendable {
     let booth: LayoutObject
     let displayLabel: String
-    let tab: EditorTab
     let isSelected: Bool
     let isHovered: Bool
     let isGroupMember: Bool
@@ -12,6 +11,7 @@ struct BoothDrawState: Sendable {
     let hasObjectWarning: Bool
     let blockedSides: OpenSides
     let categoryColor: LegendColor?
+    var attractiveness: AttractivenessDisplay = .hidden
 }
 
 enum BoothRenderer {
@@ -27,22 +27,19 @@ enum BoothRenderer {
 
         let fillColor: Color
         let strokeColor: Color
-        if state.tab == .flow {
-            fillColor = Palette.canvasFlowFill
-            strokeColor = Palette.canvasFlowLine
-        } else if state.isSelected {
+        if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
-            fillColor = Palette.canvasBoothFill
+            fillColor = state.attractiveness == .heat
+                ? AttractivenessScale.color(for: state.booth.attractiveness)
+                : Palette.canvasBoothFill
             strokeColor = Palette.canvasLine
         }
 
         context.fill(path, with: .color(fillColor))
 
-        if state.tab == .floorPlan {
-            drawOpenSideStrips(for: state, in: &context, transform: transform)
-        }
+        drawOpenSideStrips(for: state, in: &context, transform: transform)
 
         let outlineColor = state.hasObjectWarning ? Palette.canvasIssue : strokeColor
         let lineWidth: CGFloat = state.hasObjectWarning ? 2.0 : 1.0
@@ -52,23 +49,52 @@ enum BoothRenderer {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
 
-        if state.tab == .floorPlan, state.isGroupMember || state.isHoveredGroupMember {
+        if state.isGroupMember || state.isHoveredGroupMember {
             let opacity = state.isGroupMember ? 1.0 : 0.5
             context.stroke(path, with: .color(Palette.highlight.opacity(opacity)), lineWidth: 2.0)
         }
 
-        if state.isHovered, let categoryColor = state.categoryColor, state.tab == .floorPlan {
+        if state.isHovered, let categoryColor = state.categoryColor {
             drawCategoryDot(color: categoryColor, placement: state.booth.placement, in: &context, transform: transform)
         }
 
+        drawAttractivenessMark(for: state, in: &context, transform: transform)
+
         if transform.scale >= 10.0 {
             let centerView = transform.toView(state.booth.placement.center)
-            let labelColor = (state.isSelected && state.tab == .floorPlan) ? Color.white : strokeColor
+            let labelColor = state.isSelected ? Color.white : strokeColor
             let text = Text(state.displayLabel)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)
             context.draw(text, at: CGPoint(x: centerView.x, y: centerView.y), anchor: .center)
         }
+    }
+
+    private static func drawAttractivenessMark(
+        for state: BoothDrawState,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        guard state.attractiveness != .hidden, transform.scale >= 5.0 else { return }
+        let placement = state.booth.placement
+        let value = state.booth.attractiveness
+        if state.attractiveness == .heat {
+            guard transform.scale >= 16.0 else { return }
+            let cornerLocal = SIMD2<Double>(placement.sizeM.x / 2.0, placement.sizeM.y / 2.0)
+            let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
+            let text = Text(DimensionInput.text(for: value))
+                .font(Typography.canvasLabel(scaledBy: transform.scale))
+                .foregroundStyle(state.isSelected ? Color.white : Palette.canvasLine)
+            context.draw(text, at: CGPoint(x: corner.x - 3, y: corner.y - 2), anchor: .bottomTrailing)
+            return
+        }
+        guard abs(value - AttractivenessScale.defaultValue) > 0.001 else { return }
+        let cornerLocal = SIMD2<Double>(-placement.sizeM.x / 2.0, -placement.sizeM.y / 2.0)
+        let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
+        let radius: CGFloat = 3.5
+        let rect = CGRect(x: corner.x + 2, y: corner.y + 2, width: radius * 2, height: radius * 2)
+        context.fill(Path(ellipseIn: rect), with: .color(AttractivenessScale.color(for: value)))
+        context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
     private static func drawOpenSideStrips(

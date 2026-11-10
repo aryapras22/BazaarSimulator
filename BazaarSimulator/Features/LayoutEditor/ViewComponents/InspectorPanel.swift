@@ -1,8 +1,8 @@
 import SwiftUI
 
 enum InspectorPanelMetrics {
-    /// Fixed width of the floating inspector panel, in points.
-    static let width: CGFloat = 340
+    /// Fixed width of the inspector column, in points.
+    static let width: CGFloat = 320
 }
 
 struct InspectorPanel<Content: View, Footer: View>: View {
@@ -26,35 +26,25 @@ struct InspectorPanel<Content: View, Footer: View>: View {
 
             footer()
         }
-        .padding(Spacing.xl)
+        .padding(Spacing.l)
         .frame(width: InspectorPanelMetrics.width)
-        .background(
-            RoundedRectangle(cornerRadius: Radius.xl)
-                .fill(Palette.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.xl)
-                .stroke(Palette.surfaceBorder, lineWidth: 1)
-        )
+        .frame(maxHeight: .infinity)
+        .background(Palette.surface)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Palette.surfaceBorder)
+                .frame(width: 1)
+        }
     }
 }
 
-struct InspectorSaveButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Typography.body)
-            .foregroundStyle(isEnabled ? Color.white : Palette.primaryDisabledOnSurfaceText)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.s + 2)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.s)
-                    .fill(
-                        isEnabled
-                            ? Palette.accent.opacity(configuration.isPressed ? 0.85 : 1.0)
-                            : Palette.primaryDisabledOnSurface
-                    )
-            )
+#Preview {
+    InspectorPanel(title: "Preview Panel") {
+        Text("Panel content")
+            .foregroundStyle(Palette.textSecondary)
+    } footer: {
+        EmptyView()
     }
+    .frame(height: 400)
+    .preferredColorScheme(.dark)
 }

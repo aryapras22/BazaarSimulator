@@ -35,6 +35,9 @@ final class ProjectScreenFactory {
             importQueue: services.importQueue,
             onContinue: { [weak router] id in
                 router?.showAnalysis(projectID: id)
+            },
+            onEdit: { [weak router] id in
+                router?.showEditor(projectID: id)
             }
         )
         setupViewModels[projectID] = created

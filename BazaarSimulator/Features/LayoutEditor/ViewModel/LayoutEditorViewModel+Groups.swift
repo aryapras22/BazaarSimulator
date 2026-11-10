@@ -9,7 +9,7 @@ extension LayoutEditorViewModel {
 
     var groupSelectionTitle: String {
         guard let groupSelection else { return "" }
-        let count = "\(groupSelection.memberIDs.count) booths"
+        let count = "\(groupSelection.memberIDs.count) \(activeLayer == .booths ? "booths" : "objects")"
         switch groupSelection.kind {
         case .group(.name(let prefix)): return "Group \(prefix) · \(count)"
         case .group(.size(let key)): return "Size \(key.title) · \(count)"
@@ -47,12 +47,9 @@ extension LayoutEditorViewModel {
     }
 
     func selectGroup(_ kind: BoothGroupKind) {
-        guard tab == .floorPlan, boothGroup(kind) != nil else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .selectGroup(kind)
-            return
-        }
-        performSelectGroup(kind)
+        guard activeLayer == .booths, boothGroup(kind) != nil else { return }
+        guard let group = boothGroup(kind) else { return }
+        applyMemberSelection(Set(group.memberIDs), kind: .group(kind))
     }
 
     func selectGroup(containing boothID: UUID, bySize: Bool) {
@@ -60,34 +57,16 @@ extension LayoutEditorViewModel {
         selectGroup(bySize ? BoothGrouping.sizeKind(for: booth) : BoothGrouping.nameKind(for: booth))
     }
 
+    private func isMultiSelectable(_ object: LayoutObject) -> Bool {
+        object.kind.layer == activeLayer && object.kind.isSelectable
+    }
+
     func toggleBoothInSelection(_ boothID: UUID) {
-        guard tab == .floorPlan,
-              activeLayout?.objects.contains(where: { $0.id == boothID && $0.kind == .booth }) == true else {
+        guard activeLayout?.objects.contains(where: { $0.id == boothID && isMultiSelectable($0) }) == true else {
             return
         }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .toggleBooth(boothID)
-            return
-        }
-        performToggleBooth(boothID)
-    }
-
-    func executeGroupAction(_ action: PendingNavigationAction) {
-        switch action {
-        case .selectGroup(let kind): performSelectGroup(kind)
-        case .toggleBooth(let boothID): performToggleBooth(boothID)
-        default: break
-        }
-    }
-
-    private func performSelectGroup(_ kind: BoothGroupKind) {
-        guard let group = boothGroup(kind) else { return }
-        applyMemberSelection(Set(group.memberIDs), kind: .group(kind))
-    }
-
-    private func performToggleBooth(_ boothID: UUID) {
         var members = groupSelection?.memberIDs ?? []
-        if groupSelection == nil, let selectedObject, selectedObject.kind == .booth {
+        if groupSelection == nil, let selectedObject, isMultiSelectable(selectedObject) {
             members = [selectedObject.id]
         }
         if members.contains(boothID) {
@@ -98,11 +77,30 @@ extension LayoutEditorViewModel {
         applyMemberSelection(members, kind: .custom)
     }
 
+    func selectBooths(_ ids: Set<UUID>, additive: Bool = false) {
+        guard let layout = activeLayout else { return }
+        let boothIDs = ids.filter { id in
+            layout.objects.contains(where: { $0.id == id && isMultiSelectable($0) })
+        }
+        var members = boothIDs
+        if additive {
+            var current = groupSelection?.memberIDs ?? []
+            if groupSelection == nil, let selectedObject, isMultiSelectable(selectedObject) {
+                current = [selectedObject.id]
+            }
+            members = current.union(boothIDs)
+        }
+        applyMemberSelection(members, kind: .custom)
+    }
+
     private func selectedMembers(of ids: Set<UUID>) -> [LayoutObject] {
         activeLayout?.objects.filter { ids.contains($0.id) } ?? []
     }
 
     func applyGroupSelection(_ selection: GroupSelection?) {
+        if selection != groupSelection || selectionID != nil {
+            sealHistory()
+        }
         hoveredGroup = nil
         selectionID = nil
         inspectorDraft = nil

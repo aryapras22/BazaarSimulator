@@ -11,7 +11,7 @@ struct LayoutEditorViewModelGroupTests {
         let layout: Layout
     }
 
-    static func makeContext() -> TestContext {
+    static func makeContext(layer: EditorLayer = .booths) -> TestContext {
         let session = ProjectSession()
         let project = session.createProject(named: "Annyeong")
         let layout = PreviewLayouts.annyeong()
@@ -20,6 +20,7 @@ struct LayoutEditorViewModelGroupTests {
             for: project.id
         )
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.activeLayer = layer
         viewModel.refreshDerivedState()
         return TestContext(viewModel: viewModel, layout: layout)
     }
@@ -92,16 +93,36 @@ struct LayoutEditorViewModelGroupTests {
         #expect(!context.viewModel.canUndo)
     }
 
-    @Test("A group save changes every member as one undo step")
-    func groupSaveIsOneUndoStep() throws {
+    @Test("Context delete on a group member asks to delete the whole group")
+    func contextDeleteOnGroupMemberKeepsGroupSelection() throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        context.viewModel.selectGroup(containing: target.id, bySize: false)
+        let memberCount = context.viewModel.groupMemberIDs.count
+
+        context.viewModel.handleContextAction(.delete(target.id))
+
+        #expect(context.viewModel.groupMemberIDs.count == memberCount)
+        #expect(context.viewModel.pendingGroupDelete == memberCount)
+        #expect(context.viewModel.activeLayout == context.layout)
+    }
+
+    @Test("Arrow keys are left to the canvas so Shift can widen the nudge step")
+    func selectToolLeavesArrowKeysToTheCanvas() {
+        let context = Self.makeContext()
+
+        #expect(!context.viewModel.handleCanvasKey(.leftArrow))
+        #expect(!context.viewModel.handleCanvasKey(.upArrow))
+    }
+
+    @Test("A group edit changes every member as one undo step")
+    func groupEditIsOneUndoStep() throws {
         let context = Self.makeContext()
         let viewModel = context.viewModel
         let target = try booth(labelled: "A5", in: context.layout)
         let lifestyle = try #require(PreviewLayouts.sampleLegend.entries.last)
         viewModel.selectGroup(containing: target.id, bySize: false)
-        viewModel.groupDraft?.category = .set(lifestyle.id)
-
-        viewModel.saveInspectorChanges()
+        viewModel.editGroupDraft { $0.category = .set(lifestyle.id) }
 
         let members = viewModel.selectedGroupMembers
         #expect(members.count == 112)
@@ -130,16 +151,34 @@ struct LayoutEditorViewModelGroupTests {
         #expect(viewModel.activeLayout == context.layout)
     }
 
-    @Test("Groups list is visible when nothing is selected on floor plan")
+    @Test("Walls can be multi-selected on Structure and deleted at once, and booths cannot")
+    func structureMultiSelectDeletes() {
+        let context = Self.makeContext(layer: .structure)
+        let viewModel = context.viewModel
+        let layout = context.layout
+        let walls = layout.objects.filter { $0.kind == .wall }.prefix(2).map(\.id)
+        let booth = layout.objects.first { $0.kind == .booth }?.id
+
+        viewModel.selectBooths(Set(walls + [booth].compactMap { $0 }), additive: false)
+
+        #expect(viewModel.groupSelection?.memberIDs == Set(walls))
+        viewModel.deleteCurrentSelection()
+        #expect(viewModel.pendingGroupDelete == nil)
+        #expect(viewModel.activeLayout?.objects.count == layout.objects.count - walls.count)
+        #expect(viewModel.groupSelection == nil)
+    }
+
+    @Test("Groups list is visible when nothing is selected on booths layer")
     func groupsListVisibilityAndRows() {
         let context = Self.makeContext()
         let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
 
         #expect(viewModel.isGroupsListVisible)
         #expect(viewModel.nameGroupRows.map(\.title) == ["A", "B", "C", "F", "I"])
         #expect(viewModel.sizeGroupRows.map(\.count) == [150, 42, 9, 8])
 
-        viewModel.selectTab(.flow)
+        viewModel.selectLayer(.structure)
         #expect(!viewModel.isGroupsListVisible)
     }
 

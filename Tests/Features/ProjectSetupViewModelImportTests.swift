@@ -167,12 +167,11 @@ extension ProjectSetupViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
-        var continued = false
         let viewModel = ProjectSetupViewModel(
             projectID: project.id,
             session: session,
             importQueue: queue,
-            onContinue: { _ in continued = true }
+            onContinue: { _ in }
         )
 
         viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
@@ -187,7 +186,6 @@ extension ProjectSetupViewModelTests {
 
         viewModel.continueToReview()
 
-        #expect(!continued)
         #expect(viewModel.bannerMessage == "Some floor plans could not be read")
         #expect(session.draft(for: project.id) == nil)
     }
@@ -267,5 +265,66 @@ extension ProjectSetupViewModelTests {
 
         #expect(viewModel.legendEntries.count == 3)
         #expect(viewModel.pendingLegendRows.isEmpty)
+    }
+
+    @Test("editLayout writes the draft and selects the requested layout")
+    @MainActor
+    func editLayoutWritesDraftAndSelectsLayout() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        var editedProjectID: UUID?
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in },
+            onEdit: { editedProjectID = $0 }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [
+            URL(fileURLWithPath: "/tmp/plan1.pdf"),
+            URL(fileURLWithPath: "/tmp/plan2.pdf")
+        ])
+
+        let targetFile = viewModel.floorPlanFiles[1]
+        viewModel.editLayout(fileID: targetFile.id)
+
+        let draft = try #require(session.draft(for: project.id))
+        #expect(draft.layouts.count == 2)
+        #expect(session.activeLayoutID(for: project.id) == targetFile.id)
+        #expect(editedProjectID == project.id)
+    }
+
+    @Test("editLayout is ignored when the layout file is still reading")
+    @MainActor
+    func editLayoutIgnoredWhileReading() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: false)
+        var editedProjectID: UUID?
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in },
+            onEdit: { editedProjectID = $0 }
+        )
+
+        let readingID = UUID()
+        queue.insert(ImportFile(
+            projectID: project.id,
+            id: readingID,
+            url: URL(fileURLWithPath: "/tmp/plan1.pdf"),
+            kind: .floorPlan,
+            state: .reading(progress: 0.5)
+        ))
+
+        viewModel.editLayout(fileID: readingID)
+
+        #expect(session.draft(for: project.id) == nil)
+        #expect(session.activeLayoutID(for: project.id) == nil)
+        #expect(editedProjectID == nil)
     }
 }

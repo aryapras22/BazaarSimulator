@@ -4,6 +4,11 @@ import simd
 enum OpenSideInference {
     static let probeDepthM: Double = 0.3
 
+    /// Every side that is not blocked is open. A side is closed when a wall or other obstacle covers it.
+    static func defaultSide(for booth: LayoutObject, in layout: Layout) -> OpenSides {
+        infer(for: booth, in: layout)
+    }
+
     static func infer(for booth: LayoutObject, in layout: Layout) -> OpenSides {
         var openSides: OpenSides = []
         for side in OpenSides.ordered where isSideOpen(side, of: booth, in: layout) {

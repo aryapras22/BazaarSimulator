@@ -19,11 +19,9 @@ enum SelectionDimensionRenderer {
     ) {
         guard transform.scale >= minimumScale else { return }
         let size = object.placement.sizeM
-        let widthText = object.kind == .pillar
-            ? "⌀ \(DimensionInput.text(for: size.x)) m"
-            : "\(DimensionInput.text(for: size.x)) m"
+        let widthText = "\(DimensionInput.text(for: size.x)) m"
         drawLabel(widthText, side: .above, of: object.placement, in: &context, transform: transform)
-        guard object.kind != .pillar, object.kind != .door else { return }
+        guard object.kind != .door else { return }
         let lengthText = "\(DimensionInput.text(for: size.y)) m"
         drawLabel(lengthText, side: .leftOf, of: object.placement, in: &context, transform: transform)
     }

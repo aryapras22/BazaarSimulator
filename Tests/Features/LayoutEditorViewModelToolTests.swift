@@ -33,29 +33,28 @@ struct LayoutEditorViewModelToolTests {
         #expect(context.viewModel.activeLayout?.objects.contains { $0.id == selected.id } == false)
     }
 
-    @Test("Tool switch with unsaved draft asks for confirmation")
-    func toolSwitchWithUnsavedChangesAsksConfirmation() throws {
+    @Test("Switching tools keeps the inspector edit already applied")
+    func toolSwitchKeepsInspectorEdit() throws {
         let context = makeContext()
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
         context.viewModel.selectObject(booth.id)
-        context.viewModel.inspectorDraft?.widthM = 5.0
+        context.viewModel.editInspectorDraft { $0.widthM = 5.0 }
 
         context.viewModel.selectTool(.blockedArea)
 
-        #expect(context.viewModel.pendingAction == .switchTool(.blockedArea))
-        #expect(context.viewModel.tool == .select)
-
-        context.viewModel.confirmPendingActionWithDiscard()
         #expect(context.viewModel.tool == .blockedArea)
+        let edited = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
+        #expect(edited.placement.sizeM.x == 5.0)
     }
 
-    @Test("Switching to flow tab resets tool to select")
-    func switchingToFlowTabResetsTool() {
+    @Test("Switching layers resets tool to select")
+    func switchingLayersResetsTool() {
         let context = makeContext()
+        context.viewModel.selectLayer(.structure)
         context.viewModel.selectTool(.blockedArea)
         #expect(context.viewModel.tool == .blockedArea)
 
-        context.viewModel.selectTab(.flow)
+        context.viewModel.selectLayer(.booths)
         #expect(context.viewModel.tool == .select)
     }
 

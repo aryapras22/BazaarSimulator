@@ -14,10 +14,10 @@ enum BlockedAreaRenderer {
         let corners = LayoutGeometry.corners(of: state.object.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
-        let isSelected = state.tab == .floorPlan && state.isSelected
-        let isHovered = state.tab == .floorPlan && state.isHovered
+        let isSelected = state.isSelected
+        let isHovered = state.isHovered
 
-        context.fill(path, with: .color(Palette.canvasFlowFill.opacity(isSelected ? 0.45 : 0.25)))
+        context.fill(path, with: .color(Palette.canvasLineGlow.opacity(isSelected ? 0.35 : 0.20)))
         drawHatch(clippedTo: path, placement: state.object.placement, in: &context, transform: transform)
 
         let outline: Color
@@ -37,9 +37,7 @@ enum BlockedAreaRenderer {
         }
         context.stroke(path, with: .color(outline), lineWidth: lineWidth)
 
-        if state.tab == .floorPlan {
-            drawLabel(for: state.object, in: &context, transform: transform)
-        }
+        drawLabel(for: state.object, in: &context, transform: transform)
     }
 
     static func drawHatch(
@@ -93,7 +91,6 @@ enum BlockedAreaRenderer {
         )
         let state = ObjectDrawState(
             object: area,
-            tab: .floorPlan,
             isSelected: true,
             isHovered: false,
             hasWarning: false

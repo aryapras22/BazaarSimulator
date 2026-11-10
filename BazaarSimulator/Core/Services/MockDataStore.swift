@@ -5,7 +5,11 @@ enum MockDataError: Error {
 }
 
 enum MockDataStore {
-    static func load<T: Decodable>(_ type: T.Type = T.self, from fileName: String, in bundle: Bundle = .main) throws -> T {
+    static func load<T: Decodable>(
+        _ type: T.Type = T.self,
+        from fileName: String,
+        in bundle: Bundle = .main
+    ) throws -> T {
         guard let url = bundle.url(forResource: fileName, withExtension: "json") else {
             throw MockDataError.fileNotFound(fileName)
         }

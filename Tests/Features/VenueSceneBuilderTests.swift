@@ -38,10 +38,10 @@ struct VenueSceneBuilderTests {
             let node = root.childNode(withName: nodeName, recursively: true)
             #expect(node != nil, "Expected node for object \(object.label)")
 
-            // Booths and walls should be boxes, tables and pillars should be cylinders
+            // Booths and walls should be boxes, tables should be cylinders
             if object.kind == .booth || object.kind == .wall {
                 #expect(node?.geometry is SCNBox)
-            } else if object.kind == .table || object.kind == .pillar {
+            } else if object.kind == .table {
                 #expect(node?.geometry is SCNCylinder)
             }
         }
