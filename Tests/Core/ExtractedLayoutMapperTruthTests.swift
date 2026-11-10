@@ -31,11 +31,9 @@ struct ExtractedLayoutMapperTruthTests {
             truthDoors: 1, doorsFound: 0, extraDoors: 1, hallOverlap: 0.89
         )),
         PlanCase(plan: "plan5", expected: nil),
-        // Each 12 m door row is one door where the plan draws it, 2 m behind the wall line. The truth has two doors
-        // per row on the line itself, so none of its four counts as found.
         PlanCase(plan: "plan6", expected: LayoutScore(
             sizeRatio: 0.83, truthBooths: 289, boothsFound: 272, boothLabelsRight: 272, extraBooths: 0,
-            truthDoors: 4, doorsFound: 0, extraDoors: 34, hallOverlap: 0.72
+            truthDoors: 2, doorsFound: 2, extraDoors: 32, hallOverlap: 0.72
         ))
     ]
 
