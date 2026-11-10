@@ -20,7 +20,7 @@ struct ExtractedLayoutMapperTruthTests {
     static let cases = [
         PlanCase(plan: "plan1", expected: LayoutScore(
             sizeRatio: 1.0, truthBooths: 154, boothsFound: 154, boothLabelsRight: 154, extraBooths: 1,
-            truthDoors: 4, doorsFound: 3, extraDoors: 5, hallOverlap: 0.76
+            truthDoors: 4, doorsFound: 4, extraDoors: 5, hallOverlap: 0.76
         )),
         PlanCase(plan: "plan2", expected: LayoutScore(
             sizeRatio: 1.07, truthBooths: 209, boothsFound: 200, boothLabelsRight: 200, extraBooths: 0,

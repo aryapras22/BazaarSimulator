@@ -101,6 +101,21 @@ struct ImportCleanupTests {
         #expect(layout.objects.filter { $0.kind == .door }.count == 1)
     }
 
+    @Test("A door further along a wall's own line stays, and one beside that line is dropped")
+    func doorOnWallLinePastItsEndStays() {
+        let layout = layoutOf([
+            wall(0, 300),
+            DetectedItem(cls: "wall", box: [0, 0, 2, 200], segment: [1, 0, 1, 200], widthPx: 2),
+            DetectedItem(cls: "opening", box: [350, -2, 25, 6]),
+            DetectedItem(cls: "opening", box: [350, 25, 25, 6])
+        ])
+
+        let doors = layout.objects.filter { $0.kind == .door }
+        let host = layout.objects.first { $0.kind == .wall && $0.placement.rotationRadians == 0 }
+        #expect(doors.count == 1)
+        #expect(doors.first?.placement.center.y == host?.placement.center.y)
+    }
+
     @Test("A door in the middle of a wall gap stays and lies on the wall line")
     func doorInGapStays() {
         let layout = layoutOf([

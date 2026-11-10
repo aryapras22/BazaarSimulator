@@ -16,6 +16,7 @@ enum WallConnections {
     static let doorReachM = 2.0
     static let doorTouchM = 0.5
     static let doorGapReachM = 2.5
+    static let doorLineReachM = 8.0
 
     /// A wall as a segment between its two ends.
     private struct Segment {
@@ -241,14 +242,9 @@ enum WallConnections {
             let width = max(size.x, size.y)
             guard width >= minDoorWidthM else { return nil }
             let centre = door.placement.center
-            let reach = width / 2 + doorReachM
-            let host = segments
-                .filter { wall in
-                    let spot = wall.locate(centre)
-                    return spot.across <= doorReachM && spot.along >= -reach && spot.along <= wall.length + reach
-                }
-                .min { $0.locate(centre).across < $1.locate(centre).across }
-            guard let host else { return segments.isEmpty ? door : nil }
+            guard let host = host(of: centre, width: width, among: segments) else {
+                return segments.isEmpty ? door : nil
+            }
             let located = host.locate(centre)
             var seated = door
             seated.placement = Placement(
@@ -258,5 +254,20 @@ enum WallConnections {
             )
             return seated
         }
+    }
+
+    /// The wall a door stands in: the closest wall line within reach, else a wall whose own line runs through the door
+    /// from further off. The short wall pieces between doors in a row are often not read, so without the second rule
+    /// only the door nearest the wall's end would stay.
+    private static func host(of centre: SIMD2<Double>, width: Double, among segments: [Segment]) -> Segment? {
+        func walls(across: Double, beyond: Double) -> [Segment] {
+            segments.filter { wall in
+                let spot = wall.locate(centre)
+                return spot.across <= across && spot.along >= -beyond && spot.along <= wall.length + beyond
+            }
+        }
+        let near = walls(across: doorReachM, beyond: width / 2 + doorReachM)
+        let candidates = near.isEmpty ? walls(across: doorTouchM, beyond: doorLineReachM) : near
+        return candidates.min { $0.locate(centre).across < $1.locate(centre).across }
     }
 }
