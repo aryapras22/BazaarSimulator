@@ -56,11 +56,13 @@ struct DensityCell: Identifiable, Codable, Hashable, Sendable {
     var peoplePerSquareMetre: Double
 }
 
-/// Pure helper that keeps the 4 visitor type sliders within the 100% cap while respecting locks.
+/// Pure helper that keeps the 4 visitor type sliders totaling 100% at all times while respecting locks.
 enum VisitorShareBalancer {
     /// Adjusts `shares` when slider `changedIndex` moves to `newValue`.
+    /// - Total always remains 100%.
     /// - Locked sliders never change.
-    /// - Other unlocked sliders only move if `newValue` forces the total to collide with 100%.
+    /// - Reducing a slider incrementally adds the freed percentage across unlocked sliders.
+    /// - Increasing a slider scales down unlocked sliders proportionally.
     static func adjust(
         shares: [Double],
         locked: [Bool],
@@ -68,7 +70,7 @@ enum VisitorShareBalancer {
         newValue: Double
     ) -> [Double] {
         guard shares.count == 4, locked.count == 4,
-              changedIndex >= 0, changedIndex < 4,
+               changedIndex >= 0, changedIndex < 4,
               !locked[changedIndex] else {
             return shares
         }
@@ -79,27 +81,36 @@ enum VisitorShareBalancer {
             .reduce(0.0) { $0 + result[$1] }
 
         let unlockedOtherIndices = (0..<4).filter { $0 != changedIndex && !locked[$0] }
-        let unlockedOthersSum = unlockedOtherIndices.reduce(0.0) { $0 + result[$1] }
+        let maxAllowed = max(0.0, 100.0 - lockedOthersSum)
 
-        // If all other sliders are locked, this slider cannot push past the remaining space
-        let maxAllowed: Double
+        // If all other sliders are locked, this slider must fill the remaining space to stay at 100%
         if unlockedOtherIndices.isEmpty {
-            maxAllowed = max(0.0, 100.0 - lockedOthersSum)
-        } else {
-            maxAllowed = max(0.0, 100.0 - lockedOthersSum)
+            result[changedIndex] = maxAllowed
+            return result
         }
 
         let clampedNew = min(max(0.0, newValue.rounded()), maxAllowed)
         result[changedIndex] = clampedNew
 
-        let proposedTotal = lockedOthersSum + clampedNew + unlockedOthersSum
-        // Only move other unlocked sliders when a collision with the 100% ceiling occurs
-        guard proposedTotal > 100.0, !unlockedOtherIndices.isEmpty else {
-            return result
-        }
-
+        let unlockedOthersSum = unlockedOtherIndices.reduce(0.0) { $0 + result[$1] }
         let availableForUnlocked = max(0.0, 100.0 - lockedOthersSum - clampedNew)
-        if unlockedOthersSum > 0 {
+
+        if availableForUnlocked >= unlockedOthersSum {
+            // Slider was reduced: incrementally add the freed share across all unlocked sliders
+            let surplus = availableForUnlocked - unlockedOthersSum
+            let count = Double(unlockedOtherIndices.count)
+            var assigned = 0.0
+            for (offset, idx) in unlockedOtherIndices.enumerated() {
+                if offset == unlockedOtherIndices.count - 1 {
+                    result[idx] = max(0.0, (availableForUnlocked - assigned).rounded())
+                } else {
+                    let updated = (result[idx] + surplus / count).rounded()
+                    result[idx] = updated
+                    assigned += updated
+                }
+            }
+        } else if unlockedOthersSum > 0 {
+            // Slider was increased: scale down unlocked sliders proportionally
             let scale = availableForUnlocked / unlockedOthersSum
             var assigned = 0.0
             for (offset, idx) in unlockedOtherIndices.enumerated() {

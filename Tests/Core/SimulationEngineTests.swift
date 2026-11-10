@@ -80,28 +80,29 @@ struct SimulationEngineTests {
         #expect(engine.metrics.arrivals == 0)
     }
 
-    @Test("VisitorShareBalancer caps total at 100%, respects locks, and only moves others on collision")
+    @Test("VisitorShareBalancer always keeps total at 100%, respects locks, and incrementally fills unlocked types when reduced")
     func visitorShareBalancerRules() {
-        // Lowering a slider below 100% does NOT move other unlocked sliders
-        let lowered = VisitorShareBalancer.adjust(
-            shares: [20, 40, 30, 10],
+        // Reducing a slider at 100% incrementally distributes the freed percentage across the rest
+        let reducedFromHundred = VisitorShareBalancer.adjust(
+            shares: [100, 0, 0, 0],
             locked: [false, false, false, false],
             changedIndex: 0,
-            newValue: 5
+            newValue: 70
         )
-        #expect(lowered == [5, 40, 30, 10])
+        #expect(reducedFromHundred == [70, 10, 10, 10])
+        #expect(reducedFromHundred.reduce(0, +) == 100)
 
-        // Raising a slider past 100% collides with ceiling and scales down other unlocked sliders
-        let collided = VisitorShareBalancer.adjust(
+        // Raising a slider scales down other unlocked sliders so total remains 100%
+        let raised = VisitorShareBalancer.adjust(
             shares: [20, 40, 40, 0],
             locked: [false, false, false, false],
             changedIndex: 0,
             newValue: 60
         )
-        #expect(collided[0] == 60)
-        #expect(collided.reduce(0, +) == 100)
+        #expect(raised[0] == 60)
+        #expect(raised.reduce(0, +) == 100)
 
-        // Locked slider never moves when another slider collides with 100%
+        // Locked slider never moves when another slider is raised or lowered
         let withLock = VisitorShareBalancer.adjust(
             shares: [20, 50, 30, 0],
             locked: [false, true, false, false],
