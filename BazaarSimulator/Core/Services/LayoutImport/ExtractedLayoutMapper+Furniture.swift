@@ -102,6 +102,62 @@ extension ExtractedLayoutMapper {
     }
 
     private static let swingDoorThicknessM = 0.3
+    private static let rowOverlap = 0.8
+
+    /// Swing symbols side by side are one row of doors that was read in pieces where a leaf was missed. Two symbols
+    /// with a wall between them open into different rooms and stay apart.
+    static func joinedDoorRows(_ frames: [Placement], walls: [Placement]) -> [Placement] {
+        var rows = frames.map { LayoutGeometry.bounds(of: $0) }
+        let partitions = walls.map { LayoutGeometry.bounds(of: $0) }
+        var joined = true
+        while joined {
+            joined = false
+            search: for first in rows.indices {
+                for second in rows.indices where second > first
+                    && standInOneRow(rows[first], rows[second], partitions: partitions) {
+                    rows[first] = BoundingBox(
+                        minX: min(rows[first].minX, rows[second].minX),
+                        maxX: max(rows[first].maxX, rows[second].maxX),
+                        minY: min(rows[first].minY, rows[second].minY),
+                        maxY: max(rows[first].maxY, rows[second].maxY)
+                    )
+                    rows.remove(at: second)
+                    joined = true
+                    break search
+                }
+            }
+        }
+        return rows.map { row in
+            Placement(
+                center: SIMD2((row.minX + row.maxX) / 2, (row.minY + row.maxY) / 2),
+                sizeM: SIMD2(row.maxX - row.minX, row.maxY - row.minY)
+            )
+        }
+    }
+
+    /// The gap between the two is at most one leaf, they are level with each other, and no wall crosses between
+    /// their centres. A row can run along either axis.
+    private static func standInOneRow(_ first: BoundingBox, _ second: BoundingBox, partitions: [BoundingBox]) -> Bool {
+        func spans(_ box: BoundingBox) -> (low: SIMD2<Double>, high: SIMD2<Double>) {
+            (SIMD2(box.minX, box.minY), SIMD2(box.maxX, box.maxY))
+        }
+        let (one, other) = (spans(first), spans(second))
+        return [0, 1].contains { along in
+            let across = 1 - along
+            let gap = max(one.low[along], other.low[along]) - min(one.high[along], other.high[along])
+            let leaf = min(one.high[across] - one.low[across], other.high[across] - other.low[across])
+            let levelLow = max(one.low[across], other.low[across])
+            let levelHigh = min(one.high[across], other.high[across])
+            guard gap <= leaf, levelHigh - levelLow >= leaf * rowOverlap else { return false }
+            let centres = [one, other].map { ($0.low[along] + $0.high[along]) / 2 }.sorted()
+            return !partitions.contains { wall in
+                let (low, high) = spans(wall)
+                return high[across] - low[across] > high[along] - low[along]
+                    && low[along] >= centres[0] && high[along] <= centres[1]
+                    && low[across] < levelHigh && high[across] > levelLow
+            }
+        }
+    }
 
     private static func smallestGroup(holding point: SIMD2<Double>, among groups: [DetectedItem]) -> DetectedItem? {
         groups

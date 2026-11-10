@@ -81,6 +81,28 @@ struct ExtractedLayoutMapperTests {
         #expect(abs(door.placement.rotationRadians - .pi / 2) < 0.001)
     }
 
+    @Test("Swing symbols side by side, a leaf or less apart, are one door as wide as the row")
+    func swingSymbolsInARowAreOneDoor() {
+        let plan = DetectedPlan(items: [item("door", [0, 0, 30, 12]), item("door", [38, 0, 25, 12])])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.map(\.placement.sizeM) == [SIMD2(6.3, 0.3)])
+    }
+
+    @Test("Swing symbols with a wall between them stay two doors")
+    func swingSymbolsEitherSideOfAWallStayApart() {
+        let plan = DetectedPlan(items: [
+            item("door", [0, 0, 30, 12]),
+            item("door", [38, 0, 25, 12]),
+            item("wall", [33, -20, 2, 60])
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
+
+        #expect(layout.objects.filter { $0.kind == .door }.count == 2)
+    }
+
     @Test("A table becomes a standard model fitted to its chairs, and chairs without a table become seating")
     func keepsTablesAndChairsAsStandardModels() throws {
         let plan = DetectedPlan(items: [

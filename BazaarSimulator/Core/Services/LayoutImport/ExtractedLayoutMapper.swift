@@ -44,13 +44,8 @@ enum ExtractedLayoutMapper {
         var unlabeled = 0
         var objects: [LayoutObject] = []
         var markers: [LayoutMarker] = []
-        let swingDoors = swingDoorsNotOnOpenings(in: plan.items)
-        for item in plan.items {
+        for item in plan.items where item.cls != "door" {
             let frame = rect(of: item, metres: metres, pixelsPerMetre: pixelsPerMetre)
-            if item.cls == "door" {
-                if swingDoors.contains(item) { objects.append(swingDoor(from: frame)) }
-                continue
-            }
             if let symbolClass = item.symbolClass,
                case .marker(let kind, let label) = SymbolClassMapping.outcome(for: symbolClass) {
                 markers.append(LayoutMarker(kind: kind, label: label, position: frame.center))
@@ -61,6 +56,11 @@ enum ExtractedLayoutMapper {
             }
         }
 
+        let swingFrames = swingDoorsNotOnOpenings(in: plan.items).map {
+            rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre)
+        }
+        let readWalls = objects.filter { $0.kind == .wall }.map(\.placement)
+        objects += joinedDoorRows(swingFrames, walls: readWalls).map(swingDoor(from:))
         objects = WallConnections.apply(to: WallCleanup.apply(to: objects))
         objects += furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         objects = TableSpacing.apply(to: objects)
