@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AttractivenessField: View {
-    static let range: ClosedRange<Double> = 0...10
+    static let range: ClosedRange<Double> = 1...5
     static let sliderStep: Double = 0.5
 
     @Binding var value: Double

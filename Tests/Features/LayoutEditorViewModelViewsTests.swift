@@ -21,10 +21,10 @@ struct LayoutEditorViewModelViewsTests {
         return viewModel
     }
 
-    @Test("The attractiveness scale clamps values outside 0 to 10")
+    @Test("The attractiveness scale clamps values outside 1 to 5")
     func attractivenessScaleClamps() {
         #expect(AttractivenessScale.fraction(of: -3) == 0)
-        #expect(AttractivenessScale.fraction(of: 5) == 0.5)
+        #expect(AttractivenessScale.fraction(of: 3) == 0.5)
         #expect(AttractivenessScale.fraction(of: 40) == 1)
     }
 
