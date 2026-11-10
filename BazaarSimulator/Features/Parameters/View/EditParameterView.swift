@@ -22,19 +22,14 @@ struct EditParameterView: View {
 
     @State private var bazaarType: String = "Family & Kids"
 
-    // Visitor Types
     @State private var socializerVal: Double = 21
     @State private var socializerLocked: Bool = false
-
     @State private var familyMemberVal: Double = 46
     @State private var familyMemberLocked: Bool = false
-
     @State private var strollerVal: Double = 33
     @State private var strollerLocked: Bool = false
-
     @State private var purposeBuyerVal: Double = 0
     @State private var purposeBuyerLocked: Bool = false
-
     @State private var maxGroupSize: Int = 5
 
     var body: some View {
@@ -58,21 +53,16 @@ struct EditParameterView: View {
         .frame(width: 680, height: 640)
         .background(Palette.background)
         .onAppear(perform: loadFromSession)
-        .onChange(of: bazaarType) { _, newType in
-            applyBazaarPreset(newType)
-        }
+        .onChange(of: bazaarType) { _, newType in applyBazaarPreset(newType) }
     }
 
     // MARK: - Sections
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Parameter")
-                .font(Typography.title)
-                .foregroundStyle(Palette.textPrimary)
+            Text("Parameter").font(Typography.title).foregroundStyle(Palette.textPrimary)
             Text("Applies to every layout in this project")
-                .font(Typography.subtitle)
-                .foregroundStyle(Palette.textSecondary)
+                .font(Typography.subtitle).foregroundStyle(Palette.textSecondary)
         }
         .padding(.bottom, 6)
     }
@@ -84,10 +74,7 @@ struct EditParameterView: View {
                     .textFieldStyle(.plain)
                     .foregroundStyle(Palette.textPrimary)
                     .frame(width: 60)
-
-                Text("people")
-                    .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
+                Text("people").font(Typography.caption).foregroundStyle(Palette.textSecondary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -147,14 +134,8 @@ struct EditParameterView: View {
                 .foregroundStyle(isSelected ? Palette.textPrimary : Palette.textSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
-                .background(
-                    isSelected ? Palette.accent.opacity(0.35) : Palette.surface,
-                    in: RoundedRectangle(cornerRadius: 8)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isSelected ? Palette.accent : Palette.surfaceBorder, lineWidth: 1)
-                )
+                .background(isSelected ? Palette.accent.opacity(0.35) : Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Palette.accent : Palette.surfaceBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -193,21 +174,17 @@ struct EditParameterView: View {
         formRow(title: "Visitor Type", subtitle: "Set the proportion of each type.") {
             VStack(alignment: .leading, spacing: 12) {
                 proportionBar
-
                 VStack(spacing: 10) {
-                    visitorSliderRow(title: "Socializer", subtitle: "Buys and stays longer.", value: $socializerVal, isLocked: $socializerLocked, color: .blue)
+                    visitorSliderRow("Socializer", "Buys and stays longer.", shareBinding(for: 0), $socializerLocked, .blue)
                     Divider()
-                    visitorSliderRow(title: "Family Member", subtitle: "Moves slow and in group.", value: $familyMemberVal, isLocked: $familyMemberLocked, color: .teal)
+                    visitorSliderRow("Family Member", "Moves slow and in group.", shareBinding(for: 1), $familyMemberLocked, .teal)
                     Divider()
-                    visitorSliderRow(title: "Stroller", subtitle: "Moves around leisurely.", value: $strollerVal, isLocked: $strollerLocked, color: .orange)
+                    visitorSliderRow("Stroller", "Moves around leisurely.", shareBinding(for: 2), $strollerLocked, .orange)
                     Divider()
-                    visitorSliderRow(title: "Purpose Buyer", subtitle: "Quick and straightforward.", value: $purposeBuyerVal, isLocked: $purposeBuyerLocked, color: .purple)
+                    visitorSliderRow("Purpose Buyer", "Quick and straightforward.", shareBinding(for: 3), $purposeBuyerLocked, .purple)
                 }
-
                 Text("Lock a type to keep it fixed.")
-                    .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
-                    .padding(.top, 4)
+                    .font(Typography.caption).foregroundStyle(Palette.textSecondary).padding(.top, 4)
             }
             .frame(maxWidth: 420)
         }
@@ -216,29 +193,22 @@ struct EditParameterView: View {
     private var groupSizeSection: some View {
         formRow(title: "Group Size", subtitle: "Set max amount in each group.") {
             Picker("", selection: $maxGroupSize) {
-                ForEach(1...10, id: \.self) { size in
-                    Text("\(size)").tag(size)
-                }
+                ForEach(1...10, id: \.self) { size in Text("\(size)").tag(size) }
             }
-            .pickerStyle(.menu)
-            .frame(width: 80)
+            .pickerStyle(.menu).frame(width: 80)
         }
     }
 
     private var actionButtonsSection: some View {
         HStack(spacing: 12) {
             Spacer()
-            Button("Cancel") { dismiss() }
-                .buttonStyle(.secondary)
-                .keyboardShortcut(.cancelAction)
-
+            Button("Cancel") { dismiss() }.buttonStyle(.secondary).keyboardShortcut(.cancelAction)
             Button("Apply") {
                 saveAndRunSimulation()
                 dismiss()
                 onApply?()
             }
-            .buttonStyle(.primary)
-            .keyboardShortcut(.defaultAction)
+            .buttonStyle(.primary).keyboardShortcut(.defaultAction)
         }
         .padding(.top, 16)
     }
@@ -270,17 +240,17 @@ struct EditParameterView: View {
     }
 
     private var proportionBar: some View {
-        let sum = max(1, socializerVal + familyMemberVal + strollerVal + purposeBuyerVal)
         let rawTotal = Int((socializerVal + familyMemberVal + strollerVal + purposeBuyerVal).rounded())
-
         return VStack(spacing: 4) {
             GeometryReader { geo in
                 HStack(spacing: 1) {
-                    segmentBox(value: socializerVal, sum: sum, width: geo.size.width, color: .blue)
-                    segmentBox(value: familyMemberVal, sum: sum, width: geo.size.width, color: .teal)
-                    segmentBox(value: strollerVal, sum: sum, width: geo.size.width, color: .orange)
-                    segmentBox(value: purposeBuyerVal, sum: sum, width: geo.size.width, color: .purple)
+                    segmentBox(value: socializerVal, width: geo.size.width, color: .blue)
+                    segmentBox(value: familyMemberVal, width: geo.size.width, color: .teal)
+                    segmentBox(value: strollerVal, width: geo.size.width, color: .orange)
+                    segmentBox(value: purposeBuyerVal, width: geo.size.width, color: .purple)
+                    Spacer(minLength: 0)
                 }
+                .background(Palette.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .frame(height: 28)
@@ -296,22 +266,22 @@ struct EditParameterView: View {
     }
 
     @ViewBuilder
-    private func segmentBox(value: Double, sum: Double, width: CGFloat, color: Color) -> some View {
+    private func segmentBox(value: Double, width: CGFloat, color: Color) -> some View {
         if value > 0 {
-            let pct = Int((value / sum * 100).rounded())
+            let pct = Int(value.rounded())
             Rectangle()
                 .fill(color.opacity(0.8))
-                .frame(width: max(20, width * CGFloat(value / sum)))
+                .frame(width: max(20, width * CGFloat(value / 100.0)))
                 .overlay(Text("\(pct)%").font(.caption2.bold()).foregroundStyle(.white))
         }
     }
 
     private func visitorSliderRow(
-        title: String,
-        subtitle: String,
-        value: Binding<Double>,
-        isLocked: Binding<Bool>,
-        color: Color
+        _ title: String,
+        _ subtitle: String,
+        _ value: Binding<Double>,
+        _ isLocked: Binding<Bool>,
+        _ color: Color
     ) -> some View {
         HStack(spacing: 10) {
             Circle().fill(color).frame(width: 10, height: 10)
@@ -342,9 +312,30 @@ struct EditParameterView: View {
         }
     }
 
+    private func shareBinding(for index: Int) -> Binding<Double> {
+        Binding(
+            get: { [socializerVal, familyMemberVal, strollerVal, purposeBuyerVal][index] },
+            set: { newValue in
+                let adjusted = VisitorShareBalancer.adjust(
+                    shares: [socializerVal, familyMemberVal, strollerVal, purposeBuyerVal],
+                    locked: [socializerLocked, familyMemberLocked, strollerLocked, purposeBuyerLocked],
+                    changedIndex: index,
+                    newValue: newValue
+                )
+                socializerVal = adjusted[0]
+                familyMemberVal = adjusted[1]
+                strollerVal = adjusted[2]
+                purposeBuyerVal = adjusted[3]
+            }
+        )
+    }
+
     private func loadFromSession() {
         let params = session.parameters(for: projectID)
         totalVisitors = params.totalVisitors
+        let cal = Calendar.current
+        startTime = cal.date(bySettingHour: params.startMinutes / 60, minute: params.startMinutes % 60, second: 0, of: Date()) ?? startTime
+        endTime = cal.date(bySettingHour: params.endMinutes / 60, minute: params.endMinutes % 60, second: 0, of: Date()) ?? endTime
         isPeakHoursEnabled = params.isPeakHoursEnabled
         peakPeriods = params.peakPeriods
         selectedPeakPeriods = params.selectedPeakPeriods
@@ -357,32 +348,35 @@ struct EditParameterView: View {
     }
 
     private func applyBazaarPreset(_ preset: String) {
+        let target: [Double]
         switch preset {
-        case "Culinary / Food":
-            if !socializerLocked { socializerVal = 30 }
-            if !familyMemberLocked { familyMemberVal = 25 }
-            if !strollerLocked { strollerVal = 30 }
-            if !purposeBuyerLocked { purposeBuyerVal = 15 }
-        case "Fashion & Local Brand":
-            if !socializerLocked { socializerVal = 25 }
-            if !familyMemberLocked { familyMemberVal = 5 }
-            if !strollerLocked { strollerVal = 55 }
-            if !purposeBuyerLocked { purposeBuyerVal = 15 }
-        default:
-            if !socializerLocked { socializerVal = 21 }
-            if !familyMemberLocked { familyMemberVal = 46 }
-            if !strollerLocked { strollerVal = 33 }
-            if !purposeBuyerLocked { purposeBuyerVal = 0 }
+        case "Culinary / Food": target = [30, 25, 30, 15]
+        case "Fashion & Local Brand": target = [25, 5, 55, 15]
+        default: target = [21, 46, 33, 0]
         }
+        let locked = [socializerLocked, familyMemberLocked, strollerLocked, purposeBuyerLocked]
+        var shares = [socializerVal, familyMemberVal, strollerVal, purposeBuyerVal]
+        for idx in 0..<4 where !locked[idx] {
+            shares[idx] = 0
+        }
+        for idx in 0..<4 where !locked[idx] {
+            shares = VisitorShareBalancer.adjust(shares: shares, locked: locked, changedIndex: idx, newValue: target[idx])
+        }
+        socializerVal = shares[0]
+        familyMemberVal = shares[1]
+        strollerVal = shares[2]
+        purposeBuyerVal = shares[3]
     }
 
     private func saveAndRunSimulation() {
-        let startHour = Calendar.current.component(.hour, from: startTime)
-        let endHour = Calendar.current.component(.hour, from: endTime)
+        let startComps = Calendar.current.dateComponents([.hour, .minute], from: startTime)
+        let endComps = Calendar.current.dateComponents([.hour, .minute], from: endTime)
+        let startMins = (startComps.hour ?? 10) * 60 + (startComps.minute ?? 0)
+        let rawEndMins = (endComps.hour ?? 21) * 60 + (endComps.minute ?? 0)
         let updated = EventParameters(
             totalVisitors: totalVisitors,
-            startHour: startHour,
-            endHour: max(startHour + 1, endHour),
+            startMinutes: startMins,
+            endMinutes: rawEndMins > startMins ? rawEndMins : startMins + 60,
             isPeakHoursEnabled: isPeakHoursEnabled,
             peakPeriods: peakPeriods,
             selectedPeakPeriods: selectedPeakPeriods,

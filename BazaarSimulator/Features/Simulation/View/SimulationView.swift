@@ -61,11 +61,9 @@ struct SimulationView: View {
 
             layoutInfoBadge
 
-            metricsBadge
-
             Spacer()
 
-            cameraTipsPill
+            metricsBadge
         }
     }
 
@@ -79,12 +77,8 @@ struct SimulationView: View {
             .foregroundStyle(Palette.textPrimary)
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
-            .background(Palette.surface.opacity(0.85))
-            .clipShape(RoundedRectangle(cornerRadius: Radius.s))
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.s)
-                    .stroke(Palette.surfaceBorder, lineWidth: 1)
-            )
+            .background(Palette.surface.opacity(0.88), in: Capsule())
+            .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Back to Analysis")
@@ -92,19 +86,11 @@ struct SimulationView: View {
 
     private var layoutInfoBadge: some View {
         let layout = viewModel.layout
-        let dimensions = "\(Int(layout.sizeM.x))m × \(Int(layout.sizeM.y))m"
-        let boothCount = layout.objects.filter { $0.kind == .booth }.count
 
         return HStack(spacing: Spacing.s) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(layout.name.isEmpty ? "3D Venue" : layout.name)
-                    .font(Typography.body)
-                    .foregroundStyle(Palette.textPrimary)
-
-                Text("\(dimensions) · \(boothCount) booths")
-                    .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
-            }
+            Text(layout.name.isEmpty ? "3D Venue" : layout.name)
+                .font(Typography.body)
+                .foregroundStyle(Palette.textPrimary)
 
             if viewModel.availableLayouts.count > 1 {
                 Menu {
@@ -124,29 +110,26 @@ struct SimulationView: View {
         }
         .padding(.horizontal, Spacing.m)
         .padding(.vertical, Spacing.s)
-        .background(Palette.surface.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.m)
-                .stroke(Palette.surfaceBorder, lineWidth: 1)
-        )
+        .background(Palette.surface.opacity(0.88), in: Capsule())
+        .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
     }
 
     private var metricsBadge: some View {
         let metrics = viewModel.metrics
         let densityText = String(format: "%.2f /m²", metrics.peakDensity)
+        let timeLabel = viewModel.hasRecordedFootage
+            ? "\(viewModel.timeOfDayString) (\(viewModel.clockString))"
+            : viewModel.clockString
 
         return HStack(spacing: Spacing.l) {
-            metricItem(title: "Time", value: viewModel.clockString)
+            metricItem(title: "Time", value: timeLabel)
             metricItem(title: "Inside", value: "\(metrics.peopleInside)")
             metricItem(title: "Arrived", value: "\(metrics.arrivals)")
-            metricItem(title: "Visits", value: "\(metrics.totalVisits)")
             metricItem(title: "Peak Density", value: densityText)
         }
-        .padding(.horizontal, Spacing.m)
+        .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
-        .background(Palette.surface.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
+        .background(Palette.surface.opacity(0.88), in: RoundedRectangle(cornerRadius: Radius.m))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.m)
                 .stroke(Palette.surfaceBorder, lineWidth: 1)
@@ -164,24 +147,6 @@ struct SimulationView: View {
         }
     }
 
-    private var cameraTipsPill: some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: "hand.draw")
-                .font(Typography.caption)
-            Text("Drag to orbit · Scroll to zoom")
-                .font(Typography.caption)
-        }
-        .foregroundStyle(Palette.textSecondary)
-        .padding(.horizontal, Spacing.m)
-        .padding(.vertical, Spacing.s)
-        .background(Palette.surface.opacity(0.85))
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Palette.surfaceBorder, lineWidth: 1)
-        )
-    }
-
     // MARK: - Bottom Playback Controls
 
     private var bottomControlsOverlay: some View {
@@ -191,7 +156,6 @@ struct SimulationView: View {
             }
 
             HStack(spacing: Spacing.m) {
-                // Play / Pause button
                 Button {
                     viewModel.togglePlay()
                 } label: {
@@ -199,42 +163,21 @@ struct SimulationView: View {
                         Image(systemName: viewModel.isRunning ? "pause.fill" : "play.fill")
                         Text(viewModel.isRunning ? "Pause" : "Play")
                     }
-                    .frame(minWidth: 80)
+                    .frame(minWidth: 76)
                 }
                 .buttonStyle(.primary)
 
-                // Speed buttons
                 HStack(spacing: Spacing.xs) {
                     ForEach([1.0, 5.0, 20.0, 60.0], id: \.self) { speed in
                         speedButton(for: speed)
                     }
                 }
 
-                // Fast forward +5 min
-                Button("+5 min") {
-                    viewModel.fastForward(minutes: 5)
-                }
-                .buttonStyle(.secondary)
-
-                // Reset / Rerun button
-                Button("Reset") {
-                    viewModel.reset()
-                }
-                .buttonStyle(.secondary)
-
-                if viewModel.hasRecordedFootage {
-                    Button("Rerun Live") {
-                        viewModel.rerunLive()
-                    }
-                    .buttonStyle(.secondary)
-                }
-
-                // Heatmap toggle
                 Button {
                     viewModel.showHeatmap.toggle()
                 } label: {
                     HStack(spacing: Spacing.xs) {
-                        Image(systemName: viewModel.showHeatmap ? "square.grid.3x3.fill" : "square.grid.3x3")
+                        Image(systemName: viewModel.showHeatmap ? "flame.fill" : "flame")
                         Text("Heatmap")
                     }
                 }
@@ -242,14 +185,13 @@ struct SimulationView: View {
 
                 Spacer()
 
-                // Visitor state legend
                 visitorLegend
             }
         }
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.m)
-        .background(Palette.surface.opacity(0.9))
-        .clipShape(RoundedRectangle(cornerRadius: Radius.l))
+        .frame(maxWidth: 740)
+        .background(Palette.surface.opacity(0.92), in: RoundedRectangle(cornerRadius: Radius.l))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.l)
                 .stroke(Palette.surfaceBorder, lineWidth: 1)
@@ -258,9 +200,10 @@ struct SimulationView: View {
 
     private var footageScrubberRow: some View {
         HStack(spacing: Spacing.m) {
-            Label("Saved Footage", systemImage: "film")
-                .font(Typography.caption)
+            Text(viewModel.clockString)
+                .font(Typography.caption.monospacedDigit())
                 .foregroundStyle(Palette.textSecondary)
+                .frame(width: 64, alignment: .leading)
 
             Slider(
                 value: Binding(
@@ -271,10 +214,10 @@ struct SimulationView: View {
                 step: 1
             )
 
-            Text("Frame \(viewModel.currentFrameIndex + 1) / \(viewModel.totalFrames)")
+            Text(viewModel.totalDurationString)
                 .font(Typography.caption.monospacedDigit())
                 .foregroundStyle(Palette.textSecondary)
-                .frame(width: 110, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
         }
     }
 

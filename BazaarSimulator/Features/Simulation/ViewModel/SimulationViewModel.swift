@@ -18,6 +18,8 @@ final class SimulationViewModel {
 
     private(set) var recordedFrames: [SimulationFrame] = []
     private(set) var currentFrameIndex: Int = 0
+    private(set) var totalDurationSeconds: Double = 39_600
+    private(set) var startMinutesFromMidnight: Int = 600
     private var isPlayingRecordedFootage = false
     private var playbackAccumulator: Double = 0
 
@@ -54,7 +56,21 @@ final class SimulationViewModel {
     }
 
     var clockString: String {
-        let totalSeconds = max(0, Int(metrics.elapsedSeconds.rounded()))
+        formatDuration(metrics.elapsedSeconds)
+    }
+
+    var totalDurationString: String {
+        formatDuration(totalDurationSeconds)
+    }
+
+    var timeOfDayString: String {
+        let elapsedMinutes = Int((metrics.elapsedSeconds / 60.0).rounded())
+        let totalMinutes = (startMinutesFromMidnight + elapsedMinutes) % (24 * 60)
+        return String(format: "%02d:%02d", totalMinutes / 60, totalMinutes % 60)
+    }
+
+    private func formatDuration(_ secondsValue: Double) -> String {
+        let totalSeconds = max(0, Int(secondsValue.rounded()))
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let seconds = totalSeconds % 60
@@ -134,8 +150,12 @@ final class SimulationViewModel {
 
     func fastForward(minutes: Int) {
         if hasRecordedFootage && isPlayingRecordedFootage {
-            let framesToJump = max(1, (minutes * 60) / 5)
-            seekToFrame(currentFrameIndex + framesToJump)
+            let targetElapsed = metrics.elapsedSeconds + Double(minutes * 60)
+            if let nextIdx = recordedFrames.firstIndex(where: { $0.elapsedSeconds >= targetElapsed }) {
+                seekToFrame(nextIdx)
+            } else {
+                seekToFrame(recordedFrames.count - 1)
+            }
             return
         }
         engine.fastForward(minutes: minutes)
@@ -146,7 +166,7 @@ final class SimulationViewModel {
         if hasRecordedFootage && isPlayingRecordedFootage {
             guard isRunning else { return }
             playbackAccumulator += realSeconds * max(1.0, speedMultiplier / 2.5)
-            if playbackAccumulator >= 0.15 {
+            if playbackAccumulator >= 0.12 {
                 playbackAccumulator = 0
                 if currentFrameIndex + 1 < recordedFrames.count {
                     currentFrameIndex += 1
@@ -165,6 +185,8 @@ final class SimulationViewModel {
 
     private func loadSavedResult(_ result: SimulationResult) {
         recordedFrames = result.frames
+        totalDurationSeconds = max(result.durationSeconds, result.frames.last?.elapsedSeconds ?? 0)
+        startMinutesFromMidnight = result.startMinutesFromMidnight
         isPlayingRecordedFootage = true
         isRunning = true
         currentFrameIndex = 0

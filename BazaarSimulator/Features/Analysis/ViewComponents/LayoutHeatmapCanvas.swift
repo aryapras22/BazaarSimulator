@@ -1,7 +1,7 @@
 import SwiftUI
 import simd
 
-/// A 2D floor plan canvas that renders the venue layout overlaid with the simulation crowd density heatmap.
+/// A 2D floor plan canvas that renders the venue layout with a smooth, blurred crowd density heatmap.
 struct LayoutHeatmapCanvas: View {
     let layout: Layout
     let densityCells: [DensityCell]
@@ -28,10 +28,14 @@ struct LayoutHeatmapCanvas: View {
                 )
 
                 drawFloor(in: &context, origin: origin, scale: scale)
+
+                if showHeatmap {
+                    drawSmoothHeatmap(in: &context, origin: origin, scale: scale)
+                }
+
                 drawObjects(in: &context, origin: origin, scale: scale)
 
                 if showHeatmap {
-                    drawHeatmap(in: &context, origin: origin, scale: scale)
                     drawHotspots(in: &context, origin: origin, scale: scale)
                 }
             }
@@ -45,6 +49,25 @@ struct LayoutHeatmapCanvas: View {
             x: origin.x + CGFloat(point.x) * scale,
             y: origin.y + CGFloat(point.y) * scale
         )
+    }
+
+    private func floorClipPath(origin: CGPoint, scale: CGFloat) -> Path {
+        var combined = Path()
+        if layout.hall.count >= 3 {
+            combined.addPath(polygonPath(layout.hall, origin: origin, scale: scale))
+        } else {
+            let rect = CGRect(
+                x: origin.x,
+                y: origin.y,
+                width: CGFloat(layout.sizeM.x) * scale,
+                height: CGFloat(layout.sizeM.y) * scale
+            )
+            combined.addRect(rect)
+        }
+        if layout.lobby.count >= 3 {
+            combined.addPath(polygonPath(layout.lobby, origin: origin, scale: scale))
+        }
+        return combined
     }
 
     private func drawFloor(in context: inout GraphicsContext, origin: CGPoint, scale: CGFloat) {
@@ -73,6 +96,66 @@ struct LayoutHeatmapCanvas: View {
         }
     }
 
+    private func drawSmoothHeatmap(in context: inout GraphicsContext, origin: CGPoint, scale: CGFloat) {
+        var clippedContext = context
+        clippedContext.clip(to: floorClipPath(origin: origin, scale: scale))
+
+        // Draw blurred radial heat blobs so adjacent cells blend smoothly with no tile edges
+        clippedContext.drawLayer { layer in
+            let blurRadius = max(3.0, scale * 0.55)
+            layer.addFilter(.blur(radius: blurRadius))
+
+            let blobRadius = max(4.0, scale * 1.45)
+
+            for cell in densityCells {
+                let center = toScreen(cell.center, origin: origin, scale: scale)
+                let rect = CGRect(
+                    x: center.x - blobRadius,
+                    y: center.y - blobRadius,
+                    width: blobRadius * 2,
+                    height: blobRadius * 2
+                )
+
+                let density = cell.peoplePerSquareMetre
+                let baseColor = heatColor(for: density)
+                let peakAlpha = min(0.82, max(0.14, density / 0.90))
+
+                let gradient = Gradient(stops: [
+                    .init(color: baseColor.opacity(peakAlpha), location: 0.0),
+                    .init(color: baseColor.opacity(peakAlpha * 0.65), location: 0.45),
+                    .init(color: baseColor.opacity(0.0), location: 1.0)
+                ])
+
+                layer.fill(
+                    Path(ellipseIn: rect),
+                    with: .radialGradient(
+                        gradient,
+                        center: center,
+                        startRadius: 0,
+                        endRadius: blobRadius
+                    )
+                )
+            }
+        }
+    }
+
+    /// Maps local crowd density (people/m²) to Fruin Severity A–F colors.
+    private func heatColor(for density: Double) -> Color {
+        if density > 1.80 {
+            return Color(red: 0.85, green: 0.08, blue: 0.22) // F: > 1.80
+        } else if density >= 0.72 {
+            return Color(red: 1.0, green: 0.24, blue: 0.20)  // E: 0.72 - 1.80
+        } else if density >= 0.45 {
+            return Color(red: 1.0, green: 0.55, blue: 0.12)  // D: 0.45 - 0.72
+        } else if density >= 0.27 {
+            return Color(red: 0.98, green: 0.84, blue: 0.18) // C: 0.27 - 0.45
+        } else if density >= 0.08 {
+            return Color(red: 0.22, green: 0.86, blue: 0.45) // B: 0.08 - 0.27
+        } else {
+            return Color(red: 0.20, green: 0.78, blue: 0.85) // A: < 0.08
+        }
+    }
+
     private func drawObjects(in context: inout GraphicsContext, origin: CGPoint, scale: CGFloat) {
         for object in layout.objects {
             let center = toScreen(object.placement.center, origin: origin, scale: scale)
@@ -87,55 +170,26 @@ struct LayoutHeatmapCanvas: View {
 
             switch object.kind {
             case .booth:
-                let boothColor = Color(red: 0.25, green: 0.48, blue: 0.78).opacity(0.65)
+                let boothColor = Color(red: 0.22, green: 0.44, blue: 0.74).opacity(0.82)
                 context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(boothColor))
                 context.stroke(
                     Path(roundedRect: rect, cornerRadius: 2),
-                    with: .color(.white.opacity(0.35)),
+                    with: .color(.white.opacity(0.45)),
                     lineWidth: 0.7
                 )
             case .table:
-                context.fill(Path(ellipseIn: rect), with: .color(Color.gray.opacity(0.5)))
+                context.fill(Path(ellipseIn: rect), with: .color(Color.gray.opacity(0.6)))
             case .stage:
-                let stageColor = Color.purple.opacity(0.45)
+                let stageColor = Color.purple.opacity(0.55)
                 context.fill(Path(roundedRect: rect, cornerRadius: 3), with: .color(stageColor))
             case .door:
                 let doorColor: Color = object.doorFlow?.direction == .exit ? .red : .green
-                context.fill(Path(rect), with: .color(doorColor.opacity(0.85)))
+                context.fill(Path(rect), with: .color(doorColor.opacity(0.9)))
             case .wall, .pillar, .closedArea, .block, .fixture, .rail:
-                context.fill(Path(rect), with: .color(Color.white.opacity(0.20)))
+                context.fill(Path(rect), with: .color(Color.white.opacity(0.25)))
             case .audienceArea:
-                context.stroke(Path(rect), with: .color(Color.purple.opacity(0.3)), lineWidth: 1)
+                context.stroke(Path(rect), with: .color(Color.purple.opacity(0.35)), lineWidth: 1)
             }
-        }
-    }
-
-    private func drawHeatmap(in context: inout GraphicsContext, origin: CGPoint, scale: CGFloat) {
-        let cellSpan = CGFloat(2.0) * scale
-
-        for cell in densityCells {
-            let center = toScreen(cell.center, origin: origin, scale: scale)
-            let rect = CGRect(
-                x: center.x - cellSpan / 2,
-                y: center.y - cellSpan / 2,
-                width: cellSpan,
-                height: cellSpan
-            )
-            let density = cell.peoplePerSquareMetre
-            let color: Color
-            if density >= 0.72 {
-                color = .red
-            } else if density >= 0.30 {
-                color = .orange
-            } else {
-                color = .green
-            }
-
-            let alpha = min(0.75, max(0.22, density / 1.4))
-            context.fill(
-                Path(roundedRect: rect, cornerRadius: 3),
-                with: .color(color.opacity(alpha))
-            )
         }
     }
 

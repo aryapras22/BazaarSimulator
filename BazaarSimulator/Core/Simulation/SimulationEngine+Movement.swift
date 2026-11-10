@@ -200,34 +200,68 @@ extension SimulationEngine {
     }
 
     func updateDensityCells() {
-        let bucketSize = 2.0
+        let bucketSize = 1.0
         let bucketCols = max(1, Int(ceil(layout.sizeM.x / bucketSize)))
-        var countsByCell: [Int: (people: Double, col: Int, row: Int)] = [:]
+        let bucketRows = max(1, Int(ceil(layout.sizeM.y / bucketSize)))
+        let instantByCell = computeKernelDensity(
+            bucketSize: bucketSize,
+            bucketCols: bucketCols,
+            bucketRows: bucketRows
+        )
+
+        let allKeys = Set(smoothedDensityByCell.keys).union(instantByCell.keys).sorted()
+        var activeCells: [DensityCell] = []
+
+        for key in allKeys {
+            let instant = instantByCell[key] ?? 0.0
+            let smoothed = (smoothedDensityByCell[key] ?? 0.0) * 0.72 + instant * 0.28
+            if smoothed < 0.004 {
+                smoothedDensityByCell.removeValue(forKey: key)
+                continue
+            }
+            smoothedDensityByCell[key] = smoothed
+            let col = key % bucketCols
+            let row = key / bucketCols
+            let center = SIMD2<Double>((Double(col) + 0.5) * bucketSize, (Double(row) + 0.5) * bucketSize)
+            let cell = DensityCell(id: key, center: center, peoplePerSquareMetre: smoothed)
+            activeCells.append(cell)
+
+            if (peakCellsByID[key]?.peoplePerSquareMetre ?? 0) < smoothed {
+                peakCellsByID[key] = cell
+            }
+        }
+
+        densityCells = activeCells
+        let totalDensity = densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
+        metrics.meanDensity = densityCells.isEmpty ? 0 : totalDensity / Double(densityCells.count)
+        metrics.peakDensity = max(metrics.peakDensity, densityCells.map(\.peoplePerSquareMetre).max() ?? 0)
+    }
+
+    private func computeKernelDensity(
+        bucketSize: Double,
+        bucketCols: Int,
+        bucketRows: Int
+    ) -> [Int: Double] {
+        let effectiveAreaPerPerson = 28.0
+        let twoSigmaSq = 2.0 * 1.35 * 1.35
+        var instantByCell: [Int: Double] = [:]
 
         for visitor in visitors {
             let col = Int(visitor.position.x / bucketSize)
             let row = Int(visitor.position.y / bucketSize)
-            let key = row * bucketCols + col
-            let existing = countsByCell[key] ?? (0.0, col, row)
-            countsByCell[key] = (existing.people + Double(visitor.partySize), col, row)
-        }
+            let weight = Double(visitor.partySize)
 
-        let cellArea = bucketSize * bucketSize
-        densityCells = countsByCell.map { key, value in
-            let center = SIMD2<Double>((Double(value.col) + 0.5) * bucketSize, (Double(value.row) + 0.5) * bucketSize)
-            let cell = DensityCell(id: key, center: center, peoplePerSquareMetre: value.people / cellArea)
-            if let oldPeak = peakCellsByID[key] {
-                if cell.peoplePerSquareMetre > oldPeak.peoplePerSquareMetre {
-                    peakCellsByID[key] = cell
+            for dRow in -2...2 {
+                for dCol in -2...2 {
+                    let nCol = col + dCol
+                    let nRow = row + dRow
+                    guard nCol >= 0, nRow >= 0, nCol < bucketCols, nRow < bucketRows else { continue }
+                    let distSq = Double(dCol * dCol + dRow * dRow)
+                    let kernel = exp(-distSq / twoSigmaSq) / effectiveAreaPerPerson
+                    instantByCell[nRow * bucketCols + nCol, default: 0.0] += weight * kernel
                 }
-            } else {
-                peakCellsByID[key] = cell
             }
-            return cell
         }
-
-        let totalDensity = densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
-        metrics.meanDensity = densityCells.isEmpty ? 0 : totalDensity / Double(densityCells.count)
-        metrics.peakDensity = max(metrics.peakDensity, densityCells.map(\.peoplePerSquareMetre).max() ?? 0)
+        return instantByCell
     }
 }

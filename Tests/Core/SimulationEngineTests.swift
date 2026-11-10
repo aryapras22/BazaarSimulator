@@ -79,4 +79,57 @@ struct SimulationEngineTests {
         #expect(engine.metrics.elapsedSeconds == 0)
         #expect(engine.metrics.arrivals == 0)
     }
+
+    @Test("VisitorShareBalancer caps total at 100%, respects locks, and only moves others on collision")
+    func visitorShareBalancerRules() {
+        // Lowering a slider below 100% does NOT move other unlocked sliders
+        let lowered = VisitorShareBalancer.adjust(
+            shares: [20, 40, 30, 10],
+            locked: [false, false, false, false],
+            changedIndex: 0,
+            newValue: 5
+        )
+        #expect(lowered == [5, 40, 30, 10])
+
+        // Raising a slider past 100% collides with ceiling and scales down other unlocked sliders
+        let collided = VisitorShareBalancer.adjust(
+            shares: [20, 40, 40, 0],
+            locked: [false, false, false, false],
+            changedIndex: 0,
+            newValue: 60
+        )
+        #expect(collided[0] == 60)
+        #expect(collided.reduce(0, +) == 100)
+
+        // Locked slider never moves when another slider collides with 100%
+        let withLock = VisitorShareBalancer.adjust(
+            shares: [20, 50, 30, 0],
+            locked: [false, true, false, false],
+            changedIndex: 0,
+            newValue: 80
+        )
+        #expect(withLock[1] == 50)
+        #expect(withLock[0] == 50)
+        #expect(withLock[2] == 0)
+        #expect(withLock.reduce(0, +) == 100)
+    }
+
+    @Test("Single visitor stays in Fruin Severity A (< 0.08 people/m²) and duration matches parameters")
+    func singleVisitorStaysGradeAAndDurationMatches() {
+        let layout = PreviewLayouts.smallMarket()
+        let params = EventParameters(
+            totalVisitors: 1,
+            startMinutes: 10 * 60,
+            endMinutes: 14 * 60
+        )
+        let settings = params.toSimulationSettings()
+        let engine = SimulationEngine(layout: layout, settings: settings)
+        let result = engine.runWithRecordedFootage(durationMinutes: settings.durationMinutes, frameIntervalSeconds: 30.0)
+
+        #expect(result.durationSeconds == 14_400.0)
+        #expect(result.frames.last?.elapsedSeconds == 14_400.0)
+        #expect(result.metrics.arrivals == 1)
+        #expect(result.metrics.peakDensity < 0.08)
+        #expect(SimulationAnalysis.grade(for: result.metrics.peakDensity) == "A")
+    }
 }

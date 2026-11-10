@@ -77,15 +77,9 @@ struct AnalysisView: View {
                 .accessibilityLabel("Back to Project Setup")
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(projectName)
-                    .font(Typography.title)
-                    .foregroundStyle(Palette.textPrimary)
-
-                Text("\(layouts.count) \(layouts.count == 1 ? "layout" : "layouts") · Crowd Density & Flow Analysis")
-                    .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
-            }
+            Text(projectName)
+                .font(Typography.title)
+                .foregroundStyle(Palette.textPrimary)
 
             if layouts.count > 1 {
                 layoutPickerMenu
@@ -98,7 +92,7 @@ struct AnalysisView: View {
                     showParameterModal = true
                 } label: {
                     HStack(spacing: Spacing.xs) {
-                        Image(systemName: "slider.horizontal.2.square")
+                        Image(systemName: "slider.horizontal.3")
                         Text("Parameters")
                     }
                 }
@@ -107,7 +101,7 @@ struct AnalysisView: View {
                 Button(action: onOpenEditor) {
                     HStack(spacing: Spacing.xs) {
                         Image(systemName: "pencil.and.ruler")
-                        Text("Edit Layouts")
+                        Text("Edit Layout")
                     }
                 }
                 .buttonStyle(.secondary)
@@ -115,15 +109,15 @@ struct AnalysisView: View {
 
                 Button(action: onOpenSimulation) {
                     HStack(spacing: Spacing.xs) {
-                        Image(systemName: "play.rectangle.fill")
-                        Text("Watch 3D Footage")
+                        Image(systemName: "play.fill")
+                        Text("3D Replay")
                     }
                 }
                 .buttonStyle(.primary)
                 .accessibilityLabel("Open 3D Simulation")
             }
         }
-        .padding(.horizontal, Spacing.xl)
+        .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.m)
         .background(Palette.surface)
     }
@@ -158,13 +152,18 @@ struct AnalysisView: View {
         HStack(spacing: 0) {
             // Left: 2D Heatmap Floor Plan
             VStack(spacing: 0) {
-                heatmapHeader(for: result)
-                LayoutHeatmapCanvas(
-                    layout: activeLayout,
-                    densityCells: result.densityCells,
-                    showHeatmap: showHeatmapOverlay
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ZStack(alignment: .topTrailing) {
+                    LayoutHeatmapCanvas(
+                        layout: activeLayout,
+                        densityCells: result.densityCells,
+                        showHeatmap: showHeatmapOverlay
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    heatmapTogglePill
+                        .padding(Spacing.m)
+                }
+
                 heatmapLegendBar
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -172,54 +171,48 @@ struct AnalysisView: View {
             Divider()
                 .overlay(Palette.surfaceBorder)
 
-            // Right: Metrics, Hotspots, and Footage CTA
+            // Right: Clean Summary & Hotspot Insights
             ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.l) {
+                VStack(alignment: .leading, spacing: Spacing.m) {
                     metricsCard(for: result)
                     hotspotsCard(for: result)
                     adviceCard(for: result)
-                    footageCalloutCard(for: result)
                 }
                 .padding(Spacing.l)
             }
-            .frame(width: 360)
-            .background(Palette.surface.opacity(0.5))
+            .frame(width: 340)
+            .background(Palette.surface.opacity(0.45))
         }
     }
 
-    private func heatmapHeader(for result: SimulationResult) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(activeLayout.name) — Crowd Heatmap")
-                    .font(Typography.fieldLabel)
-                    .foregroundStyle(Palette.textPrimary)
-                let dims = "\(Int(activeLayout.sizeM.x))m × \(Int(activeLayout.sizeM.y))m"
-                let booths = activeLayout.objects.filter { $0.kind == .booth }.count
-                Text("\(dims) · \(booths) booths · \(result.frames.count) footage frames recorded")
+    private var heatmapTogglePill: some View {
+        Button {
+            showHeatmapOverlay.toggle()
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: showHeatmapOverlay ? "flame.fill" : "flame")
+                    .foregroundStyle(showHeatmapOverlay ? Palette.accentIcon : Palette.textSecondary)
+                Text(showHeatmapOverlay ? "Heatmap On" : "Heatmap Off")
                     .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(Palette.textPrimary)
             }
-            Spacer()
-            Toggle("Show Heatmap", isOn: $showHeatmapOverlay)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .font(Typography.caption)
-                .foregroundStyle(Palette.textSecondary)
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.xs)
+            .background(Palette.surface.opacity(0.9), in: Capsule())
+            .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
         }
-        .padding(.horizontal, Spacing.l)
-        .padding(.vertical, Spacing.s)
-        .background(Palette.surface.opacity(0.6))
+        .buttonStyle(.plain)
     }
 
     private var heatmapLegendBar: some View {
-        HStack(spacing: Spacing.l) {
-            legendBadge(color: .green, text: "Low (< 0.30 /m²)")
-            legendBadge(color: .orange, text: "Moderate (0.30 – 0.72 /m²)")
-            legendBadge(color: .red, text: "High Crowding (≥ 0.72 /m²)")
+        HStack(spacing: Spacing.m) {
+            legendBadge(color: .cyan, text: "A (<0.08)")
+            legendBadge(color: .green, text: "B (<0.27)")
+            legendBadge(color: .yellow, text: "C (<0.45)")
+            legendBadge(color: .orange, text: "D (<0.72)")
+            legendBadge(color: .red, text: "E (<1.80)")
+            legendBadge(color: Color(red: 0.85, green: 0.08, blue: 0.22), text: "F (>1.80 /m²)")
             Spacer()
-            Text("Circles mark peak bottleneck hotspots")
-                .font(Typography.caption)
-                .foregroundStyle(Palette.textSecondary)
         }
         .padding(.horizontal, Spacing.l)
         .padding(.vertical, Spacing.s)
@@ -333,27 +326,6 @@ struct AnalysisView: View {
                 .font(Typography.caption)
                 .foregroundStyle(Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(Spacing.m)
-        .card()
-    }
-
-    private func footageCalloutCard(for result: SimulationResult) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
-            Text("3D SIMULATION FOOTAGE")
-                .sectionLabel()
-            Text("Saved \(result.frames.count) snapshots of visitor movement. Watch the recorded 3D footage or scrub the timeline to inspect crowd flow.")
-                .font(Typography.caption)
-                .foregroundStyle(Palette.textSecondary)
-
-            Button(action: onOpenSimulation) {
-                HStack {
-                    Image(systemName: "play.fill")
-                    Text("Watch 3D Simulation Footage")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.primary)
         }
         .padding(Spacing.m)
         .card()

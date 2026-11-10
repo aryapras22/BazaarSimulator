@@ -41,6 +41,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     var boothByID: [UUID: LayoutObject] = [:]
     var stayDurations: [Double] = []
     var peakCellsByID: [Int: DensityCell] = [:]
+    var smoothedDensityByCell: [Int: Double] = [:]
 
     init(layout: Layout, settings: SimulationSettings = SimulationSettings()) {
         self.layout = layout
@@ -65,6 +66,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         metrics = SimulationMetrics()
         densityCells = []
         peakCellsByID = [:]
+        smoothedDensityByCell = [:]
         nextVisitorID = 1
         nextArrivalTime = 0.0
         accumulatedTime = 0.0
@@ -101,19 +103,28 @@ final class SimulationEngine: SimulationEngineProtocol {
         }
     }
 
-    /// Runs a full simulation and saves both the heatmap cells and recorded footage frames.
+    /// Runs a full simulation over the configured event duration and saves heatmap cells and footage frames.
     func runWithRecordedFootage(
-        durationMinutes: Int = 15,
+        durationMinutes: Int = 0,
         frameIntervalSeconds: Double = 5.0
     ) -> SimulationResult {
         reset()
-        let totalSteps = max(1, durationMinutes * 120)
-        let stepsPerFrame = max(1, Int((frameIntervalSeconds / 0.5).rounded()))
+        let targetMinutes = durationMinutes > 0 ? durationMinutes : max(1, settings.durationMinutes)
+        let totalDurationSeconds = Double(targetMinutes * 60)
+        let totalSteps = min(1800, max(180, targetMinutes * 8))
+        let clockDt = totalDurationSeconds / Double(totalSteps)
+        let agentDt = min(1.0, max(0.5, clockDt))
+
+        let desiredFrameCount = min(240, max(30, Int(totalDurationSeconds / max(1.0, frameIntervalSeconds))))
+        let stepsPerFrame = max(1, totalSteps / desiredFrameCount)
         var frames: [SimulationFrame] = []
 
         for stepIndex in 1...totalSteps {
-            step(dt: 0.5)
-            if stepIndex % stepsPerFrame == 0 {
+            step(agentDt: agentDt, clockDt: clockDt)
+            if stepIndex == totalSteps {
+                metrics.elapsedSeconds = totalDurationSeconds
+            }
+            if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
                 frames.append(
                     SimulationFrame(
                         elapsedSeconds: metrics.elapsedSeconds,
@@ -129,6 +140,8 @@ final class SimulationEngine: SimulationEngineProtocol {
         return SimulationResult(
             layoutID: layout.id,
             layoutName: layout.name,
+            durationSeconds: totalDurationSeconds,
+            startMinutesFromMidnight: settings.startMinutesFromMidnight,
             metrics: metrics,
             densityCells: summaryCells,
             frames: frames
@@ -138,13 +151,17 @@ final class SimulationEngine: SimulationEngineProtocol {
     // MARK: - Simulation Step
 
     func step(dt: Double) {
-        metrics.elapsedSeconds += dt
+        step(agentDt: dt, clockDt: dt)
+    }
+
+    func step(agentDt: Double, clockDt: Double) {
+        metrics.elapsedSeconds += clockDt
         spawnNewVisitors()
-        updateVisitors(dt: dt)
+        updateVisitors(dt: agentDt)
 
         if metrics.elapsedSeconds >= nextDensityUpdate {
             updateDensityCells()
-            nextDensityUpdate = metrics.elapsedSeconds + 1.0
+            nextDensityUpdate = metrics.elapsedSeconds + max(1.0, clockDt)
         }
 
         metrics.peopleInside = visitors.reduce(0) { $0 + $1.partySize }
@@ -154,11 +171,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     }
 
     private func spawnNewVisitors() {
-        let arrivalRate = max(0.01, settings.arrivalsPer15Min / 900.0)
-        if nextArrivalTime == 0 {
-            nextArrivalTime = metrics.elapsedSeconds + rng.nextExponential(rate: arrivalRate)
-        }
-
+        let arrivalRate = max(0.001, settings.arrivalsPer15Min / 900.0)
         var spawnedThisStep = 0
         while metrics.elapsedSeconds >= nextArrivalTime && spawnedThisStep < 6 {
             if metrics.arrivals < settings.totalVisitors {
@@ -178,7 +191,8 @@ final class SimulationEngine: SimulationEngineProtocol {
         let jitter = SIMD2<Double>(rng.randomDouble(in: -0.4...0.4), rng.randomDouble(in: -0.4...0.4))
         let startPos = entrance + jitter
 
-        let maxGroup = max(1, settings.maxGroupSize)
+        let remainingVisitors = max(1, settings.totalVisitors - metrics.arrivals)
+        let maxGroup = min(remainingVisitors, max(1, settings.maxGroupSize))
         let partySize = persona == "family"
             ? rng.randomInt(in: min(2, maxGroup)...maxGroup)
             : rng.randomInt(in: 1...min(2, maxGroup))

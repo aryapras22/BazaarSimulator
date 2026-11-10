@@ -39,7 +39,7 @@ enum SimulationAnalysis {
         var chosen: [DensityCell] = []
 
         for cell in sorted {
-            guard cell.peoplePerSquareMetre >= 0.20 else { break }
+            guard cell.peoplePerSquareMetre >= 0.27 else { break }
             let isFarEnough = chosen.allSatisfy { existing in
                 simd_distance(existing.center, cell.center) >= separation
             }

@@ -124,7 +124,10 @@ final class ProjectSession: ProjectSessionProtocol {
 
         for layout in layouts {
             let engine = SimulationEngine(layout: layout, settings: settings)
-            let result = engine.runWithRecordedFootage(durationMinutes: 15, frameIntervalSeconds: 5.0)
+            let result = engine.runWithRecordedFootage(
+                durationMinutes: settings.durationMinutes,
+                frameIntervalSeconds: 5.0
+            )
             projectMap[layout.id] = result
         }
 
