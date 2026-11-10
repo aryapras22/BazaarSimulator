@@ -36,11 +36,17 @@ struct LayoutEditorSidePanel: View {
 
     private var header: some View {
         HStack(spacing: Spacing.s) {
-            SegmentedTabs(
-                selection: $viewModel.inspectorPanelTab,
-                tabs: InspectorPanelTab.allCases,
-                title: \.title
-            )
+            if viewModel.activeLayer == .booths {
+                SegmentedTabs(
+                    selection: $viewModel.inspectorPanelTab,
+                    tabs: InspectorPanelTab.allCases,
+                    title: \.title
+                )
+            } else {
+                Text(InspectorPanelTab.library.title)
+                    .font(Typography.inspectorLabel)
+                    .foregroundStyle(Palette.textPrimary)
+            }
 
             Spacer(minLength: 0)
 

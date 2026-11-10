@@ -6,6 +6,8 @@ struct CanvasOverlays: View {
     var tool: EditorTool = .select
     var message: String?
     var showReadouts: Bool = true
+    /// The swatches are hidden while the canvas has one fixed background; set this to bring the choice back.
+    var showsBackgroundPicker = false
     @Binding var background: CanvasBackground
     var showsAttractiveness: Binding<Bool>?
     let onZoomIn: () -> Void
@@ -29,7 +31,9 @@ struct CanvasOverlays: View {
                             if let showsAttractiveness {
                                 AttractivenessLegend(isOn: showsAttractiveness)
                             }
-                            CanvasBackgroundSwatches(selection: $background)
+                            if showsBackgroundPicker {
+                                CanvasBackgroundSwatches(selection: $background)
+                            }
                         }
                         CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
                         if showReadouts {

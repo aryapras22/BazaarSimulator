@@ -39,10 +39,7 @@ extension LayoutEditorView {
         }
 
         ToolbarItem(placement: .principal) {
-            HStack(spacing: Spacing.l) {
-                layerPicker
-                viewPresetPicker
-            }
+            layerPicker
         }
 
         if let placingChipTitle {
@@ -90,27 +87,6 @@ extension LayoutEditorView {
         .labelsHidden()
         .fixedSize()
         .help("Layer (⌘1 Structure, ⌘2 Booths)")
-    }
-
-    private var viewPresetPicker: some View {
-        Picker(
-            "View",
-            selection: Binding(
-                get: { viewModel.viewPreset },
-                set: { preset in
-                    let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                    viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
-                }
-            )
-        ) {
-            ForEach(ViewPreset.allCases, id: \.self) { preset in
-                Text(preset.title).tag(preset)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .fixedSize()
-        .help("View (1 Plan, 2 3D)")
     }
 
     private var placingChipTitle: String? {

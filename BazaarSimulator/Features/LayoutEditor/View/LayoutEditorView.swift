@@ -114,55 +114,25 @@ extension LayoutEditorView {
     private var viewportArea: some View {
         ZStack(alignment: .topTrailing) {
             GeometryReader { proxy in
-                if viewModel.viewPreset == .plan {
-                    canvasView(proxy: proxy)
-                } else {
-                    threeDView(proxy: proxy)
-                }
+                canvasView(proxy: proxy)
             }
 
-            if viewModel.viewPreset == .plan {
-                CanvasRulers(
-                    transform: viewModel.transform,
-                    pointer: pointer,
-                    selectionBounds: viewModel.selectionBounds
-                )
-            }
+            CanvasRulers(
+                transform: viewModel.transform,
+                pointer: pointer,
+                selectionBounds: viewModel.selectionBounds
+            )
 
             CanvasOverlays(
                 pointer: pointer,
                 pointsPerMetre: viewModel.transform.scale,
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
-                showReadouts: viewModel.viewPreset == .plan,
                 background: $viewModel.canvasBackground,
                 showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
-                onZoomIn: {
-                    if viewModel.viewPreset == .plan {
-                        viewModel.zoomIn(in: canvasViewSize)
-                    } else {
-                        viewModel.cameraRig.zoom(byFactor: 1.25, toward: nil)
-                    }
-                },
-                onZoomOut: {
-                    if viewModel.viewPreset == .plan {
-                        viewModel.zoomOut(in: canvasViewSize)
-                    } else {
-                        viewModel.cameraRig.zoom(byFactor: 0.8, toward: nil)
-                    }
-                },
-                onFit: {
-                    if viewModel.viewPreset == .plan {
-                        viewModel.fitToView(in: canvasViewSize)
-                    } else {
-                        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-                        viewModel.selectViewPreset(
-                            viewModel.viewPreset,
-                            reduceMotion: reduceMotion,
-                            viewSize: canvasSize
-                        )
-                    }
-                }
+                onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
+                onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
+                onFit: { viewModel.fitToView(in: canvasViewSize) }
             )
 
             if !viewModel.flowBannerIssues.isEmpty {
@@ -184,32 +154,6 @@ extension LayoutEditorView {
             }
         }
         .clipped()
-    }
-
-    @ViewBuilder
-    private func threeDView(proxy: GeometryProxy) -> some View {
-        Layout3DView(
-            geometry: viewModel.sceneGeometry,
-            pose: viewModel.cameraRig.pose,
-            selectionOutline: viewModel.selectionOutlineBoxes,
-            onOrbit: { delta in viewModel.handle3DOrbit(delta: delta) },
-            onPan: { delta in viewModel.handle3DPan(delta: delta, viewHeight: Double(proxy.size.height)) },
-            onZoom: { delta, isPrecise, point in
-                viewModel.handle3DZoom(delta: delta, isPrecise: isPrecise, viewPoint: point, viewSize: proxy.size)
-            },
-            onClick: { point, size in viewModel.handle3DClick(viewPoint: point, viewSize: size) },
-            onFrame: { delta in viewModel.advanceCamera(by: delta, viewSize: proxy.size) }
-        )
-        .onChange(of: proxy.size) { _, newSize in
-            canvasViewSize = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
-        }
-        .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
-        .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
-    }
-
-    private func switchPreset(_ preset: ViewPreset) {
-        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        viewModel.selectViewPreset(preset, reduceMotion: reduceMotion, viewSize: canvasSize)
     }
 
     @ViewBuilder
@@ -238,8 +182,6 @@ extension LayoutEditorView {
     private func attachCanvasShortcuts(to content: some View) -> some View {
         content
             .onKeyPress(.escape) { handleEscapeKey() }
-            .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
-            .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "vV")) { _ in
                 handleToolRailSelection(.select)
                 return .handled

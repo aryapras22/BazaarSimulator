@@ -50,14 +50,6 @@ final class LayoutEditorViewModel {
     var showsAttractiveness = false
     var hasFittedTransform = false
     @ObservationIgnored var autoFitTransform: CanvasTransform?
-    var viewPreset: ViewPreset = .plan
-    var cameraRig = CameraRig(
-        pose: CameraPose(target: .zero, azimuth: 0, polar: CameraRig.minPolar, distance: 30, fieldOfViewDegrees: 46)
-    )
-    var isTransitioningToPlan = false
-    var sceneGeometry: SceneGeometry?
-    @ObservationIgnored var sceneRebuildTask: Task<Void, Never>?
-    @ObservationIgnored var sceneGeometryGeneration = 0
     private(set) var issues: [LayoutIssue] = []
     private(set) var nameGroups: [BoothGroup] = []
     private(set) var sizeGroups: [BoothGroup] = []
@@ -89,7 +81,7 @@ final class LayoutEditorViewModel {
         self.session = session
         self.defaults = defaults
         self.canvasBackground = defaults.string(forKey: Self.canvasBackgroundKey)
-            .flatMap(CanvasBackground.init(rawValue:)) ?? .standard
+            .flatMap(CanvasBackground.init(rawValue:)) ?? .grey
         self.onBack = onBack
         refreshTemplates()
     }
@@ -153,6 +145,7 @@ final class LayoutEditorViewModel {
     func selectLayer(_ newLayer: EditorLayer) {
         guard newLayer != activeLayer else { return }
         activeLayer = newLayer
+        if newLayer == .structure { inspectorPanelTab = .library }
         selectTool(.select)
         applySelection(nil)
     }
@@ -200,11 +193,9 @@ final class LayoutEditorViewModel {
         refreshTemplates()
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
-            rebuildSceneGeometryDebounced()
             return
         }
         issues = LayoutValidator.issues(in: previewLayout)
-        rebuildSceneGeometryDebounced()
     }
 
     private func refreshGroups() {
