@@ -11,45 +11,19 @@ enum DoorRenderer {
         let corners = LayoutGeometry.corners(of: door.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
-        if state.tab == .floorPlan {
-            context.fill(path, with: .color(Palette.canvasBoothFill))
-            context.stroke(path, with: .color(Palette.canvasLine), lineWidth: 1.2)
-            return
-        }
-
-        let direction = door.doorFlow?.direction ?? .both
-        let fillColor: Color
-        switch direction {
-        case .entrance, .both:
-            fillColor = state.isSelected ? Palette.canvasDoorLine : Palette.canvasDoorFill
-        case .exit:
-            fillColor = state.isSelected ? Palette.canvasDoorLine.opacity(0.85) : Palette.canvasFloor
-        case .disabled:
-            fillColor = Palette.diagramChip.opacity(0.45)
-        }
-
+        let isSelected = state.isSelected
+        let fillColor = isSelected ? Palette.canvasSelection : Palette.canvasBoothFill
+        let strokeColor = state.hasWarning ? Palette.canvasIssue : Palette.canvasLine
         context.fill(path, with: .color(fillColor))
-
-        let outlineColor = state.isSelected ? Palette.canvasDoorSelected : Palette.canvasDoorLine
-        let lineWidth: CGFloat = state.isSelected ? 2.5 : 1.5
-        if direction == .disabled {
-            context.stroke(
-                path,
-                with: .color(Palette.diagramChip),
-                style: StrokeStyle(lineWidth: lineWidth, dash: [4, 3])
-            )
-        } else {
-            context.stroke(path, with: .color(outlineColor), lineWidth: lineWidth)
-        }
+        let lineWidth: CGFloat = isSelected ? 2.0 : 1.2
+        context.stroke(path, with: .color(strokeColor), lineWidth: lineWidth)
 
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
-
-        drawDirectionArrows(direction: direction, placement: door.placement, in: &context, transform: transform)
     }
 
-    private static func drawDirectionArrows(
+    static func drawDirectionArrows(
         direction: DoorDirection,
         placement: Placement,
         in context: inout GraphicsContext,

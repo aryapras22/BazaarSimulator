@@ -12,42 +12,28 @@ struct CategoryPicker: View {
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textPrimary)
 
-            Menu {
+            Picker("Category", selection: selection) {
+                if selection.wrappedValue == nil {
+                    Text(title).tag(CategoryOption?.none)
+                }
                 ForEach(categories) { option in
-                    Button {
-                        onSelect(option.id)
-                    } label: {
-                        HStack {
-                            Text(option.name)
-                            if isChecked(option) {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+                    Text(option.name).tag(Optional(option))
                 }
-            } label: {
-                HStack {
-                    Text(title)
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textPrimary)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Palette.textSecondary)
-                }
-                .padding(.horizontal, Spacing.s)
-                .padding(.vertical, Spacing.xs + 2)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .fill(Palette.fieldOnSurface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .stroke(Palette.fieldOnSurfaceBorder, lineWidth: 1)
-                )
             }
-            .menuStyle(.borderlessButton)
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var selection: Binding<CategoryOption?> {
+        Binding(
+            get: { categories.first(where: isChecked) },
+            set: { option in
+                if let option { onSelect(option.id) }
+            }
+        )
     }
 }
 

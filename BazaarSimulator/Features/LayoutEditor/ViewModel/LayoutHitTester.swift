@@ -3,17 +3,34 @@ import simd
 
 enum LayoutHitTester {
     static let doorToleranceM: Double = 0.3
+    /// Reaches the chairs around a table, so a click on a chair selects its table.
+    static let tableToleranceM = FurnitureModels.chairGapM + FurnitureModels.chairSizeM.x
 
     static func object(
         at world: SIMD2<Double>,
         in layout: Layout,
-        tab: EditorTab
+        layer: EditorLayer
     ) -> LayoutObject.ID? {
         let ordered = drawOrderedObjects(in: layout)
         for candidate in ordered.reversed() {
-            guard isSelectable(candidate, in: tab) else { continue }
+            guard candidate.kind.layer == layer && candidate.kind.isSelectable else { continue }
             if hits(candidate, at: world) {
                 return candidate.id
+            }
+        }
+        return nil
+    }
+
+    static func lockedObject(
+        at world: SIMD2<Double>,
+        in layout: Layout,
+        currentLayer: EditorLayer
+    ) -> LayoutObject? {
+        let ordered = drawOrderedObjects(in: layout)
+        for candidate in ordered.reversed() {
+            guard candidate.kind.layer != currentLayer && candidate.kind.isSelectable else { continue }
+            if hits(candidate, at: world) {
+                return candidate
             }
         }
         return nil
@@ -23,24 +40,26 @@ enum LayoutHitTester {
         layout.objects.sorted { drawRank(for: $0.kind) < drawRank(for: $1.kind) }
     }
 
-    private static func isSelectable(_ object: LayoutObject, in tab: EditorTab) -> Bool {
-        object.kind.tab == tab.objectTab && object.kind.isSelectable
-    }
-
     private static func hits(_ object: LayoutObject, at world: SIMD2<Double>) -> Bool {
-        switch object.kind {
-        case .pillar:
+        if let catalogID = object.catalogID,
+           let item = ObjectCatalog.item(catalogID),
+           item.footprint == .circle {
             return LayoutGeometry.containsCircle(
                 center: object.placement.center,
                 diameter: object.placement.sizeM.x,
                 point: world
             )
+        }
+
+        switch object.kind {
         case .door:
             return LayoutGeometry.contains(
                 object.placement,
                 point: world,
                 tolerance: doorToleranceM
             )
+        case .table:
+            return LayoutGeometry.contains(object.placement, point: world, tolerance: tableToleranceM)
         default:
             return LayoutGeometry.contains(object.placement, point: world)
         }
@@ -49,13 +68,9 @@ enum LayoutHitTester {
     private static func drawRank(for kind: LayoutObjectKind) -> Int {
         switch kind {
         case .closedArea: return 0
-        case .audienceArea: return 1
-        case .stage: return 2
-        case .table: return 3
-        case .fixture: return 4
-        case .wall, .rail, .block, .pillar: return 5
-        case .booth: return 6
-        case .door: return 7
+        case .wall, .block, .seating: return 1
+        case .booth, .table: return 2
+        case .door: return 3
         }
     }
 }

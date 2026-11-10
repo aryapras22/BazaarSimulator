@@ -16,17 +16,12 @@ extension LayoutEditorViewModel {
         switch selected.kind {
         case .booth:
             return "Booth \(BoothLabelFormatter.display(draftLabel))"
-        case .table:
-            return "Table \(draftLabel)"
         case .door:
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
-        case .fixture, .audienceArea, .closedArea:
+        case .closedArea, .table, .seating:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
-        case .stage:
-            let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? "Stage" : trimmed
-        case .wall, .rail, .block, .pillar:
+        case .wall, .block:
             return selected.kind.displayName
         }
     }
@@ -46,11 +41,18 @@ extension LayoutEditorViewModel {
         guard let draft = inspectorDraft, let selected = selectedObject else { return false }
         let range = sizeRangeM
         guard range.contains(draft.widthM) else { return false }
-        if selected.kind != .pillar && selected.kind != .door {
+        if selected.kind != .door {
             guard range.contains(draft.lengthM) else { return false }
         }
-        let allowedRotations = [0, 90, 180, 270]
-        if selected.kind.isRotatable && !allowedRotations.contains(draft.rotationDegrees) {
+        let rotationStep = selected.kind.rotationStepDegrees
+        if selected.kind.isRotatable && draft.rotationDegrees % rotationStep != 0 {
+            return false
+        }
+        let heightKinds: Set<LayoutObjectKind> = [.wall, .block, .booth]
+        if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
+            return false
+        }
+        if selected.kind == .booth && !AttractivenessField.range.contains(draft.attractiveness) {
             return false
         }
         return !issues.contains {
@@ -76,6 +78,18 @@ extension LayoutEditorViewModel {
             }
         }
         return CanvasIssueSnapshot(warningObjectIDs: warningIDs, blockedSidesByBoothID: blockedByBooth)
+    }
+
+    func focusIssue(_ issue: LayoutIssue, in viewSize: SIMD2<Double>) {
+        guard let layout = activeLayout,
+              let target = issue.objectIDs.lazy.compactMap({ id in layout.objects.first { $0.id == id } }).first else {
+            return
+        }
+        if target.kind.layer != activeLayer {
+            selectLayer(target.kind.layer)
+        }
+        selectObject(target.id)
+        transform = transform.centered(on: target.placement.center, in: viewSize)
     }
 
     var selectedTitleIssues: [String] {
@@ -105,7 +119,7 @@ extension LayoutEditorViewModel {
     }
 
     var flowBannerIssues: [String] {
-        guard tab == .flow else { return [] }
+        guard showVisitorFlow || activeLayer == .structure else { return [] }
         return issues.compactMap { issue in
             switch issue.kind {
             case .missingHallDoorEntry, .missingHallDoorExit:
@@ -114,10 +128,6 @@ extension LayoutEditorViewModel {
                 return nil
             }
         }
-    }
-
-    var isSaveChangesEnabled: Bool {
-        hasUnsavedInspectorChanges && isInspectorDraftValid
     }
 
     var layoutWithInspectorDraft: Layout? {
@@ -155,59 +165,46 @@ extension LayoutEditorViewModel {
     }
 
     func applyDoorAdvice() {
-        guard let advice = currentDoorAdvice else { return }
-        inspectorDraft?.doorDirection = advice.suggestedDirection
+        guard let advice = currentDoorAdvice, var draft = inspectorDraft else { return }
+        draft.doorDirection = advice.suggestedDirection
+        updateInspectorDraft(draft)
     }
 
-    func saveInspectorChanges() {
-        if groupSelection != nil {
-            saveGroupChanges()
-            return
-        }
-        guard isSaveChangesEnabled,
+    func updateInspectorDraft(_ draft: InspectorDraft) {
+        inspectorDraft = draft
+        applyInspectorDraft()
+    }
+
+    private func applyInspectorDraft() {
+        guard isInspectorDraftValid,
               let selected = selectedObject,
               let draft = inspectorDraft else {
             return
         }
-        withSingleRefresh {
-            let updated = draft.applied(to: selected)
-            commitEdit(.replace(before: selected, after: updated))
-            if let refreshed = selectedObject {
-                inspectorDraft = InspectorDraft(object: refreshed)
+        let updated = draft.applied(to: selected)
+        if selected.kind == .wall,
+           let layout = activeLayout,
+           abs(draft.widthM - selected.placement.sizeM.x) > 1e-4 {
+            withSingleRefresh {
+                let edit = WallEditing.setWallLength(
+                    wall: selected,
+                    newLength: draft.widthM,
+                    anchor: .start,
+                    in: layout,
+                    graph: WallGraph(layout: layout)
+                )
+                commitEdit(edit)
+                if let lengthened = activeLayout?.objects.first(where: { $0.id == selected.id }) {
+                    let final = draft.applied(to: lengthened)
+                    if final != lengthened {
+                        commitEdit(.replace(before: lengthened, after: final))
+                    }
+                    inspectorDraft = InspectorDraft(object: final)
+                }
             }
+        } else if updated != selected {
+            commitEdit(.replace(before: selected, after: updated), coalesceKey: "inspector-\(selected.id)")
         }
-    }
-
-    func discardInspectorChanges() {
-        if let draft = groupDraft, groupSelection != nil {
-            groupDraft = GroupInspectorDraft(memberIDs: draft.memberIDs)
-        } else if let selected = selectedObject {
-            inspectorDraft = InspectorDraft(object: selected)
-        } else {
-            inspectorDraft = nil
-        }
-    }
-
-    func confirmPendingActionWithSave() {
-        guard isInspectorDraftValid else {
-            pendingAction = nil
-            return
-        }
-        withSingleRefresh {
-            saveInspectorChanges()
-            executePendingAction()
-        }
-    }
-
-    func confirmPendingActionWithDiscard() {
-        withSingleRefresh {
-            discardInspectorChanges()
-            executePendingAction()
-        }
-    }
-
-    func cancelPendingAction() {
-        pendingAction = nil
     }
 
     private func maxDoorWidthM(for door: LayoutObject) -> Double {

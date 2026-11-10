@@ -4,11 +4,11 @@ import simd
 enum MarkerRenderer {
     static func draw(
         markers: [LayoutMarker],
-        tab: EditorTab,
+        showVisitorFlow: Bool,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        guard tab == .flow else { return }
+        guard showVisitorFlow else { return }
         for marker in markers {
             let pointView = transform.toView(marker.position)
             let radius: CGFloat = 5.0

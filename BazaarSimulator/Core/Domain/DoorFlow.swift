@@ -26,6 +26,7 @@ enum DoorDirection: String, Codable, CaseIterable, Hashable, Sendable {
 
 enum DoorConnection: String, Codable, Hashable, Sendable {
     case hallToLobby
+    case hallToOutside
     case lobbyToOutside
 }
 

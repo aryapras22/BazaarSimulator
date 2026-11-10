@@ -4,6 +4,8 @@ struct SegmentedTabs<Tab: Hashable>: View {
     @Binding var selection: Tab
     let tabs: [Tab]
     let title: (Tab) -> String
+    /// Off inside a toolbar, where the system already draws the glass behind the control.
+    var showsBackground = true
 
     @Environment(\.isEnabled) private var isEnabled
 
@@ -32,11 +34,11 @@ struct SegmentedTabs<Tab: Hashable>: View {
         .padding(Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: Radius.m)
-                .fill(Palette.surface)
+                .fill(showsBackground ? Palette.surface : Color.clear)
         )
         .overlay(
             RoundedRectangle(cornerRadius: Radius.m)
-                .stroke(Palette.surfaceBorder, lineWidth: 1)
+                .stroke(showsBackground ? Palette.surfaceBorder : Color.clear, lineWidth: 1)
         )
     }
 

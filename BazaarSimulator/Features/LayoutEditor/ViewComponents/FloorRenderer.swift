@@ -11,12 +11,13 @@ enum FloorRenderer {
         in context: inout GraphicsContext,
         size: CGSize,
         transform: CanvasTransform,
-        layout: Layout
+        layout: Layout,
+        gridLine: Color
     ) {
         let rulerScale = RulerScale(pointsPerMetre: transform.scale)
         drawGrid(
             in: &context, size: size, transform: transform, scale: rulerScale,
-            colors: GridColors(minor: Palette.canvasGridLine.opacity(0.6), major: Palette.canvasGridLine)
+            colors: GridColors(minor: gridLine.opacity(0.6), major: gridLine)
         )
         drawPolygon(layout.hall, in: &context, transform: transform)
         drawPolygon(layout.lobby, in: &context, transform: transform)

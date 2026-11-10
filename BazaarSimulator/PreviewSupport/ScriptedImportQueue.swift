@@ -145,11 +145,20 @@ final class ScriptedImportQueue: ImportQueueing {
 
         if file.kind == .legend {
             let defaultLegend = Legend(entries: [
-                LegendEntry(name: "FNB", color: LegendColor(red: 222 / 255.0, green: 42 / 255.0, blue: 42 / 255.0)),
-                LegendEntry(name: "Fashion", color: LegendColor(red: 42 / 255.0, green: 222 / 255.0, blue: 49 / 255.0)),
+                LegendEntry(
+                    name: "FNB",
+                    color: LegendColor(red: 222 / 255.0, green: 42 / 255.0, blue: 42 / 255.0),
+                    type: .fnb
+                ),
+                LegendEntry(
+                    name: "Fashion",
+                    color: LegendColor(red: 42 / 255.0, green: 222 / 255.0, blue: 49 / 255.0),
+                    type: .fashion
+                ),
                 LegendEntry(
                     name: "Lifestyle & Hobbies",
-                    color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0)
+                    color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0),
+                    type: .lifestyleAndHobbies
                 )
             ])
             legendsByFile[file.id] = defaultLegend

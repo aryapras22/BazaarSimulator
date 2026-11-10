@@ -6,6 +6,10 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		42C7C2B13094562600513D5B /* Extractor in Frameworks */ = {isa = PBXBuildFile; productRef = 42C7C2B03094562600513D5B /* Extractor */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		42C7C2AA3094562600513D5B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -107,6 +111,7 @@
 		42C7C2143094562600513D5B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				42C7C2B13094562600513D5B /* Extractor in Frameworks */,
 			);
 		};
 		42C7C2A73094562600513D5B /* Frameworks */ = {
@@ -156,6 +161,9 @@
 				42C7C2403094B43900513D5B /* docs */,
 			);
 			name = BazaarSimulator;
+			packageProductDependencies = (
+				42C7C2B03094562600513D5B /* Extractor */,
+			);
 			productName = BazaarSimulator;
 			productReference = 42C7C2173094562600513D5B /* BazaarSimulator.app */;
 			productType = "com.apple.product-type.application";
@@ -210,6 +218,9 @@
 			);
 			mainGroup = 42C7C20E3094562600513D5B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 42C7C2183094562600513D5B /* Products */;
 			projectDirPath = "";
@@ -392,6 +403,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -426,6 +438,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -514,6 +527,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aryapras22/bazaar-layout-extractor.git";
+			requirement = {
+				kind = revision;
+				revision = f4af17d21f1f7a73b5e42627d6cd1d6fa78b0e43;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		42C7C2B03094562600513D5B /* Extractor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42C7C2AF3094562600513D5B /* XCRemoteSwiftPackageReference "bazaar-layout-extractor" */;
+			productName = Extractor;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 42C7C20F3094562600513D5B /* Project object */;
 	validationLevel = 1;

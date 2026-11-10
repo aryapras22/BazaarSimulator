@@ -3,14 +3,14 @@ import simd
 
 extension LayoutEditorViewModel {
     var isGroupsListVisible: Bool {
-        tab == .floorPlan && selectionID == nil && groupSelection == nil && !nameGroups.isEmpty
+        activeLayer == .booths && selectionID == nil && groupSelection == nil
     }
 
     var nameGroupRows: [BoothGroupRowDisplay] { rows(for: nameGroups) }
     var sizeGroupRows: [BoothGroupRowDisplay] { rows(for: sizeGroups) }
 
     var groupClusters: [GroupClusterDisplay] {
-        guard tab == .floorPlan, let layout = activeLayout else { return [] }
+        guard activeLayer == .booths, let layout = activeLayout else { return [] }
         let builder = ClusterBuilder(
             booths: Dictionary(uniqueKeysWithValues: layout.objects.filter { $0.kind == .booth }.map { ($0.id, $0) }),
             colors: Dictionary(uniqueKeysWithValues: legend.entries.map { ($0.id, $0.color) })

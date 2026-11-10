@@ -14,10 +14,11 @@ enum MockLayoutMapper {
         objects.append(mapLobbyWall(from: dto.wall))
         objects.append(contentsOf: mapHallDoors(from: dto.doors))
         objects.append(contentsOf: mapOuterDoors(from: dto.outerDoors, gates: dto.gates, exitPt: dto.exitPt))
-        objects.append(contentsOf: mapTables(from: dto.tables))
         objects.append(mapStage(from: dto.stage))
-        objects.append(mapAudienceArea(from: dto))
-        objects.append(contentsOf: mapColumns(from: dto.columns))
+        objects.append(contentsOf: mapTables(from: dto.tables))
+        if dto.kidsSeats != false {
+            objects.append(mapAudienceSeating(from: dto.kids))
+        }
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
         objects.append(contentsOf: mapClosedAreas(from: dto.closed))
@@ -37,7 +38,7 @@ enum MockLayoutMapper {
 
         for index in draftLayout.objects.indices where draftLayout.objects[index].kind == .booth {
             let booth = draftLayout.objects[index]
-            draftLayout.objects[index].openSides = OpenSideInference.infer(for: booth, in: draftLayout)
+            draftLayout.objects[index].openSides = OpenSideInference.defaultSide(for: booth, in: draftLayout)
         }
 
         return draftLayout
@@ -132,73 +133,46 @@ enum MockLayoutMapper {
             )
         }
     }
+}
 
-    private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
-        tables.enumerated().map { index, table in
-            LayoutObject(
-                kind: .table,
-                label: "T\(index + 1)",
-                placement: Placement(
-                    center: SIMD2<Double>(table.centerX, table.centerY),
-                    sizeM: SIMD2<Double>(table.width, table.height)
-                ),
-                reviewState: .detected
-            )
-        }
-    }
-
+extension MockLayoutMapper {
     private static func mapStage(from stage: BazaarStageDTO) -> LayoutObject {
-        let stagePlacement = placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY)
-        return LayoutObject(
-            kind: .stage,
-            label: "Stage",
-            placement: stagePlacement,
-            openSides: stageFace(from: stage.face),
-            reviewState: .detected
-        )
-    }
-
-    private static func stageFace(from face: String) -> OpenSides {
-        switch face {
-        case "x0": return .left
-        case "x1": return .right
-        case "y0": return .top
-        case "y1": return .bottom
-        default: return .bottom
-        }
-    }
-
-    private static func mapAudienceArea(from dto: BazaarLayoutDTO) -> LayoutObject {
         LayoutObject(
-            kind: .audienceArea,
-            label: dto.kidsLabel ?? "Kids area",
-            placement: placement(from: dto.kids),
+            kind: .block,
+            label: "Stage",
+            placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY),
             reviewState: .detected
         )
     }
 
-    private static func mapColumns(from columns: [BazaarColumnDTO]) -> [LayoutObject] {
-        columns.enumerated().map { index, column in
-            LayoutObject(
-                kind: .pillar,
-                label: "P\(index + 1)",
-                placement: Placement(
-                    center: SIMD2<Double>(column.posX, column.posY),
-                    sizeM: SIMD2<Double>(column.diameter, column.diameter)
-                ),
-                reviewState: .detected
+    /// The file gives each table as a square dot, so it becomes the round standard table closest in size.
+    private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
+        let rounds = FurnitureModels.tables.filter { $0.shape == .round }
+        return tables.enumerated().map { index, table in
+            let model = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            return LayoutObject(
+                kind: .table,
+                label: "Table \(index + 1)",
+                placement: Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM),
+                reviewState: .detected,
+                catalogID: model.id
             )
         }
+    }
+
+    private static func mapAudienceSeating(from area: BazaarRectDTO) -> LayoutObject {
+        LayoutObject(
+            kind: .seating,
+            label: "Audience seating",
+            placement: placement(from: area),
+            reviewState: .detected,
+            catalogID: FurnitureModels.seatingBlockID
+        )
     }
 
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {
         pilasters.map { pilaster in
-            let kind: LayoutObjectKind
-            switch pilaster.kind.lowercased() {
-            case "rail": kind = .rail
-            case "block": kind = .block
-            default: kind = .wall
-            }
+            let kind: LayoutObjectKind = pilaster.kind.lowercased() == "wall" ? .wall : .block
             let pilasterPlacement = placement(
                 minX: pilaster.minX,
                 maxX: pilaster.maxX,
@@ -216,17 +190,15 @@ enum MockLayoutMapper {
 
     private static func mapFixtures(from fixtures: [BazaarFixtureDTO]) -> [LayoutObject] {
         fixtures.map { fixture in
-            let kind: LayoutObjectKind = fixture.kind.lowercased() == "stage" ? .stage : .fixture
-            let fixturePlacement = placement(
-                minX: fixture.minX,
-                maxX: fixture.maxX,
-                minY: fixture.minY,
-                maxY: fixture.maxY
-            )
-            return LayoutObject(
-                kind: kind,
+            LayoutObject(
+                kind: .block,
                 label: fixture.label,
-                placement: fixturePlacement,
+                placement: placement(
+                    minX: fixture.minX,
+                    maxX: fixture.maxX,
+                    minY: fixture.minY,
+                    maxY: fixture.maxY
+                ),
                 reviewState: .detected
             )
         }

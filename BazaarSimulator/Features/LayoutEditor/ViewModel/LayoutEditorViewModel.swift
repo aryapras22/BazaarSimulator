@@ -14,38 +14,57 @@ struct DoorAdviceDisplay: Hashable, Sendable {
     let suggestedDirection: DoorDirection
 }
 
-enum PendingNavigationAction: Sendable, Equatable {
-    case selectObject(UUID?)
-    case selectGroup(BoothGroupKind)
-    case toggleBooth(UUID)
-    case switchTool(EditorTool)
-    case switchTab(EditorTab)
-    case switchLayout(UUID)
-    case navigateBack
-    case performUndo
-    case performRedo
-}
-
 @Observable
 @MainActor
 final class LayoutEditorViewModel {
     let projectID: UUID
-    private let session: any ProjectSessionProtocol
+    let session: any ProjectSessionProtocol
     private let onBack: () -> Void
+    @ObservationIgnored private let defaults: UserDefaults
+    static let canvasBackgroundKey = "layoutEditor.canvasBackground"
 
-    var tab: EditorTab = .floorPlan
+    var canvasBackground: CanvasBackground {
+        didSet { defaults.set(canvasBackground.rawValue, forKey: Self.canvasBackgroundKey) }
+    }
+
+    var activeLayer: EditorLayer = .structure
+    var hiddenLayers: Set<EditorLayer> = []
+    var showVisitorFlow: Bool = false
+    var transientHint: String?
+    @ObservationIgnored var transientHintTask: Task<Void, Never>?
     var tool: EditorTool = .select
     var selectionID: UUID?
     var hoverID: UUID?
     var groupSelection: GroupSelection?
     var hoveredGroup: BoothGroupKind?
+    var librarySearch: String = ""
+    var libraryCategory: CatalogCategory?
+    var inspectorPanelTab: InspectorPanelTab = .library
+    var cachedBoothTemplates: [BoothTemplate] = []
+    var placementRotationDegrees: Int = 0
+    var placementPreview: PlacementCandidate?
+    var wallDrawing: WallDrawing?
+    var selectedWallItemID: String = "wall"
+    var dragState = CanvasDragState()
+    @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
+    var showsAttractiveness = false
     var hasFittedTransform = false
+    @ObservationIgnored var autoFitTransform: CanvasTransform?
+    var viewPreset: ViewPreset = .plan
+    var cameraRig = CameraRig(
+        pose: CameraPose(target: .zero, azimuth: 0, polar: CameraRig.minPolar, distance: 30, fieldOfViewDegrees: 46)
+    )
+    var isTransitioningToPlan = false
+    var sceneGeometry: SceneGeometry?
+    @ObservationIgnored var sceneRebuildTask: Task<Void, Never>?
+    @ObservationIgnored var sceneGeometryGeneration = 0
     private(set) var issues: [LayoutIssue] = []
     private(set) var nameGroups: [BoothGroup] = []
     private(set) var sizeGroups: [BoothGroup] = []
     @ObservationIgnored private var groupedObjects: [LayoutObject] = []
     @ObservationIgnored private var isBatchingRefresh = false
+    @ObservationIgnored var templateKey: Int?
 
     var inspectorDraft: InspectorDraft? {
         didSet {
@@ -57,7 +76,6 @@ final class LayoutEditorViewModel {
             if !isBatchingRefresh { refreshDerivedState() }
         }
     }
-    var pendingAction: PendingNavigationAction?
     var pendingGroupDelete: Int?
 
     private var historiesByLayoutID: [UUID: LayoutEditHistory] = [:]
@@ -65,11 +83,20 @@ final class LayoutEditorViewModel {
     init(
         projectID: UUID,
         session: any ProjectSessionProtocol,
+        defaults: UserDefaults = .standard,
         onBack: @escaping () -> Void = {}
     ) {
         self.projectID = projectID
         self.session = session
+        self.defaults = defaults
+        self.canvasBackground = defaults.string(forKey: Self.canvasBackgroundKey)
+            .flatMap(CanvasBackground.init(rawValue:)) ?? .standard
         self.onBack = onBack
+        refreshTemplates()
+    }
+
+    var projectName: String {
+        session.draft(for: projectID)?.name ?? ""
     }
 
     var layouts: [Layout] {
@@ -108,45 +135,32 @@ final class LayoutEditorViewModel {
     var canUndo: Bool { currentHistory.canUndo }
     var canRedo: Bool { currentHistory.canRedo }
 
-    var hasUnsavedInspectorChanges: Bool {
-        if groupSelection != nil { return groupDraft?.hasChanges ?? false }
-        guard let selectedObject, let inspectorDraft else { return false }
-        return inspectorDraft.applied(to: selectedObject) != selectedObject
+    func sealHistory() {
+        currentHistory.seal()
     }
 
     func selectObject(_ objectID: UUID?) {
         if let objectID, let activeLayout {
             guard let target = activeLayout.objects.first(where: { $0.id == objectID }),
-                  target.kind.tab == tab.objectTab,
+                  target.kind.layer == activeLayer,
                   target.kind.isSelectable else {
                 return
             }
         }
         guard objectID != selectionID || groupSelection != nil else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .selectObject(objectID)
-            return
-        }
         applySelection(objectID)
     }
 
-    func selectTab(_ newTab: EditorTab) {
-        guard newTab != tab else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchTab(newTab)
-            return
-        }
-        tab = newTab
-        tool = .select
+    func selectLayer(_ newLayer: EditorLayer) {
+        guard newLayer != activeLayer else { return }
+        activeLayer = newLayer
+        selectTool(.select)
+        libraryCategory = nil
         applySelection(nil)
     }
 
     func selectLayout(_ layoutID: UUID) {
         guard layoutID != activeLayoutID else { return }
-        if hasUnsavedInspectorChanges {
-            pendingAction = .switchLayout(layoutID)
-            return
-        }
         withSingleRefresh {
             session.setActiveLayoutID(layoutID, for: projectID)
             hasFittedTransform = false
@@ -155,14 +169,13 @@ final class LayoutEditorViewModel {
     }
 
     func requestBack() {
-        if hasUnsavedInspectorChanges {
-            pendingAction = .navigateBack
-            return
-        }
         onBack()
     }
 
     func applySelection(_ objectID: UUID?) {
+        if objectID != selectionID || groupSelection != nil {
+            sealHistory()
+        }
         hoveredGroup = nil
         groupSelection = nil
         groupDraft = nil
@@ -186,11 +199,14 @@ final class LayoutEditorViewModel {
 
     func refreshDerivedState() {
         refreshGroups()
+        refreshTemplates()
         guard let previewLayout = layoutWithInspectorDraft else {
             issues = []
+            rebuildSceneGeometryDebounced()
             return
         }
         issues = LayoutValidator.issues(in: previewLayout)
+        rebuildSceneGeometryDebounced()
     }
 
     private func refreshGroups() {
@@ -206,10 +222,10 @@ final class LayoutEditorViewModel {
         sizeGroups = BoothGrouping.sizeGroups(in: layout)
     }
 
-    func commitEdit(_ edit: LayoutEdit) {
+    func commitEdit(_ edit: LayoutEdit, coalesceKey: String? = nil) {
         guard let layout = activeLayout else { return }
         let updated = LayoutEditing.apply(edit, to: layout)
-        currentHistory.record(edit)
+        currentHistory.record(edit, coalesceKey: coalesceKey)
         session.updateLayout(updated, in: projectID)
         if !isBatchingRefresh { refreshDerivedState() }
     }
@@ -228,46 +244,6 @@ final class LayoutEditorViewModel {
                 selectionID = nil
                 inspectorDraft = nil
             }
-        }
-    }
-
-    func executePendingAction() {
-        guard let action = pendingAction else { return }
-        pendingAction = nil
-        switch action {
-        case .selectObject(let objectID):
-            applySelection(objectID)
-        case .selectGroup, .toggleBooth:
-            executeGroupAction(action)
-        case .switchTab(let newTab):
-            tab = newTab
-            tool = .select
-            applySelection(nil)
-        case .switchTool(let newTool):
-            performSelectTool(newTool)
-        case .switchLayout(let layoutID):
-            executeSwitchLayout(layoutID)
-        case .navigateBack:
-            onBack()
-        case .performUndo:
-            executeHistoryAction(isUndo: true)
-        case .performRedo:
-            executeHistoryAction(isUndo: false)
-        }
-    }
-
-    private func executeSwitchLayout(_ layoutID: UUID) {
-        withSingleRefresh {
-            session.setActiveLayoutID(layoutID, for: projectID)
-            hasFittedTransform = false
-            applySelection(nil)
-        }
-    }
-
-    private func executeHistoryAction(isUndo: Bool) {
-        let edit = isUndo ? currentHistory.undo() : currentHistory.redo()
-        if let edit {
-            applyHistoryEdit(edit)
         }
     }
 }

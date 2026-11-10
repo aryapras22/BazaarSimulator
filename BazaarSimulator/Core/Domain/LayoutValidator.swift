@@ -12,7 +12,6 @@ enum LayoutValidator {
         var result: [LayoutIssue] = []
         result.append(contentsOf: checkMinimumSizes(in: layout))
         result.append(contentsOf: checkOverlaps(in: layout, boundsByID: boundsByID))
-        result.append(contentsOf: checkTablesInBlockedAreas(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkFloorBounds(in: layout))
         result.append(contentsOf: checkBoothOpenSides(in: layout, boundsByID: boundsByID))
         result.append(contentsOf: checkHallDoors(in: layout))
@@ -24,7 +23,7 @@ enum LayoutValidator {
         for object in layout.objects where object.kind.isResizable {
             let minDim = object.kind.minimumDimensionM
             let isWidthTooSmall = object.placement.sizeM.x < minDim - 1e-6
-            let isLengthTooSmall = (object.kind != .pillar && object.kind != .door)
+            let isLengthTooSmall = object.kind != .door
                 && object.placement.sizeM.y < minDim - 1e-6
             if isWidthTooSmall || isLengthTooSmall {
                 issues.append(
@@ -74,40 +73,12 @@ enum LayoutValidator {
         return issues
     }
 
-    private static func checkTablesInBlockedAreas(
-        in layout: Layout,
-        boundsByID: [UUID: BoundingBox]
-    ) -> [LayoutIssue] {
-        var issues: [LayoutIssue] = []
-        let tables = layout.objects.filter { $0.kind == .table }
-        let blockedAreas = layout.objects.filter { $0.kind == .closedArea }
-
-        for table in tables {
-            guard let tableBox = boundsByID[table.id] else { continue }
-            for area in blockedAreas {
-                guard let areaBox = boundsByID[area.id],
-                      !areBoundsApart(tableBox, areaBox, byMoreThan: overlapToleranceM) else {
-                    continue
-                }
-                if LayoutGeometry.overlapDepth(table.placement, area.placement) > overlapToleranceM {
-                    issues.append(
-                        LayoutIssue(
-                            severity: .warning,
-                            kind: .overlappingObjects,
-                            objectIDs: [table.id, area.id],
-                            message: LayoutIssueText.overlappingObjects(table.label, area.label)
-                        )
-                    )
-                }
-            }
-        }
-        return issues
-    }
-
     private static func checkFloorBounds(in layout: Layout) -> [LayoutIssue] {
-        guard !layout.hall.isEmpty || !layout.lobby.isEmpty else { return [] }
+        let hasWalkable = !layout.hall.isEmpty || !layout.lobby.isEmpty
+        guard hasWalkable else { return [] }
         var issues: [LayoutIssue] = []
-        for object in layout.objects where object.kind.isMovable && !object.kind.isStructural {
+        // Doors sit in a wall line, which can fall in the gap between hall and lobby or just past their edge.
+        for object in layout.objects where object.kind.isMovable && !object.kind.isStructural && object.kind != .door {
             var inset = object.placement
             inset.sizeM = SIMD2<Double>(
                 max(0.01, inset.sizeM.x - 2 * floorToleranceM),

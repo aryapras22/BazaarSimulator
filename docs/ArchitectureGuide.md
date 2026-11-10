@@ -31,7 +31,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | ---| --- |
 | Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. The empty state reads "Add project to get started" |
 | Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
-| Layout editor | Floor Plan tab: place and edit booths, tables, walls, and other items. The inspector sets category, size, rotation, and open sides, and applies on Save Changes. Flow tab: set each door's direction and width, with a tip callout. The same editor is used to review detected objects |
+| Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, hall outline edge handles that grow or shrink the hall, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
 | Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, peak hours, bazaar type, visitor type mix, group size. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Analysis | Below the cards. Tabs for Crowd Density, Flow Rate, Congestion, and Duration. Each tab shows a recommendation ("Our choice"), a comparison table, and a chart over the day |
@@ -104,6 +104,8 @@ graph TD
 8. Only one floor plan reader model is loaded at a time. `ImportQueue` reads one file at a time, loads the model lazily, and unloads it after the last file. Most end users are assumed to have 16 GB Macs.
 9. Keep every file, type, function, and parameter list inside the limits in this guide. A linter warning is a prompt to look for a second concern in the code, not to shave lines.
 10. `Core/DesignSystem` imports SwiftUI only. It never imports Domain or a feature.
+11. `Core/Scene3D` may import RealityKit and `Core/DesignSystem`. `Core/Domain/Catalog` imports Foundation and `simd` only. The simulation engine still imports neither.
+
 * * *
 ## Separation of concerns
 Separation of concerns means splitting a problem into parts that can be understood and changed one at a time. In this app, a concern is a reason for code to change: how a screen looks, how a project is stored, how a crowd moves, how a PDF is read. The layers above are the first level of separation. This section covers the second level: spotting, inside one file, that two concerns got mixed.
@@ -169,6 +171,8 @@ BazaarSimulation/
 │
 ├── Core/
 │   ├── Domain/                          # Project, Layout, Legend, VisitorType, VisitorMix, EventParameters, snapshots, enums
+│   │   └── Catalog/                     # CatalogItem, ShapePrimitive, ObjectCatalog, BoothShape, BoothTemplates
+│   ├── Scene3D/                         # SceneGeometryBuilder, SceneMeshFactory (RealityKit), CameraRig, CameraRay, BoundingBox3D
 │   ├── Persistence/                     # ProjectRecord (SwiftData) and mapper
 │   ├── Repositories/                    # ProjectRepository
 │   ├── Resources/                       # Bundled JSON: visitor type presets, bazaar type presets, risk thresholds, metric texts
@@ -211,12 +215,12 @@ All positions are in metres from the layout origin, never in PDF pixels. Import 
 ```swift
 struct LayoutObject: Codable, Identifiable, Sendable {
     var id = UUID()
-    var kind: LayoutObjectKind       // wall, door, booth, table, pillar, ...
+    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating
     var label: String                // "B-7", "NW"
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
     var openSides: OpenSides = []    // booths: the sides visitors can use
-    var doorFlow: DoorFlow?          // doors: direction and connection (Flow tab)
+    var doorFlow: DoorFlow?          // doors: direction and connection (Door inspector on Structure layer)
 }
 
 struct Placement: Codable, Sendable {
@@ -230,7 +234,7 @@ struct Placement: Codable, Sendable {
 | Type | Purpose |
 | ---| --- |
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
-| `Layout` | Name, width, depth, and a list of `LayoutObject`. One per floor plan PDF |
+| `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
 | `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
 | `EventParameters` | Total visitors per day, event hours, peak periods, bazaar type, `VisitorMix`, group size. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |
@@ -292,6 +296,7 @@ enum ReadingMode { case modelOnly, agentic }   // raw model first, then with too
 ```
 
 Four backends (Apple on-device, Apple Private Cloud Compute, Qwen3-VL 4B, Gemma 4 E4B) sit behind this one protocol, so comparing them is a loop. A backend that cannot measure progress reports none, and its row shows an indeterminate bar. If the model cannot find a scale, the user calibrates by clicking two points and typing the real distance.
+The first backend in the code is `ExtractorFloorPlanReader`. It wraps the local `Extractor` package, which uses classical image processing and Vision instead of a model, so nothing is downloaded. The package reads pixels and no scale, so `ExtractedLayoutMapper` converts them to metres with a scale assumed from the median booth (2.5 m) until the user calibrates. It keeps booths, walls, wall openings (as doors), and blocked areas. Pillars, the stage, entrances, exits, and other unlabelled objects become blocks. It drops swing symbols, chairs, and tables. Python and model options of the package stay off, because the sandbox cannot run them. `ImportQueue` is the real queue behind `ImportQueueing`; `ScriptedImportQueue` remains for previews and tests.
 Extraction quality has been poor so far, so the editor must work without the reader. A user can place everything by hand in an empty layout.
 ### Simulation engine
 An `actor` owns all agent state. One engine instance serves one run. It advances in fixed steps, independent of how often the UI redraws, and publishes snapshots.
@@ -454,27 +459,29 @@ sequenceDiagram
     VM->>Engine: pause() or setSpeed()
 ```
 
-The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. Walls are extruded, booths and tables become boxes, and each `LayoutObjectKind` supplies its height and look from the enum. Agents are drawn from snapshots. The Density, Congestion, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. All of this lives in `Features/Simulation/Scene/`. Choose RealityKit or SceneKit with a short spike using the largest crowd, and draw agents as instances rather than one entity each if the frame rate drops. The engine and view model do not change either way, because they only produce snapshots.
+The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. The static layout scene now comes from `Core/Scene3D`; the simulation adds agents and overlays on top. Agents are drawn from snapshots. The Density, Congestion, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. These simulation-specific overlays live in `Features/Simulation/Scene/`. RealityKit is used for the 3D scene (confirmed via spike off `feature/layout-editor`). The engine and view model do not change either way, because they only produce snapshots.
+
 * * *
 ## macOS specifics
 Window and navigation:
 *   One `WindowGroup` with a `NavigationSplitView`. The sidebar lists projects, has a search field at the bottom, and can be collapsed. The detail column is a `NavigationStack`: project setup, then review (the editor), then the project screen, which leads to the editor or the simulation. `AppRouter` in `App/Navigation/` owns the active destination (`empty`, `setup(projectID:)`, `review(projectID:)`). `ProjectScreenFactory` in `App/Navigation/` builds and caches screen ViewModels (such as keeping one `ProjectSetupViewModel` per project for the life of the window).
 *   The project screen header has a back chevron, the project name, and the Parameters and Legend buttons. Both open as dialogs over the screen. Parameters edits a draft copy and has Cancel and Apply.
-*   The editor has an inspector panel on the right for the selected object, not a modal sheet. Its edits are held until Save Changes.
+*   The editor uses a structured desktop layout with two layers (Structure and Booths) switched via toolbar tabs or Cmd-1 and Cmd-2. Inactive layers draw dimmed at 35% opacity and supply snap candidates without being selectable. The vertical tool rail reflects the active layer: Select, Wall, Room, Library in Structure; Select, Row, Fill, Library in Booths. The central canvas has view presets (Plan and 3D, switched by keys 1 and 2), an active-tool hint strip, and a visitor flow overlay toggle. The right 320 pt inspector column displays single-object, group, or wall graph editing properties.
 *   The 3D view has a segmented control at the top (Density, Congestion, Footfall) and a compact playback overlay at the bottom (play and pause, clock, speed).
 *   The window uses the dark navy background of the Hi-Fi with blue and orange glows and a translucent sidebar. Tokens carry these colors. Only a dark appearance is designed.
 *   A `Settings` scene for reader selection and model management. It is not in the Hi-Fi.
 Input:
 *   Menu bar commands in `AppCommands.swift` with shortcuts: Space for play and pause, Delete for removing the selected object, Cmd+Z and Cmd+Shift+Z for undo and redo.
 *   Editor interactions: click to select, drag to move, hover highlight, right-click menu, scroll or pinch to zoom. The Hi-Fi shows no palette, so how new items are added (right-click menu or a palette) is still open.
-*   Route every editor change through one place so undo is implemented once, for example by registering inverse operations with the window's `UndoManager`. Save Changes in the inspector commits through the same path, as one undoable change.
+*   Route every editor change through one place so undo is implemented once, for example by registering inverse operations with the window's `UndoManager`. Inspector edits commit through the same path as they are made, and consecutive edits to one object merge into one undoable change.
 Sandbox and entitlements:
 *   App Sandbox on. PDF import needs user-selected file read access. Add read-write only when export is built.
 *   Downloading model weights on first launch needs the outgoing network entitlement. Store weights in Application Support.
 *   Check the Apple Foundation Models and Private Cloud Compute requirements for the target OS in the current SDK documentation before relying on them.
 Frameworks and storage:
-*   Use AppKit where iOS code would use UIKit (`NSViewRepresentable` for a custom editing surface if SwiftUI gestures are not enough). SwiftUI `Canvas` for the 2D editor. RealityKit or SceneKit for the 3D view. Swift Charts for the Analysis chart. PDFKit for import. `@Observable` over `ObservableObject`.
+*   Use AppKit where iOS code would use UIKit (`NSViewRepresentable` for a custom editing surface if SwiftUI gestures are not enough). SwiftUI `Canvas` for the 2D editor. RealityKit for the 3D view (selected after spike). Swift Charts for the Analysis chart. PDFKit for import. `@Observable` over `ObservableObject`.
 *   This guide uses one `WindowGroup` with a SwiftData project library. If the team prefers one file per event plan, `DocumentGroup` is the alternative. The repository protocol keeps that decision out of the features.
+
 * * *
 ## Code size limits and how to break up files
 ### The limits
@@ -533,7 +540,7 @@ A type is too large when different methods use different subsets of its properti
 
 | Growing type | Split into |
 | ---| --- |
-| `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (edits held until Save Changes). The view model orchestrates them |
+| `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (field values being typed; a valid draft is applied at once). The view model orchestrates them |
 | `SimulationEngine` | `SpawnScheduler`, `NavigationGrid`, `ZoneMap`, `MovementModel`, `MetricsCollector` (already separate) |
 | `ParametersViewModel` | `MixEditor` (rescaling percentages to 100), `ParametersDraft` (form state held until Apply) |
 | `ProjectSetupViewModel` | `ImportQueue` (one file at a time, cancel) and a row state type per file |
@@ -824,7 +831,7 @@ Review rules:
 The floor plan reader is the riskiest part, so the app should not depend on it early. Write tests alongside each step.
 1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals with peak periods, `ZoneMap`, and `runToEnd()`.
 2. Simulation view: the Preparing Layout step, the 3D scene with moving agents, and the three overlays. If 3D slows the team down, start with a top-down `Canvas` behind the same snapshot interface and swap later.
-3. Layout editor with manual placement, the inspector, and the Flow tab, so a layout can exist without any model.
+3. Layout editor with Structure and Booths layers, manual placement, wall graph editing, and the inspector, so a layout can exist without any model.
 4. Project library, project screen with layout cards, and `ProjectSession` wiring.
 5. Parameters dialog: mix sliders with rescaling, peak periods, bazaar type presets, Cancel and Apply on a draft.
 6. Analysis: `AnalysisService`, the four tabs, `RecommendationBuilder`, the table and the chart.

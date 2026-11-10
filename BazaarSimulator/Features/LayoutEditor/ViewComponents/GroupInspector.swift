@@ -29,8 +29,10 @@ struct GroupInspector: View {
 
             RotationControl(degrees: rotationBinding, isMixed: display.rotation == .mixed)
 
-            Button("Reset open sides for \(display.memberCount) booths", action: onResetOpenSides)
-                .buttonStyle(SecondaryButtonStyle())
+            if display.boothCount > 0 {
+                Button("Reset open sides for \(display.boothCount) booths", action: onResetOpenSides)
+                    .buttonStyle(SecondaryButtonStyle())
+            }
         }
     }
 
@@ -72,7 +74,7 @@ struct GroupInspector: View {
                 onResetOpenSides: {}
             )
         } footer: {
-            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle())
+            EmptyView()
         }
         InspectorPanel(title: "12 booths") {
             GroupInspector(
@@ -90,7 +92,7 @@ struct GroupInspector: View {
                 onResetOpenSides: {}
             )
         } footer: {
-            Button("Save Changes") {}.buttonStyle(InspectorSaveButtonStyle()).disabled(true)
+            EmptyView()
         }
     }
     .padding()

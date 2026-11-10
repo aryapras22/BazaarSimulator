@@ -3,7 +3,11 @@ import SwiftUI
 struct CanvasOverlays: View {
     let pointer: CanvasPointer
     let pointsPerMetre: Double
-    let trailingInset: CGFloat
+    var tool: EditorTool = .select
+    var message: String?
+    var showReadouts: Bool = true
+    @Binding var background: CanvasBackground
+    var showsAttractiveness: Binding<Bool>?
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onFit: () -> Void
@@ -12,15 +16,30 @@ struct CanvasOverlays: View {
         VStack {
             Spacer()
             HStack(alignment: .bottom) {
-                CanvasCursorReadout(pointer: pointer)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    if showReadouts {
+                        CanvasCursorReadout(pointer: pointer)
+                    }
+                    EditorHintStrip(tool: tool, message: message)
+                }
                 Spacer()
-                VStack(alignment: .trailing, spacing: Spacing.s) {
-                    CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
-                    CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                GlassEffectContainer(spacing: Spacing.s) {
+                    VStack(alignment: .trailing, spacing: Spacing.s) {
+                        if showReadouts {
+                            if let showsAttractiveness {
+                                AttractivenessLegend(isOn: showsAttractiveness)
+                            }
+                            CanvasBackgroundSwatches(selection: $background)
+                        }
+                        CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
+                        if showReadouts {
+                            CanvasScaleBar(pointsPerMetre: pointsPerMetre)
+                        }
+                    }
                 }
             }
             .padding(.leading, CanvasRulers.leftWidth + Spacing.l)
-            .padding(.trailing, trailingInset + Spacing.l)
+            .padding(.trailing, Spacing.l)
             .padding(.bottom, Spacing.l)
         }
     }

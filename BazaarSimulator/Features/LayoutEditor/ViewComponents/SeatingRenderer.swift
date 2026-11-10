@@ -1,68 +1,46 @@
 import SwiftUI
 import simd
 
-struct ObjectDrawState: Sendable {
-    let object: LayoutObject
-    let tab: EditorTab
-    let isSelected: Bool
-    let isHovered: Bool
-    let hasWarning: Bool
-}
-
+/// Draws a table or a seating block with the chairs its standard model puts around it.
 enum SeatingRenderer {
     static func draw(
         _ state: ObjectDrawState,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let table = state.object
-        let centerView = transform.toView(table.placement.center)
-        let radius = max(2.0, min(table.placement.sizeM.x, table.placement.sizeM.y) * 0.35 * transform.scale)
-        let chairRadius = max(1.5, radius * 0.35)
-        let chairDistance = radius + chairRadius * 1.1
+        let object = state.object
+        let strokeColor = state.hasWarning ? Palette.canvasIssue : Palette.canvasLine
+        let chairFill = state.isSelected ? Palette.canvasSelection : Palette.canvasLine.opacity(0.08)
 
-        let fillColor: Color
-        let strokeColor: Color
-        if state.tab == .flow {
-            fillColor = Palette.canvasFlowFill
-            strokeColor = Palette.canvasFlowLine
-        } else if state.isSelected {
-            fillColor = Palette.canvasSelection
-            strokeColor = Palette.canvasLine
-        } else {
-            fillColor = Palette.canvasBoothFill
-            strokeColor = Palette.canvasLine
+        if object.kind == .seating {
+            let corners = LayoutGeometry.corners(of: object.placement)
+            let extent = FloorRenderer.polygonPath(for: corners, transform: transform)
+            context.stroke(extent, with: .color(strokeColor.opacity(state.isSelected ? 0.9 : 0.3)), lineWidth: 1)
         }
 
-        let angles: [Double] = [0, .pi / 2, .pi, 3 * .pi / 2]
-        for angle in angles {
-            let totalAngle = angle + table.placement.rotationRadians
-            let chairX = centerView.x + cos(totalAngle) * chairDistance
-            let chairY = centerView.y + sin(totalAngle) * chairDistance
-            let chairRect = CGRect(
-                x: chairX - chairRadius,
-                y: chairY - chairRadius,
-                width: chairRadius * 2,
-                height: chairRadius * 2
-            )
-            let chairPath = Path(ellipseIn: chairRect)
-            context.fill(chairPath, with: .color(fillColor))
-            context.stroke(chairPath, with: .color(strokeColor), lineWidth: 0.8)
+        for chair in FurnitureModels.chairs(of: object) {
+            let path = FloorRenderer.polygonPath(for: LayoutGeometry.corners(of: chair), transform: transform)
+            context.fill(path, with: .color(chairFill))
+            context.stroke(path, with: .color(strokeColor.opacity(0.7)), lineWidth: 0.8)
         }
 
-        let tableRect = CGRect(
-            x: centerView.x - radius,
-            y: centerView.y - radius,
-            width: radius * 2,
-            height: radius * 2
-        )
-        let tablePath = Path(ellipseIn: tableRect)
-        context.fill(tablePath, with: .color(fillColor))
-        let outlineColor = state.hasWarning ? Palette.canvasIssue : strokeColor
-        context.stroke(tablePath, with: .color(outlineColor), lineWidth: state.hasWarning ? 2.0 : 1.0)
-
+        guard object.kind == .table else { return }
+        let top = tablePath(of: object, transform: transform)
+        context.fill(top, with: .color(state.isSelected ? Palette.canvasSelection : Palette.canvasLine.opacity(0.2)))
+        context.stroke(top, with: .color(strokeColor), lineWidth: state.hasWarning ? 2.0 : 1.2)
         if state.isHovered && !state.isSelected {
-            context.stroke(tablePath, with: .color(Palette.accentIcon), lineWidth: 2.0)
+            context.stroke(top, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
+    }
+
+    private static func tablePath(of table: LayoutObject, transform: CanvasTransform) -> Path {
+        let isRound = FurnitureModels.table(table.catalogID)?.shape == .round
+        guard isRound else {
+            return FloorRenderer.polygonPath(for: LayoutGeometry.corners(of: table.placement), transform: transform)
+        }
+        let centre = transform.toView(table.placement.center)
+        let radius = table.placement.sizeM.x / 2 * transform.scale
+        let bounds = CGRect(x: centre.x - radius, y: centre.y - radius, width: radius * 2, height: radius * 2)
+        return Path(ellipseIn: bounds)
     }
 }

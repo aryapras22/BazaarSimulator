@@ -92,20 +92,9 @@ enum PreviewLayouts {
                 openSides: [.top, .bottom, .left, .right]
             ),
             LayoutObject(
-                kind: .table,
-                label: "T1",
-                placement: Placement(center: SIMD2<Double>(18, 12), sizeM: SIMD2<Double>(1, 1))
-            ),
-            LayoutObject(
-                kind: .stage,
+                kind: .block,
                 label: "Stage",
-                placement: Placement(center: SIMD2<Double>(4, 14), sizeM: SIMD2<Double>(4, 6)),
-                openSides: .right
-            ),
-            LayoutObject(
-                kind: .pillar,
-                label: "P1",
-                placement: Placement(center: SIMD2<Double>(22, 6), sizeM: SIMD2<Double>(0.6, 0.6))
+                placement: Placement(center: SIMD2<Double>(4, 14), sizeM: SIMD2<Double>(4, 6))
             )
         ]
     }

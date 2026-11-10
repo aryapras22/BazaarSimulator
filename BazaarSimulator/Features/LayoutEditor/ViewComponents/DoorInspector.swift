@@ -35,41 +35,15 @@ struct DoorInspector: View {
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textPrimary)
 
-            Menu {
+            Picker("Direction", selection: $draft.doorDirection) {
                 ForEach(DoorDirection.allCases, id: \.self) { direction in
-                    Button {
-                        draft.doorDirection = direction
-                    } label: {
-                        HStack {
-                            Text(direction.displayName)
-                            if draft.doorDirection == direction {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+                    Text(direction.displayName).tag(direction)
                 }
-            } label: {
-                HStack {
-                    Text(draft.doorDirection.displayName)
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textPrimary)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Palette.textSecondary)
-                }
-                .padding(.horizontal, Spacing.s)
-                .padding(.vertical, Spacing.xs + 2)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .fill(Palette.fieldOnSurface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.s)
-                        .stroke(Palette.fieldOnSurfaceBorder, lineWidth: 1)
-                )
             }
-            .menuStyle(.borderlessButton)
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -96,9 +70,7 @@ struct DoorInspector: View {
             onUseAdvice: {}
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-            .disabled(true)
+        EmptyView()
     }
     .padding()
     .background(Palette.background)
@@ -122,8 +94,7 @@ struct DoorInspector: View {
             onUseAdvice: {}
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
+        EmptyView()
     }
     .padding()
     .background(Palette.background)

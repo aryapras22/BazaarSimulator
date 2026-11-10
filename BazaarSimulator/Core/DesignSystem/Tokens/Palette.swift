@@ -31,6 +31,13 @@ enum Palette {
     static let primaryDisabledText = Color(hex: 0x46444F)
 
     static let canvasGridLine = Color(hex: 0x071327)
+    static let canvasBackgroundGrey = Color(hex: 0x212830)
+    static let canvasGridLineGrey = Color(hex: 0x3A434F)
+    static let canvasBackgroundWhite = Color(hex: 0xFFFFFF)
+    static let canvasGridLineWhite = Color(hex: 0xDCE3EC)
+    static let attractivenessLow = Color(hex: 0xBFD9F2)
+    static let attractivenessMid = Color(hex: 0xFFE08A)
+    static let attractivenessHigh = Color(hex: 0xE59A2E)
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
     static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)
@@ -59,6 +66,15 @@ enum Palette {
     static let segmentedSelected = Color(hex: 0x3A485E)
     static let primaryDisabledOnSurface = Color(hex: 0x50313B)
     static let primaryDisabledOnSurfaceText = Color(hex: 0xA7999D)
+
+    static let sceneFloor = Color(hex: 0xFFFFFF)
+    static let sceneWall = Color(hex: 0xCAD5E2)
+    static let scenePanel = Color(hex: 0xE8ECF2)
+    static let sceneCounter = Color(hex: 0xCBD5E1)
+    static let sceneSlab = Color(hex: 0x94A3B8)
+    static let scenePillar = Color(hex: 0xCBD5E1)
+    static let scenePlant = Color(hex: 0x22C55E)
+    static let sceneSign = Color(hex: 0x3B82F6)
 }
 
 extension Color {

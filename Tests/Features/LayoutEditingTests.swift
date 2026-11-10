@@ -26,12 +26,12 @@ struct LayoutEditingTests {
         let restoredReplace = LayoutEditing.apply(LayoutEditing.inverse(of: replaceEdit), to: afterReplace)
         #expect(restoredReplace == original)
 
-        let table = LayoutObject(
-            kind: .table,
-            label: "T1",
+        let block = LayoutObject(
+            kind: .block,
+            label: "K1",
             placement: Placement(center: SIMD2<Double>(12, 12), sizeM: SIMD2<Double>(1, 1))
         )
-        let insertEdit = LayoutEdit.insert(table, index: 1)
+        let insertEdit = LayoutEdit.insert(block, index: 1)
         let afterInsert = LayoutEditing.apply(insertEdit, to: original)
         let restoredInsert = LayoutEditing.apply(LayoutEditing.inverse(of: insertEdit), to: afterInsert)
         #expect(restoredInsert == original)

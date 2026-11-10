@@ -81,17 +81,9 @@ struct ProjectSetupView: View {
     }
 
     private var columnsView: some View {
-        HStack(alignment: .top, spacing: Spacing.xl) {
+        OneToTwoColumns(spacing: Spacing.xl) {
             legendColumn
-            // this causes NSGenericException
-//                .containerRelativeFrame(.horizontal, count: 3, span: 1, spacing: Spacing.xl)
-                .frame(minWidth: 260, maxWidth: .infinity, alignment: .topLeading)
-                            .layoutPriority(1)
-
             floorPlanColumn
-//                .containerRelativeFrame(.horizontal, count: 3, span: 2, spacing: Spacing.xl)
-                .frame(minWidth: 520, maxWidth: .infinity, alignment: .topLeading)
-                            .layoutPriority(2)
         }
     }
 
@@ -147,6 +139,8 @@ struct ProjectSetupView: View {
                             blue: entry.color.blue,
                             opacity: 1.0
                         ),
+                        type: entry.type,
+                        onTypeChange: { viewModel.setLegendEntryType(id: entry.id, to: $0) },
                         onRemove: { viewModel.removeLegendEntry(id: entry.id) }
                     )
                 }
@@ -186,6 +180,7 @@ struct ProjectSetupView: View {
                 ForEach(Array(viewModel.planRows.enumerated()), id: \.element.id) { index, row in
                     PlanFileRow(
                         display: row,
+                        onEdit: { viewModel.editLayout(fileID: row.id) },
                         onDelete: { viewModel.deleteFloorPlan(id: row.id) },
                         onRetry: { viewModel.retryFloorPlan(id: row.id) }
                     )

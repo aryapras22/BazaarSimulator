@@ -6,25 +6,15 @@ struct InspectorFields: Sendable {
     var primarySizeTitle: String
     var sizeDetailText: String?
     var showsRotation: Bool
-    var showsStageFront: Bool
+    var showsHeight: Bool
 
     static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
         switch kind {
-        case .table:
-            return InspectorFields(showsRotation: true)
-        case .fixture:
-            return InspectorFields(showsLabel: true, showsRotation: true)
-        case .stage:
-            return InspectorFields(showsRotation: true, showsStageFront: true)
-        case .audienceArea:
-            return InspectorFields(showsLabel: true)
-        case .wall, .rail, .block:
-            return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true)
-        case .pillar:
-            return InspectorFields(showsSingleDimension: true, primarySizeTitle: "Diameter", sizeDetailText: nil)
+        case .wall, .block:
+            return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true)
-        case .booth, .door:
+        case .booth, .door, .table, .seating:
             return InspectorFields()
         }
     }
@@ -35,14 +25,14 @@ struct InspectorFields: Sendable {
         primarySizeTitle: String = "Size",
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
-        showsStageFront: Bool = false
+        showsHeight: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
         self.primarySizeTitle = primarySizeTitle
         self.sizeDetailText = sizeDetailText
         self.showsRotation = showsRotation
-        self.showsStageFront = showsStageFront
+        self.showsHeight = showsHeight
     }
 }
 
@@ -88,58 +78,29 @@ struct GenericInspector: View {
                 RotationControl(degrees: $draft.rotationDegrees)
             }
 
-            if fields.showsStageFront {
-                OpenSidesControl(
-                    sides: $draft.openSides,
-                    rotationDegrees: draft.rotationDegrees,
-                    allowsMultiple: false,
-                    title: "Front"
-                )
+            if fields.showsHeight {
+                HeightField(height: $draft.heightM)
             }
         }
     }
 }
 
-#Preview("Table Inspector") {
+#Preview("Block Inspector") {
     @Previewable @State var draft = InspectorDraft(
         object: LayoutObject(
-            kind: .table,
-            label: "T1",
-            placement: Placement(center: .init(10, 10), sizeM: .init(1, 1))
-        )
-    )
-    InspectorPanel(title: "Table T1") {
-        GenericInspector(
-            draft: $draft,
-            fields: .forKind(.table),
-            sizeRange: 0.5...50.0
-        )
-    } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
-    }
-    .padding()
-    .background(Palette.background)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Fixture Inspector") {
-    @Previewable @State var draft = InspectorDraft(
-        object: LayoutObject(
-            kind: .fixture,
-            label: "CLAW MACHINES",
+            kind: .block,
+            label: "Block 1",
             placement: Placement(center: .init(10, 10), sizeM: .init(4, 2))
         )
     )
-    InspectorPanel(title: "CLAW MACHINES") {
+    InspectorPanel(title: "Block") {
         GenericInspector(
             draft: $draft,
-            fields: .forKind(.fixture),
-            sizeRange: 0.5...50.0
+            fields: .forKind(.block),
+            sizeRange: 0.1...50.0
         )
     } footer: {
-        Button("Save Changes") {}
-            .buttonStyle(InspectorSaveButtonStyle())
+        EmptyView()
     }
     .padding()
     .background(Palette.background)
