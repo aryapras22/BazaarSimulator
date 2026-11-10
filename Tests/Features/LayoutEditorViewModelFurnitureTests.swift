@@ -18,14 +18,14 @@ struct LayoutEditorViewModelFurnitureTests {
         return nil
     }
 
-    @Test("The Booths library offers every standard table and the seating block, with seats for the tables")
+    @Test("The Booths library offers only the 4-seat rectangular table, with its seats")
     func libraryOffersStandardModels() {
         let context = LayoutEditorViewModelTests.makeContext()
         context.viewModel.selectLayer(.booths)
         let rows = context.viewModel.libraryRows.filter { $0.category == .furniture }
 
-        #expect(Set(rows.map(\.id)) == Set(FurnitureModels.tables.map(\.id) + [FurnitureModels.seatingBlockID]))
-        #expect(rows.filter { $0.id != FurnitureModels.seatingBlockID }.allSatisfy { !$0.seats.isEmpty })
+        #expect(rows.map(\.id) == ["table-rect-4"])
+        #expect(rows.allSatisfy { !$0.seats.isEmpty })
         context.viewModel.selectLayer(.structure)
         #expect(!context.viewModel.libraryRows.contains { $0.category == .furniture })
     }
