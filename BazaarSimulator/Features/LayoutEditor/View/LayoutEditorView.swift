@@ -47,6 +47,12 @@ struct LayoutEditorView: View {
             editorToolbar
         }
         .focusedSceneValue(\.editorCommandActions, commandActions)
+        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+            // Placed on the whole editor so Delete works after a click in the side panels; a text field being edited keeps it.
+            guard !(NSApp.keyWindow?.firstResponder is NSText) else { return .ignored }
+            viewModel.deleteCurrentSelection()
+            return .handled
+        }
         .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
             Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
@@ -231,10 +237,6 @@ extension LayoutEditorView {
 
     private func attachCanvasShortcuts(to content: some View) -> some View {
         content
-            .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                viewModel.deleteCurrentSelection()
-                return .handled
-            }
             .onKeyPress(.escape) { handleEscapeKey() }
             .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in switchPreset(.plan); return .handled }
             .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in switchPreset(.threeD); return .handled }
