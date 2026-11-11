@@ -171,7 +171,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     }
 
     private func spawnNewVisitors() {
-        let arrivalRate = max(0.001, settings.arrivalsPer15Min / 900.0)
+        let arrivalRate = max(0.001, settings.arrivalsPer15Min / 900.0 / meanPartySize)
         var spawnedThisStep = 0
         while metrics.elapsedSeconds >= nextArrivalTime && spawnedThisStep < 6 {
             if metrics.arrivals < settings.totalVisitors {
@@ -182,6 +182,21 @@ final class SimulationEngine: SimulationEngineProtocol {
             nextArrivalTime += rng.nextExponential(rate: arrivalRate)
             spawnedThisStep += 1
         }
+    }
+
+    /// `arrivalsPer15Min` counts people, while each arrival brings in a whole party.
+    private var meanPartySize: Double {
+        let largestGroup = Double(max(1, settings.maxGroupSize))
+        let familyMean = (min(2, largestGroup) + largestGroup) / 2
+        let otherMean = (1 + min(2, largestGroup)) / 2
+
+        let familyWeight = max(0, settings.familyWeight)
+        let totalWeight = max(0, settings.socializerWeight) + familyWeight
+            + max(0, settings.strollerWeight) + max(0, settings.buyerWeight)
+        guard totalWeight > 0 else { return otherMean }
+
+        let familyShare = familyWeight / totalWeight
+        return familyShare * familyMean + (1 - familyShare) * otherMean
     }
 
     private func createVisitor() -> SimulatedVisitor {

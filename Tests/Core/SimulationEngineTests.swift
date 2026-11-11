@@ -148,6 +148,16 @@ struct SimulationEngineTests {
         #expect(abs(walked - sixDiagonalsAndTwentyFourStraights) < 0.001)
     }
 
+    @Test("Arrivals follow the configured rate in people, whatever the party sizes")
+    func arrivalsMatchConfiguredPeopleRate() {
+        let settings = SimulationSettings(totalVisitors: 100_000, arrivalsPer15Min: 180.0, randomSeed: 42)
+        let engine = SimulationEngine(layout: PreviewLayouts.smallMarket(), settings: settings)
+
+        engine.fastForward(minutes: 60)
+
+        #expect((612...828).contains(engine.metrics.arrivals))
+    }
+
     private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
         Layout(
             name: "Open floor",
