@@ -160,6 +160,8 @@ final class ImportQueue: ImportQueueing {
         let page = try pdf.renderFirstPage(of: file.url)
         let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend)) ?? 0
         let chosen = readLegends[match]
+        let legendScoped = chosen.file.url.startAccessingSecurityScopedResource()
+        defer { if legendScoped { chosen.file.url.stopAccessingSecurityScopedResource() } }
         let legendPage = try pdf.renderFirstPage(of: chosen.file.url)
         let fileID = file.id
         return try await reader.readPlan(
