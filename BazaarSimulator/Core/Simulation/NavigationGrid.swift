@@ -83,7 +83,7 @@ struct NavigationGrid: Sendable {
         return center
     }
 
-    /// Finds a list of waypoints from `start` to `goal` using a cached grid search (BFS).
+    /// Finds the waypoints of the shortest route from `start` to `goal`, using a cached distance field per goal.
     mutating func findPath(from start: SIMD2<Double>, to goal: SIMD2<Double>) -> [SIMD2<Double>] {
         guard let startIndex = nearestWalkableIndex(to: start),
               let goalIndex = nearestWalkableIndex(to: goal) else {
@@ -212,33 +212,21 @@ extension NavigationGrid {
         }
 
         var distances = Array(repeating: -1, count: cols * rows)
-        var queue = [Int]()
-        queue.reserveCapacity(cols * rows / 2)
-
+        var frontier = CellHeap()
         distances[goalIndex] = 0
-        queue.append(goalIndex)
-        var head = 0
+        frontier.push(cost: 0, cell: goalIndex)
 
-        let offsets = [
-            (1, 0, 10), (-1, 0, 10), (0, 1, 10), (0, -1, 10),
-            (1, 1, 14), (1, -1, 14), (-1, 1, 14), (-1, -1, 14)
-        ]
+        while let (cost, current) = frontier.popMin() {
+            // A cell is pushed again each time a cheaper route to it appears, so older entries are stale.
+            guard cost == distances[current] else { continue }
 
-        while head < queue.count {
-            let current = queue[head]
-            head += 1
-            let col = current % cols
-            let row = current / cols
-
-            for (dCol, dRow, cost) in offsets {
-                let nextCol = col + dCol
-                let nextRow = row + dRow
-                guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { continue }
-                let nextIndex = nextRow * cols + nextCol
-                if !walkable[nextIndex] || distances[nextIndex] >= 0 { continue }
-
-                distances[nextIndex] = distances[current] + cost
-                queue.append(nextIndex)
+            for step in Self.neighborSteps {
+                guard let next = neighbor(of: current, by: step) else { continue }
+                let nextCost = cost + step.cost
+                if distances[next] < 0 || nextCost < distances[next] {
+                    distances[next] = nextCost
+                    frontier.push(cost: nextCost, cell: next)
+                }
             }
         }
 
@@ -247,28 +235,33 @@ extension NavigationGrid {
     }
 
     private func bestNeighbor(of index: Int, using distances: [Int]) -> Int? {
-        let col = index % cols
-        let row = index / cols
         var bestIndex: Int?
-        var bestDistance = distances[index]
+        var bestRouteCost = Int.max
 
-        let directions = [
-            (1, 0), (-1, 0), (0, 1), (0, -1),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
-        ]
-
-        for (dCol, dRow) in directions {
-            let nextCol = col + dCol
-            let nextRow = row + dRow
-            guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { continue }
-            let nextIndex = nextRow * cols + nextCol
-            let dist = distances[nextIndex]
-            if walkable[nextIndex] && dist >= 0 && dist < bestDistance {
-                bestDistance = dist
-                bestIndex = nextIndex
+        for step in Self.neighborSteps {
+            guard let next = neighbor(of: index, by: step), distances[next] >= 0 else { continue }
+            let routeCost = step.cost + distances[next]
+            if routeCost < bestRouteCost {
+                bestRouteCost = routeCost
+                bestIndex = next
             }
         }
         return bestIndex
+    }
+
+    private static let neighborSteps: [GridStep] = [
+        GridStep(dCol: 1, dRow: 0, cost: 10), GridStep(dCol: -1, dRow: 0, cost: 10),
+        GridStep(dCol: 0, dRow: 1, cost: 10), GridStep(dCol: 0, dRow: -1, cost: 10),
+        GridStep(dCol: 1, dRow: 1, cost: 14), GridStep(dCol: 1, dRow: -1, cost: 14),
+        GridStep(dCol: -1, dRow: 1, cost: 14), GridStep(dCol: -1, dRow: -1, cost: 14)
+    ]
+
+    private func neighbor(of index: Int, by step: GridStep) -> Int? {
+        let nextCol = index % cols + step.dCol
+        let nextRow = index / cols + step.dRow
+        guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { return nil }
+        let next = nextRow * cols + nextCol
+        return walkable[next] ? next : nil
     }
 
     private func simplifyWaypoints(_ points: [SIMD2<Double>]) -> [SIMD2<Double>] {
@@ -291,5 +284,46 @@ extension NavigationGrid {
             simplified.append(last)
         }
         return simplified
+    }
+}
+
+private struct GridStep {
+    let dCol: Int
+    let dRow: Int
+    let cost: Int
+}
+
+/// A binary min-heap of grid cells, ordered by walking cost.
+private struct CellHeap {
+    private var entries: [(cost: Int, cell: Int)] = []
+
+    mutating func push(cost: Int, cell: Int) {
+        entries.append((cost, cell))
+        var child = entries.count - 1
+        while child > 0 {
+            let parent = (child - 1) / 2
+            guard entries[child].cost < entries[parent].cost else { break }
+            entries.swapAt(child, parent)
+            child = parent
+        }
+    }
+
+    mutating func popMin() -> (cost: Int, cell: Int)? {
+        guard let smallest = entries.first else { return nil }
+        let last = entries.removeLast()
+        guard !entries.isEmpty else { return smallest }
+
+        entries[0] = last
+        var parent = 0
+        while 2 * parent + 1 < entries.count {
+            var child = 2 * parent + 1
+            if child + 1 < entries.count && entries[child + 1].cost < entries[child].cost {
+                child += 1
+            }
+            guard entries[child].cost < entries[parent].cost else { break }
+            entries.swapAt(parent, child)
+            parent = child
+        }
+        return smallest
     }
 }

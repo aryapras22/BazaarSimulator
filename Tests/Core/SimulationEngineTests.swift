@@ -133,4 +133,35 @@ struct SimulationEngineTests {
         #expect(result.metrics.peakDensity < 0.08)
         #expect(SimulationAnalysis.grade(for: result.metrics.peakDensity) == "A")
     }
+
+    @Test("findPath takes the shortest route around an obstacle")
+    func findPathIsShortestAroundObstacle() {
+        var grid = NavigationGrid(layout: Self.openFloor(blocks: [
+            (SIMD2<Double>(11, 12), SIMD2<Double>(4, 2))
+        ]))
+        let start = SIMD2<Double>(12.75, 18.75)
+
+        let path = grid.findPath(from: start, to: SIMD2<Double>(10.75, 3.75))
+
+        let walked = zip([start] + path, path).reduce(0.0) { $0 + simd_distance($1.0, $1.1) }
+        let sixDiagonalsAndTwentyFourStraights = (6 * 2.0.squareRoot() + 24) * grid.cellSize
+        #expect(abs(walked - sixDiagonalsAndTwentyFourStraights) < 0.001)
+    }
+
+    private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
+        Layout(
+            name: "Open floor",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: [],
+            lobby: [],
+            objects: blocks.map {
+                LayoutObject(kind: .block, label: "Block", placement: Placement(center: $0.center, sizeM: $0.size))
+            },
+            markers: [
+                LayoutMarker(kind: .spawn, label: "In", position: SIMD2<Double>(2, 2)),
+                LayoutMarker(kind: .exit, label: "Out", position: SIMD2<Double>(18, 2))
+            ],
+            zones: []
+        )
+    }
 }
