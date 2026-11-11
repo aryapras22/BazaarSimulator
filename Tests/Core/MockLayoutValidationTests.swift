@@ -20,6 +20,14 @@ struct MockLayoutValidationTests {
         #expect(LayoutValidator.issues(in: layout).isEmpty)
     }
 
+    @Test("More Market VI validates with no issues")
+    func moreMarketVIValidatesWithNoIssues() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "more-market-vi-layout")
+        let layout = MockLayoutMapper.layout(from: dto, legend: PreviewLayouts.sampleLegend)
+
+        #expect(LayoutValidator.issues(in: layout).isEmpty)
+    }
+
     @Test("Beyond validates with no issues")
     func beyondValidatesWithNoIssues() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
