@@ -223,6 +223,19 @@ struct SimulationEngineTests {
         #expect(path.isEmpty)
     }
 
+    @Test("Density cells add up to the number of people on the floor")
+    func densityConservesPeople() {
+        let engine = SimulationEngine(layout: Self.openFloor())
+        engine.visitors = [
+            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), partySize: 4)
+        ]
+
+        for _ in 0..<80 { engine.updateDensityCells() }
+
+        let peopleOnFloor = engine.densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
+        #expect(abs(peopleOnFloor - 4.0) < 0.05)
+    }
+
     private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
         Layout(
             name: "Open floor",

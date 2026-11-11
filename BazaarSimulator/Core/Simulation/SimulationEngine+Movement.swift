@@ -252,24 +252,27 @@ extension SimulationEngine {
         bucketCols: Int,
         bucketRows: Int
     ) -> [Int: Double] {
-        let effectiveAreaPerPerson = 28.0
-        let twoSigmaSq = 2.0 * 1.35 * 1.35
+        // This spread keeps one standing person at about 0.073 /m², inside grade A's limit of 0.08.
+        let twoSigmaSq = 2.0 * 1.5 * 1.5
+        var kernel: [(offset: SIMD2<Int>, weight: Double)] = []
+        for dRow in -3...3 {
+            for dCol in -3...3 {
+                kernel.append((SIMD2(dCol, dRow), exp(-Double(dCol * dCol + dRow * dRow) / twoSigmaSq)))
+            }
+        }
+        let kernelTotal = kernel.reduce(0.0) { $0 + $1.weight }
         var instantByCell: [Int: Double] = [:]
 
         for visitor in visitors {
             let col = Int(visitor.position.x / bucketSize)
             let row = Int(visitor.position.y / bucketSize)
-            let weight = Double(visitor.partySize)
+            let people = Double(visitor.partySize)
 
-            for dRow in -2...2 {
-                for dCol in -2...2 {
-                    let nCol = col + dCol
-                    let nRow = row + dRow
-                    guard nCol >= 0, nRow >= 0, nCol < bucketCols, nRow < bucketRows else { continue }
-                    let distSq = Double(dCol * dCol + dRow * dRow)
-                    let kernel = exp(-distSq / twoSigmaSq) / effectiveAreaPerPerson
-                    instantByCell[nRow * bucketCols + nCol, default: 0.0] += weight * kernel
-                }
+            for cell in kernel {
+                let nCol = col + cell.offset.x
+                let nRow = row + cell.offset.y
+                guard nCol >= 0, nRow >= 0, nCol < bucketCols, nRow < bucketRows else { continue }
+                instantByCell[nRow * bucketCols + nCol, default: 0.0] += people * cell.weight / kernelTotal
             }
         }
         return instantByCell
