@@ -6,6 +6,7 @@ enum VisitorState: String, Codable, CaseIterable, Hashable, Sendable {
     case walking
     case queueing
     case browsing
+    case seated
     case exiting
 
     var label: String {
@@ -13,27 +14,20 @@ enum VisitorState: String, Codable, CaseIterable, Hashable, Sendable {
         case .walking: return "Walking"
         case .queueing: return "Queueing"
         case .browsing: return "Browsing"
+        case .seated: return "Seated"
         case .exiting: return "Leaving"
         }
     }
 }
 
-/// Represents a single visitor (or small group) moving around the bazaar.
+/// One person walking the bazaar. An adult carrying a child stands for two people.
 struct SimulatedVisitor: Identifiable, Codable, Hashable, Sendable {
     var id: Int
     var persona: String
     var position: SIMD2<Double>
-    var heading: Double = 0
     var state: VisitorState = .walking
-    var partySize: Int = 1
-    var targetBoothID: UUID?
-    var visitedBoothIDs: [UUID] = []
-    var plannedStops: Int = 2
-    var speed: Double = 1.0
-    var timeInState: Double = 0
-    var stateDuration: Double = 20.0
+    var peopleCount: Int = 1
     var totalStaySeconds: Double = 0
-    var path: [SIMD2<Double>] = []
 }
 
 /// Summary numbers for the current simulation run.
@@ -165,7 +159,7 @@ struct EventParameters: Codable, Hashable, Sendable {
             startMinutesFromMidnight: startMinutes,
             simulationSpeed: 5.0,
             maxQueueLength: 6,
-            maxQueueWaitSeconds: 120.0,
+            maxQueueWaitSeconds: 270.0,
             randomSeed: 7,
             socializerWeight: socializerPercent,
             familyWeight: familyMemberPercent,
@@ -183,7 +177,7 @@ struct SimulationSettings: Codable, Hashable, Sendable {
     var startMinutesFromMidnight: Int = 600
     var simulationSpeed: Double = 5.0
     var maxQueueLength: Int = 6
-    var maxQueueWaitSeconds: Double = 120.0
+    var maxQueueWaitSeconds: Double = 270.0
     var randomSeed: UInt64 = 7
 
     var socializerWeight: Double = 25

@@ -120,10 +120,11 @@ final class ProjectSession: ProjectSessionProtocol {
     func runSimulations(for projectID: UUID) {
         guard let layouts = drafts[projectID]?.layouts, !layouts.isEmpty else { return }
         let settings = parameters(for: projectID).toSimulationSettings()
+        let legend = drafts[projectID]?.legend ?? Legend()
         var projectMap: [Layout.ID: SimulationResult] = [:]
 
         for layout in layouts {
-            let engine = SimulationEngine(layout: layout, settings: settings)
+            let engine = SimulationEngine(layout: layout, settings: settings, legend: legend)
             let result = engine.runWithRecordedFootage(
                 durationMinutes: settings.durationMinutes,
                 frameIntervalSeconds: 5.0

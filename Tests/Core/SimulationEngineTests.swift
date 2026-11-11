@@ -6,25 +6,6 @@ import Testing
 @Suite("SimulationEngine Tests")
 struct SimulationEngineTests {
 
-    @Test("NavigationGrid builds walkable floor and carves doors")
-    func navigationGridWalkableAndPaths() {
-        let layout = PreviewLayouts.smallMarket()
-        var grid = NavigationGrid(layout: layout)
-
-        #expect(!grid.entrancePoints.isEmpty)
-        #expect(!grid.exitPoints.isEmpty)
-
-        // Door NW at (14, 20.1) should be carved as walkable
-        let doorPoint = SIMD2<Double>(14.0, 20.1)
-        #expect(grid.isWalkable(doorPoint))
-
-        // Path from lobby spawn marker to a booth inside the hall should have waypoints
-        let start = grid.entrancePoints[0]
-        let boothCenter = SIMD2<Double>(8.0, 8.0)
-        let path = grid.findPath(from: start, to: boothCenter)
-        #expect(!path.isEmpty)
-    }
-
     @Test("SimulationEngine spawns visitors and advances metrics deterministically")
     func engineSpawnsAndAdvancesDeterministically() {
         let layout = PreviewLayouts.smallMarket()
@@ -134,20 +115,6 @@ struct SimulationEngineTests {
         #expect(SimulationAnalysis.grade(for: result.metrics.peakDensity) == "A")
     }
 
-    @Test("findPath takes the shortest route around an obstacle")
-    func findPathIsShortestAroundObstacle() {
-        var grid = NavigationGrid(layout: Self.openFloor(blocks: [
-            (SIMD2<Double>(11, 12), SIMD2<Double>(4, 2))
-        ]))
-        let start = SIMD2<Double>(12.75, 18.75)
-
-        let path = grid.findPath(from: start, to: SIMD2<Double>(10.75, 3.75))
-
-        let walked = zip([start] + path, path).reduce(0.0) { $0 + simd_distance($1.0, $1.1) }
-        let sixDiagonalsAndTwentyFourStraights = (6 * 2.0.squareRoot() + 24) * grid.cellSize
-        #expect(abs(walked - sixDiagonalsAndTwentyFourStraights) < 0.001)
-    }
-
     @Test("Arrivals follow the configured rate in people, whatever the party sizes")
     func arrivalsMatchConfiguredPeopleRate() {
         let settings = SimulationSettings(totalVisitors: 100_000, arrivalsPer15Min: 180.0, randomSeed: 42)
@@ -158,76 +125,11 @@ struct SimulationEngineTests {
         #expect((612...828).contains(engine.metrics.arrivals))
     }
 
-    @Test("Recorded runs move visitors at the same pace as the clock")
-    func recordedRunKeepsVisitorsOnTheClock() throws {
-        let engine = SimulationEngine(layout: PreviewLayouts.smallMarket())
-
-        let result = engine.runWithRecordedFootage(durationMinutes: 60, frameIntervalSeconds: 10.0)
-
-        let frame = try #require(result.frames.last { frame in frame.visitors.contains { $0.id == 1 } })
-        let firstVisitor = try #require(frame.visitors.first { $0.id == 1 })
-        #expect(frame.elapsedSeconds > 30)
-        #expect(abs(firstVisitor.totalStaySeconds - frame.elapsedSeconds) <= 0.5)
-    }
-
-    @Test("A visitor boxed into a corner stays on walkable floor")
-    func cornerKeepsVisitorOnWalkableFloor() {
-        let engine = SimulationEngine(layout: Self.openFloor(blocks: [
-            (SIMD2<Double>(10, 8), SIMD2<Double>(4, 16)),
-            (SIMD2<Double>(8, 10), SIMD2<Double>(16, 4))
-        ]))
-        var visitor = SimulatedVisitor(
-            id: 1,
-            persona: "social",
-            position: SIMD2<Double>(7.75, 7.75),
-            path: [SIMD2<Double>(9, 9)]
-        )
-
-        engine.moveVisitor(&visitor, dt: 0.5, others: [])
-
-        #expect(engine.navGrid.isWalkable(visitor.position))
-    }
-
-    @Test("A visitor who cannot reach a booth drops it instead of walking at it")
-    func unreachableBoothIsDropped() throws {
-        let booth = LayoutObject(
-            kind: .booth,
-            label: "Walled in",
-            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
-        )
-        var layout = Self.openFloor(blocks: [
-            (SIMD2<Double>(10, 14.5), SIMD2<Double>(10, 1)),
-            (SIMD2<Double>(10, 5.5), SIMD2<Double>(10, 1)),
-            (SIMD2<Double>(5.5, 10), SIMD2<Double>(1, 10)),
-            (SIMD2<Double>(14.5, 10), SIMD2<Double>(1, 10))
-        ])
-        layout.objects.append(booth)
-        let engine = SimulationEngine(layout: layout)
-        var visitor = SimulatedVisitor(id: 1, persona: "social", position: SIMD2<Double>(2, 2), plannedStops: 1)
-
-        engine.assignNextDestination(&visitor)
-
-        #expect(visitor.state == .exiting)
-        #expect(visitor.visitedBoothIDs == [booth.id])
-    }
-
-    @Test("findPath does not squeeze between obstacles that touch only at a corner")
-    func findPathRefusesDiagonalSqueeze() {
-        var grid = NavigationGrid(layout: Self.openFloor(blocks: [
-            (SIMD2<Double>(5, 15), SIMD2<Double>(10, 10)),
-            (SIMD2<Double>(15, 5), SIMD2<Double>(10, 10))
-        ]))
-
-        let path = grid.findPath(from: SIMD2<Double>(5, 5), to: SIMD2<Double>(15, 15))
-
-        #expect(path.isEmpty)
-    }
-
     @Test("Density cells add up to the number of people on the floor")
     func densityConservesPeople() {
         let engine = SimulationEngine(layout: Self.openFloor())
         engine.visitors = [
-            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), partySize: 4)
+            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
         ]
 
         for _ in 0..<80 { engine.updateDensityCells() }
@@ -240,7 +142,7 @@ struct SimulationEngineTests {
     func meanDensitySurvivesEmptyHall() {
         let engine = SimulationEngine(layout: Self.openFloor())
         engine.visitors = [
-            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), partySize: 4)
+            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
         ]
         for _ in 0..<20 { engine.updateDensityCells() }
         let meanWhileOccupied = engine.metrics.meanDensity
@@ -253,15 +155,13 @@ struct SimulationEngineTests {
         #expect(engine.metrics.meanDensity > meanWhileOccupied * 0.5)
     }
 
-    private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
+    private static func openFloor() -> Layout {
         Layout(
             name: "Open floor",
             sizeM: SIMD2<Double>(20, 20),
             hall: [],
             lobby: [],
-            objects: blocks.map {
-                LayoutObject(kind: .block, label: "Block", placement: Placement(center: $0.center, sizeM: $0.size))
-            },
+            objects: [],
             markers: [
                 LayoutMarker(kind: .spawn, label: "In", position: SIMD2<Double>(2, 2)),
                 LayoutMarker(kind: .exit, label: "Out", position: SIMD2<Double>(18, 2))

@@ -62,6 +62,7 @@ final class ProjectScreenFactory {
     func makeSimulationViewModel(projectID: UUID) -> SimulationViewModel {
         let session = services.projectSession
         let layouts = session.draft(for: projectID)?.layouts ?? []
+        let legend = session.draft(for: projectID)?.legend ?? Legend()
         let activeID = session.activeLayoutID(for: projectID)
         let layout = (activeID.flatMap { session.layout(id: $0, in: projectID) })
             ?? layouts.first
@@ -72,7 +73,7 @@ final class ProjectScreenFactory {
             layout: layout,
             availableLayouts: layouts,
             savedResult: savedResult,
-            engine: SimulationEngine(layout: layout, settings: settings),
+            makeEngine: { SimulationEngine(layout: $0, settings: settings, legend: legend) },
             onLayoutSelected: { [weak session] selectedID in
                 session?.setActiveLayoutID(selectedID, for: projectID)
             },

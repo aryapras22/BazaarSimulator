@@ -394,6 +394,7 @@ final class Venue2DScene: SKScene {
         case .walking: return .systemBlue
         case .queueing: return .systemOrange
         case .browsing: return .systemPurple
+        case .seated: return .systemTeal
         case .exiting: return .systemGreen
         }
     }

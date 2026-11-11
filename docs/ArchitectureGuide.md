@@ -179,7 +179,7 @@ BazaarSimulation/
 │   ├── Services/
 │   │   ├── PDFImportService.swift
 │   │   └── FloorPlanReading/            # Protocol, registry, four reader backends
-│   ├── Simulation/                      # Engine, SpawnScheduler, NavigationGrid, ZoneMap, MovementModel, MetricsCollector
+│   ├── Simulation/                      # Engine, CrowdSimulation, CrowdWorld, ZoneMap, MetricsCollector
 │   ├── Analysis/                        # AnalysisService, RecommendationBuilder
 │   ├── Session/
 │   │   └── ProjectSession.swift
@@ -312,9 +312,9 @@ protocol SimulationEngineProtocol: Sendable {
 ```
 
 *   Fixed time step and a seeded random generator: the same input and seed give the same run. That makes bugs reproducible and tests possible. It also means the 3D view and the Analysis show the same event, because Analysis calls `runToEnd()` and Simulation plays the run live.
-*   `MovementModel` is a protocol. Start simple (grid path following with local avoidance). A social-force or other model can replace it without touching the loop or any view.
-*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors and event hours into arrival times (a Poisson process at a steady rate). Each arrival draws a visitor type from the mix, comes as a party (a family of up to five, anyone else alone or as a pair), enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
-*   The layout becomes a `NavigationGrid` and a `ZoneMap` once, in `prepare`. `prepare` reports progress for the Preparing Layout screen. Editing while running is not supported. Stop, edit, prepare again.
+*   Every walking person is simulated. `CrowdSimulation` steps at 10 Hz: a leader follows the flow field of its target, followers keep a slot beside the leader, time-to-collision steering avoids neighbours and walls, and local density slows people down along the Weidmann curve. Parties decide every half second: planned booths are picked by food share and pull, a booth in view can draw a party off its plan, and strollers stop on the way. The values come from the crowd behaviour research and live in `CrowdParameters`.
+*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors and event hours into arrival times (a Poisson process at a steady rate). Each arrival draws a visitor type from the mix, comes as a party (a family of two adults with one or two kids, anyone else alone or with one or two friends), waits outside while the door is at its flow limit, enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
+*   The layout becomes a `CrowdWorld` and a `ZoneMap` once, in `prepare`. `CrowdWorld` holds the 0.25 m floor grid, distance to walls, one-way doors, and one routing field per target. `prepare` reports progress for the Preparing Layout screen. Editing while running is not supported. Stop, edit, prepare again.
 *   `ZoneMap` splits the walkable area into named zones (A to F in the Hi-Fi). The Hi-Fi does not say how zones are cut, so that is decided with the metrics research. A zone's risk level (low, medium, high) comes from its density against `RiskThresholds`, loaded from bundled JSON.
 
 Metrics follow the four Analysis tabs. Crowd Density is people per square metre per zone, shown as a risk level. Flow Rate is visitors per minute through the doors over the day, summarized as low, average, and peak. Congestion is where and for how long visitors are slowed or queue. Duration is how long a visitor needs to see everything. Footfall appears only as a 3D overlay and counts visits per cell. Exact definitions come from the metrics research, not from the Hi-Fi.
@@ -539,7 +539,7 @@ A type is too large when different methods use different subsets of its properti
 | Growing type | Split into |
 | ---| --- |
 | `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (field values being typed; a valid draft is applied at once). The view model orchestrates them |
-| `SimulationEngine` | `SpawnScheduler`, `NavigationGrid`, `ZoneMap`, `MovementModel`, `MetricsCollector` (already separate) |
+| `SimulationEngine` | `CrowdSimulation`, `CrowdWorld`, `ZoneMap`, `MetricsCollector` (already separate) |
 | `ParametersViewModel` | `MixEditor` (rescaling percentages to 100), `ParametersDraft` (form state held until Apply) |
 | `ProjectSetupViewModel` | `ImportQueue` (one file at a time, cancel) and a row state type per file |
 | Floor plan readers | `FloorPlanPrompt` and `ExtractedLayoutParser` shared by all four backends. Each backend only calls its model |
@@ -572,7 +572,7 @@ Initializers count too. Defaults are not counted by the linter, but they do not 
 | Symptom | Technique | Example in this app |
 | ---| ---| --- |
 | Values that always travel together. Test: delete one, and if the others lose their meaning, they are a clump | Introduce Parameter Object | `x, y, width, depth, rotation` become `Placement` |
-| Several values are read from one object you already have | Pass the whole object | `NavigationGrid(layout:cellSizeM:)` instead of width, depth, and objects |
+| Several values are read from one object you already have | Pass the whole object | `CrowdWorld(layout:legend:)` instead of width, depth, and objects |
 | The callee can find the value itself | Replace the parameter with a method call | The reader reads the scale from the page, so no `scale:` argument |
 | A Boolean flag or mode switches the behavior | Split into two functions, or use an enum | `ReadingRequest(... mode: .agentic)`, not a `useTools: true` flag |
 | Many optional tuning values | Options struct with defaults | `ReadingOptions`, `SimulationConfig` |

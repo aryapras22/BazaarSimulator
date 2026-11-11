@@ -100,6 +100,8 @@ struct Simulation3DSceneView: NSViewRepresentable {
             return NSColor.systemOrange
         case .browsing:
             return NSColor.systemPurple
+        case .seated:
+            return NSColor.systemTeal
         case .exiting:
             return NSColor.systemGreen
         }

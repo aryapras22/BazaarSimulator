@@ -31,6 +31,12 @@ struct SeededRandom: Sendable {
         return min(range.upperBound, range.lowerBound + offset)
     }
 
+    /// Returns a normally distributed value with mean 0 and standard deviation 1 (Box-Muller).
+    mutating func nextGaussian() -> Double {
+        let radius = (-2 * log(max(0.000_001, 1.0 - nextDouble()))).squareRoot()
+        return radius * cos(2 * Double.pi * nextDouble())
+    }
+
     /// Returns an exponentially distributed wait time for a given rate.
     mutating func nextExponential(rate: Double) -> Double {
         let safeRate = max(0.000_001, rate)
