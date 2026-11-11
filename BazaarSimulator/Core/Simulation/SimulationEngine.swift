@@ -176,11 +176,12 @@ final class SimulationEngine: SimulationEngineProtocol {
         }
     }
 
+    private static let largestParty = 5
+
     /// `arrivalsPer15Min` counts people, while each arrival brings in a whole party.
     private var meanPartySize: Double {
-        let largestGroup = Double(max(1, settings.maxGroupSize))
-        let familyMean = (min(2, largestGroup) + largestGroup) / 2
-        let otherMean = (1 + min(2, largestGroup)) / 2
+        let familyMean = (2 + Double(Self.largestParty)) / 2
+        let otherMean = 1.5
 
         let familyWeight = max(0, settings.familyWeight)
         let totalWeight = max(0, settings.socializerWeight) + familyWeight
@@ -199,7 +200,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         let startPos = entrance + jitter
 
         let remainingVisitors = max(1, settings.totalVisitors - metrics.arrivals)
-        let maxGroup = min(remainingVisitors, max(1, settings.maxGroupSize))
+        let maxGroup = min(remainingVisitors, Self.largestParty)
         let partySize = persona == "family"
             ? rng.randomInt(in: min(2, maxGroup)...maxGroup)
             : rng.randomInt(in: 1...min(2, maxGroup))

@@ -30,7 +30,6 @@ struct EditParameterView: View {
     @State private var strollerLocked: Bool = false
     @State private var purposeBuyerVal: Double = 0
     @State private var purposeBuyerLocked: Bool = false
-    @State private var maxGroupSize: Int = 5
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -44,8 +43,6 @@ struct EditParameterView: View {
             Divider().overlay(Palette.surfaceBorder)
             bazaarTypeSection
             visitorTypeSection
-            Divider().overlay(Palette.surfaceBorder)
-            groupSizeSection
             actionButtonsSection
         }
         .padding(.horizontal, 28)
@@ -205,15 +202,6 @@ struct EditParameterView: View {
         }
     }
 
-    private var groupSizeSection: some View {
-        formRow(title: "Group Size", subtitle: "Maximum visitors in a single group.") {
-            Picker("", selection: $maxGroupSize) {
-                ForEach(1...10, id: \.self) { size in Text("\(size)").tag(size) }
-            }
-            .pickerStyle(.menu).frame(width: 90)
-        }
-    }
-
     private var actionButtonsSection: some View {
         HStack(spacing: 12) {
             Spacer()
@@ -350,7 +338,6 @@ struct EditParameterView: View {
         familyMemberVal = params.familyMemberPercent
         strollerVal = params.strollerPercent
         purposeBuyerVal = params.purposeBuyerPercent
-        maxGroupSize = params.maxGroupSize
     }
 
     private func applyBazaarPreset(_ preset: String) {
@@ -403,8 +390,7 @@ struct EditParameterView: View {
             socializerPercent: socializerVal,
             familyMemberPercent: familyMemberVal,
             strollerPercent: strollerVal,
-            purposeBuyerPercent: purposeBuyerVal,
-            maxGroupSize: maxGroupSize
+            purposeBuyerPercent: purposeBuyerVal
         )
         session.setParameters(updated, for: projectID)
         session.runSimulations(for: projectID)

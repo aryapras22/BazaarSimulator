@@ -150,8 +150,6 @@ struct EventParameters: Codable, Hashable, Sendable {
     var strollerPercent: Double = 33
     var purposeBuyerPercent: Double = 0
 
-    var maxGroupSize: Int = 5
-
     var durationMinutes: Int {
         if endMinutes > startMinutes {
             return endMinutes - startMinutes
@@ -179,8 +177,7 @@ struct EventParameters: Codable, Hashable, Sendable {
             socializerWeight: socializerPercent,
             familyWeight: familyMemberPercent,
             strollerWeight: strollerPercent,
-            buyerWeight: purposeBuyerPercent,
-            maxGroupSize: max(1, maxGroupSize)
+            buyerWeight: purposeBuyerPercent
         )
     }
 }
@@ -200,7 +197,6 @@ struct SimulationSettings: Codable, Hashable, Sendable {
     var familyWeight: Double = 25
     var strollerWeight: Double = 25
     var buyerWeight: Double = 25
-    var maxGroupSize: Int = 4
 }
 
 /// A recorded snapshot of the simulation at a specific timestamp for footage playback.
