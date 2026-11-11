@@ -14,7 +14,7 @@ protocol SimulationEngineProtocol: AnyObject {
     func reset()
     func advance(realSeconds: Double, speed: Double)
     func fastForward(minutes: Int)
-    func runWithRecordedFootage(durationMinutes: Int, frameIntervalSeconds: Double) -> SimulationResult
+    func runWithRecordedFootage(durationMinutes: Int, frameIntervalSeconds: Double) async -> SimulationResult
 }
 
 /// Runs the crowd model on one layout with a fixed step, and turns it into visitors, metrics and heatmaps.
@@ -29,7 +29,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     var settings: SimulationSettings
 
     var peakCellsByID: [Int: DensityCell] = [:]
-    var smoothedDensityByCell: [Int: Double] = [:]
+    var smoothedDensity: [Double] = []
     var occupiedDensityUpdates = 0
 
     // Building the world is the expensive part, and a saved run never needs it.
@@ -37,6 +37,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     private var crowd: CrowdSimulation?
     private var accumulatedTime = 0.0
     private var nextDensityUpdate = 0.0
+    private static let stepsBetweenYields = 256
 
     init(layout: Layout, settings: SimulationSettings = SimulationSettings(), legend: Legend = Legend()) {
         self.layout = layout
@@ -57,7 +58,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         metrics = SimulationMetrics()
         densityCells = []
         peakCellsByID = [:]
-        smoothedDensityByCell = [:]
+        smoothedDensity = []
         occupiedDensityUpdates = 0
         accumulatedTime = 0.0
         nextDensityUpdate = 0.0
@@ -84,28 +85,39 @@ final class SimulationEngine: SimulationEngineProtocol {
     }
 
     /// Runs a full event and saves heatmap cells and footage frames.
+    /// Yields regularly so the window stays responsive, and stops early when its task is cancelled.
     func runWithRecordedFootage(
         durationMinutes: Int = 0,
         frameIntervalSeconds: Double = 5.0
-    ) -> SimulationResult {
+    ) async -> SimulationResult {
         reset()
         let targetMinutes = durationMinutes > 0 ? durationMinutes : max(1, settings.durationMinutes)
         let totalSteps = targetMinutes * 60 * CrowdParameters.stepsPerSecond
         let stepsPerFrame = max(1, Int(frameIntervalSeconds * Double(CrowdParameters.stepsPerSecond)))
+        // Frames between heatmap refreshes share one array, which keeps an 11-hour recording small.
+        let stepsPerHeatmap = 30 * CrowdParameters.stepsPerSecond
+        var recordedHeatmap: [DensityCell] = []
         var frames: [SimulationFrame] = []
 
         for stepIndex in 1...totalSteps {
             step()
             if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
                 publishCrowdState()
+                if stepIndex % stepsPerHeatmap < stepsPerFrame || stepIndex == totalSteps {
+                    recordedHeatmap = densityCells
+                }
                 frames.append(
                     SimulationFrame(
                         elapsedSeconds: metrics.elapsedSeconds,
                         visitors: visitors,
-                        densityCells: densityCells,
+                        densityCells: recordedHeatmap,
                         metrics: metrics
                     )
                 )
+            }
+            if stepIndex % Self.stepsBetweenYields == 0 {
+                await Task.yield()
+                if Task.isCancelled { break }
             }
         }
 

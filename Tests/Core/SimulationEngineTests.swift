@@ -28,11 +28,11 @@ struct SimulationEngineTests {
     }
 
     @Test("SimulationEngine records simulation footage frames and heatmap cells")
-    func engineRecordsSimulationFootageAndHeatmap() {
+    func engineRecordsSimulationFootageAndHeatmap() async {
         let layout = PreviewLayouts.smallMarket()
         let engine = SimulationEngine(layout: layout)
 
-        let result = engine.runWithRecordedFootage(durationMinutes: 3, frameIntervalSeconds: 10.0)
+        let result = await engine.runWithRecordedFootage(durationMinutes: 3, frameIntervalSeconds: 10.0)
 
         #expect(result.layoutID == layout.id)
         #expect(!result.frames.isEmpty)
@@ -97,7 +97,7 @@ struct SimulationEngineTests {
     }
 
     @Test("Single visitor stays in Fruin Severity A (< 0.08 people/m²) and duration matches parameters")
-    func singleVisitorStaysGradeAAndDurationMatches() {
+    func singleVisitorStaysGradeAAndDurationMatches() async {
         let layout = PreviewLayouts.smallMarket()
         let params = EventParameters(
             totalVisitors: 1,
@@ -106,7 +106,7 @@ struct SimulationEngineTests {
         )
         let settings = params.toSimulationSettings()
         let engine = SimulationEngine(layout: layout, settings: settings)
-        let result = engine.runWithRecordedFootage(durationMinutes: settings.durationMinutes, frameIntervalSeconds: 30.0)
+        let result = await engine.runWithRecordedFootage(durationMinutes: settings.durationMinutes, frameIntervalSeconds: 30.0)
 
         #expect(result.durationSeconds == 14_400.0)
         #expect(result.frames.last?.elapsedSeconds == 14_400.0)

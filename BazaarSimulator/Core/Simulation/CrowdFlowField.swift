@@ -58,7 +58,6 @@ private struct CrowdCostHeap {
 }
 
 extension CrowdWorld {
-    private static let maxCachedFields = 170
     private static let lookAheadCells = 4
     private static let neighborSteps: [(col: Int, row: Int)] = [
         (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)
@@ -70,10 +69,6 @@ extension CrowdWorld {
         let blocked = target == .exit ? outboundBlocked : inboundBlocked
         let field = makeField(sources: sourceCells(for: target), blocked: blocked)
         fieldCache[target] = field
-        fieldCacheOrder.append(target)
-        if fieldCacheOrder.count > Self.maxCachedFields {
-            fieldCache[fieldCacheOrder.removeFirst()] = nil
-        }
         return field
     }
 

@@ -79,7 +79,6 @@ final class CrowdWorld {
     var gateWidths: [Double] = []
     var exits: [SIMD2<Double>]
     var fieldCache: [CrowdFlowTarget: CrowdFlowField] = [:]
-    var fieldCacheOrder: [CrowdFlowTarget] = []
 
     init(layout: Layout, legend: Legend = Legend()) {
         self.layout = layout
