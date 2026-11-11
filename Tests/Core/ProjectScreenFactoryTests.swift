@@ -72,7 +72,7 @@ struct ProjectScreenFactoryTests {
 
         let moreMarket = try #require(services.projectSession.projects.first { $0.name == "More Market" })
         let moreMarketDraft = try #require(services.projectSession.draft(for: moreMarket.id))
-        #expect(moreMarketDraft.layouts.count == 2)
+        #expect(moreMarketDraft.layouts.count == 7)
         #expect(moreMarketDraft.layouts.allSatisfy { !$0.objects.isEmpty })
     }
 
