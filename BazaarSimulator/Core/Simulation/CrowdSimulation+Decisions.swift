@@ -1,7 +1,7 @@
 import Foundation
 import simd
 
-extension CrowdSimulation {
+nonisolated extension CrowdSimulation {
     // MARK: - Choosing where to go
 
     func pickTarget(_ party: CrowdParty) {
@@ -97,9 +97,8 @@ extension CrowdSimulation {
         if party.isGoalDriven {
             guard case .booth(let planned, .planned) = party.target,
                   party.detours < CrowdParameters.maxDetours,
-                  let best = bestVisibleBooth(for: party),
-                  best != planned,
-                  world.booths[best].pull > party.loyalty else { return }
+                  let best = bestVisibleBooth(for: party, strongerThan: party.loyalty),
+                  best != planned else { return }
             party.plan.removeAll { $0 == planned }
             party.target = .booth(best, .detour)
             party.detours += 1
@@ -287,12 +286,14 @@ extension CrowdSimulation {
     // MARK: - Vision
 
     /// A booth is seen when part of its influence circle is inside the view cone with a clear line of sight.
-    func bestVisibleBooth(for party: CrowdParty) -> Int? {
+    func bestVisibleBooth(for party: CrowdParty, strongerThan minimumPull: Double = 0) -> Int? {
         let leaderPosition = party.leader.position
         var best: (booth: Int, reach: Double)?
 
         for booth in world.booths.indices
-        where world.booths[booth].isReachable(fromGate: party.gate) && !party.visited.contains(booth) {
+        where world.booths[booth].pull > minimumPull
+            && world.booths[booth].isReachable(fromGate: party.gate)
+            && !party.visited.contains(booth) {
             guard let reach = visibleReach(of: booth, from: leaderPosition, heading: party.heading) else { continue }
             guard let current = best else {
                 best = (booth, reach)

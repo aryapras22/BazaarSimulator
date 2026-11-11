@@ -1,7 +1,7 @@
 import Foundation
 
 /// A simple deterministic random number generator so simulation runs are repeatable.
-struct SeededRandom: Sendable {
+nonisolated struct SeededRandom: Sendable {
     private var state: UInt64
 
     init(seed: UInt64) {

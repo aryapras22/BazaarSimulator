@@ -2,7 +2,7 @@
 
 ## What it is
 
-A local avoidance method. Each person considers a small set of possible velocities, predicts how soon each one would run into a neighbour, and picks the cheapest. `CrowdSimulation+Movement.swift` uses it after the flow field has said where the person wants to go.
+A local avoidance method. Each person considers a small set of possible velocities, predicts how soon each one would run into a neighbour, and picks the cheapest. `CrowdSteeringPass.swift` uses it after the flow field has said where the person wants to go.
 
 ## Why this and not a repulsion force
 

@@ -174,7 +174,7 @@ struct CrowdSimulationTests {
         let start = SIMD2(10.0, 10.75)
         agent.position = SIMD2(10.0, 10.25)
 
-        simulation.applyDoorRule(to: agent, from: start)
+        simulation.applyDoorRule(position: &agent.position, velocity: &agent.velocity, from: start)
 
         #expect(agent.position.y == start.y)
     }

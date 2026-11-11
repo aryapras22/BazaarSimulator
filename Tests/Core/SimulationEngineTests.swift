@@ -129,7 +129,7 @@ struct SimulationEngineTests {
     func densityConservesPeople() {
         let engine = SimulationEngine(layout: Self.openFloor())
         engine.visitors = [
-            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
+            SimulatedVisitor(id: 1, position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
         ]
 
         for _ in 0..<80 { engine.updateDensityCells() }
@@ -142,7 +142,7 @@ struct SimulationEngineTests {
     func meanDensitySurvivesEmptyHall() {
         let engine = SimulationEngine(layout: Self.openFloor())
         engine.visitors = [
-            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
+            SimulatedVisitor(id: 1, position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
         ]
         for _ in 0..<20 { engine.updateDensityCells() }
         let meanWhileOccupied = engine.metrics.meanDensity

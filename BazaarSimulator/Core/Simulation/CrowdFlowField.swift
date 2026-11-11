@@ -1,7 +1,7 @@
 import Foundation
 import simd
 
-enum CrowdFlowTarget: Hashable {
+nonisolated enum CrowdFlowTarget: Hashable {
     case exit
     case gate(Int)
     case booth(Int)
@@ -9,7 +9,7 @@ enum CrowdFlowTarget: Hashable {
 }
 
 /// For every cell, the walking cost to one target and the direction to walk.
-final class CrowdFlowField {
+nonisolated final class CrowdFlowField {
     let costs: [Float]
     private let directions: [Int8]
 
@@ -23,7 +23,7 @@ final class CrowdFlowField {
     }
 }
 
-private struct CrowdCostHeap {
+private nonisolated struct CrowdCostHeap {
     private var entries: [(cost: Float, cell: Int)] = []
 
     mutating func push(cost: Float, cell: Int) {
@@ -57,7 +57,7 @@ private struct CrowdCostHeap {
     }
 }
 
-extension CrowdWorld {
+nonisolated extension CrowdWorld {
     private static let lookAheadCells = 4
     private static let neighborSteps: [(col: Int, row: Int)] = [
         (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)
@@ -117,7 +117,8 @@ extension CrowdWorld {
                 // A person may leave a one-way door cell but may not step into one from open floor.
                 if blocked[current] && !blocked[next] { continue }
                 let length: Float = stepIndex < 4 ? 1.0 : 1.4142135
-                let nextCost = cost + length * Float(Self.cellSize) * (1 + Self.wallPenalty(wallDistances[next]))
+                let penalty = Self.wallPenalty(walls.wallDistances[next])
+                let nextCost = cost + length * Float(Self.cellSize) * (1 + penalty)
                 if nextCost < costs[next] {
                     costs[next] = nextCost
                     frontier.push(cost: nextCost, cell: next)
@@ -128,7 +129,7 @@ extension CrowdWorld {
     }
 
     private func nextCell(from cell: Int, costs: [Float], blocked: [Bool]) -> Int {
-        guard floor[cell], costs[cell].isFinite else { return -1 }
+        guard walls.floor[cell], costs[cell].isFinite else { return -1 }
         var best = costs[cell]
         var bestCell = -1
         for stepIndex in Self.neighborSteps.indices {
@@ -150,7 +151,7 @@ extension CrowdWorld {
         let nextRow = row + step.row
         guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { return nil }
         // Both side cells must be open too, or a diagonal would cut through a corner.
-        guard floor[nextRow * cols + nextCol], floor[row * cols + nextCol], floor[nextRow * cols + col] else {
+        guard walls.floor[nextRow * cols + nextCol], walls.floor[row * cols + nextCol], walls.floor[nextRow * cols + col] else {
             return nil
         }
         return nextRow * cols + nextCol

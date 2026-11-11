@@ -2,7 +2,7 @@ import Foundation
 import simd
 
 /// Represents what a simulated visitor is currently doing in the venue.
-enum VisitorState: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum VisitorState: String, Codable, CaseIterable, Hashable, Sendable {
     case walking
     case queueing
     case browsing
@@ -21,17 +21,15 @@ enum VisitorState: String, Codable, CaseIterable, Hashable, Sendable {
 }
 
 /// One person walking the bazaar. An adult carrying a child stands for two people.
-struct SimulatedVisitor: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct SimulatedVisitor: Identifiable, Codable, Hashable, Sendable {
     var id: Int
-    var persona: String
     var position: SIMD2<Double>
     var state: VisitorState = .walking
-    var peopleCount: Int = 1
-    var totalStaySeconds: Double = 0
+    var peopleCount: UInt8 = 1
 }
 
 /// Summary numbers for the current simulation run.
-struct SimulationMetrics: Codable, Hashable, Sendable {
+nonisolated struct SimulationMetrics: Codable, Hashable, Sendable {
     var elapsedSeconds: Double = 0
     var arrivals: Int = 0
     var departed: Int = 0
@@ -44,7 +42,7 @@ struct SimulationMetrics: Codable, Hashable, Sendable {
 }
 
 /// A 1m x 1m floor cell used to visualize local crowd density (people/m²) in the venue.
-struct DensityCell: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct DensityCell: Identifiable, Codable, Hashable, Sendable {
     var id: Int
     var center: SIMD2<Double>
     var peoplePerSquareMetre: Double
@@ -170,7 +168,7 @@ struct EventParameters: Codable, Hashable, Sendable {
 }
 
 /// Basic settings that control how the simulation engine runs.
-struct SimulationSettings: Codable, Hashable, Sendable {
+nonisolated struct SimulationSettings: Codable, Hashable, Sendable {
     var totalVisitors: Int = 600
     var arrivalsPer15Min: Double = 180.0
     var durationMinutes: Int = 660
@@ -187,7 +185,7 @@ struct SimulationSettings: Codable, Hashable, Sendable {
 }
 
 /// A recorded snapshot of the simulation at a specific timestamp for footage playback.
-struct SimulationFrame: Codable, Hashable, Sendable {
+nonisolated struct SimulationFrame: Codable, Hashable, Sendable {
     var elapsedSeconds: Double
     var visitors: [SimulatedVisitor]
     var densityCells: [DensityCell]
@@ -195,7 +193,7 @@ struct SimulationFrame: Codable, Hashable, Sendable {
 }
 
 /// Saved result of running a simulation on a layout, including heatmap data and recorded footage.
-struct SimulationResult: Codable, Hashable, Sendable {
+nonisolated struct SimulationResult: Codable, Hashable, Sendable {
     var layoutID: UUID
     var layoutName: String
     var durationSeconds: Double = 39_600

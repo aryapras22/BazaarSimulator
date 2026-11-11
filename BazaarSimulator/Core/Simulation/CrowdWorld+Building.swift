@@ -55,7 +55,7 @@ extension CrowdWorld {
 
     func buildFloor() {
         for cell in 0..<cellCount {
-            floor[cell] = isOnFloorPlan(cellCenter(cell))
+            walls.floor[cell] = isOnFloorPlan(cellCenter(cell))
         }
         // The half-cell tolerance stops a wall thinner than a cell from slipping between cell centres.
         for object in layout.objects where object.kind.blocksWalking && object.kind != .booth {
@@ -95,7 +95,7 @@ extension CrowdWorld {
         let reach = simd_length(placement.sizeM) / 2 + tolerance + Self.cellSize
         for cell in cellsInBox(around: placement.center, reach: reach)
         where LayoutGeometry.contains(placement, point: cellCenter(cell), tolerance: tolerance) {
-            floor[cell] = value
+            walls.floor[cell] = value
         }
     }
 
@@ -110,15 +110,15 @@ extension CrowdWorld {
         let toObstacle = chamferDistances(toCellsWhereFloorIs: false, cap: 11)
         let toFloor = chamferDistances(toCellsWhereFloorIs: true, cap: 6)
         for cell in 0..<cellCount {
-            let cells = floor[cell] ? toObstacle[cell] : toFloor[cell]
+            let cells = walls.floor[cell] ? toObstacle[cell] : toFloor[cell]
             let metres = max(0, cells * Float(Self.cellSize) - Float(Self.cellSize) / 2)
-            wallDistances[cell] = floor[cell] ? metres : -(metres + 0.001)
+            walls.wallDistances[cell] = walls.floor[cell] ? metres : -(metres + 0.001)
         }
     }
 
     /// Distance in cells to the nearest target cell, using a forward and a backward sweep.
     private func chamferDistances(toCellsWhereFloorIs target: Bool, cap: Float) -> [Float] {
-        var distances = floor.map { $0 == target ? Float(0) : cap }
+        var distances = walls.floor.map { $0 == target ? Float(0) : cap }
         let diagonal: Float = 1.4142135
         for cell in 0..<cellCount {
             let col = cell % cols
@@ -178,7 +178,7 @@ extension CrowdWorld {
             : SIMD2(size.x + 0.25, carved.y + 0.5)
         let reach = simd_length(band.sizeM) / 2 + Self.cellSize
         return cellsInBox(around: band.center, reach: reach).filter {
-            floor[$0] && LayoutGeometry.contains(band, point: cellCenter($0))
+            walls.floor[$0] && LayoutGeometry.contains(band, point: cellCenter($0))
         }
     }
 
@@ -208,7 +208,7 @@ extension CrowdWorld {
     func buildCornerSlowdown() {
         let radius = CrowdParameters.cornerRadius
         for corner in innerHallCorners() {
-            for cell in cellsInBox(around: corner, reach: radius) where floor[cell] {
+            for cell in cellsInBox(around: corner, reach: radius) where walls.floor[cell] {
                 let distance = simd_distance(cellCenter(cell), corner)
                 guard distance < radius else { continue }
                 cornerWeights[cell] = max(cornerWeights[cell], Float(1 - distance / radius))

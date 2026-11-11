@@ -2,7 +2,7 @@ import Foundation
 import simd
 
 /// Visitor behaviour on one layout: who arrives, what they decide and how they move.
-final class CrowdSimulation {
+nonisolated final class CrowdSimulation {
     let world: CrowdWorld
     let totalVisitors: Int
     let maxQueueLength: Int
@@ -23,7 +23,6 @@ final class CrowdSimulation {
     var traitRandom: SeededRandom
     var choiceRandom: SeededRandom
     var spatialHash: CrowdSpatialHash
-    var neighbors: [CrowdNeighbor] = []
 
     private var nextArrival = 0.0
     private var drawnPeople = 0
@@ -76,12 +75,21 @@ final class CrowdSimulation {
         agents.map { agent in
             SimulatedVisitor(
                 id: agent.id,
-                persona: agent.party.persona.key,
                 position: agent.position,
                 state: Self.visitorState(of: agent.party),
-                peopleCount: Int(agent.weight),
-                totalStaySeconds: time - agent.party.enteredAt
+                peopleCount: UInt8(agent.weight)
             )
+        }
+    }
+
+    func copyCounts(into metrics: inout SimulationMetrics) {
+        metrics.arrivals = stats.enteredPeople
+        metrics.departed = stats.departedPeople
+        metrics.peopleInside = peopleInside
+        metrics.totalVisits = stats.visits
+        metrics.queueBalks = stats.balks
+        if stats.departedPeople > 0 {
+            metrics.averageStaySeconds = stats.staySeconds / Double(stats.departedPeople)
         }
     }
 

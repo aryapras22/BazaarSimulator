@@ -1,33 +1,33 @@
 import Foundation
 import simd
 
-enum CrowdPartyKind {
+nonisolated enum CrowdPartyKind {
     case alone
     case friends
     case family
 }
 
-enum CrowdPartyState {
+nonisolated enum CrowdPartyState {
     case walking
     case queueing
     case visiting
     case seated
 }
 
-enum CrowdVisitReason {
+nonisolated enum CrowdVisitReason {
     case planned
     case detour
     case stopover
     case passingThrough
 }
 
-enum CrowdTarget {
+nonisolated enum CrowdTarget {
     case booth(Int, CrowdVisitReason)
     case table(Int)
     case exit
 }
 
-struct CrowdPartyDraw {
+nonisolated struct CrowdPartyDraw {
     let persona: CrowdPersona
     let kind: CrowdPartyKind
     let adults: Int
@@ -38,7 +38,7 @@ struct CrowdPartyDraw {
     var walkers: Int { people - carried }
 }
 
-struct CrowdStats {
+nonisolated struct CrowdStats {
     var enteredPeople = 0
     var departedPeople = 0
     var visits = 0
@@ -47,7 +47,7 @@ struct CrowdStats {
 }
 
 /// One walking body on the floor. An adult carrying a child counts as two people.
-final class CrowdAgent {
+nonisolated final class CrowdAgent {
     let id: Int
     unowned let party: CrowdParty
     let slotIndex: Int
@@ -58,6 +58,7 @@ final class CrowdAgent {
     var velocity = SIMD2<Double>.zero
     var isSeated = false
     var positionBeforeSeat = SIMD2<Double>.zero
+    var bodyIndex = 0
 
     init(
         id: Int,
@@ -78,7 +79,7 @@ final class CrowdAgent {
 }
 
 /// One visitor, friends or a family, moving and deciding together. The first member leads.
-final class CrowdParty {
+nonisolated final class CrowdParty {
     let id: Int
     let persona: CrowdPersona
     let gate: Int
@@ -134,7 +135,7 @@ final class CrowdParty {
 }
 
 /// Finds nearby agents without comparing every pair.
-struct CrowdSpatialHash {
+nonisolated struct CrowdSpatialHash {
     static let binSize = 1.5
 
     private let cols: Int
@@ -153,13 +154,13 @@ struct CrowdSpatialHash {
         (min(cols - 1, max(0, Int(point.x / Self.binSize))), min(rows - 1, max(0, Int(point.y / Self.binSize))))
     }
 
-    mutating func rebuild(with agents: [CrowdAgent]) {
+    mutating func rebuild(with bodies: [CrowdBody]) {
         for bin in occupiedBins { heads[bin] = -1 }
         occupiedBins.removeAll(keepingCapacity: true)
-        nexts = Array(repeating: -1, count: agents.count)
+        nexts = Array(repeating: -1, count: bodies.count)
 
-        for (index, agent) in agents.enumerated() {
-            let (col, row) = binCoordinates(of: agent.position)
+        for (index, body) in bodies.enumerated() {
+            let (col, row) = binCoordinates(of: body.position)
             let bin = row * cols + col
             if heads[bin] < 0 { occupiedBins.append(bin) }
             nexts[index] = heads[bin]
@@ -168,6 +169,7 @@ struct CrowdSpatialHash {
     }
 
     /// Calls `body` with every agent index in the 3 by 3 bins around `point`.
+    @inline(__always)
     func forEachNearby(_ point: SIMD2<Double>, body: (Int) -> Void) {
         let (col, row) = binCoordinates(of: point)
         for nearRow in max(0, row - 1)...min(rows - 1, row + 1) {

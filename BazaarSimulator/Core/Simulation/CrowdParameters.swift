@@ -1,6 +1,6 @@
 import Foundation
 
-struct CrowdPersona {
+nonisolated struct CrowdPersona: Sendable {
     let key: String
     let isFamily: Bool
     let aloneChance: Double
@@ -16,7 +16,7 @@ struct CrowdPersona {
 }
 
 /// Values from the crowd behaviour research. Comments mark the ones that are assumptions.
-enum CrowdParameters {
+nonisolated enum CrowdParameters {
     static let stepsPerSecond = 10
     static let stepSeconds = 1.0 / Double(stepsPerSecond)
     static let thinkInterval = 0.5
