@@ -170,6 +170,59 @@ struct SimulationEngineTests {
         #expect(abs(firstVisitor.totalStaySeconds - frame.elapsedSeconds) <= 0.5)
     }
 
+    @Test("A visitor boxed into a corner stays on walkable floor")
+    func cornerKeepsVisitorOnWalkableFloor() {
+        let engine = SimulationEngine(layout: Self.openFloor(blocks: [
+            (SIMD2<Double>(10, 8), SIMD2<Double>(4, 16)),
+            (SIMD2<Double>(8, 10), SIMD2<Double>(16, 4))
+        ]))
+        var visitor = SimulatedVisitor(
+            id: 1,
+            persona: "social",
+            position: SIMD2<Double>(7.75, 7.75),
+            path: [SIMD2<Double>(9, 9)]
+        )
+
+        engine.moveVisitor(&visitor, dt: 0.5, others: [])
+
+        #expect(engine.navGrid.isWalkable(visitor.position))
+    }
+
+    @Test("A visitor who cannot reach a booth drops it instead of walking at it")
+    func unreachableBoothIsDropped() throws {
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "Walled in",
+            placement: Placement(center: SIMD2<Double>(10, 10), sizeM: SIMD2<Double>(2, 2))
+        )
+        var layout = Self.openFloor(blocks: [
+            (SIMD2<Double>(10, 14.5), SIMD2<Double>(10, 1)),
+            (SIMD2<Double>(10, 5.5), SIMD2<Double>(10, 1)),
+            (SIMD2<Double>(5.5, 10), SIMD2<Double>(1, 10)),
+            (SIMD2<Double>(14.5, 10), SIMD2<Double>(1, 10))
+        ])
+        layout.objects.append(booth)
+        let engine = SimulationEngine(layout: layout)
+        var visitor = SimulatedVisitor(id: 1, persona: "social", position: SIMD2<Double>(2, 2), plannedStops: 1)
+
+        engine.assignNextDestination(&visitor)
+
+        #expect(visitor.state == .exiting)
+        #expect(visitor.visitedBoothIDs == [booth.id])
+    }
+
+    @Test("findPath does not squeeze between obstacles that touch only at a corner")
+    func findPathRefusesDiagonalSqueeze() {
+        var grid = NavigationGrid(layout: Self.openFloor(blocks: [
+            (SIMD2<Double>(5, 15), SIMD2<Double>(10, 10)),
+            (SIMD2<Double>(15, 5), SIMD2<Double>(10, 10))
+        ]))
+
+        let path = grid.findPath(from: SIMD2<Double>(5, 5), to: SIMD2<Double>(15, 15))
+
+        #expect(path.isEmpty)
+    }
+
     private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
         Layout(
             name: "Open floor",

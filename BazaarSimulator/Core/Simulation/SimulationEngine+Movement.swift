@@ -127,11 +127,17 @@ extension SimulationEngine {
         let topCount = min(sortedByDistance.count, 5)
         let chosenBooth = sortedByDistance[rng.randomInt(in: 0...(topCount - 1))]
         let targetPoint = navGrid.boothApproachPoint(for: chosenBooth)
+        let path = navGrid.findPath(from: visitor.position, to: targetPoint)
+        guard !path.isEmpty else {
+            visitor.visitedBoothIDs.append(chosenBooth.id)
+            assignNextDestination(&visitor)
+            return
+        }
 
         visitor.targetBoothID = chosenBooth.id
         visitor.state = .walking
         visitor.timeInState = 0
-        visitor.path = navGrid.findPath(from: visitor.position, to: targetPoint)
+        visitor.path = path
     }
 
     func sendVisitorToExit(_ visitor: inout SimulatedVisitor) {
@@ -174,7 +180,11 @@ extension SimulationEngine {
         } else {
             let slideX = SIMD2<Double>(visitor.position.x + moveDir.x * stepDistance, visitor.position.y)
             let slideY = SIMD2<Double>(visitor.position.x, visitor.position.y + moveDir.y * stepDistance)
-            visitor.position = navGrid.isWalkable(slideX) ? slideX : (navGrid.isWalkable(slideY) ? slideY : nextPoint)
+            if navGrid.isWalkable(slideX) {
+                visitor.position = slideX
+            } else if navGrid.isWalkable(slideY) {
+                visitor.position = slideY
+            }
         }
     }
 

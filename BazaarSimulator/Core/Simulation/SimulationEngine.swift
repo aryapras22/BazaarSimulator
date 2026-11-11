@@ -208,7 +208,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         var visitor = SimulatedVisitor(
             id: nextVisitorID,
             persona: persona,
-            position: navGrid.isWalkable(startPos) ? startPos : entrance,
+            position: navGrid.isWalkable(startPos) ? startPos : navGrid.nearestWalkablePoint(to: entrance),
             partySize: partySize,
             plannedStops: plannedStops,
             speed: speed

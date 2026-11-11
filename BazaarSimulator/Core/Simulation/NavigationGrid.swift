@@ -77,22 +77,24 @@ struct NavigationGrid: Sendable {
         if let valid = candidates.first(where: { isWalkable($0) }) {
             return valid
         }
-        if let index = nearestWalkableIndex(to: center) {
-            return cellCenter(for: index)
-        }
-        return center
+        return nearestWalkablePoint(to: center)
+    }
+
+    func nearestWalkablePoint(to point: SIMD2<Double>) -> SIMD2<Double> {
+        nearestWalkableIndex(to: point).map(cellCenter(for:)) ?? point
     }
 
     /// Finds the waypoints of the shortest route from `start` to `goal`, using a cached distance field per goal.
+    /// Returns an empty list when no walking route exists.
     mutating func findPath(from start: SIMD2<Double>, to goal: SIMD2<Double>) -> [SIMD2<Double>] {
         guard let startIndex = nearestWalkableIndex(to: start),
               let goalIndex = nearestWalkableIndex(to: goal) else {
-            return [goal]
+            return []
         }
 
         let distances = distanceField(for: goalIndex)
         guard distances[startIndex] >= 0 else {
-            return [goal]
+            return []
         }
 
         var path: [SIMD2<Double>] = []
@@ -109,7 +111,7 @@ struct NavigationGrid: Sendable {
             path.append(cellCenter(for: current))
         }
 
-        path.append(goal)
+        path.append(isWalkable(goal) ? goal : cellCenter(for: goalIndex))
         return simplifyWaypoints(path)
     }
 }
@@ -257,11 +259,16 @@ extension NavigationGrid {
     ]
 
     private func neighbor(of index: Int, by step: GridStep) -> Int? {
-        let nextCol = index % cols + step.dCol
-        let nextRow = index / cols + step.dRow
+        let col = index % cols
+        let row = index / cols
+        let nextCol = col + step.dCol
+        let nextRow = row + step.dRow
         guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { return nil }
         let next = nextRow * cols + nextCol
-        return walkable[next] ? next : nil
+
+        // A diagonal also needs both side cells open, or it passes through obstacles that touch at a corner.
+        guard walkable[next], walkable[row * cols + nextCol], walkable[nextRow * cols + col] else { return nil }
+        return next
     }
 
     private func simplifyWaypoints(_ points: [SIMD2<Double>]) -> [SIMD2<Double>] {
