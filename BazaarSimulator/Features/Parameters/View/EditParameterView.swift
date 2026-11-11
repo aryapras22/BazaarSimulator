@@ -13,13 +13,6 @@ struct EditParameterView: View {
     @State private var startTime: Date = Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date()
     @State private var endTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date()
 
-    @State private var isPeakHoursEnabled: Bool = true
-    @State private var peakPeriods: [String] = [
-        "08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00",
-        "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"
-    ]
-    @State private var selectedPeakPeriods: Set<String> = ["12:00 - 14:00", "18:00 - 20:00"]
-
     @State private var bazaarType: String = "Family & Kids"
 
     @State private var socializerVal: Double = 21
@@ -38,8 +31,6 @@ struct EditParameterView: View {
             totalVisitorsSection
             Divider().overlay(Palette.surfaceBorder)
             eventDurationSection
-            Divider().overlay(Palette.surfaceBorder)
-            peakHoursSection
             Divider().overlay(Palette.surfaceBorder)
             bazaarTypeSection
             visitorTypeSection
@@ -92,81 +83,6 @@ struct EditParameterView: View {
                 timePickerPill(selection: $endTime, label: "end")
             }
         }
-    }
-
-    private var peakHoursSection: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text("Peak Hours Period")
-                        .font(Typography.fieldLabel)
-                        .foregroundStyle(Palette.textPrimary)
-                    Toggle("", isOn: $isPeakHoursEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                }
-                Text("Select one or more peak hours periods.")
-                    .font(Typography.caption)
-                    .foregroundStyle(Palette.textSecondary)
-            }
-            Spacer()
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ],
-                spacing: 8
-            ) {
-                ForEach(peakPeriods, id: \.self) { period in
-                    peakPeriodPill(period)
-                }
-                if !peakPeriods.contains("20:00 - 22:00") {
-                    addPeakPeriodButton
-                }
-            }
-            .frame(width: 520)
-        }
-    }
-
-    private func peakPeriodPill(_ period: String) -> some View {
-        let isSelected = selectedPeakPeriods.contains(period) && isPeakHoursEnabled
-        return Button {
-            guard isPeakHoursEnabled else { return }
-            if selectedPeakPeriods.contains(period) {
-                selectedPeakPeriods.remove(period)
-            } else {
-                selectedPeakPeriods.insert(period)
-            }
-        } label: {
-            Text(period)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundStyle(isSelected ? Palette.textPrimary : Palette.textSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(isSelected ? Palette.accent.opacity(0.35) : Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(isSelected ? Palette.accent : Palette.surfaceBorder, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var addPeakPeriodButton: some View {
-        Button {
-            let nextSlot = "20:00 - 22:00"
-            if !peakPeriods.contains(nextSlot) {
-                peakPeriods.append(nextSlot)
-                selectedPeakPeriods.insert(nextSlot)
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Palette.textSecondary)
-                .frame(width: 32, height: 28)
-                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.surfaceBorder, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 
     private var bazaarTypeSection: some View {
@@ -330,9 +246,6 @@ struct EditParameterView: View {
         let cal = Calendar.current
         startTime = cal.date(bySettingHour: params.startMinutes / 60, minute: params.startMinutes % 60, second: 0, of: Date()) ?? startTime
         endTime = cal.date(bySettingHour: params.endMinutes / 60, minute: params.endMinutes % 60, second: 0, of: Date()) ?? endTime
-        isPeakHoursEnabled = params.isPeakHoursEnabled
-        peakPeriods = params.peakPeriods
-        selectedPeakPeriods = params.selectedPeakPeriods
         bazaarType = params.bazaarType
         socializerVal = params.socializerPercent
         familyMemberVal = params.familyMemberPercent
@@ -383,9 +296,6 @@ struct EditParameterView: View {
             totalVisitors: totalVisitors,
             startMinutes: startMins,
             endMinutes: rawEndMins > startMins ? rawEndMins : startMins + 60,
-            isPeakHoursEnabled: isPeakHoursEnabled,
-            peakPeriods: peakPeriods,
-            selectedPeakPeriods: selectedPeakPeriods,
             bazaarType: bazaarType,
             socializerPercent: socializerVal,
             familyMemberPercent: familyMemberVal,

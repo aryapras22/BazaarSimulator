@@ -32,7 +32,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. The empty state reads "Add project to get started" |
 | Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
 | Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, hall outline edge handles that grow or shrink the hall, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
-| Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, peak hours, bazaar type, visitor type mix. Applies to every layout in the project |
+| Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, bazaar type, visitor type mix. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Analysis | Below the cards. Tabs for Crowd Density, Flow Rate, Congestion, and Duration. Each tab shows a recommendation ("Our choice"), a comparison table, and a chart over the day |
 | Simulation | A Preparing Layout screen (2D to 3D), then a 3D view of one layout with Density, Congestion, and Footfall overlays and playback controls |
@@ -236,7 +236,7 @@ struct Placement: Codable, Sendable {
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
 | `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
 | `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
-| `EventParameters` | Total visitors per day, event hours, peak periods, bazaar type, `VisitorMix`. Shared by every layout |
+| `EventParameters` | Total visitors per day, event hours, bazaar type, `VisitorMix`. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |
 | `VisitorMix` | A percentage per visitor type. Rescales so the total stays 100. A locked share is left out of rescaling |
 | `SimulationConfig` | Tick rate and random seed |
@@ -254,7 +254,6 @@ The Hi-Fi presets are Socializer, Family Member, Stroller, and Purpose Buyer, ea
 struct EventParameters: Codable, Sendable {
     var totalVisitors: Int                 // per day
     var eventHours: TimeRange              // start and end, minutes from midnight
-    var peakPeriods: [TimeRange] = []      // empty when peak hours are off
     var bazaarType: BazaarType
     var mix: VisitorMix
 }
@@ -314,7 +313,7 @@ protocol SimulationEngineProtocol: Sendable {
 
 *   Fixed time step and a seeded random generator: the same input and seed give the same run. That makes bugs reproducible and tests possible. It also means the 3D view and the Analysis show the same event, because Analysis calls `runToEnd()` and Simulation plays the run live.
 *   `MovementModel` is a protocol. Start simple (grid path following with local avoidance). A social-force or other model can replace it without touching the loop or any view.
-*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors, event hours, and peak periods into arrival times (a time-varying Poisson process, with a higher rate inside peak periods). Each arrival draws a visitor type from the mix, comes as a party (a family of up to five, anyone else alone or as a pair), enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
+*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors and event hours into arrival times (a Poisson process at a steady rate). Each arrival draws a visitor type from the mix, comes as a party (a family of up to five, anyone else alone or as a pair), enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
 *   The layout becomes a `NavigationGrid` and a `ZoneMap` once, in `prepare`. `prepare` reports progress for the Preparing Layout screen. Editing while running is not supported. Stop, edit, prepare again.
 *   `ZoneMap` splits the walkable area into named zones (A to F in the Hi-Fi). The Hi-Fi does not say how zones are cut, so that is decided with the metrics research. A zone's risk level (low, medium, high) comes from its density against `RiskThresholds`, loaded from bundled JSON.
 
@@ -641,7 +640,7 @@ What to test per layer:
 | ---| --- |
 | Domain | Pure unit tests |
 | Mapper | Unit tests with fixtures: pixels convert to metres, a missing scale asks for calibration |
-| Engine pieces | Unit tests with a fixed seed: the mix spawns the right counts, peak periods get a larger share of arrivals, movement avoids obstacles |
+| Engine pieces | Unit tests with a fixed seed: the mix spawns the right counts, movement avoids obstacles |
 | Engine, full run | Headless integration test: every agent has left when the run ends, no agent stands inside an obstacle, the same seed gives the same result |
 | Analysis | Unit tests with fixed `LayoutAnalysis` values: the layout with the lower peak density is recommended on Crowd Density, and a tie gives a defined result |
 | ViewModel | Unit tests with fake services: a snapshot from a fake engine updates state, an error from a fake reader sets the message |
@@ -828,11 +827,11 @@ Review rules:
 * * *
 ## Suggested build order
 The floor plan reader is the riskiest part, so the app should not depend on it early. Write tests alongside each step.
-1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals with peak periods, `ZoneMap`, and `runToEnd()`.
+1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals, `ZoneMap`, and `runToEnd()`.
 2. Simulation view: the Preparing Layout step, the 3D scene with moving agents, and the three overlays. If 3D slows the team down, start with a top-down `Canvas` behind the same snapshot interface and swap later.
 3. Layout editor with Structure and Booths layers, manual placement, wall graph editing, and the inspector, so a layout can exist without any model.
 4. Project library, project screen with layout cards, and `ProjectSession` wiring.
-5. Parameters dialog: mix sliders with rescaling, peak periods, bazaar type presets, Cancel and Apply on a draft.
+5. Parameters dialog: mix sliders with rescaling, bazaar type presets, Cancel and Apply on a draft.
 6. Analysis: `AnalysisService`, the four tabs, `RecommendationBuilder`, the table and the chart.
 7. Project setup: PDF import, `ImportQueue`, one reader backend, then the other three behind the same protocol.
 * * *

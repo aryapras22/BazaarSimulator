@@ -137,12 +137,6 @@ struct EventParameters: Codable, Hashable, Sendable {
     var totalVisitors: Int = 2000
     var startMinutes: Int = 10 * 60
     var endMinutes: Int = 21 * 60
-    var isPeakHoursEnabled: Bool = true
-    var peakPeriods: [String] = [
-        "08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00",
-        "14:00 - 16:00", "16:00 - 18:00", "18:00 - 20:00"
-    ]
-    var selectedPeakPeriods: Set<String> = ["12:00 - 14:00", "18:00 - 20:00"]
     var bazaarType: String = "Family & Kids"
 
     var socializerPercent: Double = 21
@@ -163,11 +157,10 @@ struct EventParameters: Codable, Hashable, Sendable {
         let intervalsOf15Min = Double(totalMins) / 15.0
         let cleanTotal = max(1, totalVisitors)
         let baseRate = Double(cleanTotal) / max(1.0, intervalsOf15Min)
-        let peakBoost = isPeakHoursEnabled && !selectedPeakPeriods.isEmpty ? 1.35 : 1.0
 
         return SimulationSettings(
             totalVisitors: cleanTotal,
-            arrivalsPer15Min: max(0.2, baseRate * peakBoost),
+            arrivalsPer15Min: max(0.2, baseRate),
             durationMinutes: totalMins,
             startMinutesFromMidnight: startMinutes,
             simulationSpeed: 5.0,
