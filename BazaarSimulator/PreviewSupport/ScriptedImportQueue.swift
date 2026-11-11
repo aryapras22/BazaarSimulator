@@ -43,6 +43,10 @@ final class ScriptedImportQueue: ImportQueueing {
         extractedLayouts[fileID]
     }
 
+    func logEntries(for projectID: UUID) -> [ImportLogEntry] {
+        []
+    }
+
     func add(urls: [URL], kind: ImportFileKind, projectID: UUID) {
         for url in urls {
             let fileSize = fileSize(for: url)

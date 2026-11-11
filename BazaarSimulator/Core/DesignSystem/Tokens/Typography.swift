@@ -13,6 +13,7 @@ enum Typography {
     static let inspectorLabelDetail: Font = .system(size: 12, weight: .regular)
     static let segment: Font = .system(size: 13, weight: .medium)
     static let canvasLabel: Font = .system(size: 9, weight: .medium)
+    static let logLine: Font = .system(size: 11, weight: .regular, design: .monospaced)
 
     static func canvasLabel(scaledBy scale: Double) -> Font {
         let clampedSize = min(max(9.0 * (scale / 12.0), 8.0), 14.0)

@@ -73,6 +73,10 @@ final class ProjectSetupViewModel {
         }
     }
     
+    var logEntries: [ImportLogEntry] {
+        importQueue.logEntries(for: projectID)
+    }
+
     var hasLegend: Bool {
         importQueue.legend(for: projectID) != nil
     }
