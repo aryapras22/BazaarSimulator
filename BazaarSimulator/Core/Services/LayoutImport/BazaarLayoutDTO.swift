@@ -4,15 +4,15 @@ struct BazaarLayoutDTO: Decodable, Sendable, Equatable {
     let meta: BazaarMetaDTO
     let hall: [[Double]]
     let lobby: [[Double]]
-    let wall: BazaarRectDTO
+    let wall: BazaarRectDTO?
     let doors: [BazaarDoorDTO]
     let outerDoors: [BazaarOuterDoorDTO]
     let gates: [BazaarMarkerDTO]
     let exitPt: BazaarMarkerDTO
     let booths: [BazaarBoothDTO]
     let tables: [BazaarTableDTO]
-    let stage: BazaarStageDTO
-    let kids: BazaarRectDTO
+    let stage: BazaarStageDTO?
+    let kids: BazaarRectDTO?
     let kidsSeats: Bool?
     let kidsLabel: String?
     let columns: [BazaarColumnDTO]

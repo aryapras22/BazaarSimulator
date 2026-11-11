@@ -11,13 +11,17 @@ enum MockLayoutMapper {
         nameOverride: String? = nil
     ) -> Layout {
         var objects: [LayoutObject] = []
-        objects.append(mapLobbyWall(from: dto.wall))
+        if let wall = dto.wall {
+            objects.append(mapLobbyWall(from: wall))
+        }
         objects.append(contentsOf: mapHallDoors(from: dto.doors))
         objects.append(contentsOf: mapOuterDoors(from: dto.outerDoors, gates: dto.gates, exitPt: dto.exitPt))
-        objects.append(mapStage(from: dto.stage))
+        if let stage = dto.stage {
+            objects.append(mapStage(from: stage))
+        }
         objects.append(contentsOf: mapTables(from: dto.tables))
-        if dto.kidsSeats != false {
-            objects.append(mapAudienceSeating(from: dto.kids))
+        if let kids = dto.kids, dto.kidsSeats != false {
+            objects.append(mapAudienceSeating(from: kids))
         }
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
