@@ -3,10 +3,10 @@
     "name": "MORE MARKET VI",
     "sheet": "MORE MARKET VI",
     "world": {
-      "w": 204.5,
-      "h": 83.5
+      "w": 204.0,
+      "h": 83.43
     },
-    "note": "Booths come from the colour-segmented JSON where its fills are clean and from the printed numbers where digits cut them; everything else is traced from the layout image at 7 px per metre, set by the 2 m and 3 m booth pitch."
+    "note": "Booths come from the colour-segmented JSON where its fills are clean and from the printed numbers where digits cut them, at 7 px per metre from the 2 m and 3 m booth pitch. The hall is the event wing left of the plan's GATE and the lobby is the mall corridor right of it, so the bounding rectangles hold large restricted voids. The gate and exit sit by the escalator void and are assumed. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
   },
   "hall": [
     [
@@ -14,78 +14,64 @@
       16.0
     ],
     [
-      57.86,
+      127.14,
       16.0
     ],
     [
-      57.86,
-      22.57
-    ],
-    [
-      127.14,
-      22.57
-    ],
-    [
-      127.14,
-      13.43
-    ],
-    [
-      203.0,
-      13.43
-    ],
-    [
-      203.0,
-      62.43
-    ],
-    [
-      189.29,
-      62.43
-    ],
-    [
-      189.29,
-      47.86
-    ],
-    [
-      127.14,
-      47.86
-    ],
-    [
       127.14,
       82.43
-    ],
-    [
-      102.86,
-      82.43
-    ],
-    [
-      102.86,
-      33.86
     ],
     [
       2.43,
-      33.86
+      82.43
     ]
   ],
-  "lobby": [],
+  "lobby": [
+    [
+      127.14,
+      13.43
+    ],
+    [
+      203.0,
+      13.43
+    ],
+    [
+      203.0,
+      62.43
+    ],
+    [
+      127.14,
+      62.43
+    ]
+  ],
   "wall": {
-    "x0": 126.86,
-    "x1": 127.43,
-    "y0": 22.57,
-    "y1": 42.71
+    "x0": 126.99,
+    "x1": 127.29,
+    "y0": 13.43,
+    "y1": 62.43
   },
-  "doors": [],
+  "doors": [
+    {
+      "id": "Gate",
+      "role": "both",
+      "x0": 126.75,
+      "x1": 127.53,
+      "y0": 41.3,
+      "y1": 46.6
+    }
+  ],
   "outerDoors": [],
   "gates": [
     {
       "id": "Entrance",
-      "sx": 128.29,
-      "sy": 45.29
+      "sx": 140.0,
+      "sy": 44.6
     }
   ],
   "exitPt": {
     "id": "Exit",
-    "sx": 200.71,
-    "sy": 61.0
+    "sx": 140.0,
+    "sy": 31.0
   },
   "booths": [
     {
@@ -484,7 +470,7 @@
       "id": "N7",
       "type": "goods",
       "cx": 109.5,
-      "cy": 76.14,
+      "cy": 76.06,
       "w": 3.0,
       "h": 2.0
     },
@@ -492,9 +478,9 @@
       "id": "N8",
       "type": "goods",
       "cx": 109.49,
-      "cy": 78.24,
+      "cy": 78.31,
       "w": 3.0,
-      "h": 2.27
+      "h": 2.5
     },
     {
       "id": "N9",
@@ -684,7 +670,7 @@
       "id": "N32",
       "type": "goods",
       "cx": 122.64,
-      "cy": 76.14,
+      "cy": 76.06,
       "w": 3.0,
       "h": 2.0
     },
@@ -692,9 +678,9 @@
       "id": "N33",
       "type": "goods",
       "cx": 122.63,
-      "cy": 78.23,
+      "cy": 78.31,
       "w": 3.0,
-      "h": 2.26
+      "h": 2.5
     },
     {
       "id": "C44",
@@ -962,6 +948,24 @@
   ],
   "closed": [
     {
+      "x0": 57.86,
+      "x1": 127.14,
+      "y0": 16.0,
+      "y1": 22.57
+    },
+    {
+      "x0": 2.43,
+      "x1": 102.86,
+      "y0": 33.86,
+      "y1": 82.43
+    },
+    {
+      "x0": 23.57,
+      "x1": 37.57,
+      "y0": 21.29,
+      "y1": 25.29
+    },
+    {
       "x0": 103.86,
       "x1": 111.43,
       "y0": 48.14,
@@ -969,9 +973,15 @@
     },
     {
       "x0": 119.71,
-      "x1": 127.57,
+      "x1": 127.14,
       "y0": 48.14,
       "y1": 66.0
+    },
+    {
+      "x0": 127.14,
+      "x1": 143.86,
+      "y0": 13.43,
+      "y1": 25.4
     },
     {
       "x0": 143.86,
@@ -992,10 +1002,10 @@
       "y1": 59.57
     },
     {
-      "x0": 23.57,
-      "x1": 37.57,
-      "y0": 21.29,
-      "y1": 25.29
+      "x0": 127.14,
+      "x1": 189.29,
+      "y0": 47.86,
+      "y1": 62.43
     }
   ]
 }

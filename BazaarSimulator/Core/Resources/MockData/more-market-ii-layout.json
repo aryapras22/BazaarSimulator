@@ -6,136 +6,24 @@
       "w": 37.5,
       "h": 37.5
     },
-    "note": "Booths come from the colour-segmented JSON. The legend gives no sizes, so the scale of 18.7 px per metre assumes gray booths are 3 by 2 m. The drawn circle clips four booth corners, so the floor is a circle of slightly larger radius. The plan draws no entrance, so the gate and exit are assumed at the bottom. Everything else is traced from the layout image."
+    "note": "Booths come from the colour-segmented JSON at 18.7 px per metre, which assumes gray booths are 3 by 2 m. The round room is squared off to its bounding square. The plan draws no entrance, so the gate and exit are assumed at the bottom. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
   },
   "hall": [
     [
-      36.51,
-      18.75
-    ],
-    [
-      36.17,
-      22.22
-    ],
-    [
-      35.16,
-      25.55
-    ],
-    [
-      33.52,
-      28.62
-    ],
-    [
-      31.31,
-      31.31
-    ],
-    [
-      28.62,
-      33.52
-    ],
-    [
-      25.55,
-      35.16
-    ],
-    [
-      22.22,
-      36.17
-    ],
-    [
-      18.75,
-      36.51
-    ],
-    [
-      15.29,
-      36.17
-    ],
-    [
-      11.96,
-      35.16
-    ],
-    [
-      8.89,
-      33.52
-    ],
-    [
-      6.2,
-      31.31
-    ],
-    [
-      3.99,
-      28.62
-    ],
-    [
-      2.35,
-      25.55
-    ],
-    [
-      1.34,
-      22.22
-    ],
-    [
       1.0,
-      18.75
-    ],
-    [
-      1.34,
-      15.29
-    ],
-    [
-      2.35,
-      11.96
-    ],
-    [
-      3.99,
-      8.89
-    ],
-    [
-      6.2,
-      6.2
-    ],
-    [
-      8.89,
-      3.99
-    ],
-    [
-      11.96,
-      2.35
-    ],
-    [
-      15.29,
-      1.34
-    ],
-    [
-      18.75,
       1.0
     ],
     [
-      22.22,
-      1.34
+      36.5,
+      1.0
     ],
     [
-      25.55,
-      2.35
+      36.5,
+      36.5
     ],
     [
-      28.62,
-      3.99
-    ],
-    [
-      31.31,
-      6.2
-    ],
-    [
-      33.52,
-      8.89
-    ],
-    [
-      35.16,
-      11.96
-    ],
-    [
-      36.17,
-      15.29
+      1.0,
+      36.5
     ]
   ],
   "lobby": [],
@@ -208,7 +96,7 @@
       "cx": 10.57,
       "cy": 26.46,
       "w": 2.0,
-      "h": 2.96
+      "h": 3.0
     },
     {
       "id": "G8",
@@ -216,7 +104,7 @@
       "cx": 10.57,
       "cy": 29.42,
       "w": 2.0,
-      "h": 2.96
+      "h": 3.0
     },
     {
       "id": "G9",
@@ -229,9 +117,9 @@
     {
       "id": "G10",
       "type": "goods",
-      "cx": 14.32,
+      "cx": 14.58,
       "cy": 29.44,
-      "w": 1.4,
+      "w": 2.0,
       "h": 3.0
     },
     {
@@ -416,7 +304,7 @@
       "cx": 27.66,
       "cy": 26.46,
       "w": 2.0,
-      "h": 2.97
+      "h": 3.0
     },
     {
       "id": "G35",
@@ -424,7 +312,7 @@
       "cx": 27.66,
       "cy": 29.44,
       "w": 2.0,
-      "h": 2.97
+      "h": 3.0
     },
     {
       "id": "G36",

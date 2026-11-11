@@ -59,18 +59,39 @@ enum MockLayoutMapper {
         )
     }
 
+    /// Walls and doors run along their x axis, so a rect taller than it is wide becomes a quarter-turned placement.
+    private static func linearPlacement(minX: Double, maxX: Double, minY: Double, maxY: Double) -> Placement {
+        let upright = placement(minX: minX, maxX: maxX, minY: minY, maxY: maxY)
+        guard upright.sizeM.y > upright.sizeM.x else { return upright }
+        return Placement(
+            center: upright.center,
+            sizeM: SIMD2<Double>(upright.sizeM.y, upright.sizeM.x),
+            rotationRadians: .pi / 2
+        )
+    }
+
     private static func point(from coords: [Double]) -> SIMD2<Double>? {
         coords.count >= 2 ? SIMD2<Double>(coords[0], coords[1]) : nil
     }
 
     private static func mapLobbyWall(from wall: BazaarRectDTO) -> LayoutObject {
-        LayoutObject(kind: .wall, label: "Lobby wall", placement: placement(from: wall), reviewState: .detected)
+        LayoutObject(
+            kind: .wall,
+            label: "Lobby wall",
+            placement: linearPlacement(minX: wall.minX, maxX: wall.maxX, minY: wall.minY, maxY: wall.maxY),
+            reviewState: .detected
+        )
     }
 
     private static func mapHallDoors(from doors: [BazaarDoorDTO]) -> [LayoutObject] {
         doors.map { door in
-            let direction: DoorDirection = door.role.lowercased() == "entrance" ? .entrance : .both
-            let doorPlacement = placement(minX: door.minX, maxX: door.maxX, minY: door.minY, maxY: door.maxY)
+            let direction: DoorDirection
+            switch door.role.lowercased() {
+            case "entrance": direction = .entrance
+            case "exit": direction = .exit
+            default: direction = .both
+            }
+            let doorPlacement = linearPlacement(minX: door.minX, maxX: door.maxX, minY: door.minY, maxY: door.maxY)
             return LayoutObject(
                 kind: .door,
                 label: door.id,
@@ -177,12 +198,9 @@ extension MockLayoutMapper {
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {
         pilasters.map { pilaster in
             let kind: LayoutObjectKind = pilaster.kind.lowercased() == "wall" ? .wall : .block
-            let pilasterPlacement = placement(
-                minX: pilaster.minX,
-                maxX: pilaster.maxX,
-                minY: pilaster.minY,
-                maxY: pilaster.maxY
-            )
+            let pilasterPlacement = kind == .wall
+                ? linearPlacement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
+                : placement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
             return LayoutObject(
                 kind: kind,
                 label: kind.displayName,

@@ -73,6 +73,21 @@ struct MockLayoutMapperTests {
         #expect(second.doorFlow?.direction == .exit)
     }
 
+    @Test("An upright wall and its doors turn a quarter so their length runs along x, and an exit role maps to exit")
+    func uprightWallAndDoorsTurnAQuarter() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "more-market-i-layout")
+
+        let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
+        let wall = try #require(layout.objects.first { $0.kind == .wall && $0.label == "Lobby wall" })
+        let exitDoor = try #require(layout.objects.first { $0.kind == .door && $0.label == "Door B" })
+
+        #expect(abs(wall.placement.sizeM.x - 31.71) < 1e-6)
+        #expect(wall.placement.rotationDegrees == 90)
+        #expect(abs(exitDoor.placement.sizeM.x - 3.0) < 1e-6)
+        #expect(exitDoor.placement.rotationDegrees == 90)
+        #expect(exitDoor.doorFlow?.direction == .exit)
+    }
+
     private func count(_ kind: LayoutObjectKind, in layout: Layout) -> Int {
         layout.objects.filter { $0.kind == kind }.count
     }
