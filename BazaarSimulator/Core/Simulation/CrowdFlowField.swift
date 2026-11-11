@@ -151,7 +151,8 @@ nonisolated extension CrowdWorld {
         let nextRow = row + step.row
         guard nextCol >= 0, nextRow >= 0, nextCol < cols, nextRow < rows else { return nil }
         // Both side cells must be open too, or a diagonal would cut through a corner.
-        guard walls.floor[nextRow * cols + nextCol], walls.floor[row * cols + nextCol], walls.floor[nextRow * cols + col] else {
+        let floor = walls.floor
+        guard floor[nextRow * cols + nextCol], floor[row * cols + nextCol], floor[nextRow * cols + col] else {
             return nil
         }
         return nextRow * cols + nextCol
