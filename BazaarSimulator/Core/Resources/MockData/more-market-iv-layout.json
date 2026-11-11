@@ -6,7 +6,7 @@
       "w": 89.3,
       "h": 29.78
     },
-    "note": "Booths come from the colour-segmented JSON at 12 px per metre, which assumes the square FNB booths are 2 m. The lobby is the annex on the right where the plan draws the visitor route; the route enters the hall at the lower door and leaves by the upper one. The kids corner sits outside the hall rectangle and is left out. Columns are restricted areas. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Booths come from the colour-segmented JSON at 12 px per metre, which assumes the square FNB booths are 2 m. The lobby is the annex on the right where the plan draws the visitor route; the route enters the hall at the lower door and leaves by the upper one. The kids corner sits outside the hall rectangle and is left out. Columns are restricted areas. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m. The drawn tables are small sets, so each maps to a 1 m round table to keep the aisles walkable."
   },
   "hall": [
     [
@@ -703,80 +703,80 @@
     {
       "cx": 8.88,
       "cy": 12.44,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 8.88,
       "cy": 13.72,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 8.88,
       "cy": 15.0,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 12.09,
       "cy": 12.44,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 12.09,
       "cy": 13.72,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 12.09,
       "cy": 15.0,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 25.68,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 30.29,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 35.42,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 40.42,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 46.0,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 50.87,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     },
     {
       "cx": 55.68,
       "cy": 16.03,
-      "w": 1.5,
-      "h": 1.5
+      "w": 1.0,
+      "h": 1.0
     }
   ],
   "kids": null,

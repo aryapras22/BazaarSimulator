@@ -6,7 +6,7 @@
       "w": 81.76,
       "h": 33.71
     },
-    "note": "Booths come from the colour-segmented JSON at 20.5 px per metre, which assumes pink and green booths are 3 by 2 m and yellow booths 2 m square. The lobby is the escalator landing; the escalators and VIP rooms are restricted. The plan draws no doors in the hall wall, so an entrance near the top and an exit near the bottom are assumed, with the gate and exit at the escalator heads. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Booths come from the colour-segmented JSON at 20.5 px per metre, which assumes pink and green booths are 3 by 2 m and yellow booths 2 m square. The lobby is the escalator landing; the escalators and VIP rooms are restricted, following the slant of the escalator rails. The emergency exit at the bottom is a way out, so it does not block the bottom aisle. The plan draws no doors in the hall wall, so an entrance near the top and an exit near the bottom are assumed, with the gate and exit at the escalator heads. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
   },
   "hall": [
     [
@@ -1016,14 +1016,6 @@
       "y1": 23.05
     },
     {
-      "label": "EMERGENCY EXIT",
-      "kind": "fixture",
-      "x0": 40.51,
-      "x1": 42.02,
-      "y0": 27.1,
-      "y1": 32.71
-    },
-    {
       "label": "SEATING AREA",
       "kind": "fixture",
       "x0": 57.2,
@@ -1040,9 +1032,15 @@
       "y1": 5
     },
     {
-      "x0": 2,
+      "x0": 2.5,
+      "x1": 9.5,
+      "y0": 10.8,
+      "y1": 24.5
+    },
+    {
+      "x0": 9.5,
       "x1": 17,
-      "y0": 10,
+      "y0": 12.0,
       "y1": 24.5
     },
     {

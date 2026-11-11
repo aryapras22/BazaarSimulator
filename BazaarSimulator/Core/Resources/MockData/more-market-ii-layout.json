@@ -6,7 +6,7 @@
       "w": 37.5,
       "h": 37.5
     },
-    "note": "Booths come from the colour-segmented JSON at 18.7 px per metre, which assumes gray booths are 3 by 2 m. The round room is squared off to its bounding square. The plan draws no entrance, so the gate and exit are assumed at the bottom. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Booths come from the colour-segmented JSON at 18.7 px per metre, which assumes gray booths are 3 by 2 m. The round room is squared off to its bounding square. The plan draws no entrance, so the gate is assumed at the red block at the bottom and the exit at the gap between the two green posts on the right. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
   },
   "hall": [
     [
@@ -38,8 +38,8 @@
   ],
   "exitPt": {
     "id": "Exit",
-    "sx": 22.98,
-    "sy": 32.82
+    "sx": 34.5,
+    "sy": 17.9
   },
   "booths": [
     {
