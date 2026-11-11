@@ -62,13 +62,18 @@ struct ProjectScreenFactoryTests {
         let activeID = try #require(services.projectSession.activeProjectID)
         let draft = try #require(services.projectSession.draft(for: activeID))
 
-        #expect(services.projectSession.projects.count == 1)
+        #expect(services.projectSession.projects.count == 2)
         #expect(services.initialDestination == .setup(projectID: activeID))
         #expect(draft.layouts.count == 2)
         #expect(!draft.layouts[0].objects.isEmpty)
         #expect(!draft.layouts[1].objects.isEmpty)
         #expect(services.importQueue.legend(for: activeID) != nil)
         #expect(services.importQueue.files(for: activeID).filter { $0.kind == .floorPlan }.count == 2)
+
+        let moreMarket = try #require(services.projectSession.projects.first { $0.name == "More Market" })
+        let moreMarketDraft = try #require(services.projectSession.draft(for: moreMarket.id))
+        #expect(moreMarketDraft.layouts.count == 2)
+        #expect(moreMarketDraft.layouts.allSatisfy { !$0.objects.isEmpty })
     }
 
     @Test("Selecting project routes to setup when no layouts exist")

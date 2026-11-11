@@ -361,7 +361,7 @@ Only errors block Save Changes. Warnings never block; the guide's flow allows ed
 *   `RootView` holds `columnVisibility` for the `NavigationSplitView` and sets it to `.detailOnly` on the review destination, `.all` elsewhere. The Hi-Fi hides the sidebar in the editor.
 *   Toolbar (not in the Hi-Fi, needed to use the screen): a back chevron to setup, a layout popup ("Layout 1 · plan-original.pdf") when the project has more than one layout, and the segmented control in the principal position.
 *   Minimum detail size 960 x 640. The inspector is a fixed 340 points wide, inset 16 from the top, right, and bottom.
-*   Passing `-seedMockProject YES` in the Debug scheme's Run arguments seeds the sample "Annyeong Market" project and opens directly on the editor.
+*   Passing `-seedMockProject YES` in the Debug scheme's Run arguments seeds the sample "More Market" and "Annyeong Market" projects and opens directly on the Annyeong one.
 * * *
 ## Design tokens
 
