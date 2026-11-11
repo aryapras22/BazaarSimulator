@@ -236,6 +236,23 @@ struct SimulationEngineTests {
         #expect(abs(peopleOnFloor - 4.0) < 0.05)
     }
 
+    @Test("Mean density still reflects the event after the hall empties")
+    func meanDensitySurvivesEmptyHall() {
+        let engine = SimulationEngine(layout: Self.openFloor())
+        engine.visitors = [
+            SimulatedVisitor(id: 1, persona: "family", position: SIMD2<Double>(10.5, 10.5), partySize: 4)
+        ]
+        for _ in 0..<20 { engine.updateDensityCells() }
+        let meanWhileOccupied = engine.metrics.meanDensity
+
+        engine.visitors = []
+        for _ in 0..<80 { engine.updateDensityCells() }
+
+        #expect(engine.densityCells.isEmpty)
+        #expect(meanWhileOccupied > 0)
+        #expect(engine.metrics.meanDensity > meanWhileOccupied * 0.5)
+    }
+
     private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
         Layout(
             name: "Open floor",

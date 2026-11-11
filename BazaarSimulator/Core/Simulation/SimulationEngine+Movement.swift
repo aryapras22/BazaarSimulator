@@ -242,8 +242,12 @@ extension SimulationEngine {
         }
 
         densityCells = activeCells
-        let totalDensity = densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
-        metrics.meanDensity = densityCells.isEmpty ? 0 : totalDensity / Double(densityCells.count)
+        if !densityCells.isEmpty {
+            let totalDensity = densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
+            let currentMean = totalDensity / Double(densityCells.count)
+            occupiedDensityUpdates += 1
+            metrics.meanDensity += (currentMean - metrics.meanDensity) / Double(occupiedDensityUpdates)
+        }
         metrics.peakDensity = max(metrics.peakDensity, densityCells.map(\.peoplePerSquareMetre).max() ?? 0)
     }
 

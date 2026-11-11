@@ -36,6 +36,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     var nextArrivalTime = 0.0
     var accumulatedTime = 0.0
     var nextDensityUpdate = 0.0
+    var occupiedDensityUpdates = 0
     var boothQueues: [UUID: [Int]] = [:]
     var boothServingCount: [UUID: Int] = [:]
     var boothByID: [UUID: LayoutObject] = [:]
@@ -71,6 +72,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         nextArrivalTime = 0.0
         accumulatedTime = 0.0
         nextDensityUpdate = 0.0
+        occupiedDensityUpdates = 0
         boothQueues = [:]
         boothServingCount = [:]
         stayDurations = []
