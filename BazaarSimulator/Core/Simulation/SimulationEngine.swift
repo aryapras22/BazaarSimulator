@@ -111,19 +111,13 @@ final class SimulationEngine: SimulationEngineProtocol {
         reset()
         let targetMinutes = durationMinutes > 0 ? durationMinutes : max(1, settings.durationMinutes)
         let totalDurationSeconds = Double(targetMinutes * 60)
-        let totalSteps = min(1800, max(180, targetMinutes * 8))
-        let clockDt = totalDurationSeconds / Double(totalSteps)
-        let agentDt = min(1.0, max(0.5, clockDt))
-
-        let desiredFrameCount = min(600, max(60, Int(totalDurationSeconds / max(1.0, frameIntervalSeconds))))
-        let stepsPerFrame = max(1, totalSteps / desiredFrameCount)
+        let stepSize = 0.5
+        let totalSteps = Int(totalDurationSeconds / stepSize)
+        let stepsPerFrame = max(1, Int(frameIntervalSeconds / stepSize))
         var frames: [SimulationFrame] = []
 
         for stepIndex in 1...totalSteps {
-            step(agentDt: agentDt, clockDt: clockDt)
-            if stepIndex == totalSteps {
-                metrics.elapsedSeconds = totalDurationSeconds
-            }
+            step(dt: stepSize)
             if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
                 frames.append(
                     SimulationFrame(
@@ -151,17 +145,13 @@ final class SimulationEngine: SimulationEngineProtocol {
     // MARK: - Simulation Step
 
     func step(dt: Double) {
-        step(agentDt: dt, clockDt: dt)
-    }
-
-    func step(agentDt: Double, clockDt: Double) {
-        metrics.elapsedSeconds += clockDt
+        metrics.elapsedSeconds += dt
         spawnNewVisitors()
-        updateVisitors(dt: agentDt)
+        updateVisitors(dt: dt)
 
         if metrics.elapsedSeconds >= nextDensityUpdate {
             updateDensityCells()
-            nextDensityUpdate = metrics.elapsedSeconds + max(1.0, clockDt)
+            nextDensityUpdate = metrics.elapsedSeconds + 1.0
         }
 
         metrics.peopleInside = visitors.reduce(0) { $0 + $1.partySize }

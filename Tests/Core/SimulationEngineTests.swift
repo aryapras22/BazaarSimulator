@@ -158,6 +158,18 @@ struct SimulationEngineTests {
         #expect((612...828).contains(engine.metrics.arrivals))
     }
 
+    @Test("Recorded runs move visitors at the same pace as the clock")
+    func recordedRunKeepsVisitorsOnTheClock() throws {
+        let engine = SimulationEngine(layout: PreviewLayouts.smallMarket())
+
+        let result = engine.runWithRecordedFootage(durationMinutes: 60, frameIntervalSeconds: 10.0)
+
+        let frame = try #require(result.frames.last { frame in frame.visitors.contains { $0.id == 1 } })
+        let firstVisitor = try #require(frame.visitors.first { $0.id == 1 })
+        #expect(frame.elapsedSeconds > 30)
+        #expect(abs(firstVisitor.totalStaySeconds - frame.elapsedSeconds) <= 0.5)
+    }
+
     private static func openFloor(blocks: [(center: SIMD2<Double>, size: SIMD2<Double>)] = []) -> Layout {
         Layout(
             name: "Open floor",
