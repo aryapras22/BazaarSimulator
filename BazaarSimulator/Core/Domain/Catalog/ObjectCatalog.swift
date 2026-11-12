@@ -3,6 +3,7 @@ import simd
 
 enum ObjectCatalog {
     static let items: [CatalogItem] = structureItems + furnitureItems
+    static let columnID = "column"
 
     /// The only furniture the library offers. Imported seating blocks and other tables still resolve through `items`.
     static let libraryItems: [CatalogItem] = structureItems + furnitureItems.filter { $0.id == "table-rect-4" }
@@ -68,7 +69,7 @@ enum ObjectCatalog {
             keywords: ["block", "concrete", "barrier", "cube"], seats: []
         ),
         CatalogItem(
-            id: "column", name: "Column", category: .structure, kind: .block,
+            id: columnID, name: "Column", category: .structure, kind: .block,
             sizeM: SIMD2(0.6, 0.6), heightM: 3.0, footprint: .circle,
             resize: .free, placement: .point,
             keywords: ["column", "pillar", "post", "round", "circle"], seats: []

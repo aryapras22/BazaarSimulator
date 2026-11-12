@@ -46,6 +46,13 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
 }
 
 extension LayoutObject {
+    /// A column is a round block that needs no title of its own.
+    var isColumn: Bool {
+        catalogID == ObjectCatalog.columnID
+    }
+}
+
+extension LayoutObject {
     /// Layouts saved before attractiveness existed have no value for it, so they read as the default.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

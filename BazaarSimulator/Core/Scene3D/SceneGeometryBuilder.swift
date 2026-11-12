@@ -191,7 +191,7 @@ extension SceneGeometryBuilder {
     private static func roundPrimitives(_ object: LayoutObject) -> [ShapePrimitive] {
         let catalogItem = object.catalogID.flatMap(ObjectCatalog.item)
         let height = object.heightM ?? catalogItem?.heightM ?? (object.kind == .closedArea ? 0.05 : 0.8)
-        let role: MaterialRole = object.catalogID == "column" ? .pillar : .slab
+        let role: MaterialRole = object.isColumn ? .pillar : .slab
         return [.cylinder(
             center: SIMD3(0, height / 2.0, 0), radii: object.placement.sizeM / 2.0,
             height: height, yaw: 0, segments: 32, role: role

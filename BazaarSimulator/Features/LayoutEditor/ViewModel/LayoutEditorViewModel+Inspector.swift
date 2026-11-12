@@ -18,10 +18,12 @@ extension LayoutEditorViewModel {
             return "Booth \(BoothLabelFormatter.display(draftLabel))"
         case .door:
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
-        case .closedArea, .table, .seating:
+        case .block where selected.isColumn:
+            return "Column"
+        case .closedArea, .table, .seating, .block:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
-        case .wall, .block:
+        case .wall:
             return selected.kind.displayName
         }
     }

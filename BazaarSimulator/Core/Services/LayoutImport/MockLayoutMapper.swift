@@ -259,7 +259,7 @@ extension MockLayoutMapper {
                     shape: .round
                 ),
                 reviewState: .detected,
-                catalogID: "column"
+                catalogID: ObjectCatalog.columnID
             )
         }
     }

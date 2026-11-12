@@ -9,13 +9,17 @@ struct InspectorFields: Sendable {
     var showsHeight: Bool
     var showsShape: Bool
 
-    static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
-        switch kind {
+    static func forObject(_ object: LayoutObject) -> InspectorFields {
+        switch object.kind {
         case .wall:
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .block:
             return InspectorFields(
-                sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true, showsShape: true
+                showsLabel: !object.isColumn,
+                sizeDetailText: "(length x thickness)",
+                showsRotation: true,
+                showsHeight: true,
+                showsShape: true
             )
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
@@ -124,7 +128,10 @@ struct GenericInspector: View {
     InspectorPanel(title: "Block") {
         GenericInspector(
             draft: $draft,
-            fields: .forKind(.block),
+            fields: .forObject(LayoutObject(kind: .block, label: draft.label, placement: Placement(
+                center: .init(10, 10),
+                sizeM: .init(4, 2)
+            ))),
             sizeRange: 0.1...50.0
         )
     } footer: {

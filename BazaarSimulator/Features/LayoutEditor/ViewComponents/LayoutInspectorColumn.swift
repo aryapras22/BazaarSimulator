@@ -51,7 +51,7 @@ struct LayoutInspectorColumn: View {
             default:
                 GenericInspector(
                     draft: draftBinding,
-                    fields: .forKind(selected.kind),
+                    fields: .forObject(selected),
                     sizeRange: viewModel.sizeRangeM,
                     titleIssues: viewModel.selectedTitleIssues
                 )
