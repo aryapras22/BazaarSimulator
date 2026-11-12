@@ -92,7 +92,7 @@ struct ProjectScreenFactoryTests {
         #expect(router.destination == .setup(projectID: project.id))
 
         let setupVM = factory.makeSetupViewModel(projectID: project.id)
-        #expect(setupVM.projectName == "Bazaar 1")
+        #expect(setupVM.projectName == "Untitled")
         _ = setupVM.statusText
         _ = setupVM.legendEntries
         _ = setupVM.planRows
