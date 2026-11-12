@@ -118,52 +118,6 @@ struct CrowdSimulationTests {
         if case .booth(1, .detour) = disloyal.target {} else { Issue.record("Disloyal party did not detour") }
     }
 
-    @Test("Entertainment is never one of the planned booths")
-    func entertainmentIsNotPlanned() {
-        let simulation = makeSimulation(objects: [Self.booth(at: SIMD2(6, 6)), Self.stage(at: SIMD2(12, 6))])
-
-        for _ in 0..<200 {
-            #expect(!spawnedParty(in: simulation).plan.contains(1))
-        }
-    }
-
-    @Test("A buyer with no detour left still stops at entertainment and keeps the planned booth")
-    func entertainmentDetourIsFree() {
-        var planned = Self.booth(at: SIMD2(18, 2))
-        planned.attractiveness = 1
-        let simulation = makeSimulation(objects: [planned, Self.stage(at: SIMD2(6, 2))])
-        let party = spawnedParty(in: simulation)
-        party.isGoalDriven = true
-        party.loyalty = 1
-        party.plan = [0]
-        party.detours = CrowdParameters.maxDetours
-        party.target = .booth(0, .planned)
-        party.heading = 0
-
-        simulation.considerDetour(party)
-
-        if case .booth(1, .detour) = party.target {} else { Issue.record("Party did not stop at the stage") }
-        #expect(party.plan == [0])
-        #expect(party.detours == CrowdParameters.maxDetours)
-    }
-
-    @Test("A stopover at entertainment leaves the stroller's stopovers untouched")
-    func entertainmentStopoverIsFree() {
-        let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 2))])
-        let party = spawnedParty(in: simulation)
-        party.stopoversLeft = 0
-        party.isGoalDriven = false
-        party.target = .exit
-        party.heading = 0
-
-        simulation.considerDetour(party)
-        simulation.startVisit(party, booth: 0)
-        simulation.finishStop(party)
-
-        #expect(party.visited.contains(0))
-        #expect(party.stopoversLeft == 0)
-    }
-
     @Test("A booth outside the view cone does not draw the party")
     func boothBehindIsNotSeen() {
         var strong = Self.booth(at: SIMD2(18, 2))
@@ -288,5 +242,80 @@ struct CrowdSimulationTests {
 
     private static func booth(at center: SIMD2<Double>) -> LayoutObject {
         LayoutObject(kind: .booth, label: "Booth", placement: Placement(center: center, sizeM: SIMD2(2, 2)))
+    }
+}
+
+extension CrowdSimulationTests {
+    @Test("Entertainment is never one of the planned booths")
+    func entertainmentIsNotPlanned() {
+        let simulation = makeSimulation(objects: [Self.booth(at: SIMD2(6, 6)), Self.stage(at: SIMD2(12, 6))])
+
+        for _ in 0..<200 {
+            #expect(!spawnedParty(in: simulation).plan.contains(1))
+        }
+    }
+
+    @Test("A buyer with no detour left still stops at entertainment and keeps the planned booth")
+    func entertainmentDetourIsFree() {
+        var planned = Self.booth(at: SIMD2(18, 2))
+        planned.attractiveness = 1
+        let simulation = makeSimulation(objects: [planned, Self.stage(at: SIMD2(6, 2))])
+        let party = spawnedParty(in: simulation)
+        party.isGoalDriven = true
+        party.loyalty = 1
+        party.plan = [0]
+        party.detours = CrowdParameters.maxDetours
+        party.target = .booth(0, .planned)
+        party.heading = 0
+
+        simulation.considerDetour(party)
+
+        if case .booth(1, .detour) = party.target {} else { Issue.record("Party did not stop at the stage") }
+        #expect(party.plan == [0])
+        #expect(party.detours == CrowdParameters.maxDetours)
+    }
+
+    @Test("A stopover at entertainment leaves the stroller's stopovers untouched")
+    func entertainmentStopoverIsFree() {
+        let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 2))])
+        let party = spawnedParty(in: simulation)
+        party.stopoversLeft = 0
+        party.isGoalDriven = false
+        party.target = .exit
+        party.heading = 0
+
+        simulation.considerDetour(party)
+        simulation.startVisit(party, booth: 0)
+        simulation.finishStop(party)
+
+        #expect(party.visited.contains(0))
+        #expect(party.stopoversLeft == 0)
+    }
+
+    @Test("A party sits on the chairs of a seating group big enough for it")
+    func partySitsOnSeatingBlock() throws {
+        let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        var booth = Self.booth(at: SIMD2(6, 6))
+        booth.categoryID = food.id
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "Seats",
+            placement: Placement(center: SIMD2(12, 6), sizeM: SIMD2(2.5, 0.5)),
+            catalogID: FurnitureModels.seatingBlockID
+        )
+        let simulation = makeSimulation(objects: [booth, seating], legend: Legend(entries: [food]))
+        let party = spawnedParty(in: simulation)
+        party.target = .booth(0, .planned)
+        simulation.startVisit(party, booth: 0)
+        party.willSit = true
+
+        simulation.finishStop(party)
+        let group = try #require({ if case .table(let index) = party.target { index } else { nil } }())
+        simulation.arrive(party)
+
+        #expect(simulation.world.tables[group].seats.count >= party.members.count)
+        for (index, member) in party.members.enumerated() {
+            #expect(member.position == simulation.world.tables[group].seats[index])
+        }
     }
 }

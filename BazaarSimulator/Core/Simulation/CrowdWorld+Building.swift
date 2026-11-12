@@ -41,8 +41,38 @@ extension CrowdWorld {
             ))
         }
         for object in layout.objects where object.kind == .table {
-            tables.append(CrowdTable(footprint: CrowdFootprint(object.placement), size: object.placement.sizeM))
+            let size = object.placement.sizeM
+            let corners = [SIMD2(-0.25, -0.25), SIMD2(0.25, -0.25), SIMD2(-0.25, 0.25), SIMD2(0.25, 0.25)]
+            tables.append(CrowdTable(
+                footprint: CrowdFootprint(object.placement),
+                seats: corners.map { object.placement.center + $0 * size }
+            ))
         }
+        for object in layout.objects where object.kind == .seating {
+            tables.append(contentsOf: Self.seatGroups(in: object))
+        }
+    }
+
+    /// A seating block splits along each row into groups of up to four chairs, one party to a group.
+    static func seatGroups(in block: LayoutObject) -> [CrowdTable] {
+        let chairs = FurnitureModels.chairs(of: block)
+        let perRow = FurnitureModels.seatsAlong(block.placement.sizeM.x)
+        var groups: [CrowdTable] = []
+        for rowStart in stride(from: 0, to: chairs.count, by: perRow) {
+            let row = Array(chairs[rowStart..<min(chairs.count, rowStart + perRow)])
+            for groupStart in stride(from: 0, to: row.count, by: CrowdParameters.seatsPerGroup) {
+                let group = row[groupStart..<min(row.count, groupStart + CrowdParameters.seatsPerGroup)]
+                let centers = group.map(\.center)
+                let span = Double(centers.count - 1) * FurnitureModels.seatPitchM
+                let footprint = Placement(
+                    center: centers.reduce(.zero, +) / Double(centers.count),
+                    sizeM: SIMD2(span + FurnitureModels.chairSizeM.x, FurnitureModels.chairSizeM.y),
+                    rotationRadians: block.placement.rotationRadians
+                )
+                groups.append(CrowdTable(footprint: CrowdFootprint(footprint), seats: centers))
+            }
+        }
+        return groups
     }
 
     /// The margin that grows a small goods booth until its area reaches `stockArea`.

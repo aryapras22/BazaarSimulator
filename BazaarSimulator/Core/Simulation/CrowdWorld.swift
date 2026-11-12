@@ -45,9 +45,11 @@ nonisolated struct CrowdBooth {
     }
 }
 
+/// A place one party sits: a table, or a few chairs side by side in a seating block.
 nonisolated struct CrowdTable {
     let footprint: CrowdFootprint
-    let size: SIMD2<Double>
+    /// Where each member sits, in order.
+    let seats: [SIMD2<Double>]
     var isReachable = false
 }
 

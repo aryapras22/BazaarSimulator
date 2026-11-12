@@ -195,10 +195,10 @@ nonisolated extension CrowdSimulation {
         party.state = .seated
         party.endTime = time + max(30, party.eatSeconds)
         party.seat = table
-        let seats = [SIMD2(-0.25, -0.25), SIMD2(0.25, -0.25), SIMD2(-0.25, 0.25), SIMD2(0.25, 0.25)]
+        let seats = world.tables[table].seats
         for (index, member) in party.members.enumerated() {
             member.positionBeforeSeat = member.position
-            member.position = world.tables[table].footprint.center + seats[index % 4] * world.tables[table].size
+            member.position = seats[index % seats.count]
             member.velocity = .zero
             member.isSeated = true
         }
@@ -270,7 +270,10 @@ nonisolated extension CrowdSimulation {
 
     private func nearestFreeTable(to party: CrowdParty) -> Int? {
         world.tables.indices
-            .filter { tableOccupants[$0] == nil && world.tables[$0].isReachable }
+            .filter {
+                tableOccupants[$0] == nil && world.tables[$0].isReachable
+                    && world.tables[$0].seats.count >= party.members.count
+            }
             .min {
                 simd_distance(world.tables[$0].footprint.center, party.leader.position)
                     < simd_distance(world.tables[$1].footprint.center, party.leader.position)

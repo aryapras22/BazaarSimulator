@@ -112,6 +112,22 @@ struct CrowdWorldTests {
         #expect(world.booths[0].pull == 5)
     }
 
+    @Test("A seating block splits each row into groups of up to four chairs")
+    func seatingSplitsIntoGroups() {
+        let block = LayoutObject(
+            kind: .seating,
+            label: "Seats",
+            placement: Placement(center: SIMD2(10, 10), sizeM: SIMD2(3, 1)),
+            catalogID: FurnitureModels.seatingBlockID
+        )
+
+        let world = CrowdWorld(layout: Self.floorLayout(objects: [block]))
+
+        #expect(world.tables.map(\.seats.count) == [4, 2, 4, 2])
+        let chairs = Set(FurnitureModels.chairs(of: block).map(\.center))
+        #expect(Set(world.tables.flatMap(\.seats)) == chairs)
+    }
+
     private static func floorLayout(objects: [LayoutObject]) -> Layout {
         Layout(
             name: "Floor",

@@ -38,6 +38,8 @@ nonisolated enum CrowdParameters {
     static let viewDepth = 10.0
     static let influenceRadius = 3.75
     static let maxDetours = 1
+    /// No party passes four people, so a group of four chairs in a seating block seats any party.
+    static let seatsPerGroup = 4
     static let stuckSeconds = 150.0
 
     static let doorFlowPerMetre = 1.95
