@@ -34,6 +34,7 @@ extension CrowdWorld {
             booths.append(CrowdBooth(
                 id: object.id,
                 isFood: isFood,
+                isEntertainment: object.kind == .entertainment,
                 footprint: CrowdFootprint(object.placement, margin: isFood ? 0 : Self.stockSpill(for: size)),
                 pull: min(5, max(1, object.attractiveness)),
                 capacity: max(1, Int(max(size.x, size.y) / 0.75))

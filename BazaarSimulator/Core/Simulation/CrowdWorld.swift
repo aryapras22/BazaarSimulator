@@ -33,6 +33,8 @@ nonisolated struct CrowdFootprint {
 nonisolated struct CrowdBooth {
     let id: UUID
     let isFood: Bool
+    /// A stage, photobooth, competition or display: visitors stop there on top of their booth budget.
+    let isEntertainment: Bool
     let footprint: CrowdFootprint
     let pull: Double
     let capacity: Int

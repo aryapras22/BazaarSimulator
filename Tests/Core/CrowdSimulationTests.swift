@@ -118,6 +118,52 @@ struct CrowdSimulationTests {
         if case .booth(1, .detour) = disloyal.target {} else { Issue.record("Disloyal party did not detour") }
     }
 
+    @Test("Entertainment is never one of the planned booths")
+    func entertainmentIsNotPlanned() {
+        let simulation = makeSimulation(objects: [Self.booth(at: SIMD2(6, 6)), Self.stage(at: SIMD2(12, 6))])
+
+        for _ in 0..<200 {
+            #expect(!spawnedParty(in: simulation).plan.contains(1))
+        }
+    }
+
+    @Test("A buyer with no detour left still stops at entertainment and keeps the planned booth")
+    func entertainmentDetourIsFree() {
+        var planned = Self.booth(at: SIMD2(18, 2))
+        planned.attractiveness = 1
+        let simulation = makeSimulation(objects: [planned, Self.stage(at: SIMD2(6, 2))])
+        let party = spawnedParty(in: simulation)
+        party.isGoalDriven = true
+        party.loyalty = 1
+        party.plan = [0]
+        party.detours = CrowdParameters.maxDetours
+        party.target = .booth(0, .planned)
+        party.heading = 0
+
+        simulation.considerDetour(party)
+
+        if case .booth(1, .detour) = party.target {} else { Issue.record("Party did not stop at the stage") }
+        #expect(party.plan == [0])
+        #expect(party.detours == CrowdParameters.maxDetours)
+    }
+
+    @Test("A stopover at entertainment leaves the stroller's stopovers untouched")
+    func entertainmentStopoverIsFree() {
+        let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 2))])
+        let party = spawnedParty(in: simulation)
+        party.stopoversLeft = 0
+        party.isGoalDriven = false
+        party.target = .exit
+        party.heading = 0
+
+        simulation.considerDetour(party)
+        simulation.startVisit(party, booth: 0)
+        simulation.finishStop(party)
+
+        #expect(party.visited.contains(0))
+        #expect(party.stopoversLeft == 0)
+    }
+
     @Test("A booth outside the view cone does not draw the party")
     func boothBehindIsNotSeen() {
         var strong = Self.booth(at: SIMD2(18, 2))
@@ -232,6 +278,12 @@ struct CrowdSimulationTests {
         simulation.agents.removeAll()
         simulation.spawn(draw, atGate: 0)
         return simulation.parties[simulation.parties.count - 1]
+    }
+
+    private static func stage(at center: SIMD2<Double>) -> LayoutObject {
+        ObjectCatalog.detectedEntertainment(
+            "stage", label: "Stage", placement: Placement(center: center, sizeM: SIMD2(2, 2))
+        )
     }
 
     private static func booth(at center: SIMD2<Double>) -> LayoutObject {

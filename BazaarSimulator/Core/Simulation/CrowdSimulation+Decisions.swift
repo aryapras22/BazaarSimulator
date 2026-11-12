@@ -93,20 +93,25 @@ nonisolated extension CrowdSimulation {
     }
 
     /// A buyer can be pulled into a more attractive booth, and a stroller stops now and then at any booth in view.
+    /// Entertainment draws both of them without using up the detour, the stopovers or the planned booths.
     func considerDetour(_ party: CrowdParty) {
         if party.isGoalDriven {
+            let detoursLeft = party.detours < CrowdParameters.maxDetours
             guard case .booth(let planned, .planned) = party.target,
-                  party.detours < CrowdParameters.maxDetours,
-                  let best = bestVisibleBooth(for: party, strongerThan: party.loyalty),
+                  let best = bestVisibleBooth(
+                      for: party, strongerThan: party.loyalty, entertainmentOnly: !detoursLeft
+                  ),
                   best != planned else { return }
-            party.plan.removeAll { $0 == planned }
+            if !world.booths[best].isEntertainment {
+                party.plan.removeAll { $0 == planned }
+                party.detours += 1
+            }
             party.target = .booth(best, .detour)
-            party.detours += 1
             party.restartProgress(at: time)
             return
         }
 
-        guard party.stopoversLeft > 0, let best = bestVisibleBooth(for: party) else { return }
+        guard let best = bestVisibleBooth(for: party, entertainmentOnly: party.stopoversLeft <= 0) else { return }
         switch party.target {
         case .exit, .booth(_, .planned), .booth(_, .passingThrough):
             if case .booth(best, _) = party.target { return }
@@ -239,7 +244,7 @@ nonisolated extension CrowdSimulation {
         party.state = .walking
 
         if party.currentReason == .stopover {
-            party.stopoversLeft -= 1
+            if !world.booths[booth].isEntertainment { party.stopoversLeft -= 1 }
         } else {
             stats.visits += party.people
             if world.booths[booth].isFood && party.willSit, let table = nearestFreeTable(to: party) {
@@ -286,12 +291,17 @@ nonisolated extension CrowdSimulation {
     // MARK: - Vision
 
     /// A booth is seen when part of its influence circle is inside the view cone with a clear line of sight.
-    func bestVisibleBooth(for party: CrowdParty, strongerThan minimumPull: Double = 0) -> Int? {
+    func bestVisibleBooth(
+        for party: CrowdParty,
+        strongerThan minimumPull: Double = 0,
+        entertainmentOnly: Bool = false
+    ) -> Int? {
         let leaderPosition = party.leader.position
         var best: (booth: Int, reach: Double)?
 
         for booth in world.booths.indices
         where world.booths[booth].pull > minimumPull
+            && (!entertainmentOnly || world.booths[booth].isEntertainment)
             && world.booths[booth].isReachable(fromGate: party.gate)
             && !party.visited.contains(booth) {
             guard let reach = visibleReach(of: booth, from: leaderPosition, heading: party.heading) else { continue }

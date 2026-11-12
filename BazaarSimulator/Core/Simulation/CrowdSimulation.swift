@@ -241,7 +241,9 @@ nonisolated final class CrowdSimulation {
     }
 
     private func planBooths(for persona: CrowdPersona, gate: Int) -> [Int] {
-        let pool = world.booths.indices.filter { world.booths[$0].isReachable(fromGate: gate) }
+        let pool = world.booths.indices.filter {
+            world.booths[$0].isReachable(fromGate: gate) && !world.booths[$0].isEntertainment
+        }
         let stops = traitRandom.randomInt(in: persona.plannedBooths)
         var chosen: [Int] = []
 
