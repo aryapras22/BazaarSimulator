@@ -172,7 +172,6 @@ enum MockLayoutMapper {
 extension MockLayoutMapper {
     private static func mapStage(from stage: BazaarStageDTO) -> LayoutObject {
         ObjectCatalog.detectedEntertainment(
-            "stage",
             label: "Stage",
             placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY)
         )
@@ -229,13 +228,8 @@ extension MockLayoutMapper {
                 rotationDegrees: fixture.rotationDegrees
             ))
             // A fixture of kind "stage" is a stage extension, whatever its label says.
-            let entertainmentID = fixture.kind.lowercased() == "stage"
-                ? "stage"
-                : ObjectCatalog.entertainmentItemID(forLabel: fixture.label)
-            if let entertainmentID {
-                return ObjectCatalog.detectedEntertainment(
-                    entertainmentID, label: fixture.label, placement: fixturePlacement
-                )
+            if fixture.kind.lowercased() == "stage" || ObjectCatalog.namesEntertainment(fixture.label) {
+                return ObjectCatalog.detectedEntertainment(label: fixture.label, placement: fixturePlacement)
             }
             return LayoutObject(kind: .block, label: fixture.label, placement: fixturePlacement, reviewState: .detected)
         }

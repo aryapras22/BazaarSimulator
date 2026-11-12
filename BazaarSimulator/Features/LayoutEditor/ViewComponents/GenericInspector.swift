@@ -9,6 +9,7 @@ struct InspectorFields: Sendable {
     var showsHeight: Bool
     var showsShape: Bool
     var showsOpenSides: Bool
+    var showsAttractiveness: Bool
 
     static func forObject(_ object: LayoutObject) -> InspectorFields {
         switch object.kind {
@@ -25,7 +26,13 @@ struct InspectorFields: Sendable {
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
         case .entertainment:
-            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true, showsOpenSides: true)
+            return InspectorFields(
+                showsLabel: true,
+                showsRotation: true,
+                showsHeight: true,
+                showsOpenSides: true,
+                showsAttractiveness: true
+            )
         case .booth, .door, .table, .seating:
             return InspectorFields()
         }
@@ -39,7 +46,8 @@ struct InspectorFields: Sendable {
         showsRotation: Bool = false,
         showsHeight: Bool = false,
         showsShape: Bool = false,
-        showsOpenSides: Bool = false
+        showsOpenSides: Bool = false,
+        showsAttractiveness: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -49,6 +57,7 @@ struct InspectorFields: Sendable {
         self.showsHeight = showsHeight
         self.showsShape = showsShape
         self.showsOpenSides = showsOpenSides
+        self.showsAttractiveness = showsAttractiveness
     }
 }
 
@@ -101,6 +110,10 @@ struct GenericInspector: View {
 
             if fields.showsHeight {
                 HeightField(height: $draft.heightM)
+            }
+
+            if fields.showsAttractiveness {
+                AttractivenessField(value: $draft.attractiveness)
             }
 
             if fields.showsOpenSides {

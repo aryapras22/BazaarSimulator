@@ -236,7 +236,7 @@ struct CrowdSimulationTests {
 
     private static func stage(at center: SIMD2<Double>) -> LayoutObject {
         ObjectCatalog.detectedEntertainment(
-            "stage", label: "Stage", placement: Placement(center: center, sizeM: SIMD2(2, 2))
+            label: "Stage", placement: Placement(center: center, sizeM: SIMD2(2, 2))
         )
     }
 
@@ -292,7 +292,7 @@ extension CrowdSimulationTests {
         #expect(party.stopoversLeft == 0)
     }
 
-    @Test("Some stage visitors sit in nearby seating to watch, never at a table")
+    @Test("Some entertainment visitors sit in nearby seating to watch, never at a table")
     func stageVisitorsSitAsAudience() {
         let seating = LayoutObject(
             kind: .seating,

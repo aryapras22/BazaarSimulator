@@ -252,7 +252,7 @@ nonisolated extension CrowdSimulation {
                 return
             }
         }
-        if world.booths[booth].hasAudience,
+        if world.booths[booth].isEntertainment,
            choiceRandom.nextDouble() < CrowdParameters.audienceChance,
            let group = nearestFreeTable(to: party, seatingWithin: CrowdParameters.audienceRadiusM, of: booth) {
             party.eatSeconds = choiceRandom.randomDouble(in: CrowdParameters.watchSeconds)

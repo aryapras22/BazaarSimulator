@@ -35,8 +35,6 @@ nonisolated struct CrowdBooth {
     let isFood: Bool
     /// A stage, photobooth, competition or display: visitors stop there on top of their booth budget.
     let isEntertainment: Bool
-    /// A stage or competition area, which people may sit down to watch.
-    let hasAudience: Bool
     let footprint: CrowdFootprint
     let pull: Double
     let capacity: Int

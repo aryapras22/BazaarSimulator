@@ -18,7 +18,7 @@ struct LayoutEditorViewModelFurnitureTests {
         return nil
     }
 
-    @Test("The Booths library offers the 4-seat table, the seating block and the entertainment objects")
+    @Test("The Booths library offers the 4-seat table, the seating block and the entertainment object")
     func libraryOffersStandardModels() {
         let context = LayoutEditorViewModelTests.makeContext()
         context.viewModel.selectLayer(.booths)
@@ -27,7 +27,7 @@ struct LayoutEditorViewModelFurnitureTests {
         #expect(rows.map(\.id) == ["table-rect-4", FurnitureModels.seatingBlockID])
         #expect(rows.allSatisfy { !$0.seats.isEmpty })
         let entertainment = context.viewModel.libraryRows.filter { $0.category == .entertainment }
-        #expect(entertainment.map(\.id) == ["stage", "photobooth", "competition", "display"])
+        #expect(entertainment.map(\.id) == [ObjectCatalog.entertainmentID])
         context.viewModel.selectLayer(.structure)
         #expect(!context.viewModel.libraryRows.contains { $0.category == .furniture })
     }
@@ -66,20 +66,23 @@ struct LayoutEditorViewModelFurnitureTests {
         #expect(viewModel.activeLayout?.objects.contains { $0.id == created.id } == true)
     }
 
-    @Test("A placed photobooth opens its free sides and pulls at full attractiveness")
+    @Test("Placed entertainment opens its free sides and starts at attractiveness 5, which the user can lower")
     func placedEntertainmentHasOpenSides() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let viewModel = context.viewModel
         viewModel.selectLayer(.booths)
-        let spot = try #require(freeSpot(for: .entertainment, size: SIMD2(2, 2), in: context.layout))
+        let spot = try #require(freeSpot(for: .entertainment, size: SIMD2(4, 3), in: context.layout))
 
-        viewModel.placeLibraryItem(id: "photobooth", at: spot)
-        let photobooth = try #require(viewModel.selectedObject)
+        viewModel.placeLibraryItem(id: ObjectCatalog.entertainmentID, at: spot)
+        let entertainment = try #require(viewModel.selectedObject)
 
-        #expect(photobooth.kind == .entertainment)
-        #expect(photobooth.attractiveness == 5)
-        #expect(!photobooth.openSides.isEmpty)
-        #expect(photobooth.openSides == OpenSideInference.defaultSide(for: photobooth, in: context.layout))
+        #expect(entertainment.kind == .entertainment)
+        #expect(entertainment.attractiveness == 5)
+        #expect(!entertainment.openSides.isEmpty)
+        #expect(entertainment.openSides == OpenSideInference.defaultSide(for: entertainment, in: context.layout))
+
+        viewModel.editInspectorDraft { $0.attractiveness = 2 }
+        #expect(viewModel.activeLayout?.objects.first { $0.id == entertainment.id }?.attractiveness == 2)
     }
 
     @Test("Resizing a seating block changes its seats, and a table keeps its standard size under a group edit")

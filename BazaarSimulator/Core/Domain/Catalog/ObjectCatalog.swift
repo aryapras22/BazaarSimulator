@@ -57,57 +57,36 @@ enum ObjectCatalog {
         seats: FurnitureModels.gridOffsets(for: FurnitureModels.seatingBlockSizeM)
     )
 
+    static let entertainmentID = "entertainment"
+
+    /// One object for every attraction: a stage, photobooth, competition area or display.
     static let entertainmentItems: [CatalogItem] = [
-        entertainmentItem(
-            id: "stage", name: "Stage", size: SIMD2(6, 4), height: 0.6,
-            keywords: ["performance", "music"]
-        ),
-        entertainmentItem(id: "photobooth", name: "Photobooth", size: SIMD2(2, 2), height: 2.2, keywords: ["photo"]),
-        entertainmentItem(
-            id: "competition", name: "Competition area", size: SIMD2(5, 5), height: 0.05,
-            keywords: ["contest", "game"]
-        ),
-        entertainmentItem(id: "display", name: "Display", size: SIMD2(2, 1), height: 1.5, keywords: ["exhibit"])
+        CatalogItem(
+            id: entertainmentID, name: "Entertainment", category: .entertainment, kind: .entertainment,
+            sizeM: SIMD2(4, 3), heightM: 0.6, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["entertainment", "attraction", "stage", "photobooth", "competition", "display"], seats: []
+        )
     ]
 
-    private static let entertainmentWords: [(itemID: String, words: [String])] = [
-        ("stage", ["stage"]),
-        ("photobooth", ["photo"]),
-        ("competition", ["competition", "lomba"]),
-        ("display", ["display"])
-    ]
+    private static let entertainmentWords = ["stage", "photo", "competition", "lomba", "display"]
 
-    /// The entertainment item a plan label names, such as "PHOTO BOX" or "Stage".
-    static func entertainmentItemID(forLabel label: String) -> String? {
+    /// Whether a plan label names an attraction, such as "PHOTO BOX" or "Stage".
+    static func namesEntertainment(_ label: String) -> Bool {
         let lowered = label.lowercased()
-        return entertainmentWords.first { entry in entry.words.contains { lowered.contains($0) } }?.itemID
+        return entertainmentWords.contains { lowered.contains($0) }
     }
 
-    /// An entertainment object read from a plan, at the item's height and full attractiveness.
-    static func detectedEntertainment(_ itemID: String, label: String, placement: Placement) -> LayoutObject {
+    /// An entertainment object read from a plan, at the default attractiveness.
+    static func detectedEntertainment(label: String, placement: Placement) -> LayoutObject {
         LayoutObject(
             kind: .entertainment,
             label: label,
             placement: placement,
             reviewState: .detected,
-            catalogID: itemID,
-            heightM: item(itemID)?.heightM,
+            catalogID: entertainmentID,
+            heightM: item(entertainmentID)?.heightM,
             attractiveness: LayoutObjectKind.entertainment.defaultAttractiveness
-        )
-    }
-
-    private static func entertainmentItem(
-        id: String,
-        name: String,
-        size: SIMD2<Double>,
-        height: Double,
-        keywords: [String]
-    ) -> CatalogItem {
-        CatalogItem(
-            id: id, name: name, category: .entertainment, kind: .entertainment,
-            sizeM: size, heightM: height, footprint: .rect,
-            resize: .free, placement: .point,
-            keywords: ["entertainment", "attraction"] + keywords, seats: []
         )
     }
 

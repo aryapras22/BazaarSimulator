@@ -91,7 +91,11 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         self == .closedArea || self == .booth || self == .block || self == .seating || self == .entertainment
     }
 
-    /// A stage, photobooth, competition or display draws people harder than any ordinary booth.
+    var hasAttractiveness: Bool {
+        self == .booth || self == .entertainment
+    }
+
+    /// Entertainment starts at the top of the scale. The user can lower it like a booth's.
     var defaultAttractiveness: Double {
         self == .entertainment ? 5 : 1
     }

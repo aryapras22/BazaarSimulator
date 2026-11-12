@@ -97,7 +97,7 @@ struct CrowdWorldTests {
 
     @Test("A placed stage draws visitors as a non-food attraction at full pull")
     func entertainmentIsFullPullAttraction() throws {
-        let stage = try #require(ObjectCatalog.item("stage"))
+        let stage = try #require(ObjectCatalog.item(ObjectCatalog.entertainmentID))
         let object = LayoutObject(
             kind: stage.kind,
             label: "Stage",

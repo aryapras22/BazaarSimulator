@@ -47,16 +47,16 @@ struct MockLayoutMapperTests {
         #expect(layout.zones.isEmpty)
         let entertainment = layout.objects.filter { $0.kind == .entertainment }
         #expect(entertainment.map(\.label) == ["Stage", "EXT"])
-        #expect(entertainment.allSatisfy { $0.catalogID == "stage" && $0.attractiveness == 5 })
+        #expect(entertainment.allSatisfy { $0.catalogID == ObjectCatalog.entertainmentID && $0.attractiveness == 5 })
     }
 
-    @Test("Plan labels name the entertainment item they are, and other fixtures stay blocks")
+    @Test("Plan labels for stages, photobooths, competitions and displays read as entertainment")
     func entertainmentLabels() {
-        #expect(ObjectCatalog.entertainmentItemID(forLabel: "PHOTO BOX") == "photobooth")
-        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Stage") == "stage")
-        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Area Lomba") == "competition")
-        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Product Display") == "display")
-        #expect(ObjectCatalog.entertainmentItemID(forLabel: "DECOR") == nil)
+        #expect(ObjectCatalog.namesEntertainment("PHOTO BOX"))
+        #expect(ObjectCatalog.namesEntertainment("Stage"))
+        #expect(ObjectCatalog.namesEntertainment("Area Lomba"))
+        #expect(ObjectCatalog.namesEntertainment("Product Display"))
+        #expect(!ObjectCatalog.namesEntertainment("DECOR"))
     }
 
     @Test("A rect maps to the right center and size")
