@@ -66,6 +66,18 @@ struct ImportQueueTests {
         #expect(await log.names == ["legend", "one"])
     }
 
+    @Test("A plan added with no legend fails with a message about the legend")
+    func missingLegendExplained() async {
+        let queue = ImportQueue(pdf: StubPDF(), reader: StubReader(log: ReadLog()))
+        let projectID = UUID()
+        queue.add(urls: [URL(fileURLWithPath: "/tmp/one.pdf")], kind: .floorPlan, projectID: projectID)
+
+        await settled(queue, projectID: projectID)
+
+        let plan = queue.files(for: projectID)[0]
+        #expect(plan.state == .failed(message: "No legend has been read yet. Add a legend, then retry."))
+    }
+
     @Test("A failed plan does not stop the next one")
     func failureIsolated() async {
         let queue = ImportQueue(pdf: StubPDF(), reader: StubReader(log: ReadLog(), failingPlan: "bad"))
@@ -79,7 +91,9 @@ struct ImportQueueTests {
         await settled(queue, projectID: projectID)
 
         let plans = queue.files(for: projectID).filter { $0.kind == .floorPlan }
-        #expect(plans[0].state == .failed(message: "Couldn't read this plan"))
+        #expect(plans[0].state == .failed(
+            message: "No booths found. Check that this is a floor plan with booths drawn on it."
+        ))
         #expect(plans[1].state == .done(booths: 0, doors: 0))
         #expect(queue.extractedLayout(for: plans[1].id)?.name == "good")
     }

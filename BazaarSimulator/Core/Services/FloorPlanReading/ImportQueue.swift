@@ -159,9 +159,22 @@ final class ImportQueue: ImportQueueing {
             }
         } catch {
             guard isCurrent(file.id) else { return }
-            let noun = file.kind == .legend ? "legend" : "plan"
-            setState(.failed(message: "Couldn't read this \(noun)"), for: file.id)
+            setState(.failed(message: Self.failureMessage(for: error, kind: file.kind)), for: file.id)
             log("Failed: \(error)", for: file, severity: .failure)
+        }
+    }
+
+    private static func failureMessage(for error: Error, kind: ImportFileKind) -> String {
+        switch error {
+        case PDFImportError.unreadable:
+            return "Can't open this PDF. It may be damaged or password-protected."
+        case FloorPlanReadingError.noLegend:
+            return "No legend has been read yet. Add a legend, then retry."
+        case FloorPlanReadingError.noBooths:
+            return "No booths found. Check that this is a floor plan with booths drawn on it."
+        default:
+            let noun = kind == .legend ? "legend" : "plan"
+            return "Something went wrong while reading this \(noun). Try again."
         }
     }
 
@@ -178,7 +191,7 @@ final class ImportQueue: ImportQueueing {
         }
         guard !readLegends.isEmpty else {
             log("No legend has been read for this project", for: file, severity: .failure)
-            throw PDFImportError.unreadable
+            throw FloorPlanReadingError.noLegend
         }
         let page = try renderPage(of: file.url, loggedFor: file)
         let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend))

@@ -5,6 +5,7 @@ import os
 
 enum FloorPlanReadingError: Error {
     case noBooths
+    case noLegend
 }
 
 struct ExtractorFloorPlanReader: FloorPlanReading {
