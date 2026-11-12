@@ -32,6 +32,32 @@ extension ProjectSetupViewModelTests {
         #expect(!viewModel.isCancelEnabled)
     }
 
+    @Test("Delete all legends removes this project's legend files and keeps its plans")
+    @MainActor
+    func deleteAllLegendsKeepsPlans() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Untitled")
+        let other = session.createProject(named: "Untitled 2")
+        let queue = ScriptedImportQueue(isSynchronous: false)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+        let url = URL(fileURLWithPath: "/tmp/file.pdf")
+        queue.insert(ImportFile(projectID: project.id, url: url, kind: .legend, state: .waiting))
+        queue.insert(ImportFile(projectID: project.id, url: url, kind: .legend, state: .waiting))
+        queue.insert(ImportFile(projectID: project.id, url: url, kind: .floorPlan, state: .waiting))
+        queue.insert(ImportFile(projectID: other.id, url: url, kind: .legend, state: .waiting))
+
+        viewModel.deleteAllLegends()
+
+        #expect(viewModel.legendFiles.isEmpty)
+        #expect(viewModel.floorPlanFiles.count == 1)
+        #expect(queue.files(for: other.id).count == 1)
+    }
+
     @Test("Two view models against the same queue see only their own files")
     @MainActor
     func viewModelsIsolateFilesByProject() {

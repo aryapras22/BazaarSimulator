@@ -206,6 +206,15 @@ final class ProjectSetupViewModel {
         importQueue.remove(fileID: id)
     }
     
+    func deleteAllLegends() {
+        bannerMessage = nil
+        for file in legendFiles {
+            importQueue.remove(fileID: file.id)
+        }
+        removedLegendEntryIDs.removeAll()
+        legendEntryTypes.removeAll()
+    }
+
     func retryLegendFile(id: UUID) {
         bannerMessage = nil
         importQueue.retry(fileID: id)

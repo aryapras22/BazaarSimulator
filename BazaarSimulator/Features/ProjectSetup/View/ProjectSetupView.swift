@@ -128,8 +128,17 @@ struct ProjectSetupView: View {
             let label = viewModel.legendEntries.isEmpty
                 ? "SCANNED LEGENDS"
                 : "SCANNED LEGENDS · \(viewModel.legendEntries.count) Elements"
-            Text(label)
-                .sectionLabel()
+            HStack {
+                Text(label)
+                    .sectionLabel()
+
+                Spacer()
+
+                Button("Delete all", action: viewModel.deleteAllLegends)
+                    .buttonStyle(.plain)
+                    .font(Typography.caption)
+                    .foregroundColor(Palette.destructive)
+            }
 
             VStack(spacing: Spacing.xs) {
                 ForEach(viewModel.pendingLegendRows) { row in
