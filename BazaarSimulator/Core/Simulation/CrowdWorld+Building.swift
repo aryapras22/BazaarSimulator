@@ -28,7 +28,7 @@ extension CrowdWorld {
 
     func buildBoothsAndTables(legend: Legend) {
         let foodCategories = Set(legend.entries.filter { $0.type == .fnb }.map(\.id))
-        for object in layout.objects where object.kind == .booth {
+        for object in layout.objects where object.kind == .booth || object.kind == .entertainment {
             let isFood = object.categoryID.map(foodCategories.contains) ?? false
             let size = object.placement.sizeM
             booths.append(CrowdBooth(
@@ -58,7 +58,8 @@ extension CrowdWorld {
             walls.floor[cell] = isOnFloorPlan(cellCenter(cell))
         }
         // The half-cell tolerance stops a wall thinner than a cell from slipping between cell centres.
-        for object in layout.objects where object.kind.blocksWalking && object.kind != .booth {
+        let attractionKinds: Set<LayoutObjectKind> = [.booth, .entertainment]
+        for object in layout.objects where object.kind.blocksWalking && !attractionKinds.contains(object.kind) {
             setFloor(false, inside: object.placement, tolerance: Self.cellSize / 2)
         }
         for booth in booths {

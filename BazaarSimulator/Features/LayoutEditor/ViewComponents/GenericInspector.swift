@@ -23,6 +23,8 @@ struct InspectorFields: Sendable {
             )
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
+        case .entertainment:
+            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true)
         case .booth, .door, .table, .seating:
             return InspectorFields()
         }

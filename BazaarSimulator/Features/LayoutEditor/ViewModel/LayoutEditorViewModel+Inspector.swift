@@ -20,7 +20,7 @@ extension LayoutEditorViewModel {
             return DoorLabelFormatter.displayTitle(for: selected, in: layout)
         case .block where selected.isColumn:
             return "Column"
-        case .closedArea, .table, .seating, .block:
+        case .closedArea, .table, .seating, .block, .entertainment:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
         case .wall:

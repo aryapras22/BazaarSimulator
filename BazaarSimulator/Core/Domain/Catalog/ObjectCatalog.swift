@@ -2,11 +2,12 @@ import Foundation
 import simd
 
 enum ObjectCatalog {
-    static let items: [CatalogItem] = structureItems + furnitureItems
+    static let items: [CatalogItem] = structureItems + furnitureItems + entertainmentItems
     static let columnID = "column"
 
     /// The only furniture the library offers. Imported seating blocks and other tables still resolve through `items`.
     static let libraryItems: [CatalogItem] = structureItems + furnitureItems.filter { $0.id == "table-rect-4" }
+        + entertainmentItems
 
     static func item(_ id: String) -> CatalogItem? {
         items.first { $0.id == id }
@@ -54,6 +55,34 @@ enum ObjectCatalog {
         keywords: ["seating", "audience", "chairs", "rows", "furniture"],
         seats: FurnitureModels.gridOffsets(for: FurnitureModels.seatingBlockSizeM)
     )
+
+    static let entertainmentItems: [CatalogItem] = [
+        entertainmentItem(
+            id: "stage", name: "Stage", size: SIMD2(6, 4), height: 0.6,
+            keywords: ["performance", "music"]
+        ),
+        entertainmentItem(id: "photobooth", name: "Photobooth", size: SIMD2(2, 2), height: 2.2, keywords: ["photo"]),
+        entertainmentItem(
+            id: "competition", name: "Competition area", size: SIMD2(5, 5), height: 0.05,
+            keywords: ["contest", "game"]
+        ),
+        entertainmentItem(id: "display", name: "Display", size: SIMD2(2, 1), height: 1.5, keywords: ["exhibit"])
+    ]
+
+    private static func entertainmentItem(
+        id: String,
+        name: String,
+        size: SIMD2<Double>,
+        height: Double,
+        keywords: [String]
+    ) -> CatalogItem {
+        CatalogItem(
+            id: id, name: name, category: .entertainment, kind: .entertainment,
+            sizeM: size, heightM: height, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["entertainment", "attraction"] + keywords, seats: []
+        )
+    }
 
     static let structureItems: [CatalogItem] = [
         CatalogItem(

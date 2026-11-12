@@ -246,6 +246,9 @@ final class Venue2DScene: SKScene {
         case .seating:
             node.fillColor = NSColor(calibratedRed: 0.35, green: 0.24, blue: 0.50, alpha: 0.75)
             node.strokeColor = .clear
+        case .entertainment:
+            node.fillColor = NSColor(calibratedRed: 0.90, green: 0.55, blue: 0.20, alpha: 1.0)
+            node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
         case .door:
             let isExit = object.doorFlow?.direction == .exit
             node.fillColor = isExit ? NSColor.systemRed : NSColor.systemGreen

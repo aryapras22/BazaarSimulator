@@ -8,6 +8,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case closedArea
     case table
     case seating
+    case entertainment
 
     var displayName: String {
         switch self {
@@ -18,6 +19,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .closedArea: return "Restricted area"
         case .table: return "Table"
         case .seating: return "Seating"
+        case .entertainment: return "Entertainment"
         }
     }
 
@@ -25,7 +27,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         switch self {
         case .wall, .block, .door, .closedArea:
             return .structure
-        case .booth, .table, .seating:
+        case .booth, .table, .seating, .entertainment:
             return .booths
         }
     }
@@ -74,7 +76,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .closedArea, .table, .seating: return 0.5
+        case .booth, .closedArea, .table, .seating, .entertainment: return 0.5
         case .door: return 0.8
         case .wall, .block: return 0.1
         }
@@ -86,7 +88,12 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     /// Walls resize through their end nodes and doors are fitted to their wall, so neither gets box handles.
     var hasResizeHandles: Bool {
-        self == .closedArea || self == .booth || self == .block || self == .seating
+        self == .closedArea || self == .booth || self == .block || self == .seating || self == .entertainment
+    }
+
+    /// A stage, photobooth, competition or display draws people harder than any ordinary booth.
+    var defaultAttractiveness: Double {
+        self == .entertainment ? 5 : 1
     }
 
     var isStructural: Bool {

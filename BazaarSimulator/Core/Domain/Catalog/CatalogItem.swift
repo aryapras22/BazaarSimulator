@@ -4,12 +4,13 @@ import simd
 enum CatalogCategory: String, CaseIterable, Hashable, Sendable {
     case project
     case furniture
+    case entertainment
     case structure
 
     var layer: EditorLayer {
         switch self {
         case .structure: return .structure
-        case .project, .furniture: return .booths
+        case .project, .furniture, .entertainment: return .booths
         }
     }
 }

@@ -18,7 +18,7 @@ struct LayoutEditorViewModelFurnitureTests {
         return nil
     }
 
-    @Test("The Booths library offers only the 4-seat rectangular table, with its seats")
+    @Test("The Booths library offers the 4-seat rectangular table and the entertainment objects")
     func libraryOffersStandardModels() {
         let context = LayoutEditorViewModelTests.makeContext()
         context.viewModel.selectLayer(.booths)
@@ -26,6 +26,8 @@ struct LayoutEditorViewModelFurnitureTests {
 
         #expect(rows.map(\.id) == ["table-rect-4"])
         #expect(rows.allSatisfy { !$0.seats.isEmpty })
+        let entertainment = context.viewModel.libraryRows.filter { $0.category == .entertainment }
+        #expect(entertainment.map(\.id) == ["stage", "photobooth", "competition", "display"])
         context.viewModel.selectLayer(.structure)
         #expect(!context.viewModel.libraryRows.contains { $0.category == .furniture })
     }

@@ -95,6 +95,23 @@ struct CrowdWorldTests {
         #expect(abs(world.booths[1].footprint.halfSize.x - 1.0) < 0.001)
     }
 
+    @Test("A placed stage draws visitors as a non-food attraction at full pull")
+    func entertainmentIsFullPullAttraction() throws {
+        let stage = try #require(ObjectCatalog.item("stage"))
+        let object = LayoutObject(
+            kind: stage.kind,
+            label: "Stage",
+            placement: Placement(center: SIMD2(10, 10), sizeM: stage.sizeM),
+            attractiveness: stage.kind.defaultAttractiveness
+        )
+
+        let world = CrowdWorld(layout: Self.floorLayout(objects: [object]))
+
+        #expect(world.booths.count == 1)
+        #expect(!world.booths[0].isFood)
+        #expect(world.booths[0].pull == 5)
+    }
+
     private static func floorLayout(objects: [LayoutObject]) -> Layout {
         Layout(
             name: "Floor",

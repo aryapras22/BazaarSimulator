@@ -200,7 +200,8 @@ extension LayoutEditorViewModel {
             label: label,
             placement: placement,
             catalogID: itemID,
-            heightM: item?.heightM
+            heightM: item?.heightM,
+            attractiveness: kind.defaultAttractiveness
         )
         commitEdit(.insert(object, index: layout.objects.count))
         applySelection(object.id)
@@ -269,7 +270,8 @@ extension LayoutEditorViewModel {
             label: label,
             placement: placement,
             catalogID: item.id,
-            heightM: item.heightM
+            heightM: item.heightM,
+            attractiveness: item.kind.defaultAttractiveness
         )
         withSingleRefresh {
             commitEdit(.insert(object, index: layout.objects.count))
