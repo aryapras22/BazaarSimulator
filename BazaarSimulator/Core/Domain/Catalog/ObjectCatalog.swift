@@ -5,8 +5,9 @@ enum ObjectCatalog {
     static let items: [CatalogItem] = structureItems + furnitureItems + entertainmentItems
     static let columnID = "column"
 
-    /// The only furniture the library offers. Imported seating blocks and other tables still resolve through `items`.
-    static let libraryItems: [CatalogItem] = structureItems + furnitureItems.filter { $0.id == "table-rect-4" }
+    /// The furniture the library offers. Imported tables of other models still resolve through `items`.
+    static let libraryItems: [CatalogItem] = structureItems
+        + furnitureItems.filter { $0.id == "table-rect-4" || $0.id == FurnitureModels.seatingBlockID }
         + entertainmentItems
 
     static func item(_ id: String) -> CatalogItem? {
