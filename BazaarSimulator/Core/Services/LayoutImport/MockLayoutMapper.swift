@@ -41,7 +41,7 @@ enum MockLayoutMapper {
             source: LayoutSource(name: dto.meta.name, sheet: dto.meta.sheet, note: dto.meta.note ?? "")
         )
 
-        for index in draftLayout.objects.indices where draftLayout.objects[index].kind == .booth {
+        for index in draftLayout.objects.indices where draftLayout.objects[index].kind.hasOpenSides {
             let booth = draftLayout.objects[index]
             draftLayout.objects[index].openSides = OpenSideInference.defaultSide(for: booth, in: draftLayout)
         }

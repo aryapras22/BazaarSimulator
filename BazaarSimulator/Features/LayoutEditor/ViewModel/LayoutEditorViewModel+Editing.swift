@@ -123,7 +123,7 @@ extension LayoutEditorViewModel {
     func resetOpenSidesForSelected() {
         guard let layout = activeLayout,
               let before = selectedObject,
-              before.kind == .booth else {
+              before.kind.hasOpenSides else {
             return
         }
         var after = before
@@ -152,7 +152,7 @@ extension LayoutEditorViewModel {
             label: nextLabel(for: kind, in: layout),
             placement: placement
         )
-        if kind == .booth {
+        if kind.hasOpenSides {
             newObject.openSides = OpenSideInference.defaultSide(for: newObject, in: layout)
         }
         withSingleRefresh {

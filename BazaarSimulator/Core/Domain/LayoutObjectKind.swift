@@ -60,11 +60,11 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasOpenSides: Bool {
-        self == .booth
+        self == .booth || self == .entertainment
     }
 
     var allowsMultipleOpenSides: Bool {
-        self == .booth
+        hasOpenSides
     }
 
     var blocksWalking: Bool {

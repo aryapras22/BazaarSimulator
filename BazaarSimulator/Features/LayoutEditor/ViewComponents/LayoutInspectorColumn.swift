@@ -53,7 +53,8 @@ struct LayoutInspectorColumn: View {
                     draft: draftBinding,
                     fields: .forObject(selected),
                     sizeRange: viewModel.sizeRangeM,
-                    titleIssues: viewModel.selectedTitleIssues
+                    titleIssues: viewModel.selectedTitleIssues,
+                    openSideIssues: viewModel.selectedOpenSideIssues
                 )
             }
         } footer: {

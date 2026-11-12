@@ -194,7 +194,7 @@ extension LayoutEditorViewModel {
         let label = nextLabel(for: kind, in: layout)
         var placement = candidate.placement
         placement.shape = item?.placementShape ?? .rect
-        let object = LayoutObject(
+        var object = LayoutObject(
             id: UUID(),
             kind: kind,
             label: label,
@@ -203,6 +203,7 @@ extension LayoutEditorViewModel {
             heightM: item?.heightM,
             attractiveness: kind.defaultAttractiveness
         )
+        if kind.hasOpenSides { object.openSides = OpenSideInference.defaultSide(for: object, in: layout) }
         commitEdit(.insert(object, index: layout.objects.count))
         applySelection(object.id)
     }
@@ -264,7 +265,7 @@ extension LayoutEditorViewModel {
         let label = nextLabel(for: item.kind, in: layout)
         var placement = candidate.placement
         placement.shape = item.placementShape
-        let object = LayoutObject(
+        var object = LayoutObject(
             id: UUID(),
             kind: item.kind,
             label: label,
@@ -273,6 +274,7 @@ extension LayoutEditorViewModel {
             heightM: item.heightM,
             attractiveness: item.kind.defaultAttractiveness
         )
+        if item.kind.hasOpenSides { object.openSides = OpenSideInference.defaultSide(for: object, in: layout) }
         withSingleRefresh {
             commitEdit(.insert(object, index: layout.objects.count))
             applySelection(object.id)

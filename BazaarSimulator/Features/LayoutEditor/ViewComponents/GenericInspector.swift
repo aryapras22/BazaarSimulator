@@ -8,6 +8,7 @@ struct InspectorFields: Sendable {
     var showsRotation: Bool
     var showsHeight: Bool
     var showsShape: Bool
+    var showsOpenSides: Bool
 
     static func forObject(_ object: LayoutObject) -> InspectorFields {
         switch object.kind {
@@ -24,7 +25,7 @@ struct InspectorFields: Sendable {
         case .closedArea:
             return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
         case .entertainment:
-            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true)
+            return InspectorFields(showsLabel: true, showsRotation: true, showsHeight: true, showsOpenSides: true)
         case .booth, .door, .table, .seating:
             return InspectorFields()
         }
@@ -37,7 +38,8 @@ struct InspectorFields: Sendable {
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
         showsHeight: Bool = false,
-        showsShape: Bool = false
+        showsShape: Bool = false,
+        showsOpenSides: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -46,6 +48,7 @@ struct InspectorFields: Sendable {
         self.showsRotation = showsRotation
         self.showsHeight = showsHeight
         self.showsShape = showsShape
+        self.showsOpenSides = showsOpenSides
     }
 }
 
@@ -54,6 +57,7 @@ struct GenericInspector: View {
     let fields: InspectorFields
     let sizeRange: ClosedRange<Double>
     var titleIssues: [String] = []
+    var openSideIssues: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
@@ -97,6 +101,17 @@ struct GenericInspector: View {
 
             if fields.showsHeight {
                 HeightField(height: $draft.heightM)
+            }
+
+            if fields.showsOpenSides {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    OpenSidesControl(sides: $draft.openSides, rotationDegrees: draft.rotationDegrees)
+                    ForEach(openSideIssues, id: \.self) { issue in
+                        Text(issue)
+                            .font(Typography.caption)
+                            .foregroundStyle(Palette.destructive)
+                    }
+                }
             }
         }
     }

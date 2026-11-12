@@ -66,6 +66,22 @@ struct LayoutEditorViewModelFurnitureTests {
         #expect(viewModel.activeLayout?.objects.contains { $0.id == created.id } == true)
     }
 
+    @Test("A placed photobooth opens its free sides and pulls at full attractiveness")
+    func placedEntertainmentHasOpenSides() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
+        let spot = try #require(freeSpot(for: .entertainment, size: SIMD2(2, 2), in: context.layout))
+
+        viewModel.placeLibraryItem(id: "photobooth", at: spot)
+        let photobooth = try #require(viewModel.selectedObject)
+
+        #expect(photobooth.kind == .entertainment)
+        #expect(photobooth.attractiveness == 5)
+        #expect(!photobooth.openSides.isEmpty)
+        #expect(photobooth.openSides == OpenSideInference.defaultSide(for: photobooth, in: context.layout))
+    }
+
     @Test("Resizing a seating block changes its seats, and a table keeps its standard size under a group edit")
     func seatingResizeAndGroupEdit() throws {
         let context = LayoutEditorViewModelTests.makeContext()

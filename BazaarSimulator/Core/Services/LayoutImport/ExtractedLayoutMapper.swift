@@ -79,7 +79,7 @@ enum ExtractedLayoutMapper {
                     + "(\(DimensionInput.text(for: pixelsPerMetre)) px/m)."
             )
         )
-        for index in layout.objects.indices where layout.objects[index].kind == .booth {
+        for index in layout.objects.indices where layout.objects[index].kind.hasOpenSides {
             layout.objects[index].openSides = OpenSideInference.defaultSide(for: layout.objects[index], in: layout)
         }
         return layout
