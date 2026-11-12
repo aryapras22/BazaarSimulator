@@ -220,12 +220,6 @@ struct ProjectSetupView: View {
                 .font(Typography.caption)
                 .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
 
-            Button("Cancel") {
-                viewModel.cancel()
-            }
-            .buttonStyle(.secondary)
-            .disabled(!viewModel.isCancelEnabled)
-
             Button("Continue") {
                 if viewModel.saveDraftToSession() {
                     showParameterModal = true
