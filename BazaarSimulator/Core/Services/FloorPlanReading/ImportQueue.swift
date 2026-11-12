@@ -151,8 +151,10 @@ final class ImportQueue: ImportQueueing {
                 let names = legend.entries.map(\.name).joined(separator: ", ")
                 log("Legend read: \(legend.entries.count) entries (\(names))", for: file)
             case .floorPlan:
-                let layout = try await readPlan(file)
+                var layout = try await readPlan(file)
                 guard isCurrent(file.id) else { return }
+                // Project setup finds a plan's layout by its file's ID, so Edit does nothing when they differ.
+                layout.layout.id = file.id
                 extractedLayouts[file.id] = layout
                 setState(.done(booths: layout.booths, doors: layout.doors), for: file.id)
                 log("Done: \(layout.booths) booths, \(layout.doors) doors", for: file)

@@ -98,6 +98,19 @@ struct ImportQueueTests {
         #expect(queue.extractedLayout(for: plans[1].id)?.name == "good")
     }
 
+    @Test("A read plan's layout takes its file's ID, which project setup uses to open it for editing")
+    func layoutTakesFileID() async throws {
+        let queue = ImportQueue(pdf: StubPDF(), reader: StubReader(log: ReadLog()))
+        let projectID = UUID()
+        queue.add(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")], kind: .legend, projectID: projectID)
+        queue.add(urls: [URL(fileURLWithPath: "/tmp/one.pdf")], kind: .floorPlan, projectID: projectID)
+
+        await settled(queue, projectID: projectID)
+
+        let plan = try #require(queue.files(for: projectID).first { $0.kind == .floorPlan })
+        #expect(queue.extractedLayout(for: plan.id)?.layout.id == plan.id)
+    }
+
     @Test("Cancel marks waiting files cancelled")
     func cancelMarksWaiting() {
         let queue = ImportQueue(pdf: StubPDF(), reader: StubReader(log: ReadLog()))
