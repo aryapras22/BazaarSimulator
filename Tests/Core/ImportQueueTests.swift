@@ -4,8 +4,11 @@ import Testing
 @testable import BazaarSimulator
 
 private struct StubPDF: PDFImporting {
+    var error: PDFImportError?
+
     func renderFirstPage(of url: URL) throws -> CGImage {
-        CGContext(
+        if let error { throw error }
+        return CGContext(
             data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
@@ -76,6 +79,35 @@ struct ImportQueueTests {
 
         let plan = queue.files(for: projectID)[0]
         #expect(plan.state == .failed(message: "No legend has been read yet. Add a legend, then retry."))
+    }
+
+    @Test("A file the app may not read fails with a message about permission")
+    func permissionDeniedExplained() async {
+        let queue = ImportQueue(pdf: StubPDF(error: .noPermission), reader: StubReader(log: ReadLog()))
+        let projectID = UUID()
+        queue.add(urls: [URL(fileURLWithPath: "/tmp/one.pdf")], kind: .legend, projectID: projectID)
+
+        await settled(queue, projectID: projectID)
+
+        let legend = queue.files(for: projectID)[0]
+        #expect(legend.state == .failed(
+            message: "No permission to read this file. Try adding it again, or move it to another folder."
+        ))
+    }
+
+    @Test("PDFImportService reports a file with no read permission")
+    func serviceDetectsNoPermission() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("locked-\(UUID()).pdf")
+        try Data("x".utf8).write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: url.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        #expect(throws: PDFImportError.noPermission) {
+            try PDFImportService().renderFirstPage(of: url)
+        }
     }
 
     @Test("A failed plan does not stop the next one")

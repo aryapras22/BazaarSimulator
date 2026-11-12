@@ -170,6 +170,8 @@ final class ImportQueue: ImportQueueing {
         switch error {
         case PDFImportError.unreadable:
             return "Can't open this PDF. It may be damaged or password-protected."
+        case PDFImportError.noPermission:
+            return "No permission to read this file. Try adding it again, or move it to another folder."
         case FloorPlanReadingError.noLegend:
             return "No legend has been read yet. Add a legend, then retry."
         case FloorPlanReadingError.noBooths:

@@ -4,6 +4,7 @@ import PDFKit
 
 enum PDFImportError: Error {
     case unreadable
+    case noPermission
 }
 
 protocol PDFImporting: Sendable {
@@ -14,9 +15,19 @@ protocol PDFImporting: Sendable {
 struct PDFImportService: PDFImporting {
     static let longSidePixels = 2800
 
+    private func readData(at url: URL) throws -> Data {
+        do {
+            return try Data(contentsOf: url, options: .mappedIfSafe)
+        } catch let error as CocoaError where error.code == .fileReadNoPermission {
+            throw PDFImportError.noPermission
+        } catch {
+            throw PDFImportError.unreadable
+        }
+    }
+
     func renderFirstPage(of url: URL) throws -> CGImage {
         // The page draws from its document, so the document has to outlive the draw call below.
-        let document = PDFDocument(url: url)
+        let document = PDFDocument(data: try readData(at: url))
         guard let page = document?.page(at: 0) else { throw PDFImportError.unreadable }
         let bounds = page.bounds(for: .mediaBox)
         guard bounds.width > 0, bounds.height > 0 else { throw PDFImportError.unreadable }
