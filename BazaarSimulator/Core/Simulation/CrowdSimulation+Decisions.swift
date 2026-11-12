@@ -248,13 +248,24 @@ nonisolated extension CrowdSimulation {
         } else {
             stats.visits += party.people
             if world.booths[booth].isFood && party.willSit, let table = nearestFreeTable(to: party) {
-                tableOccupants[table] = party
-                party.target = .table(table)
-                party.restartProgress(at: time)
+                headForSeat(party, table: table)
                 return
             }
         }
+        if world.booths[booth].hasAudience,
+           choiceRandom.nextDouble() < CrowdParameters.audienceChance,
+           let group = nearestFreeTable(to: party, seatingWithin: CrowdParameters.audienceRadiusM, of: booth) {
+            party.eatSeconds = choiceRandom.randomDouble(in: CrowdParameters.watchSeconds)
+            headForSeat(party, table: group)
+            return
+        }
         pickTarget(party)
+    }
+
+    private func headForSeat(_ party: CrowdParty, table: Int) {
+        tableOccupants[table] = party
+        party.target = .table(table)
+        party.restartProgress(at: time)
     }
 
     private func standUp(_ party: CrowdParty) {
@@ -268,11 +279,21 @@ nonisolated extension CrowdSimulation {
         pickTarget(party)
     }
 
-    private func nearestFreeTable(to party: CrowdParty) -> Int? {
+    /// With a booth given, only seat groups of a seating block within `radius` of it count, for an audience.
+    private func nearestFreeTable(
+        to party: CrowdParty,
+        seatingWithin radius: Double = 0,
+        of booth: Int? = nil
+    ) -> Int? {
         world.tables.indices
             .filter {
                 tableOccupants[$0] == nil && world.tables[$0].isReachable
                     && world.tables[$0].seats.count >= party.members.count
+            }
+            .filter { table in
+                guard let booth else { return true }
+                return world.tables[table].isSeating
+                    && world.booths[booth].footprint.distance(to: world.tables[table].footprint.center) <= radius
             }
             .min {
                 simd_distance(world.tables[$0].footprint.center, party.leader.position)

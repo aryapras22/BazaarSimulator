@@ -35,6 +35,8 @@ nonisolated struct CrowdBooth {
     let isFood: Bool
     /// A stage, photobooth, competition or display: visitors stop there on top of their booth budget.
     let isEntertainment: Bool
+    /// A stage or competition area, which people may sit down to watch.
+    let hasAudience: Bool
     let footprint: CrowdFootprint
     let pull: Double
     let capacity: Int
@@ -50,6 +52,8 @@ nonisolated struct CrowdTable {
     let footprint: CrowdFootprint
     /// Where each member sits, in order.
     let seats: [SIMD2<Double>]
+    /// Chairs of a seating block rather than a table, so an audience can use them.
+    let isSeating: Bool
     var isReachable = false
 }
 

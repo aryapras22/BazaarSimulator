@@ -35,6 +35,8 @@ extension CrowdWorld {
                 id: object.id,
                 isFood: isFood,
                 isEntertainment: object.kind == .entertainment,
+                hasAudience: object.kind == .entertainment
+                    && (object.catalogID == "stage" || object.catalogID == "competition"),
                 footprint: CrowdFootprint(object.placement, margin: isFood ? 0 : Self.stockSpill(for: size)),
                 pull: min(5, max(1, object.attractiveness)),
                 capacity: max(1, Int(max(size.x, size.y) / 0.75))
@@ -45,7 +47,8 @@ extension CrowdWorld {
             let corners = [SIMD2(-0.25, -0.25), SIMD2(0.25, -0.25), SIMD2(-0.25, 0.25), SIMD2(0.25, 0.25)]
             tables.append(CrowdTable(
                 footprint: CrowdFootprint(object.placement),
-                seats: corners.map { object.placement.center + $0 * size }
+                seats: corners.map { object.placement.center + $0 * size },
+                isSeating: false
             ))
         }
         for object in layout.objects where object.kind == .seating {
@@ -69,7 +72,7 @@ extension CrowdWorld {
                     sizeM: SIMD2(span + FurnitureModels.chairSizeM.x, FurnitureModels.chairSizeM.y),
                     rotationRadians: block.placement.rotationRadians
                 )
-                groups.append(CrowdTable(footprint: CrowdFootprint(footprint), seats: centers))
+                groups.append(CrowdTable(footprint: CrowdFootprint(footprint), seats: centers, isSeating: true))
             }
         }
         return groups

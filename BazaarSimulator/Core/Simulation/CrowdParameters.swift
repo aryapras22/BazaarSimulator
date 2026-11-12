@@ -40,6 +40,11 @@ nonisolated enum CrowdParameters {
     static let maxDetours = 1
     /// No party passes four people, so a group of four chairs in a seating block seats any party.
     static let seatsPerGroup = 4
+    /// Share of parties that sit down to watch after a stage or competition, how far they look for a free seat
+    /// group, and how long they watch. Set by judgement, not from the crowd behaviour research.
+    static let audienceChance = 0.5
+    static let audienceRadiusM = 15.0
+    static let watchSeconds = 300.0...900.0
     static let stuckSeconds = 150.0
 
     static let doorFlowPerMetre = 1.95

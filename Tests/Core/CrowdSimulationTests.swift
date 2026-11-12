@@ -292,6 +292,37 @@ extension CrowdSimulationTests {
         #expect(party.stopoversLeft == 0)
     }
 
+    @Test("Some stage visitors sit in nearby seating to watch, never at a table")
+    func stageVisitorsSitAsAudience() {
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "Audience",
+            placement: Placement(center: SIMD2(6, 9), sizeM: SIMD2(2, 1)),
+            catalogID: FurnitureModels.seatingBlockID
+        )
+        let table = LayoutObject(
+            kind: .table,
+            label: "Table",
+            placement: Placement(center: SIMD2(6, 13), sizeM: SIMD2(1, 1))
+        )
+        let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 5)), seating, table])
+        var watching = 0
+
+        for _ in 0..<40 {
+            let party = spawnedParty(in: simulation)
+            party.target = .booth(0, .detour)
+            simulation.startVisit(party, booth: 0)
+            simulation.finishStop(party)
+            if case .table(let group) = party.target {
+                #expect(simulation.world.tables[group].isSeating)
+                watching += 1
+            }
+            simulation.tableOccupants = simulation.tableOccupants.map { _ in nil }
+        }
+
+        #expect((8...32).contains(watching))
+    }
+
     @Test("A party sits on the chairs of a seating group big enough for it")
     func partySitsOnSeatingBlock() throws {
         let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
