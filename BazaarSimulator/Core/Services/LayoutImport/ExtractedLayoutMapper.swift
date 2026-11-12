@@ -190,7 +190,10 @@ enum ExtractedLayoutMapper {
         unlabeled: inout Int
     ) -> LayoutObject {
         if isHallClass(item.cls) {
-            return LayoutObject(kind: .block, label: "Stage", placement: placement, reviewState: .detected)
+            return ObjectCatalog.detectedEntertainment("stage", label: "Stage", placement: placement)
+        }
+        if let entertainmentID = ObjectCatalog.entertainmentItemID(forLabel: item.cls) {
+            return ObjectCatalog.detectedEntertainment(entertainmentID, label: item.cls, placement: placement)
         }
         guard isBooth(item) else {
             return LayoutObject(

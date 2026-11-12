@@ -19,7 +19,8 @@ struct MockLayoutMapperTests {
         #expect(count(.booth, in: layout) == 209)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 4)
-        #expect(count(.block, in: layout) == 5)
+        #expect(count(.block, in: layout) == 4)
+        #expect(count(.entertainment, in: layout) == 1)
         #expect(count(.wall, in: layout) == 3)
         #expect(count(.table, in: layout) == 26)
         #expect(count(.seating, in: layout) == 0)
@@ -27,7 +28,7 @@ struct MockLayoutMapperTests {
         #expect(layout.zones.count == 2)
     }
 
-    @Test("Beyond maps to expected counts, with stages, rails, fixtures and round columns as blocks")
+    @Test("Beyond maps to expected counts, with the stage as entertainment and round columns as blocks")
     func beyondCounts() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
 
@@ -36,7 +37,7 @@ struct MockLayoutMapperTests {
         #expect(count(.booth, in: layout) == 154)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 6)
-        #expect(count(.block, in: layout) == 36)
+        #expect(count(.block, in: layout) == 34)
         let columns = layout.objects.filter { $0.label == "Column" }
         #expect(columns.count == 23)
         #expect(columns.allSatisfy { $0.placement.shape == .round && $0.catalogID == "column" })
@@ -44,7 +45,18 @@ struct MockLayoutMapperTests {
         #expect(count(.table, in: layout) == 136)
         #expect(count(.seating, in: layout) == 1)
         #expect(layout.zones.isEmpty)
-        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stage" })
+        let entertainment = layout.objects.filter { $0.kind == .entertainment }
+        #expect(entertainment.map(\.label) == ["Stage", "EXT"])
+        #expect(entertainment.allSatisfy { $0.catalogID == "stage" && $0.attractiveness == 5 })
+    }
+
+    @Test("Plan labels name the entertainment item they are, and other fixtures stay blocks")
+    func entertainmentLabels() {
+        #expect(ObjectCatalog.entertainmentItemID(forLabel: "PHOTO BOX") == "photobooth")
+        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Stage") == "stage")
+        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Area Lomba") == "competition")
+        #expect(ObjectCatalog.entertainmentItemID(forLabel: "Product Display") == "display")
+        #expect(ObjectCatalog.entertainmentItemID(forLabel: "DECOR") == nil)
     }
 
     @Test("A rect maps to the right center and size")

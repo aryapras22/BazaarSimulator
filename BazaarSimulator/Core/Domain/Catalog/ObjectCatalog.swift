@@ -69,6 +69,32 @@ enum ObjectCatalog {
         entertainmentItem(id: "display", name: "Display", size: SIMD2(2, 1), height: 1.5, keywords: ["exhibit"])
     ]
 
+    private static let entertainmentWords: [(itemID: String, words: [String])] = [
+        ("stage", ["stage"]),
+        ("photobooth", ["photo"]),
+        ("competition", ["competition", "lomba"]),
+        ("display", ["display"])
+    ]
+
+    /// The entertainment item a plan label names, such as "PHOTO BOX" or "Stage".
+    static func entertainmentItemID(forLabel label: String) -> String? {
+        let lowered = label.lowercased()
+        return entertainmentWords.first { entry in entry.words.contains { lowered.contains($0) } }?.itemID
+    }
+
+    /// An entertainment object read from a plan, at the item's height and full attractiveness.
+    static func detectedEntertainment(_ itemID: String, label: String, placement: Placement) -> LayoutObject {
+        LayoutObject(
+            kind: .entertainment,
+            label: label,
+            placement: placement,
+            reviewState: .detected,
+            catalogID: itemID,
+            heightM: item(itemID)?.heightM,
+            attractiveness: LayoutObjectKind.entertainment.defaultAttractiveness
+        )
+    }
+
     private static func entertainmentItem(
         id: String,
         name: String,

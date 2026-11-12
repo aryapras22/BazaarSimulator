@@ -139,7 +139,7 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.first?.categoryID == interactive.id)
     }
 
-    @Test("Stage and Blocked become hall objects, Entrance is dropped, none become booths")
+    @Test("Stage becomes an entertainment object, Blocked a hall object, Entrance is dropped, none become booths")
     func structuralClasses() {
         let legend = Legend(entries: [food, LegendEntry(name: "Stage", color: LegendColor(red: 0, green: 0, blue: 1))])
         let plan = DetectedPlan(items: [
@@ -148,7 +148,8 @@ struct ExtractedLayoutMapperTests {
 
         let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 10, name: "Plan")
 
-        #expect(layout.objects.map(\.kind) == [.block, .closedArea])
+        #expect(layout.objects.map(\.kind) == [.entertainment, .closedArea])
+        #expect(layout.objects.first?.attractiveness == 5)
     }
 
     @Test("Booths without an ID get U1, U2 labels")

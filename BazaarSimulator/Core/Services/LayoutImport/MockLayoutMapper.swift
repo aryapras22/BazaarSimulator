@@ -171,11 +171,10 @@ enum MockLayoutMapper {
 
 extension MockLayoutMapper {
     private static func mapStage(from stage: BazaarStageDTO) -> LayoutObject {
-        LayoutObject(
-            kind: .block,
+        ObjectCatalog.detectedEntertainment(
+            "stage",
             label: "Stage",
-            placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY),
-            reviewState: .detected
+            placement: placement(minX: stage.minX, maxX: stage.maxX, minY: stage.minY, maxY: stage.maxY)
         )
     }
 
@@ -221,19 +220,24 @@ extension MockLayoutMapper {
 
     private static func mapFixtures(from fixtures: [BazaarFixtureDTO]) -> [LayoutObject] {
         fixtures.map { fixture in
-            LayoutObject(
-                kind: .block,
-                label: fixture.label,
-                placement: shapedPlacement(from: BazaarRectDTO(
-                    minX: fixture.minX,
-                    maxX: fixture.maxX,
-                    minY: fixture.minY,
-                    maxY: fixture.maxY,
-                    shape: fixture.shape,
-                    rotationDegrees: fixture.rotationDegrees
-                )),
-                reviewState: .detected
-            )
+            let fixturePlacement = shapedPlacement(from: BazaarRectDTO(
+                minX: fixture.minX,
+                maxX: fixture.maxX,
+                minY: fixture.minY,
+                maxY: fixture.maxY,
+                shape: fixture.shape,
+                rotationDegrees: fixture.rotationDegrees
+            ))
+            // A fixture of kind "stage" is a stage extension, whatever its label says.
+            let entertainmentID = fixture.kind.lowercased() == "stage"
+                ? "stage"
+                : ObjectCatalog.entertainmentItemID(forLabel: fixture.label)
+            if let entertainmentID {
+                return ObjectCatalog.detectedEntertainment(
+                    entertainmentID, label: fixture.label, placement: fixturePlacement
+                )
+            }
+            return LayoutObject(kind: .block, label: fixture.label, placement: fixturePlacement, reviewState: .detected)
         }
     }
 
