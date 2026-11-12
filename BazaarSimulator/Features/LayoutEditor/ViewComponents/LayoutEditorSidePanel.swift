@@ -19,7 +19,8 @@ struct LayoutEditorSidePanel: View {
                     nameRows: viewModel.nameGroupRows,
                     sizeRows: viewModel.sizeGroupRows,
                     onHover: { viewModel.hoveredGroup = $0 },
-                    onSelect: { viewModel.selectGroup($0) }
+                    onSelect: { viewModel.selectGroup($0) },
+                    onDeleteGroup: { viewModel.requestDeleteGroup($0) }
                 )
             }
         }

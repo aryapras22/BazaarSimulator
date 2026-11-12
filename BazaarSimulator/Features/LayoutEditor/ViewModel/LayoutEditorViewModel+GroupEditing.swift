@@ -75,6 +75,11 @@ extension LayoutEditorViewModel {
         commitEdit(.batch(edits))
     }
 
+    func requestDeleteGroup(_ kind: BoothGroupKind) {
+        selectGroup(kind)
+        requestDeleteGroup()
+    }
+
     func requestDeleteGroup() {
         guard let groupSelection else { return }
         if activeLayer == .structure {

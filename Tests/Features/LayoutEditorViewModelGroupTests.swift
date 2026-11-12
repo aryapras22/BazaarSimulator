@@ -107,6 +107,19 @@ struct LayoutEditorViewModelGroupTests {
         #expect(context.viewModel.activeLayout == context.layout)
     }
 
+    @Test("Deleting a group from the list selects it and asks to confirm", arguments: [true, false])
+    func deletingGroupFromListAsksToConfirm(bySize: Bool) throws {
+        let context = Self.makeContext()
+        let target = try booth(labelled: "A5", in: context.layout)
+        let kind = bySize ? BoothGrouping.sizeKind(for: target) : BoothGrouping.nameKind(for: target)
+        let memberCount = try #require(context.viewModel.boothGroup(kind)).memberIDs.count
+
+        context.viewModel.requestDeleteGroup(kind)
+
+        #expect(context.viewModel.pendingGroupDelete == memberCount)
+        #expect(context.viewModel.activeLayout == context.layout)
+    }
+
     @Test("Arrow keys are left to the canvas so Shift can widen the nudge step")
     func selectToolLeavesArrowKeysToTheCanvas() {
         let context = Self.makeContext()
