@@ -40,8 +40,8 @@ enum ObjectShapes {
         switch model.shape {
         case .round:
             top = .cylinder(
-                center: SIMD3(0, height - topThickness / 2, 0), radius: size.x / 2, height: topThickness,
-                segments: 24, role: .tabletop
+                center: SIMD3(0, height - topThickness / 2, 0), radii: SIMD2(repeating: size.x / 2),
+                height: topThickness, yaw: 0, segments: 24, role: .tabletop
             )
         case .rect:
             top = Shapes.box(

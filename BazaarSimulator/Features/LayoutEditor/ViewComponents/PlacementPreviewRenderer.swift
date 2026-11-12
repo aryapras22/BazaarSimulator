@@ -31,7 +31,7 @@ enum PlacementPreviewRenderer {
         }
 
         if !candidate.isValid {
-            let corners = LayoutGeometry.corners(of: candidate.placement)
+            let corners = LayoutGeometry.outline(of: candidate.placement)
             let path = FloorRenderer.polygonPath(for: corners, transform: transform)
             context.stroke(path, with: .color(Palette.canvasIssue), lineWidth: 2.5)
         }

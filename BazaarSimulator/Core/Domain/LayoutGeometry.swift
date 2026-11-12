@@ -10,6 +10,17 @@ struct BoundingBox: Hashable, Sendable {
 
 enum LayoutGeometry {
     private static let epsilon = 1e-6
+    private static let roundOutlineSegments = 32
+
+    /// The footprint as a convex polygon: the four corners of a rectangle, or points around an oval.
+    static func outline(of placement: Placement) -> [SIMD2<Double>] {
+        guard placement.shape == .round else { return corners(of: placement) }
+        let radii = placement.sizeM / 2.0
+        return (0..<roundOutlineSegments).map { index in
+            let angle = 2.0 * Double.pi * Double(index) / Double(roundOutlineSegments)
+            return toWorld(local: SIMD2<Double>(radii.x * cos(angle), radii.y * sin(angle)), in: placement)
+        }
+    }
 
     static func corners(of placement: Placement) -> [SIMD2<Double>] {
         let halfW = placement.sizeM.x / 2.0
@@ -32,7 +43,7 @@ enum LayoutGeometry {
     }
 
     static func bounds(of placement: Placement) -> BoundingBox {
-        let pts = corners(of: placement)
+        let pts = outline(of: placement)
         let xCoords = pts.map(\.x)
         let yCoords = pts.map(\.y)
         return BoundingBox(
@@ -83,7 +94,12 @@ enum LayoutGeometry {
         let local = toLocal(point: point, in: placement)
         let halfW = placement.sizeM.x / 2.0 + tolerance
         let halfH = placement.sizeM.y / 2.0 + tolerance
-        return abs(local.x) <= halfW + epsilon && abs(local.y) <= halfH + epsilon
+        guard placement.shape == .round else {
+            return abs(local.x) <= halfW + epsilon && abs(local.y) <= halfH + epsilon
+        }
+        guard halfW > epsilon, halfH > epsilon else { return false }
+        let scaled = local / SIMD2<Double>(halfW, halfH)
+        return simd_length_squared(scaled) <= 1 + epsilon
     }
 
     static func containsCircle(center: SIMD2<Double>, diameter: Double, point: SIMD2<Double>) -> Bool {
@@ -92,8 +108,8 @@ enum LayoutGeometry {
     }
 
     static func intersects(_ first: Placement, _ second: Placement) -> Bool {
-        let cornersA = corners(of: first)
-        let cornersB = corners(of: second)
+        let cornersA = outline(of: first)
+        let cornersB = outline(of: second)
         let axes = separatingAxes(for: cornersA) + separatingAxes(for: cornersB)
 
         for axis in axes {
@@ -108,8 +124,8 @@ enum LayoutGeometry {
     }
 
     static func overlapDepth(_ first: Placement, _ second: Placement) -> Double {
-        let cornersA = corners(of: first)
-        let cornersB = corners(of: second)
+        let cornersA = outline(of: first)
+        let cornersB = outline(of: second)
         var smallest = Double.greatestFiniteMagnitude
         for axis in separatingAxes(for: cornersA) + separatingAxes(for: cornersB) {
             let (minA, maxA) = project(cornersA, onto: axis)
@@ -142,7 +158,7 @@ enum LayoutGeometry {
     }
 
     static func isPlacementInsideWalkableFloor(_ placement: Placement, in layout: Layout) -> Bool {
-        let pts = corners(of: placement) + [placement.center]
+        let pts = outline(of: placement) + [placement.center]
         return pts.allSatisfy { point in
             polygonContains(layout.hall, point: point) || polygonContains(layout.lobby, point: point)
         }
@@ -174,11 +190,13 @@ enum LayoutGeometry {
         return Placement(center: worldCenter, sizeM: stripSize, rotationRadians: placement.rotationRadians)
     }
 
-    private static func separatingAxes(for corners: [SIMD2<Double>]) -> [SIMD2<Double>] {
-        guard corners.count == 4 else { return [] }
-        let edge1 = corners[1] - corners[0]
-        let edge2 = corners[2] - corners[1]
-        return [normalAxis(for: edge1), normalAxis(for: edge2)]
+    /// A rectangle's opposite edges share an axis, so two edges are enough; any other convex outline needs every edge.
+    private static func separatingAxes(for outline: [SIMD2<Double>]) -> [SIMD2<Double>] {
+        guard outline.count >= 3 else { return [] }
+        let edgeCount = outline.count == 4 ? 2 : outline.count
+        return (0..<edgeCount).map { index in
+            normalAxis(for: outline[(index + 1) % outline.count] - outline[index])
+        }
     }
 
     private static func normalAxis(for edge: SIMD2<Double>) -> SIMD2<Double> {

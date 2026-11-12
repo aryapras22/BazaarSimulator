@@ -20,7 +20,7 @@ enum ObstacleRenderer {
         if object.kind == .wall, state.cornerExtensions.start > 0 || state.cornerExtensions.end > 0 {
             corners = WallCornerExtensions.extendedCorners(for: object, extensions: state.cornerExtensions)
         } else {
-            corners = LayoutGeometry.corners(of: object.placement)
+            corners = LayoutGeometry.outline(of: object.placement)
         }
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 

@@ -76,8 +76,8 @@ Two files, `annyeong-market-layout.json` (70.1 x 84.2 m) and `beyond-market-layo
 | `kids` + `kidsLabel` + `kidsSeats` | rect, string, bool | Area in front of the stage, labelled "AUDIENCE" in Annyeong, with or without seats | 1 | 1 |
 | `columns` | `x y d` | Round pillars, diameter `d` | 0 | 23 at 0.6 m |
 | `pilasters` | `kind` + rect | Thin obstacles: `rail`, `wall`, `block` | 5 | 8 |
-| `fixtures` | `label`, `kind` + rect | Labelled items: "CLAW MACHINES", "DOORPRIZE", "DECOR"; `kind` `fixture` or `stage` ("EXT", a stage extension) | 1 | 6 |
-| `closed` | rects | Non-walkable areas inside the hall (back of house, closed strips) | 4 | 6 |
+| `fixtures` | `label`, `kind` + rect, optional `shape`, `rot` | Labelled items: "CLAW MACHINES", "DOORPRIZE", "DECOR"; `kind` `fixture` or `stage` ("EXT", a stage extension); `shape: "round"` fills the rect with an oval and `rot` turns it in degrees | 1 | 6 |
+| `closed` | rects, optional `shape`, `rot` | Non-walkable areas inside the hall (back of house, closed strips, atrium voids); `shape` and `rot` as for fixtures | 4 | 6 |
 | `foyer`, `corridor` | `x0 x1` + `label [x, y]` | Named lobby zones with a label position (Annyeong only) | 1 each | absent |
 | `lobbyBlock` | rect of zeros | Unused (all zero) | | |
 | `pantia`, `arrows` | empty arrays | Unused | | |

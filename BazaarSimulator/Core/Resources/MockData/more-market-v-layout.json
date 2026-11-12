@@ -6,7 +6,7 @@
       "w": 63.18,
       "h": 104.59
     },
-    "note": "Booths come from the colour-segmented JSON at 12.75 px per metre, which assumes yellow booths are 2 m and lime and magenta booths 3 by 2 m; rotated atrium booths are axis-aligned boxes of the same area. The atrium void and lifts are restricted. Visitors enter at Gate In, use the right hall door in and the left one out, then leave at Gate Out. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Booths come from the colour-segmented JSON at 12.75 px per metre, which assumes yellow booths are 2 m and lime and magenta booths 3 by 2 m; rotated atrium booths are axis-aligned boxes of the same area. Visitors enter at Gate In, use the right hall door in and the left one out, then leave at Gate Out. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m. The atrium void is one turned oval and the lift shaft a turned box; columns are round."
   },
   "hall": [
     [
@@ -1255,7 +1255,33 @@
     "y1": 95.75
   },
   "kidsSeats": false,
-  "columns": [],
+  "columns": [
+    {
+      "x": 4.8,
+      "y": 71.3,
+      "d": 1.0
+    },
+    {
+      "x": 13.0,
+      "y": 71.3,
+      "d": 1.0
+    },
+    {
+      "x": 21.2,
+      "y": 71.3,
+      "d": 1.0
+    },
+    {
+      "x": 29.3,
+      "y": 71.3,
+      "d": 1.0
+    },
+    {
+      "x": 37.3,
+      "y": 71.3,
+      "d": 1.0
+    }
+  ],
   "pilasters": [],
   "fixtures": [
     {
@@ -1351,28 +1377,19 @@
       "y1": 56.9
     },
     {
-      "x0": 16,
-      "x1": 26,
-      "y0": 26,
-      "y1": 36
+      "x0": 10.25,
+      "x1": 43.25,
+      "y0": 30.65,
+      "y1": 46.15,
+      "rot": 53,
+      "shape": "round"
     },
     {
-      "x0": 21,
-      "x1": 33,
-      "y0": 34,
-      "y1": 44
-    },
-    {
-      "x0": 26,
-      "x1": 37,
-      "y0": 43,
-      "y1": 51
-    },
-    {
-      "x0": 30,
-      "x1": 40,
-      "y0": 24,
-      "y1": 40
+      "x0": 27.0,
+      "x1": 44.0,
+      "y0": 30.55,
+      "y1": 34.05,
+      "rot": 50
     }
   ]
 }

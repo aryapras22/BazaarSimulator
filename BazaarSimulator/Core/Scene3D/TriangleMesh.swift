@@ -93,86 +93,69 @@ struct TriangleMesh: Sendable {
 }
 
 extension TriangleMesh {
+    /// An upright cylinder with an oval cross-section, `radii` along its own x and z, turned by `yaw` about +y.
     mutating func appendCylinder(
         center: SIMD3<Double>,
-        radius: Double,
+        radii: SIMD2<Double>,
         height: Double,
+        yaw: Double = 0,
         segments: Int = 16
     ) {
         let segCount = max(segments, 4)
-        let halfH = height / 2.0
-        let bottomY = center.y - halfH
-        let topY = center.y + halfH
+        let bottomY = center.y - height / 2.0
+        let topY = center.y + height / 2.0
+        let rim = (0..<segCount).map { index in
+            Self.ovalRimPoint(angle: 2.0 * Double.pi * Double(index) / Double(segCount), radii: radii, yaw: yaw)
+        }
 
         for index in 0..<segCount {
-            let angle0 = 2.0 * Double.pi * Double(index) / Double(segCount)
-            let angle1 = 2.0 * Double.pi * Double(index + 1) / Double(segCount)
-            let cos0 = cos(angle0)
-            let sin0 = sin(angle0)
-            let cos1 = cos(angle1)
-            let sin1 = sin(angle1)
-
+            let first = rim[index]
+            let second = rim[(index + 1) % segCount]
             let baseIndex = UInt32(positions.count)
-            positions.append(SIMD3<Float>(
-                Float(center.x + radius * cos0), Float(bottomY), Float(center.z + radius * sin0)
-            ))
-            positions.append(SIMD3<Float>(
-                Float(center.x + radius * cos1), Float(bottomY), Float(center.z + radius * sin1)
-            ))
-            positions.append(SIMD3<Float>(
-                Float(center.x + radius * cos1), Float(topY), Float(center.z + radius * sin1)
-            ))
-            positions.append(SIMD3<Float>(
-                Float(center.x + radius * cos0), Float(topY), Float(center.z + radius * sin0)
-            ))
-
-            normals.append(SIMD3<Float>(Float(cos0), 0, Float(sin0)))
-            normals.append(SIMD3<Float>(Float(cos1), 0, Float(sin1)))
-            normals.append(SIMD3<Float>(Float(cos1), 0, Float(sin1)))
-            normals.append(SIMD3<Float>(Float(cos0), 0, Float(sin0)))
-
+            for (point, posY) in [(first, bottomY), (second, bottomY), (second, topY), (first, topY)] {
+                let position = SIMD3<Double>(center.x + point.offset.x, posY, center.z + point.offset.y)
+                positions.append(SIMD3<Float>(position))
+            }
+            for normal in [first.normal, second.normal, second.normal, first.normal] {
+                normals.append(SIMD3<Float>(Float(normal.x), 0, Float(normal.y)))
+            }
             indices.append(contentsOf: [
                 baseIndex, baseIndex + 1, baseIndex + 2,
                 baseIndex, baseIndex + 2, baseIndex + 3
             ])
         }
 
-        appendCylinderCaps(center: center, radius: radius, topY: topY, bottomY: bottomY, segCount: segCount)
+        appendCap(center: center, rim: rim.map(\.offset), posY: topY, facesUp: true)
+        appendCap(center: center, rim: rim.map(\.offset), posY: bottomY, facesUp: false)
     }
 
-    private mutating func appendCylinderCaps(
-        center: SIMD3<Double>,
-        radius: Double,
-        topY: Double,
-        bottomY: Double,
-        segCount: Int
-    ) {
-        let topCenterIndex = UInt32(positions.count)
-        positions.append(SIMD3<Float>(Float(center.x), Float(topY), Float(center.z)))
-        normals.append(SIMD3<Float>(0, 1, 0))
-        for index in 0..<segCount {
-            let angle = 2.0 * Double.pi * Double(index) / Double(segCount)
-            let posX = Float(center.x + radius * cos(angle))
-            let posZ = Float(center.z + radius * sin(angle))
-            positions.append(SIMD3<Float>(posX, Float(topY), posZ))
-            normals.append(SIMD3<Float>(0, 1, 0))
-            let currentIdx = topCenterIndex + 1 + UInt32(index)
-            let nextIdx = topCenterIndex + 1 + UInt32((index + 1) % segCount)
-            indices.append(contentsOf: [topCenterIndex, nextIdx, currentIdx])
+    private static func ovalRimPoint(
+        angle: Double,
+        radii: SIMD2<Double>,
+        yaw: Double
+    ) -> (offset: SIMD2<Double>, normal: SIMD2<Double>) {
+        let local = SIMD2<Double>(radii.x * cos(angle), radii.y * sin(angle))
+        let gradient = SIMD2<Double>(cos(angle) / max(radii.x, 1e-6), sin(angle) / max(radii.y, 1e-6))
+        let localNormal = simd_normalize(gradient)
+        let turn = { (vector: SIMD2<Double>) in
+            SIMD2<Double>(vector.x * cos(yaw) - vector.y * sin(yaw), vector.x * sin(yaw) + vector.y * cos(yaw))
         }
+        return (turn(local), turn(localNormal))
+    }
 
-        let bottomCenterIndex = UInt32(positions.count)
-        positions.append(SIMD3<Float>(Float(center.x), Float(bottomY), Float(center.z)))
-        normals.append(SIMD3<Float>(0, -1, 0))
-        for index in 0..<segCount {
-            let angle = 2.0 * Double.pi * Double(index) / Double(segCount)
-            let posX = Float(center.x + radius * cos(angle))
-            let posZ = Float(center.z + radius * sin(angle))
-            positions.append(SIMD3<Float>(posX, Float(bottomY), posZ))
-            normals.append(SIMD3<Float>(0, -1, 0))
-            let currentIdx = bottomCenterIndex + 1 + UInt32(index)
-            let nextIdx = bottomCenterIndex + 1 + UInt32((index + 1) % segCount)
-            indices.append(contentsOf: [bottomCenterIndex, currentIdx, nextIdx])
+    private mutating func appendCap(center: SIMD3<Double>, rim: [SIMD2<Double>], posY: Double, facesUp: Bool) {
+        let centerIndex = UInt32(positions.count)
+        let normal = SIMD3<Float>(0, facesUp ? 1 : -1, 0)
+        positions.append(SIMD3<Float>(Float(center.x), Float(posY), Float(center.z)))
+        normals.append(normal)
+        for point in rim {
+            positions.append(SIMD3<Float>(Float(center.x + point.x), Float(posY), Float(center.z + point.y)))
+            normals.append(normal)
+        }
+        for index in 0..<rim.count {
+            let current = centerIndex + 1 + UInt32(index)
+            let next = centerIndex + 1 + UInt32((index + 1) % rim.count)
+            indices.append(contentsOf: facesUp ? [centerIndex, next, current] : [centerIndex, current, next])
         }
     }
 

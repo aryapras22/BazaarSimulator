@@ -192,11 +192,13 @@ extension LayoutEditorViewModel {
         let item = ObjectCatalog.item(itemID)
         let kind = item?.kind ?? .block
         let label = nextLabel(for: kind, in: layout)
+        var placement = candidate.placement
+        placement.shape = item?.placementShape ?? .rect
         let object = LayoutObject(
             id: UUID(),
             kind: kind,
             label: label,
-            placement: candidate.placement,
+            placement: placement,
             catalogID: itemID,
             heightM: item?.heightM
         )
@@ -259,11 +261,13 @@ extension LayoutEditorViewModel {
         )
         guard candidate.isValid else { return }
         let label = nextLabel(for: item.kind, in: layout)
+        var placement = candidate.placement
+        placement.shape = item.placementShape
         let object = LayoutObject(
             id: UUID(),
             kind: item.kind,
             label: label,
-            placement: candidate.placement,
+            placement: placement,
             catalogID: item.id,
             heightM: item.heightM
         )

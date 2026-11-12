@@ -23,12 +23,15 @@ enum MaterialRole: String, CaseIterable, Hashable, Sendable {
 /// Origin is at the footprint centre on the floor.
 enum ShapePrimitive: Hashable, Sendable {
     case box(center: SIMD3<Double>, size: SIMD3<Double>, yaw: Double, role: MaterialRole)
-    case cylinder(center: SIMD3<Double>, radius: Double, height: Double, segments: Int, role: MaterialRole)
+    /// An upright cylinder whose cross-section is an oval with `radii` along its own x and z, turned by `yaw`.
+    case cylinder(
+        center: SIMD3<Double>, radii: SIMD2<Double>, height: Double, yaw: Double, segments: Int, role: MaterialRole
+    )
 
     var role: MaterialRole {
         switch self {
         case .box(_, _, _, let role): return role
-        case .cylinder(_, _, _, _, let role): return role
+        case .cylinder(_, _, _, _, _, let role): return role
         }
     }
 
@@ -36,8 +39,10 @@ enum ShapePrimitive: Hashable, Sendable {
         switch self {
         case let .box(center, size, yaw, role):
             return .box(center: center + offset, size: size, yaw: yaw, role: role)
-        case let .cylinder(center, radius, height, segments, role):
-            return .cylinder(center: center + offset, radius: radius, height: height, segments: segments, role: role)
+        case let .cylinder(center, radii, height, yaw, segments, role):
+            return .cylinder(
+                center: center + offset, radii: radii, height: height, yaw: yaw, segments: segments, role: role
+            )
         }
     }
 
@@ -53,13 +58,15 @@ enum ShapePrimitive: Hashable, Sendable {
                 center.x * sinAngle + center.z * cosAngle
             )
             return .box(center: newCenter, size: size, yaw: yaw + angle, role: role)
-        case let .cylinder(center, radius, height, segments, role):
+        case let .cylinder(center, radii, height, yaw, segments, role):
             let newCenter = SIMD3<Double>(
                 center.x * cosAngle - center.z * sinAngle,
                 center.y,
                 center.x * sinAngle + center.z * cosAngle
             )
-            return .cylinder(center: newCenter, radius: radius, height: height, segments: segments, role: role)
+            return .cylinder(
+                center: newCenter, radii: radii, height: height, yaw: yaw + angle, segments: segments, role: role
+            )
         }
     }
 
@@ -97,11 +104,15 @@ enum ShapePrimitive: Hashable, Sendable {
                 min: SIMD3<Double>(center.x + minX, center.y - halfH, center.z + minZ),
                 max: SIMD3<Double>(center.x + maxX, center.y + halfH, center.z + maxZ)
             )
-        case let .cylinder(center, radius, height, _, _):
+        case let .cylinder(center, radii, height, yaw, _, _):
             let halfH = height / 2.0
+            let cosYaw = cos(yaw)
+            let sinYaw = sin(yaw)
+            let halfX = simd_length(SIMD2<Double>(radii.x * cosYaw, radii.y * sinYaw))
+            let halfZ = simd_length(SIMD2<Double>(radii.x * sinYaw, radii.y * cosYaw))
             return (
-                min: SIMD3<Double>(center.x - radius, center.y - halfH, center.z - radius),
-                max: SIMD3<Double>(center.x + radius, center.y + halfH, center.z + radius)
+                min: SIMD3<Double>(center.x - halfX, center.y - halfH, center.z - halfZ),
+                max: SIMD3<Double>(center.x + halfX, center.y + halfH, center.z + halfZ)
             )
         }
     }
@@ -145,15 +156,17 @@ enum Shapes {
         return [
             .cylinder(
                 center: SIMD3(0, baseHeight / 2.0, 0),
-                radius: baseRadius,
+                radii: SIMD2(repeating: baseRadius),
                 height: baseHeight,
+                yaw: 0,
                 segments: 16,
                 role: role
             ),
             .cylinder(
                 center: SIMD3(0, baseHeight + columnHeight / 2.0, 0),
-                radius: columnRadius,
+                radii: SIMD2(repeating: columnRadius),
                 height: columnHeight,
+                yaw: 0,
                 segments: 12,
                 role: role
             )

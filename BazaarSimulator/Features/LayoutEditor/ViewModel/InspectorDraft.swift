@@ -8,6 +8,7 @@ struct InspectorDraft: Sendable, Equatable {
     var lengthM: Double
     var heightM: Double
     var rotationDegrees: Int
+    var shape: FootprintShape
     var categoryID: LegendEntry.ID?
     var openSides: OpenSides
     var doorDirection: DoorDirection
@@ -23,6 +24,7 @@ struct InspectorDraft: Sendable, Equatable {
         self.lengthM = object.placement.sizeM.y
         self.heightM = object.heightM ?? Self.defaultHeight(for: object)
         self.rotationDegrees = object.placement.rotationDegrees
+        self.shape = object.placement.shape
         self.categoryID = object.categoryID
         self.openSides = object.openSides
         self.doorDirection = object.doorFlow?.direction ?? .both
@@ -51,6 +53,9 @@ struct InspectorDraft: Sendable, Equatable {
         }
         if updated.placement.rotationDegrees != rotationDegrees {
             updated.placement.rotationDegrees = rotationDegrees
+        }
+        if kind.canBeRound {
+            updated.placement.shape = shape
         }
         updated.categoryID = categoryID
         updated.openSides = openSides

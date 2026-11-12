@@ -6,7 +6,7 @@
       "w": 64.95,
       "h": 71.47
     },
-    "note": "Goods and toys booths come from the colour-segmented JSON, F&B booths from the printed numbers, everything else traced at 9.5 px per metre, which matches the printed 8 by 4 m stage. Visitors enter at Gate In, use the right hall door in and the left one out, as the plan arrows show. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Goods and toys booths come from the colour-segmented JSON, F&B booths from the printed numbers, everything else traced at 9.5 px per metre, which matches the printed 8 by 4 m stage. Visitors enter at Gate In, use the right hall door in and the left one out, as the plan arrows show. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m. The atrium void is one turned oval and the lift shaft a turned box; columns are round."
   },
   "hall": [
     [
@@ -1445,22 +1445,19 @@
       "y1": 24.5
     },
     {
-      "x0": 17,
-      "x1": 37,
-      "y0": 1,
-      "y1": 9
+      "x0": 6.5,
+      "x1": 46.5,
+      "y0": -5.25,
+      "y1": 12.25,
+      "rot": 52,
+      "shape": "round"
     },
     {
-      "x0": 22,
-      "x1": 39,
-      "y0": 9,
-      "y1": 15
-    },
-    {
-      "x0": 27,
-      "x1": 37,
-      "y0": 15,
-      "y1": 19.5
+      "x0": 29.5,
+      "x1": 46.5,
+      "y0": -1.25,
+      "y1": 2.25,
+      "rot": 50
     }
   ]
 }

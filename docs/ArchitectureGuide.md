@@ -227,6 +227,7 @@ struct Placement: Codable, Sendable {
     var center: SIMD2<Double>        // metres
     var sizeM: SIMD2<Double>
     var rotationRadians: Double = 0
+    var shape: FootprintShape = .rect // .round fills the box with an oval; only blocks and restricted areas
     func snapped(toGrid cellM: Double) -> Placement { /* ... */ }
 }
 ```

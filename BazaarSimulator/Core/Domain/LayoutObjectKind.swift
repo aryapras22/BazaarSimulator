@@ -34,6 +34,11 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         true
     }
 
+    /// Columns, totems and voids can be round; booths, walls and doors keep square corners.
+    var canBeRound: Bool {
+        self == .block || self == .closedArea
+    }
+
     /// A table takes its size from its standard model.
     var isResizable: Bool {
         self != .table

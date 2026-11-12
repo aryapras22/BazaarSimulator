@@ -25,6 +25,7 @@ enum MockLayoutMapper {
         }
         objects.append(contentsOf: mapPilasters(from: dto.pilasters))
         objects.append(contentsOf: mapFixtures(from: dto.fixtures))
+        objects.append(contentsOf: mapColumns(from: dto.columns))
         objects.append(contentsOf: mapClosedAreas(from: dto.closed))
         objects.append(contentsOf: mapInitialBooths(from: dto.booths, legend: legend))
 
@@ -68,6 +69,14 @@ enum MockLayoutMapper {
             sizeM: SIMD2<Double>(upright.sizeM.y, upright.sizeM.x),
             rotationRadians: .pi / 2
         )
+    }
+
+    /// A box from the file, turned by `rot` degrees and made round when its `shape` says so.
+    private static func shapedPlacement(from rect: BazaarRectDTO) -> Placement {
+        var shaped = placement(from: rect)
+        shaped.rotationRadians = (rect.rotationDegrees ?? 0) * .pi / 180
+        shaped.shape = rect.shape?.lowercased() == "round" ? .round : .rect
+        return shaped
     }
 
     private static func point(from coords: [Double]) -> SIMD2<Double>? {
@@ -215,12 +224,14 @@ extension MockLayoutMapper {
             LayoutObject(
                 kind: .block,
                 label: fixture.label,
-                placement: placement(
+                placement: shapedPlacement(from: BazaarRectDTO(
                     minX: fixture.minX,
                     maxX: fixture.maxX,
                     minY: fixture.minY,
-                    maxY: fixture.maxY
-                ),
+                    maxY: fixture.maxY,
+                    shape: fixture.shape,
+                    rotationDegrees: fixture.rotationDegrees
+                )),
                 reviewState: .detected
             )
         }
@@ -231,8 +242,24 @@ extension MockLayoutMapper {
             LayoutObject(
                 kind: .closedArea,
                 label: "Restricted area",
-                placement: placement(from: rect),
+                placement: shapedPlacement(from: rect),
                 reviewState: .detected
+            )
+        }
+    }
+
+    private static func mapColumns(from columns: [BazaarColumnDTO]) -> [LayoutObject] {
+        columns.map { column in
+            LayoutObject(
+                kind: .block,
+                label: "Column",
+                placement: Placement(
+                    center: SIMD2<Double>(column.posX, column.posY),
+                    sizeM: SIMD2<Double>(repeating: column.diameter),
+                    shape: .round
+                ),
+                reviewState: .detected,
+                catalogID: "column"
             )
         }
     }

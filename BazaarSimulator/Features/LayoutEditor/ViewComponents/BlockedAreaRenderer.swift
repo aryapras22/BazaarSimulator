@@ -11,7 +11,7 @@ enum BlockedAreaRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let corners = LayoutGeometry.corners(of: state.object.placement)
+        let corners = LayoutGeometry.outline(of: state.object.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
         let isSelected = state.isSelected

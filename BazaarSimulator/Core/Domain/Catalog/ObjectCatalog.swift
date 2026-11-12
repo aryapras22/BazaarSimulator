@@ -68,6 +68,12 @@ enum ObjectCatalog {
             keywords: ["block", "concrete", "barrier", "cube"], seats: []
         ),
         CatalogItem(
+            id: "column", name: "Column", category: .structure, kind: .block,
+            sizeM: SIMD2(0.6, 0.6), heightM: 3.0, footprint: .circle,
+            resize: .free, placement: .point,
+            keywords: ["column", "pillar", "post", "round", "circle"], seats: []
+        ),
+        CatalogItem(
             id: "door", name: "Door", category: .structure, kind: .door,
             sizeM: SIMD2(0.9, 0.2), heightM: 2.1, footprint: .rect,
             resize: .none, placement: .door,

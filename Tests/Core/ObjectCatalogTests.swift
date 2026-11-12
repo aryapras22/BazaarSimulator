@@ -75,4 +75,13 @@ struct ObjectCatalogTests {
             }
         }
     }
+
+    @Test("A column starts round, while a round table keeps a rectangular footprint")
+    func columnStartsRound() throws {
+        let column = try #require(ObjectCatalog.item("column"))
+        let table = try #require(ObjectCatalog.item("table-round-4"))
+
+        #expect(column.placementShape == .round)
+        #expect(table.placementShape == .rect)
+    }
 }

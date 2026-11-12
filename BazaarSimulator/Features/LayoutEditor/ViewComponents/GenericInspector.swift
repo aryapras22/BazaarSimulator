@@ -7,13 +7,18 @@ struct InspectorFields: Sendable {
     var sizeDetailText: String?
     var showsRotation: Bool
     var showsHeight: Bool
+    var showsShape: Bool
 
     static func forKind(_ kind: LayoutObjectKind) -> InspectorFields {
         switch kind {
-        case .wall, .block:
+        case .wall:
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
+        case .block:
+            return InspectorFields(
+                sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true, showsShape: true
+            )
         case .closedArea:
-            return InspectorFields(showsLabel: true, showsRotation: true)
+            return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
         case .booth, .door, .table, .seating:
             return InspectorFields()
         }
@@ -25,7 +30,8 @@ struct InspectorFields: Sendable {
         primarySizeTitle: String = "Size",
         sizeDetailText: String? = "(width x length)",
         showsRotation: Bool = false,
-        showsHeight: Bool = false
+        showsHeight: Bool = false,
+        showsShape: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -33,6 +39,7 @@ struct InspectorFields: Sendable {
         self.sizeDetailText = sizeDetailText
         self.showsRotation = showsRotation
         self.showsHeight = showsHeight
+        self.showsShape = showsShape
     }
 }
 
@@ -65,6 +72,10 @@ struct GenericInspector: View {
                 }
             }
 
+            if fields.showsShape {
+                shapePicker
+            }
+
             SizeFields(
                 width: $draft.widthM,
                 length: $draft.lengthM,
@@ -81,6 +92,23 @@ struct GenericInspector: View {
             if fields.showsHeight {
                 HeightField(height: $draft.heightM)
             }
+        }
+    }
+
+    private var shapePicker: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Shape")
+                .font(Typography.inspectorLabel)
+                .foregroundStyle(Palette.textPrimary)
+
+            Picker("Shape", selection: $draft.shape) {
+                ForEach(FootprintShape.allCases, id: \.self) { shape in
+                    Text(shape.displayName).tag(shape)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .help("A round shape fills the width and length as an oval; equal sides make a circle")
         }
     }
 }

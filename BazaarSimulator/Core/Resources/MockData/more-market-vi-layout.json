@@ -6,7 +6,7 @@
       "w": 204.0,
       "h": 83.43
     },
-    "note": "Booths come from the colour-segmented JSON where its fills are clean and from the printed numbers where digits cut them, at 7 px per metre from the 2 m and 3 m booth pitch. The hall is the event wing left of the plan's GATE and the lobby is the mall corridor right of it, so the bounding rectangles hold large restricted voids. The gate and exit sit by the escalator void and are assumed. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+    "note": "Booths come from the colour-segmented JSON where its fills are clean and from the printed numbers where digits cut them, at 7 px per metre from the 2 m and 3 m booth pitch. The hall is the event wing left of the plan's GATE and the lobby is the mall corridor right of it, so the bounding rectangles hold large restricted voids. The gate and exit sit by the escalator void and are assumed. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m. The totems are round."
   },
   "hall": [
     [
@@ -919,7 +919,8 @@
       "x0": 17.71,
       "x1": 19.0,
       "y0": 26.79,
-      "y1": 28.07
+      "y1": 28.07,
+      "shape": "round"
     },
     {
       "label": "TOTEM",
@@ -927,7 +928,8 @@
       "x0": 110.57,
       "x1": 111.86,
       "y0": 26.5,
-      "y1": 27.79
+      "y1": 27.79,
+      "shape": "round"
     },
     {
       "label": "TOTEM",
@@ -935,7 +937,8 @@
       "x0": 125.93,
       "x1": 127.21,
       "y0": 66.5,
-      "y1": 67.79
+      "y1": 67.79,
+      "shape": "round"
     },
     {
       "label": "TOTEM",
@@ -943,7 +946,8 @@
       "x0": 104.21,
       "x1": 105.5,
       "y0": 81.07,
-      "y1": 82.36
+      "y1": 82.36,
+      "shape": "round"
     }
   ],
   "closed": [

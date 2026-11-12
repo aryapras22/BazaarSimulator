@@ -45,6 +45,11 @@ struct CatalogItem: Identifiable, Hashable, Sendable {
     let keywords: [String]
     let seats: [SIMD2<Double>]
 
+    /// The footprint an object placed from this item starts with.
+    var placementShape: FootprintShape {
+        footprint == .circle && kind.canBeRound ? .round : .rect
+    }
+
     func shape(size: SIMD2<Double>, height: Double) -> [ShapePrimitive] {
         ObjectShapes.shape(for: id, size: size, height: height)
     }

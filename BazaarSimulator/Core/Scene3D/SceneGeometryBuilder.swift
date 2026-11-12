@@ -168,13 +168,16 @@ extension SceneGeometryBuilder {
         switch primitive {
         case let .box(center, size, yaw, _):
             mesh.appendBox(center: center, size: size, yaw: yaw)
-        case let .cylinder(center, radius, height, segments, _):
-            mesh.appendCylinder(center: center, radius: radius, height: height, segments: segments)
+        case let .cylinder(center, radii, height, yaw, segments, _):
+            mesh.appendCylinder(center: center, radii: radii, height: height, yaw: yaw, segments: segments)
         }
         meshes[key] = mesh
     }
 
     private static func primitivesForObject(_ object: LayoutObject) -> [ShapePrimitive] {
+        if object.placement.shape == .round {
+            return roundPrimitives(object)
+        }
         let catalogItem = object.catalogID.flatMap(ObjectCatalog.item)
             ?? ObjectCatalog.defaultItemID(for: object.kind).flatMap(ObjectCatalog.item)
 
@@ -183,6 +186,16 @@ extension SceneGeometryBuilder {
             return catalogItem.shape(size: object.placement.sizeM, height: height)
         }
         return kindDefaultPrimitives(object)
+    }
+
+    private static func roundPrimitives(_ object: LayoutObject) -> [ShapePrimitive] {
+        let catalogItem = object.catalogID.flatMap(ObjectCatalog.item)
+        let height = object.heightM ?? catalogItem?.heightM ?? (object.kind == .closedArea ? 0.05 : 0.8)
+        let role: MaterialRole = object.catalogID == "column" ? .pillar : .slab
+        return [.cylinder(
+            center: SIMD3(0, height / 2.0, 0), radii: object.placement.sizeM / 2.0,
+            height: height, yaw: 0, segments: 32, role: role
+        )]
     }
 
     private static func kindDefaultPrimitives(_ object: LayoutObject) -> [ShapePrimitive] {

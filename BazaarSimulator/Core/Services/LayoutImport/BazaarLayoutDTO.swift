@@ -41,17 +41,23 @@ struct BazaarMetaDTO: Decodable, Sendable, Equatable {
     let note: String?
 }
 
+/// The box before any turn. A restricted area may add `shape: "round"` for the oval filling the box,
+/// and `rot` in degrees to turn it about the box centre.
 struct BazaarRectDTO: Decodable, Sendable, Equatable {
     let minX: Double
     let maxX: Double
     let minY: Double
     let maxY: Double
+    var shape: String?
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case minX = "x0"
         case maxX = "x1"
         case minY = "y0"
         case maxY = "y1"
+        case shape
+        case rotationDegrees = "rot"
     }
 }
 
@@ -173,6 +179,7 @@ struct BazaarPilasterDTO: Decodable, Sendable, Equatable {
     }
 }
 
+/// Takes the same optional `shape` and `rot` as a restricted area.
 struct BazaarFixtureDTO: Decodable, Sendable, Equatable {
     let label: String
     let kind: String
@@ -180,6 +187,8 @@ struct BazaarFixtureDTO: Decodable, Sendable, Equatable {
     let maxX: Double
     let minY: Double
     let maxY: Double
+    var shape: String?
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case label
@@ -188,6 +197,8 @@ struct BazaarFixtureDTO: Decodable, Sendable, Equatable {
         case maxX = "x1"
         case minY = "y0"
         case maxY = "y1"
+        case shape
+        case rotationDegrees = "rot"
     }
 }
 

@@ -35,6 +35,22 @@ struct LayoutEditorViewModelInspectorTests {
         #expect(edited.attractiveness == 3)
     }
 
+    @Test("A block can be made round from the inspector, while a booth stays rectangular")
+    func inspectorShapeEdit() throws {
+        let structure = LayoutEditorViewModelTests.makeContext(layer: .structure)
+        let booths = LayoutEditorViewModelTests.makeContext()
+        let block = try #require(structure.layout.objects.first { $0.kind == .block })
+        let booth = try #require(booths.layout.objects.first { $0.kind == .booth })
+
+        structure.viewModel.selectObject(block.id)
+        structure.viewModel.editInspectorDraft { $0.shape = .round }
+        booths.viewModel.selectObject(booth.id)
+        booths.viewModel.editInspectorDraft { $0.shape = .round }
+
+        #expect(structure.viewModel.activeLayout?.objects.first { $0.id == block.id }?.placement.shape == .round)
+        #expect(booths.viewModel.activeLayout?.objects.first { $0.id == booth.id }?.placement.shape == .rect)
+    }
+
     @Test("Several edits to one object undo in one step")
     func inspectorEditsCoalesce() throws {
         let context = LayoutEditorViewModelTests.makeContext()
