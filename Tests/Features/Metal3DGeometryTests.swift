@@ -142,7 +142,11 @@ struct VenueGeometryTests {
     @Test("A photobooth is a walled cabin and a display is a fenced platform")
     func otherAttractions() {
         let cabin = VenueGeometry.blocks(for: object(.entertainment, label: "PHOTO BOX"))
-        #expect(cabin.filter { $0.size.y == 2.1 }.count == 3, "three walls")
+        #expect(cabin.filter { $0.size.y == 2.1 }.count == 4, "three walls and half a front")
+        #expect(cabin.filter { $0.size.y == 1.9 }.count == 4, "a curtain in four pleats")
+        #expect(cabin.contains { $0.size == SIMD3(0.25, 0.18, 0.3) }, "a wide footprint has a camera beside the cabin")
+        let narrow = VenueGeometry.blocks(for: object(.entertainment, label: "Photo", size: SIMD2(2, 2)))
+        #expect(!narrow.contains { $0.size == SIMD3(0.25, 0.18, 0.3) }, "a narrow one is the cabin alone")
         let display = VenueGeometry.blocks(for: object(.entertainment, label: "Display"))
         #expect(display.filter { $0.shape == .cylinder && $0.size.y == 0.9 }.count == 4, "four posts")
         #expect(display[0].size.y == 0.15)

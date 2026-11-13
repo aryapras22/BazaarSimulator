@@ -29,43 +29,6 @@ extension VenueGeometry {
         return stage(width: width, depth: depth, height: Float(object.heightM ?? 0.5), frame: frame)
     }
 
-    // MARK: Photobooth
-
-    /// A cabin closed on three sides, with a curtain half across the front, a bench inside, and a sign on
-    /// the roof.
-    private static func photobooth(width: Float, depth: Float, frame: Frame) -> [VenueBlock] {
-        let wallHeight: Float = 2.1
-        let thickness: Float = 0.08
-        var parts = [
-            frame.part(at: SIMD3(0, 0.04, 0), size: SIMD3(width, 0.08, depth), color: paleBlueColor),
-            frame.part(
-                at: SIMD3(0, wallHeight / 2, -depth / 2 + thickness / 2), size: SIMD3(width, wallHeight, thickness),
-                color: vermilionColor
-            )
-        ]
-        for side in [Float(-1), 1] {
-            parts.append(frame.part(
-                at: SIMD3(side * (width / 2 - thickness / 2), wallHeight / 2, 0), size: SIMD3(thickness, wallHeight, depth),
-                color: vermilionColor
-            ))
-        }
-        parts += [
-            frame.part(at: SIMD3(0, wallHeight + 0.05, 0), size: SIMD3(width + 0.1, 0.1, depth + 0.1), color: whiteColor),
-            frame.part(
-                at: SIMD3(-width / 4 + thickness / 2, 0.08 + 0.95, depth / 2 - 0.05), size: SIMD3(width / 2 - thickness, 1.9, 0.04),
-                color: cobaltColor
-            ),
-            frame.part(
-                at: SIMD3(0, 0.08 + 0.225, -depth / 2 + thickness + 0.2), size: SIMD3(max(width - 0.5, 0.2), 0.45, 0.4),
-                color: creamColor
-            ),
-            frame.part(
-                at: SIMD3(0, wallHeight + 0.1 + 0.2, depth / 2 - 0.1), size: SIMD3(width * 0.7, 0.4, 0.08), color: yellowColor
-            )
-        ]
-        return parts
-    }
-
     // MARK: Display
 
     /// A low platform fenced with posts and rails on every side but the front, with a plinth in the middle
