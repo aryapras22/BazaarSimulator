@@ -23,6 +23,11 @@ enum Palette {
     static let textTertiary = Color(hex: 0x848688)
     static let textDisabled = Color(hex: 0x585F6B)
     static let accent = Color(hex: 0x0066CC)
+    static let visitorSeries1 = Color(hex: 0x0B4DAE)
+    static let visitorSeries2 = Color(hex: 0x2878D4)
+    static let visitorSeries3 = Color(hex: 0x76B4FF)
+    static let visitorSeries4 = Color(hex: 0xFFFFFF)
+    static let visitorSeriesColors = [visitorSeries1, visitorSeries2, visitorSeries3, visitorSeries4]
     static let accentIcon = Color(hex: 0x71ACE6)
     static let accentText = Color(hex: 0x659BD1)
     static let accentMuted = Color(hex: 0x306CB0)

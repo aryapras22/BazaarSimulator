@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProjectSummary: Identifiable, Sendable, Hashable {
+struct ProjectSummary: Identifiable, Codable, Sendable, Hashable {
     let id: UUID
     var name: String
 

@@ -18,6 +18,7 @@ protocol ProjectSessionProtocol: AnyObject {
 
     @discardableResult
     func createProject(named name: String) -> ProjectSummary
+    func project(named name: String) -> ProjectSummary?
     func selectProject(id: UUID)
     func renameProject(id: UUID, to name: String)
 
@@ -44,6 +45,10 @@ protocol ProjectSessionProtocol: AnyObject {
     func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> RecordedSimulationResult?
     func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
+    func savedAnalyses(for projectID: UUID) -> [SavedAnalysis]
+    func savedAnalysis(id: SavedAnalysis.ID, in projectID: UUID) -> SavedAnalysis?
+    func renameSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID, to name: String)
+    func deleteSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID)
     func isSimulating(_ projectID: UUID) -> Bool
 }
 
@@ -72,6 +77,18 @@ final class ProjectSession: ProjectSessionProtocol {
     private var simulationResultsByProject: [UUID: [Layout.ID: RecordedSimulationResult]] = [:]
     private var simulationTasks: [UUID: Task<Void, Never>] = [:]
     private var simulatingProjects: Set<UUID> = []
+    private var savedAnalysesByProject: [UUID: [SavedAnalysis]] = [:]
+    private let store: (any SavedAnalysisStoring)?
+
+    /// With a store, projects and saved analyses are read from it now and written to it as they change.
+    init(store: (any SavedAnalysisStoring)? = nil) {
+        self.store = store
+        guard let store else { return }
+        projects = store.loadProjects()
+        for project in projects {
+            savedAnalysesByProject[project.id] = store.loadAnalyses(for: project.id)
+        }
+    }
 
     var activeProject: ProjectSummary? {
         projects.first { $0.id == activeProjectID }
@@ -81,7 +98,12 @@ final class ProjectSession: ProjectSessionProtocol {
     func createProject(named name: String) -> ProjectSummary {
         let summary = ProjectSummary(name: name)
         projects.append(summary)
+        store?.saveProjects(projects)
         return summary
+    }
+
+    func project(named name: String) -> ProjectSummary? {
+        projects.first { $0.name == name }
     }
 
     func selectProject(id: UUID) {
@@ -92,6 +114,7 @@ final class ProjectSession: ProjectSessionProtocol {
     func renameProject(id: UUID, to name: String) {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[index].name = name
+        store?.saveProjects(projects)
     }
 
     func eventParameters(for projectID: UUID) -> EventParameters? {
@@ -214,37 +237,77 @@ final class ProjectSession: ProjectSessionProtocol {
     /// Replaces the project's results in the background. A newer run cancels one still going.
     func runSimulations(for projectID: UUID) {
         guard let layouts = drafts[projectID]?.layouts, !layouts.isEmpty else { return }
-        let settings = parameters(for: projectID).toSimulationSettings()
+        let eventParameters = parameters(for: projectID)
+        let settings = eventParameters.toSimulationSettings()
         let legend = drafts[projectID]?.legend ?? Legend()
 
         simulationTasks[projectID]?.cancel()
         simulationResultsByProject[projectID] = [:]
         simulatingProjects.insert(projectID)
         simulationTasks[projectID] = Task { [weak self] in
-            let engines = layouts.map {
-                (id: $0.id, engine: SimulationEngine(layout: $0, settings: settings, legend: legend))
+            var measurements: [LayoutAnalysis] = []
+            var peakMinute = eventParameters.startMinutes
+            for layout in layouts {
+                let engine = SimulationEngine(layout: layout, settings: settings, legend: legend)
+                let result = await engine.runWithRecordedFootage(
+                    durationMinutes: settings.durationMinutes,
+                    frameIntervalSeconds: 5.0
+                )
+                if Task.isCancelled { return }
+                self?.setSimulationResult(result, for: layout.id, in: projectID)
+                if measurements.isEmpty { peakMinute = LayoutMeasurementBuilder.busiestMinute(in: result) }
+                measurements.append(
+                    LayoutMeasurementBuilder.build(result: result, layout: layout, parameters: eventParameters)
+                )
             }
-            await withTaskGroup(of: (Layout.ID, RecordedSimulationResult)?.self) { group in
-                for item in engines {
-                    group.addTask {
-                        guard !Task.isCancelled else { return nil }
-                        let result = await item.engine.runWithRecordedFootage(
-                            durationMinutes: settings.durationMinutes,
-                            frameIntervalSeconds: CrowdParameters.defaultFrameIntervalSeconds
-                        )
-                        return Task.isCancelled ? nil : (item.id, result)
-                    }
-                }
-                for await pair in group {
-                    if Task.isCancelled { return }
-                    if let (layoutID, result) = pair {
-                        self?.setSimulationResult(result, for: layoutID, in: projectID)
-                    }
-                }
-            }
-            if !Task.isCancelled {
-                self?.simulatingProjects.remove(projectID)
-            }
+            self?.saveAnalysis(
+                SavedRun(layouts: layouts, measurements: measurements, parameters: eventParameters, peakMinute: peakMinute),
+                in: projectID
+            )
+            self?.simulatingProjects.remove(projectID)
         }
+    }
+
+    // MARK: - Saved analyses
+
+    func savedAnalyses(for projectID: UUID) -> [SavedAnalysis] {
+        savedAnalysesByProject[projectID] ?? []
+    }
+
+    func savedAnalysis(id: SavedAnalysis.ID, in projectID: UUID) -> SavedAnalysis? {
+        savedAnalyses(for: projectID).first { $0.id == id }
+    }
+
+    func renameSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID, to name: String) {
+        guard let index = savedAnalysesByProject[projectID]?.firstIndex(where: { $0.id == id }) else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        savedAnalysesByProject[projectID]?[index].name = trimmed
+        if let renamed = savedAnalysesByProject[projectID]?[index] { store?.save(renamed, in: projectID) }
+    }
+
+    func deleteSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID) {
+        savedAnalysesByProject[projectID]?.removeAll { $0.id == id }
+        store?.delete(analysisID: id, in: projectID)
+    }
+
+    private struct SavedRun {
+        let layouts: [Layout]
+        let measurements: [LayoutAnalysis]
+        let parameters: EventParameters
+        let peakMinute: Int
+    }
+
+    private func saveAnalysis(_ run: SavedRun, in projectID: UUID) {
+        let number = (savedAnalyses(for: projectID).map(\.number).max() ?? 0) + 1
+        let saved = SavedAnalysis(
+            number: number,
+            parameters: run.parameters,
+            layouts: run.layouts,
+            measurements: run.measurements,
+            peakMinute: run.peakMinute
+        )
+        savedAnalysesByProject[projectID, default: []].append(saved)
+        store?.save(saved, in: projectID)
     }
 }

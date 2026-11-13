@@ -63,10 +63,6 @@
 				Features/ProjectSetup/View/.gitkeep,
 				Features/ProjectSetup/ViewComponents/.gitkeep,
 				Features/ProjectSetup/ViewModel/.gitkeep,
-				Features/Simulation/Scene/.gitkeep,
-				Features/Simulation/View/.gitkeep,
-				Features/Simulation/ViewComponents/.gitkeep,
-				Features/Simulation/ViewModel/.gitkeep,
 			);
 			target = 42C7C2163094562600513D5B /* BazaarSimulator */;
 		};

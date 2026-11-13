@@ -1,0 +1,96 @@
+import Foundation
+import os
+
+/// Where projects and their saved analyses are kept between launches.
+protocol SavedAnalysisStoring: Sendable {
+    func loadProjects() -> [ProjectSummary]
+    func saveProjects(_ projects: [ProjectSummary])
+    func loadAnalyses(for projectID: UUID) -> [SavedAnalysis]
+    func save(_ analysis: SavedAnalysis, in projectID: UUID)
+    func delete(analysisID: UUID, in projectID: UUID)
+}
+
+/// One JSON file per saved analysis, in a folder per project:
+/// `<root>/Projects.json` and `<root>/Analyses/<project id>/<analysis id>.json`.
+/// Files are small, so writes finish before the call returns. Nothing is lost if the app quits right after a save.
+final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
+    private let root: URL
+    var rootForTesting: URL { root }
+    private let queue = DispatchQueue(label: "BazaarSimulator.SavedAnalysisStore")
+    private let logger = Logger(subsystem: "BazaarSimulator", category: "SavedAnalysisStore")
+
+    init(root: URL = FileSavedAnalysisStore.defaultRoot) {
+        self.root = root
+    }
+
+    static var defaultRoot: URL {
+        FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BazaarSimulator", isDirectory: true)
+    }
+
+    private var projectsFile: URL { root.appendingPathComponent("Projects.json") }
+
+    private func folder(for projectID: UUID) -> URL {
+        root.appendingPathComponent("Analyses", isDirectory: true)
+            .appendingPathComponent(projectID.uuidString, isDirectory: true)
+    }
+
+    func loadProjects() -> [ProjectSummary] {
+        queue.sync { read([ProjectSummary].self, from: projectsFile) ?? [] }
+    }
+
+    func saveProjects(_ projects: [ProjectSummary]) {
+        let file = projectsFile
+        queue.sync { write(projects, to: file) }
+    }
+
+    func loadAnalyses(for projectID: UUID) -> [SavedAnalysis] {
+        queue.sync {
+            let files = (try? FileManager.default.contentsOfDirectory(
+                at: folder(for: projectID), includingPropertiesForKeys: nil
+            )) ?? []
+            return files
+                .filter { $0.pathExtension == "json" }
+                .compactMap { read(SavedAnalysis.self, from: $0) }
+                .sorted { $0.createdAt < $1.createdAt }
+        }
+    }
+
+    func save(_ analysis: SavedAnalysis, in projectID: UUID) {
+        let file = folder(for: projectID).appendingPathComponent("\(analysis.id.uuidString).json")
+        queue.sync { write(analysis, to: file) }
+    }
+
+    func delete(analysisID: UUID, in projectID: UUID) {
+        let file = folder(for: projectID).appendingPathComponent("\(analysisID.uuidString).json")
+        queue.sync { try? FileManager.default.removeItem(at: file) }
+    }
+
+    // MARK: - Files
+
+    private func read<Value: Decodable>(_ type: Value.Type, from file: URL) -> Value? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode(type, from: data)
+        } catch {
+            logger.error("Could not read \(file.lastPathComponent): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func write<Value: Encodable>(_ value: Value, to file: URL) {
+        do {
+            try FileManager.default.createDirectory(
+                at: file.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            try encoder.encode(value).write(to: file, options: .atomic)
+        } catch {
+            logger.error("Could not write \(file.lastPathComponent): \(error.localizedDescription)")
+        }
+    }
+}

@@ -3,10 +3,17 @@ import SwiftUI
 struct ProjectRow: View {
     let name: String
     let isSelected: Bool
+    var isExpanded: Bool = false
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Image(systemName: "folder")
+            Image(systemName: "chevron.right")
+                .font(Typography.caption)
+                .foregroundColor(Palette.textTertiary)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .frame(width: 10)
+
+            Image(systemName: isExpanded ? "folder.fill" : "folder")
                 .foregroundColor(Palette.textSecondary)
 
             Text(name)
@@ -29,7 +36,7 @@ struct ProjectRow: View {
 
 #Preview {
     VStack(spacing: Spacing.s) {
-        ProjectRow(name: "Bazaar 1", isSelected: true)
+        ProjectRow(name: "Bazaar 1", isSelected: true, isExpanded: true)
         ProjectRow(name: "Bazaar 2", isSelected: false)
     }
     .padding()

@@ -65,7 +65,8 @@ final class AppServices {
         in session: any ProjectSessionProtocol,
         importQueue: ScriptedImportQueue
     ) -> UUID {
-        let project = session.createProject(named: name)
+        // A project saved by an earlier launch keeps its ID, so its saved analyses stay with it.
+        let project = session.project(named: name) ?? session.createProject(named: name)
         importQueue.add(
             urls: [URL(fileURLWithPath: "/mock/legend.pdf")],
             kind: .legend,
