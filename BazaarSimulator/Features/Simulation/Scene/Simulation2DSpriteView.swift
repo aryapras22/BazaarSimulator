@@ -335,14 +335,14 @@ final class Venue2DScene: SKScene {
         // Clear booth and obstacle footprints from the heatmap texture so it never bleeds into booths
         context.setBlendMode(.clear)
         for object in layout.objects where object.kind.blocksWalking {
-            let cx = CGFloat(object.placement.center.x * pixelsPerMetre)
-            let cy = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
-            let w = CGFloat(object.placement.sizeM.x * pixelsPerMetre)
-            let h = CGFloat(object.placement.sizeM.y * pixelsPerMetre)
+            let centerX = CGFloat(object.placement.center.x * pixelsPerMetre)
+            let centerY = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
+            let width = CGFloat(object.placement.sizeM.x * pixelsPerMetre)
+            let height = CGFloat(object.placement.sizeM.y * pixelsPerMetre)
             context.saveGState()
-            context.translateBy(x: cx, y: cy)
+            context.translateBy(x: centerX, y: centerY)
             context.rotate(by: CGFloat(-object.placement.rotationRadians))
-            context.fill(CGRect(x: -w / 2, y: -h / 2, width: w, height: h))
+            context.fill(CGRect(x: -width / 2, y: -height / 2, width: width, height: height))
             context.restoreGState()
         }
 
