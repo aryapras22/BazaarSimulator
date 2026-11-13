@@ -19,6 +19,10 @@ The usual ways to outline 3D shapes are an inverted hull (draw each mesh a secon
 
 For cylinders and visitor capsules the outline is where the surface turns away from the eye. `abs(dot(normal, toCamera))` falls to zero there. Dividing it by its own `fwidth` again gives a distance in pixels. A cylinder also gets a rim around each end, measured the same way as a box edge: by radius on the caps and by height on the side.
 
+## How the roof line works
+
+A booth's pitched roof is a third unit shape, a wedge whose ridge runs along x. On a slope the edges are the two ends (`abs(local.x)` at 0.5), the eave (`abs(local.z)` at 0.5) and the ridge (`local.z` at 0). On a triangular end they are the base and the two slanted edges, where `0.5 * (0.5 - local.y) - abs(local.z)` reaches zero. Each distance is divided by its own `fwidth`, as for a box.
+
 ## Flat tones and hatching
 
 A face is one of three tones: full color if it faces up, slightly darker if it faces the light, darker still if it faces away. Faces turned away also get slanted hatch lines, placed by world position (`x + y + z`) so they stay fixed to the wall when the camera moves. When the lines would be closer together than the pixels, they fade out to avoid moire.
