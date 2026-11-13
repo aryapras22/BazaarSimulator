@@ -324,7 +324,7 @@ struct Metal3DRendererTests {
         #expect(!near(try at(-4, 1.5, 0.2), background, 0.03), "wall on the left")
         #expect(!near(try at(4, 1.5, 0.2), background, 0.03), "wall on the right")
         #expect(near(try at(0.35, 1.4, 0), background, 0.04), "the doorway is open")
-        let leaf = try at(-0.38, 1.0, 0.545)
+        let leaf = try at(-0.38, 0.6, 0.545)   // below the leaf's window
         #expect(leaf.y > leaf.x && leaf.y > leaf.z, "the open leaf is green, for an entrance")
     }
 

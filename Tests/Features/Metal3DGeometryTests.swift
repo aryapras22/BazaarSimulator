@@ -270,7 +270,8 @@ struct VenueGeometryTests {
     @Test("A door is a frame with a beam, leaves standing open, a colored strip on the floor, and a sign")
     func doorParts() {
         let parts = VenueGeometry.blocks(for: door(.entrance))
-        #expect(parts.count == 7)
+        #expect(parts.count == 4 + 2 * 3 + 3)
+        #expect(parts.filter { $0.color == SIMD4(0.80, 0.85, 0.94, 1) }.count == 2, "a window in each leaf")
         let leaves = parts.filter { $0.size.z == 0.05 }
         #expect(leaves.count == 2 && leaves[0].rotationY == -leaves[1].rotationY, "a wide door has two leaves, mirrored")
         #expect(VenueGeometry.blocks(for: door(.entrance, size: SIMD2(0.9, 0.2))).filter { $0.size.z == 0.05 }.count == 1)
@@ -285,14 +286,14 @@ struct VenueGeometryTests {
         #expect(leaf.color == strip.color)
     }
 
-    @Test("A door's colors say which way people may go, and a disabled door has no leaf")
+    @Test("A door's colors say which way people may go, and a disabled door is shut")
     func doorColors() {
         func stripColor(_ direction: DoorDirection) -> SIMD4<Float> {
             VenueGeometry.blocks(for: door(direction)).first { $0.size.y == 0.04 }!.color
         }
         #expect(Set([stripColor(.entrance), stripColor(.exit), stripColor(.both), stripColor(.disabled)]).count == 4)
         let closed = VenueGeometry.blocks(for: door(.disabled))
-        #expect(closed.count == 4 && !closed.contains { $0.size.z == 0.05 })
+        #expect(closed.count == 6 && closed.allSatisfy { $0.rotationY == 0 }, "shut and barred, nothing swung open")
     }
 
     @Test("A door in a side wall is built along the other axis")
