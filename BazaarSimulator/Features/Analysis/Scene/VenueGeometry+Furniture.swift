@@ -90,20 +90,48 @@ extension VenueGeometry {
     static func seating(_ object: LayoutObject, toward target: SIMD2<Double>? = nil) -> [VenueBlock] {
         let (width, depth) = size(of: object)
         let frame = Frame(object)
-        var facing = SIMD2<Float>(0, -1)
-        if let target {
-            let away = target - object.placement.center
-            let turn = object.placement.rotationRadians
-            let local = SIMD2(
-                Float(away.x * cos(turn) + away.y * sin(turn)), Float(-away.x * sin(turn) + away.y * cos(turn))
-            )
-            facing = abs(local.x) > abs(local.y) ? SIMD2(local.x < 0 ? -1 : 1, 0) : SIMD2(0, local.y < 0 ? -1 : 1)
-        }
+        let facing = seatingFacing(of: object, toward: target)
         var parts = [frame.part(at: SIMD3(0, 0.01, 0), size: SIMD3(width, 0.02, depth), color: paleBlueColor)]
         for seat in FurnitureModels.gridOffsets(for: object.placement.sizeM) {
             parts += chair(at: SIMD2(Float(seat.x), Float(seat.y)), facing: facing, in: frame)
         }
         return parts
+    }
+
+    /// The way a seating block's chairs face, in the block's own frame: across (x) and along the depth (y).
+    private static func seatingFacing(of object: LayoutObject, toward target: SIMD2<Double>?) -> SIMD2<Float> {
+        guard let target else { return SIMD2(0, -1) }
+        let away = target - object.placement.center
+        let turn = object.placement.rotationRadians
+        let local = SIMD2(
+            Float(away.x * cos(turn) + away.y * sin(turn)), Float(-away.x * sin(turn) + away.y * cos(turn))
+        )
+        return abs(local.x) > abs(local.y) ? SIMD2(local.x < 0 ? -1 : 1, 0) : SIMD2(0, local.y < 0 ? -1 : 1)
+    }
+
+    /// Every chair in the layout as a place to sit, facing the same way its model does: a table's chairs
+    /// toward the table and a seating block's toward the nearest attraction.
+    static func seats(in layout: Layout) -> [VenueSeat] {
+        let attractions = layout.objects.filter { $0.kind == .entertainment }.map(\.placement.center)
+        var seats: [VenueSeat] = []
+        for object in layout.objects where object.kind == .table || object.kind == .seating {
+            let center = object.placement.center
+            var blockHeading: Float?
+            if object.kind == .seating {
+                let nearest = attractions.min { simd_distance_squared($0, center) < simd_distance_squared($1, center) }
+                let local = seatingFacing(of: object, toward: nearest)
+                let turn = Float(object.placement.rotationRadians)
+                blockHeading = atan2(local.x * cos(turn) - local.y * sin(turn), local.x * sin(turn) + local.y * cos(turn))
+            }
+            for chair in FurnitureModels.chairs(of: object) {
+                let toTable = center - chair.center
+                seats.append(VenueSeat(
+                    position: SIMD2(Float(chair.center.x), Float(chair.center.y)),
+                    heading: blockHeading ?? Float(atan2(toTable.x, toTable.y))
+                ))
+            }
+        }
+        return seats
     }
 
     // MARK: Chairs

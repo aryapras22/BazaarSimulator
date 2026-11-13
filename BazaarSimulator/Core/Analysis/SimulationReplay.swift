@@ -52,6 +52,8 @@ struct ReplayVisitor: Sendable, Equatable {
     let typeIndex: Int
     /// How many people walk together.
     let people: Int
+    /// Sitting on a chair at a table or in a seating block.
+    var isSeated = false
 }
 
 /// What the simulation looked like through the busiest window: where visitors were, and how often

@@ -44,6 +44,20 @@ struct AnalysisServiceTests {
         #expect(second.first?.totalPeople == 900)
     }
 
+    @Test("Arrivals are twice as fast in a peak hour, and average out over the day")
+    func arrivalPeaks() {
+        var parameters = TestLayouts.parameters
+        parameters.peakPeriods = [TimeRange(startMinute: 11 * 60, endMinute: 12 * 60)]
+        let layout = TestLayouts.hall()
+        let input = SimulationInput(layout: layout, parameters: parameters, visitorTypes: TestLayouts.visitorTypes, focus: focus)
+        let setup = CrowdAnalysisBuilder.setup(for: input, grid: NavigationGrid(layout: layout))
+        #expect(setup.arrivalFactors.count == 180)
+        #expect(abs(setup.arrivalFactors[90] - 2 * setup.arrivalFactors[10]) < 1e-9)
+        #expect(abs(setup.arrivalFactors.reduce(0, +) / 180 - 1) < 1e-9)
+        #expect(setup.window == 3600...4200)
+        #expect(Set(setup.typeIndexByPersona.values).isSubset(of: [0, 1]), "every persona is shown as a type the catalog has")
+    }
+
     @Test("Changing the layout runs the simulation again")
     func layoutInvalidates() async {
         let service = AnalysisService()

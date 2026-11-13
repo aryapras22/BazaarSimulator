@@ -126,6 +126,21 @@ struct VenueGeometryTests {
         #expect(backSide(towardRight).x < -0.99, "the backs are away from the stage")
     }
 
+    @Test("Every chair is a seat that faces the way the chair does")
+    func seats() {
+        let table = object(.table, size: SIMD2(1.5, 1.5), catalogID: "table-round-6")
+        let block = object(.seating, center: SIMD2(20, 6), size: SIMD2(2, 1))
+        let stage = object(.entertainment, label: "Stage", center: SIMD2(30, 6))
+        let layout = Layout(name: "T", sizeM: SIMD2(40, 12), hall: [], objects: [table, block, stage])
+        let seats = VenueGeometry.seats(in: layout)
+        #expect(seats.count == 6 + 8)
+        for seat in seats.prefix(6) {
+            let toTable = simd_normalize(SIMD2<Float>(10, 6) - seat.position)
+            #expect(simd_distance(SIMD2(sin(seat.heading), cos(seat.heading)), toTable) < 0.001, "a table's chairs face it")
+        }
+        #expect(seats.suffix(8).allSatisfy { abs($0.heading - .pi / 2) < 0.001 }, "seating faces the stage, toward +x")
+    }
+
     @Test("A stage has a deck, a backdrop and truss at the back, and steps at its open side")
     func stage() {
         let stage = object(.entertainment, label: "Stage", open: [.top])

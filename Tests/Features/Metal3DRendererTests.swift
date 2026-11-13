@@ -180,6 +180,29 @@ struct Metal3DRendererTests {
         #expect(abs(gait.heading) < 0.001, "walking on, it faces the way it goes")
     }
 
+    @Test("A seated visitor takes the nearest free chair, keeps it, and gives it up on standing")
+    func sitting() throws {
+        let seats = [VenueSeat(position: SIMD2(0, 1), heading: 1), VenueSeat(position: SIMD2(0.4, 1), heading: 2), VenueSeat(position: SIMD2(9, 9), heading: 3)]
+        var gait = FigureGait(at: SIMD2(0.1, 1))
+        #expect(gait.sit(among: seats, taken: []) == 0 && gait.heading == 1)
+        var second = FigureGait(at: SIMD2(0.1, 1))
+        #expect(second.sit(among: seats, taken: [0]) == 1, "an occupied chair is passed over")
+        var far = FigureGait(at: SIMD2(0.1, 1))
+        #expect(far.sit(among: seats, taken: [0, 1]) == nil, "a chair across the hall is out of reach")
+        gait.stand()
+        #expect(gait.seat == nil)
+
+        let renderer = try #require(Metal3DRenderer())
+        let sitters = [0, 1].map { SimulationSceneFrame.Visitor(id: $0, x: 0.1, z: 1, typeIndex: 0, people: 1, isSeated: true) }
+        let first = renderer.figureInstances(sitters, seats: seats, now: 1)
+        #expect(Set(first.bodies.map(\.positionRotation.w)) == [1, 2], "two visitors seated at one spot take two chairs")
+        #expect(first.limbs.count == 12, "thighs, shins and arms")
+        let again = renderer.figureInstances(sitters, seats: seats, now: 1.05)
+        #expect(again.bodies.map(\.positionRotation) == first.bodies.map(\.positionRotation))
+        let stood = renderer.figureInstances([visitor(0, x: 0.1, z: 1)], seats: seats, now: 1.1)
+        #expect(stood.limbs.count == 4 && renderer.gaits[0]?.seat == nil)
+    }
+
     @Test("A walking figure's limbs lean and a standing one's hang straight")
     func figureLimbs() throws {
         let renderer = try #require(Metal3DRenderer())

@@ -25,7 +25,8 @@ enum SimulationLoader {
             for: layouts,
             parameters: parameters,
             visitorTypes: catalog.visitorTypes,
-            focus: schedule.window
+            focus: schedule.window,
+            legend: session.draft(for: projectID)?.legend ?? Legend()
         )
         guard !Task.isCancelled, analyses.count == layouts.count else { return .cancelled }
 

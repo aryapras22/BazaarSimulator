@@ -32,6 +32,10 @@ struct FigureGait: Equatable {
     private(set) var walk: Float = 0
     /// Whether the figure has chosen what to look at since it last came to rest.
     private(set) var isSettled = false
+    /// The chair the figure sits on, as an index into the venue's seats, while its visitor is seated.
+    private(set) var seat: Int?
+    /// A chair is only taken if it is this close to where the simulation seated the visitor, in meters.
+    static let seatReach: Float = 2.5
 
     init(at place: SIMD2<Float>) {
         anchor = place
@@ -67,6 +71,33 @@ struct FigureGait: Equatable {
             let strides = min(max(speed / Self.strideLength, Self.cadence.lowerBound), Self.cadence.upperBound)
             phase = (phase + 2 * .pi * strides * seconds).truncatingRemainder(dividingBy: 2 * .pi)
         }
+    }
+
+    /// Seats the figure on the nearest of `seats` that is within reach and not in `taken`, and turns it the
+    /// way that chair faces. With no chair free it sits where it is. Returns the chair it took.
+    @discardableResult
+    mutating func sit(among seats: [VenueSeat], taken: Set<Int>) -> Int? {
+        var best: Int?
+        var bestDistance = Self.seatReach * Self.seatReach
+        for (index, candidate) in seats.enumerated() where !taken.contains(index) {
+            let distance = simd_distance_squared(candidate.position, last)
+            if distance < bestDistance {
+                best = index
+                bestDistance = distance
+            }
+        }
+        seat = best
+        if let best {
+            target = seats[best].heading
+            heading = target
+        }
+        walk = 0
+        return best
+    }
+
+    /// The visitor has stood up.
+    mutating func stand() {
+        seat = nil
     }
 
     /// Whether the figure has just come to rest and has yet to choose what to look at.

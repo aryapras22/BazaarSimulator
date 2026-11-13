@@ -8,6 +8,15 @@ struct SimulationVenue {
     let plan: PlanFrame
     /// The middles of the booths and attractions, in layout meters. A visitor who stops turns to the nearest.
     var attractions: [SIMD2<Float>] = []
+    /// Every chair, for visitors who sit down.
+    var seats: [VenueSeat] = []
+}
+
+/// A chair as a place to sit: where it stands, in layout meters, and the way someone on it looks. Zero
+/// faces the bottom of the plan.
+struct VenueSeat: Equatable {
+    var position: SIMD2<Float>
+    var heading: Float
 }
 
 /// What the 3D view shows at one moment. Positions are in layout meters.
@@ -18,6 +27,7 @@ struct SimulationSceneFrame {
         let z: Double
         let typeIndex: Int
         let people: Int
+        var isSeated = false
     }
 
     struct Spot {

@@ -8,6 +8,7 @@ struct DrawnVisitor {
     let typeIndex: Int
     let point: CGPoint
     let people: Int
+    var isSeated = false
 }
 
 /// Plays back the busiest window of one layout: visitors, crowd density, and the most walked paths.
@@ -125,7 +126,10 @@ final class SimulationPlayerViewModel {
             let target = nextByID[visitor.id] ?? visitor.position
             let meters = visitor.position + (target - visitor.position) * blend
             let fraction = plan.fraction(of: SIMD2(Double(meters.x), Double(meters.y)))
-            return DrawnVisitor(id: visitor.id, typeIndex: visitor.typeIndex, point: CGPoint(x: fraction.x, y: fraction.y), people: visitor.people)
+            return DrawnVisitor(
+                id: visitor.id, typeIndex: visitor.typeIndex, point: CGPoint(x: fraction.x, y: fraction.y),
+                people: visitor.people, isSeated: visitor.isSeated
+            )
         }
     }
 
@@ -206,7 +210,7 @@ final class SimulationPlayerViewModel {
         guard let layout else { return nil }
         let venue = SimulationVenue(
             id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan,
-            attractions: VenueGeometry.attractions(in: layout)
+            attractions: VenueGeometry.attractions(in: layout), seats: VenueGeometry.seats(in: layout)
         )
         cachedVenue = venue
         return venue
@@ -223,7 +227,8 @@ final class SimulationPlayerViewModel {
         frame.visitors = visitors(at: playback).map { visitor in
             let place = meters(visitor.point)
             return SimulationSceneFrame.Visitor(
-                id: visitor.id, x: place.x, z: place.z, typeIndex: visitor.typeIndex, people: visitor.people
+                id: visitor.id, x: place.x, z: place.z, typeIndex: visitor.typeIndex, people: visitor.people,
+                isSeated: visitor.isSeated
             )
         }
 

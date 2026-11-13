@@ -17,6 +17,8 @@ The usual way to animate a character is a skeleton with keyframed clips, blended
 
 7. Settling: the first frame a figure is fully at rest, it looks up the nearest booth or attraction within 5 m and makes that its target heading. The same turning rule then swings it round. The lookup happens once per stop, so a standing crowd costs nothing extra.
 
+8. Sitting: the crowd model marks a visitor as seated. The first frame it is, the figure takes the nearest chair that no other figure holds, within 2.5 m of where the model put the visitor, and keeps it until the visitor stands. A seated figure is posed from fixed numbers: hips on the seat, thighs level, shins down. The model seats people at a table's quarter points, not on its chairs, which is why the figure looks for a chair itself.
+
 ## Terms
 
 - Phase: where in a repeating cycle something is, as an angle.

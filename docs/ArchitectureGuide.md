@@ -179,8 +179,8 @@ BazaarSimulation/
 │   ├── Services/
 │   │   ├── PDFImportService.swift
 │   │   └── FloorPlanReading/            # Protocol, registry, four reader backends
-│   ├── Simulation/                      # Engine, CrowdSimulation (step-by-step replay), LayoutCrowdSimulation (batch analysis), CrowdWorld, NavigationGrid, SpawnScheduler
-│   ├── Analysis/                        # AnalysisService, RecommendationBuilder
+│   ├── Simulation/                      # CrowdSimulation (the crowd model), CrowdWorld, CrowdMeasuringRun (runs one event and measures it), NavigationGrid, SimulationEngine
+│   ├── Analysis/                        # AnalysisService, CrowdAnalysisBuilder (parameters in, LayoutAnalysis out), LayoutAnalysis, SimulationReplay
 │   ├── Session/
 │   │   └── ProjectSession.swift
 │   └── DesignSystem/
