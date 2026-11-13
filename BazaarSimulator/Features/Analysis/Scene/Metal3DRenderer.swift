@@ -22,14 +22,14 @@ final class Metal3DRenderer {
     }
 
     /// How a shape's edges are found, passed to the shader in the spare slot of an instance's scale.
-    private enum Outline: Float {
+    enum Outline: Float {
         case box = 0
         case can = 1
         case figure = 2
         case none = 3
     }
 
-    private struct Instance {
+    struct Instance {
         var positionRotation: SIMD4<Float>
         var scale: SIMD4<Float>
         var color: SIMD4<Float>
@@ -54,21 +54,12 @@ final class Metal3DRenderer {
     static let inkColor = SIMD3<Float>(0.11, 0.15, 0.34)
     static let outlineWidthPixels: Float = 1.3
 
-    /// A visitor is legs, a body and a head, this tall in all.
     static let visitorHeight: Float = 1.7
-    static let headDiameter: Float = 0.34
-    static let legHeight: Float = 0.78
-    static let legWidth: Float = 0.27
-    static let bodyRadius: Float = 0.22
-    /// The body's rounded ends sink into the legs below and the head above.
-    static let bodyHeight: Float = 0.86
-    /// A group is drawn as this many figures at most, standing around the group's own spot.
-    static let figuresPerGroup = 4
     static let spotRadius: Float = 2.0
     /// A label's width and height, in meters.
     static let labelSize = SIMD2<Float>(9, 1.7)
     static let labelHeight: Float = 6.6
-    private static let visitorColors = Palette.visitorSeriesColors.map(rgba)
+    static let visitorColors = Palette.visitorSeriesColors.map(rgba)
     private static let glowColor = rgba(.spotGlow)
 
     let device: MTLDevice
@@ -94,6 +85,8 @@ final class Metal3DRenderer {
     private var labelTextures: [String: MTLTexture] = [:]
     private var multisampleColor: MTLTexture?
     private var depthTexture: MTLTexture?
+    /// Where each visitor was last drawn and which way it was heading, to turn its figure the way it walks.
+    var headings: [Int: (place: SIMD2<Float>, heading: Float)] = [:]
 
     /// How many draw calls the last frame took. It does not depend on how many visitors there were.
     private(set) var drawCallCount = 0
@@ -229,7 +222,7 @@ final class Metal3DRenderer {
         let figures = figureInstances(frame.visitors)
         draw(buffer(figures.bodies), count: figures.bodies.count, mesh: body, uniforms: &uniforms, encoder: encoder)
         draw(buffer(figures.heads), count: figures.heads.count, mesh: head, uniforms: &uniforms, encoder: encoder)
-        draw(buffer(figures.legs), count: figures.legs.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
+        draw(buffer(figures.limbs), count: figures.limbs.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
 
         // Then see-through things: hidden by solid ones, but not hiding each other. The flat pictures are
         // seen from either side, so they are drawn whichever way they face.
@@ -302,40 +295,6 @@ final class Metal3DRenderer {
         let boxes = instances(.box), cylinders = instances(.cylinder)
         venueBoxes = (buffer(boxes), boxes.count)
         venueCylinders = (buffer(cylinders), cylinders.count)
-    }
-
-    /// Legs, a body and a head for each person drawn. One visitor alone stands on its spot. A group stands
-    /// in a ring around it, turned by the visitor's id so groups do not all line up the same way. The body is
-    /// the visitor type's color, the head a lighter tint of it so the type still reads from straight above,
-    /// and the legs a darker shade.
-    private func figureInstances(
-        _ visitors: [SimulationSceneFrame.Visitor]
-    ) -> (bodies: [Instance], heads: [Instance], legs: [Instance]) {
-        var bodies: [Instance] = [], heads: [Instance] = [], legs: [Instance] = []
-        bodies.reserveCapacity(visitors.count)
-        heads.reserveCapacity(visitors.count)
-        legs.reserveCapacity(visitors.count)
-        let plain = SIMD4<Float>(1, 1, 1, Outline.figure.rawValue)
-        let legScale = SIMD4<Float>(Self.legWidth, Self.legHeight, Self.legWidth, Outline.can.rawValue)
-        let bodyCenter = Self.visitorHeight - Self.headDiameter * 0.8 - Self.bodyHeight / 2
-        for visitor in visitors {
-            let color = Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
-            let tone = SIMD3(color.x, color.y, color.z)
-            let headColor = SIMD4(simd_mix(tone, SIMD3<Float>(1, 1, 1), SIMD3<Float>(repeating: 0.45)), color.w)
-            let legColor = SIMD4(tone * 0.6, color.w)
-            let count = min(max(visitor.people, 1), Self.figuresPerGroup)
-            let ring: Float = count == 1 ? 0 : 0.2 + 0.07 * Float(count)
-            for index in 0..<count {
-                let angle = (Float(index) / Float(count)) * 2 * .pi + Float(visitor.id % 7)
-                let x = Float(visitor.x) + ring * cos(angle), z = Float(visitor.z) + ring * sin(angle)
-                legs.append(Instance(positionRotation: SIMD4(x, Self.legHeight / 2, z, 0), scale: legScale, color: legColor))
-                bodies.append(Instance(positionRotation: SIMD4(x, bodyCenter, z, 0), scale: plain, color: color))
-                heads.append(Instance(
-                    positionRotation: SIMD4(x, Self.visitorHeight - Self.headDiameter / 2, z, 0), scale: plain, color: headColor
-                ))
-            }
-        }
-        return (bodies, heads, legs)
     }
 
     /// A glowing disc on the floor and a beam above it for each watched spot. A more crowded spot is wider

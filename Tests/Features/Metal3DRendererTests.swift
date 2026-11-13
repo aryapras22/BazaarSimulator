@@ -124,6 +124,29 @@ struct Metal3DRendererTests {
         #expect(try lit(8) > lit(1))
     }
 
+    @Test("A figure turns the way its visitor walks, and slow steps add up to a turn")
+    func figureHeading() throws {
+        let renderer = try #require(Metal3DRenderer())
+        func turn(x: Double, z: Double) -> Float {
+            renderer.figureInstances([visitor(1, x: x, z: z)]).bodies[0].positionRotation.w
+        }
+        #expect(turn(x: 0, z: 0) == 0)
+        #expect(abs(turn(x: 1, z: 0) - .pi / 2) < 0.001, "walking toward +x")
+        #expect(abs(turn(x: 1, z: 0) - .pi / 2) < 0.001, "standing still keeps the heading")
+        for step in 1...5 { _ = turn(x: 1, z: Double(step) * 0.01) }
+        #expect(abs(turn(x: 1, z: 0.06)) < 0.001, "six small steps toward +z")
+    }
+
+    @Test("A group of three or more has a child in it, and no group is drawn as more than four")
+    func figureGroups() throws {
+        let renderer = try #require(Metal3DRenderer())
+        let trio = renderer.figureInstances([visitor(1, x: 0, z: 0, people: 3)])
+        #expect(trio.heads.count == 3 && trio.limbs.count == 12)
+        #expect(Set(trio.heads.map(\.scale.x)).count == 2)
+        #expect(renderer.figureInstances([visitor(1, x: 0, z: 0, people: 9)]).heads.count == 4)
+        #expect(Set(renderer.figureInstances([visitor(1, x: 0, z: 0, people: 2)]).heads.map(\.scale.x)).count == 1)
+    }
+
     @Test("Visitors are placed where the simulation put them")
     func visitorPlacement() throws {
         var frame = SimulationSceneFrame()
