@@ -27,6 +27,7 @@ enum Metal3DShaderSource {
         float4 positionRotation; // xyz: where, w: turn about the vertical axis
         float4 scale;            // xyz: size, w: how it is outlined (0 box, 1 can, 2 figure, 3 not at all, 4 pitched roof)
         float4 color;
+        float4 tilt;             // x: lean forward or back about the shape's own middle, before it is turned
     };
 
     struct SolidOut {
@@ -48,9 +49,13 @@ enum Metal3DShaderSource {
         MeshVertex v = vertices[vid];
         float c = cos(inst.positionRotation.w);
         float s = sin(inst.positionRotation.w);
-        float3 scaled = v.position * inst.scale.xyz;
+        float lc = cos(inst.tilt.x);
+        float ls = sin(inst.tilt.x);
+        float3 sized = v.position * inst.scale.xyz;
+        float3 scaled = float3(sized.x, sized.y * lc - sized.z * ls, sized.y * ls + sized.z * lc);
+        float3 leaned = float3(v.normal.x, v.normal.y * lc - v.normal.z * ls, v.normal.y * ls + v.normal.z * lc);
         float3 turned = float3(scaled.x * c + scaled.z * s, scaled.y, -scaled.x * s + scaled.z * c);
-        float3 normal = float3(v.normal.x * c + v.normal.z * s, v.normal.y, -v.normal.x * s + v.normal.z * c);
+        float3 normal = float3(leaned.x * c + leaned.z * s, leaned.y, -leaned.x * s + leaned.z * c);
         SolidOut out;
         out.position = u.viewProjection * float4(turned + inst.positionRotation.xyz, 1.0);
         out.normal = normal;

@@ -124,17 +124,52 @@ struct Metal3DRendererTests {
         #expect(try lit(8) > lit(1))
     }
 
-    @Test("A figure turns the way its visitor walks, and slow steps add up to a turn")
-    func figureHeading() throws {
-        let renderer = try #require(Metal3DRenderer())
-        func turn(x: Double, z: Double) -> Float {
-            renderer.figureInstances([visitor(1, x: x, z: z)]).bodies[0].positionRotation.w
+    @Test("A figure turns toward the way its visitor walks, a little each frame, and slow steps add up")
+    func gaitHeading() {
+        var gait = FigureGait(at: .zero)
+        gait.step(to: SIMD2(0.5, 0), seconds: 0.05)
+        #expect(gait.heading > 0.4 && gait.heading < 0.6, "half a radian in a twentieth of a second")
+        for step in 2...8 { gait.step(to: SIMD2(Float(step) * 0.5, 0), seconds: 0.05) }
+        #expect(abs(gait.heading - .pi / 2) < 0.001, "then it faces +x")
+        for _ in 0..<5 { gait.step(to: SIMD2(4, 0), seconds: 0.05) }
+        #expect(abs(gait.heading - .pi / 2) < 0.001, "standing still keeps the heading")
+        for step in 1...40 { gait.step(to: SIMD2(4, Float(step) * 0.01), seconds: 0.05) }
+        #expect(abs(gait.heading) < 0.001, "small steps toward +z add up to a turn")
+    }
+
+    @Test("A moving figure swings its legs, a still one comes to rest, and a scrub is not a step")
+    func gaitWalk() {
+        var gait = FigureGait(at: .zero)
+        var widest: Float = 0
+        for step in 1...30 {
+            gait.step(to: SIMD2(0, Float(step) * 0.05), seconds: 1.0 / 60)
+            widest = max(widest, abs(gait.swing()))
         }
-        #expect(turn(x: 0, z: 0) == 0)
-        #expect(abs(turn(x: 1, z: 0) - .pi / 2) < 0.001, "walking toward +x")
-        #expect(abs(turn(x: 1, z: 0) - .pi / 2) < 0.001, "standing still keeps the heading")
-        for step in 1...5 { _ = turn(x: 1, z: Double(step) * 0.01) }
-        #expect(abs(turn(x: 1, z: 0.06)) < 0.001, "six small steps toward +z")
+        #expect(gait.walk == 1 && widest > 0.5 && widest <= FigureGait.legSwing)
+        #expect(gait.lift() >= 0)
+        for _ in 0..<30 { gait.step(to: SIMD2(0, 1.5), seconds: 1.0 / 60) }
+        #expect(gait.walk == 0 && gait.swing() == 0 && gait.lift() == 0, "at rest the legs hang straight")
+
+        var fast = FigureGait(at: .zero), slow = FigureGait(at: .zero)
+        fast.step(to: SIMD2(0, 2), seconds: 1.0 / 60)
+        slow.step(to: SIMD2(0, 0.01), seconds: 1.0 / 60)
+        #expect(fast.phase <= 2 * .pi * 2.4 / 60 + 0.001, "a fast-forwarded visitor still steps at a walking pace")
+        #expect(slow.phase >= 2 * .pi / 60 - 0.001)
+        var scrubbed = FigureGait(at: .zero)
+        scrubbed.step(to: SIMD2(0, 20), seconds: 1.0 / 60)
+        #expect(scrubbed.walk == 0 && scrubbed.phase == 0)
+    }
+
+    @Test("A walking figure's limbs lean and a standing one's hang straight")
+    func figureLimbs() throws {
+        let renderer = try #require(Metal3DRenderer())
+        _ = renderer.figureInstances([visitor(1, x: 0, z: 0)], now: 10)
+        #expect(renderer.figureInstances([visitor(1, x: 0, z: 0)], now: 10.05).limbs.allSatisfy { $0.tilt.x == 0 })
+        var walking = renderer.figureInstances([visitor(1, x: 0, z: 0.1)], now: 10.1)
+        for step in 2...6 { walking = renderer.figureInstances([visitor(1, x: 0, z: Double(step) * 0.1)], now: 10.05 + Double(step) * 0.05) }
+        let legs = [walking.limbs[0], walking.limbs[2]]
+        #expect(legs[0].tilt.x != 0 && legs[0].tilt.x == -legs[1].tilt.x, "the legs swing opposite ways")
+        #expect(abs(legs[0].positionRotation.z - legs[1].positionRotation.z) > 0.05, "one foot ahead of the other")
     }
 
     @Test("A group of three or more has a child in it, and no group is drawn as more than four")

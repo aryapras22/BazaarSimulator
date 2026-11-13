@@ -34,6 +34,8 @@ final class Metal3DRenderer {
         var positionRotation: SIMD4<Float>
         var scale: SIMD4<Float>
         var color: SIMD4<Float>
+        /// x: how far the shape leans forward or back, in radians. A walking figure's legs and arms use it.
+        var tilt = SIMD4<Float>(0, 0, 0, 0)
     }
 
     /// The layout of a vertex, as the shader reads it.
@@ -61,7 +63,7 @@ final class Metal3DRenderer {
     static let labelSize = SIMD2<Float>(9, 1.7)
     static let labelHeight: Float = 6.6
     static let visitorColors = Palette.visitorSeriesColors.map(rgba)
-    private static let glowColor = rgba(.spotGlow)
+    static let glowColor = rgba(.spotGlow)
 
     let device: MTLDevice
     let sampleCount: Int
@@ -88,8 +90,10 @@ final class Metal3DRenderer {
     private var labelTextures: [String: MTLTexture] = [:]
     private var multisampleColor: MTLTexture?
     private var depthTexture: MTLTexture?
-    /// Where each visitor was last drawn and which way it was heading, to turn its figure the way it walks.
-    var headings: [Int: (place: SIMD2<Float>, heading: Float)] = [:]
+    /// How each visitor's figure was posed when it was last drawn, to carry its walk on from there.
+    var gaits: [Int: FigureGait] = [:]
+    /// When figures were last posed, to know how much time the next pose covers.
+    var lastFigureTime: Double?
 
     /// How many draw calls the last frame took. It does not depend on how many visitors there were.
     private(set) var drawCallCount = 0
@@ -302,27 +306,6 @@ final class Metal3DRenderer {
         venueWedges = (buffer(wedges), wedges.count)
         venueBoxes = (buffer(boxes), boxes.count)
         venueCylinders = (buffer(cylinders), cylinders.count)
-    }
-
-    /// A glowing disc on the floor and a beam above it for each watched spot. A more crowded spot is wider
-    /// and stronger.
-    private func markerInstances(_ spots: [SimulationSceneFrame.Spot]) -> [Instance] {
-        var instances: [Instance] = []
-        for spot in spots {
-            let level = Float(min(max(spot.level, 0), 1))
-            let width = 2 * Self.spotRadius * (0.8 + 0.4 * level)
-            var disc = Self.glowColor
-            disc.w = 0.35 + 0.4 * level
-            var beam = Self.glowColor
-            beam.w = 0.4
-            instances.append(Instance(
-                positionRotation: SIMD4(Float(spot.x), 0.08, Float(spot.z), 0), scale: SIMD4(width, 0.06, width, Outline.none.rawValue), color: disc
-            ))
-            instances.append(Instance(
-                positionRotation: SIMD4(Float(spot.x), 3, Float(spot.z), 0), scale: SIMD4(0.6, 6, 0.6, Outline.none.rawValue), color: beam
-            ))
-        }
-        return instances
     }
 
     private func buffer(_ instances: [Instance]) -> MTLBuffer? {

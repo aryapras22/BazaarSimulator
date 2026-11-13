@@ -1,3 +1,4 @@
+import QuartzCore
 import simd
 
 extension Metal3DRenderer {
@@ -24,71 +25,95 @@ extension Metal3DRenderer {
     /// A group is drawn as this many figures at most, standing around the group's own spot.
     static let figuresPerGroup = 4
 
-    /// The parts of every person drawn. One visitor alone stands on its spot. A group stands in a ring
-    /// around it, turned by the visitor's id so groups do not all line up the same way, and every third
-    /// member of a group of three or more is a child. The body is the visitor type's color, the head a
-    /// lighter tint of it so the type still reads from straight above, and the legs a darker shade.
+    /// The parts of every person drawn at `now`, a time in seconds. One visitor alone stands on its spot. A
+    /// group stands in a ring around it, turned by the visitor's id so groups do not all line up the same
+    /// way, and every third member of a group of three or more is a child. A visitor that is moving walks:
+    /// its legs and arms swing and its body rises with each step. The body is the visitor type's color, the
+    /// head a lighter tint of it so the type still reads from straight above, and the legs a darker shade.
     func figureInstances(
-        _ visitors: [SimulationSceneFrame.Visitor]
+        _ visitors: [SimulationSceneFrame.Visitor], now: Double = CACurrentMediaTime()
     ) -> FigureInstances {
-        var bodies: [Instance] = [], heads: [Instance] = [], limbs: [Instance] = []
-        bodies.reserveCapacity(visitors.count)
-        heads.reserveCapacity(visitors.count)
-        limbs.reserveCapacity(visitors.count * 4)
-        var seen: [Int: (place: SIMD2<Float>, heading: Float)] = [:]
+        var figures = FigureInstances(bodies: [], heads: [], limbs: [])
+        figures.bodies.reserveCapacity(visitors.count)
+        figures.heads.reserveCapacity(visitors.count)
+        figures.limbs.reserveCapacity(visitors.count * 4)
+        // A long gap is a pause, not one slow step.
+        let seconds = Float(min(max(now - (lastFigureTime ?? now), 0), 0.1))
+        lastFigureTime = now
+        var seen: [Int: FigureGait] = [:]
         seen.reserveCapacity(visitors.count)
 
         for visitor in visitors {
             let place = SIMD2(Float(visitor.x), Float(visitor.z))
-            let remembered = heading(of: visitor.id, at: place)
-            seen[visitor.id] = remembered
-            let heading = remembered.heading
+            var gait = gaits[visitor.id] ?? FigureGait(at: place)
+            gait.step(to: place, seconds: seconds)
+            seen[visitor.id] = gait
 
-            let color = Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
-            let tone = SIMD3(color.x, color.y, color.z)
-            let headColor = SIMD4(simd_mix(tone, SIMD3<Float>(1, 1, 1), SIMD3<Float>(repeating: 0.45)), color.w)
-            let legColor = SIMD4(tone * 0.6, color.w)
             let count = min(max(visitor.people, 1), Self.figuresPerGroup)
             let ring: Float = count == 1 ? 0 : 0.22 + 0.08 * Float(count)
-            // The way the figure's own left-to-right runs on the floor, for placing its legs and arms.
-            let across = SIMD2(cos(heading), -sin(heading))
-
+            let color = Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
             for index in 0..<count {
                 let angle = (Float(index) / Float(count)) * 2 * .pi + Float(visitor.id % 7)
-                let foot = place + ring * SIMD2(cos(angle), sin(angle))
-                let size: Float = count >= 3 && index % 3 == 2 ? Self.childScale : 1
-                func instance(
-                    _ side: Float, _ height: Float, _ scale: SIMD3<Float>, _ outline: Outline, _ color: SIMD4<Float>
-                ) -> Instance {
-                    let spot = foot + across * side * size
-                    return Instance(
-                        positionRotation: SIMD4(spot.x, height * size, spot.y, heading),
-                        scale: SIMD4(scale * size, outline.rawValue), color: color
-                    )
-                }
-                let bodyCenter = Self.visitorHeight - Self.headDiameter * 0.8 - Self.bodyHeight / 2
-                let leg = SIMD3(Self.legWidth, Self.legHeight, Self.legWidth)
-                let arm = SIMD3(Self.armWidth, Self.armLength, Self.armWidth)
-                let shoulder = Self.bodyRadius + Self.armWidth / 2 - 0.02
-                let armCenter = bodyCenter + Self.bodyHeight / 2 - 0.1 - Self.armLength / 2
-                for side in [Float(-1), 1] {
-                    limbs.append(instance(side * 0.08, Self.legHeight / 2, leg, .can, legColor))
-                    limbs.append(instance(side * shoulder, armCenter, arm, .can, color))
-                }
-                bodies.append(instance(0, bodyCenter, SIMD3(1, 1, Self.bodyDepth), .figure, color))
-                heads.append(instance(0, Self.visitorHeight - Self.headDiameter / 2, SIMD3(1, 1, 1), .figure, headColor))
+                append(
+                    to: &figures, gait: gait, foot: place + ring * SIMD2(cos(angle), sin(angle)),
+                    size: count >= 3 && index % 3 == 2 ? Self.childScale : 1,
+                    // Members of a group are out of step with each other.
+                    step: Float(index) * 1.3, color: color
+                )
             }
         }
-        headings = seen
-        return FigureInstances(bodies: bodies, heads: heads, limbs: limbs)
+        gaits = seen
+        return figures
     }
 
-    /// Which way a visitor faces: the way it has moved since the place it was last seen to move from. Until
-    /// it has gone a couple of centimeters it keeps its old heading and its old place, so slow steps add up
-    /// instead of being lost. Zero faces the bottom of the plan.
-    private func heading(of id: Int, at place: SIMD2<Float>) -> (place: SIMD2<Float>, heading: Float) {
-        guard let last = headings[id] else { return (place, 0) }
-        let moved = place - last.place
-        return simd_length_squared(moved) > 0.0004 ? (place, atan2(moved.x, moved.y)) : last
+    /// Adds one figure standing on `foot`. Each leg hangs from the hip and each arm from the shoulder, so a
+    /// limb that swings turns about its top end.
+    private func append(
+        to figures: inout FigureInstances, gait: FigureGait, foot: SIMD2<Float>, size: Float, step: Float,
+        color: SIMD4<Float>
+    ) {
+        let heading = gait.heading
+        // The figure's own left-to-right and front-to-back on the floor.
+        let across = SIMD2(cos(heading), -sin(heading))
+        let forward = SIMD2(sin(heading), cos(heading))
+        let tone = SIMD3(color.x, color.y, color.z)
+        let headColor = SIMD4(simd_mix(tone, SIMD3<Float>(1, 1, 1), SIMD3<Float>(repeating: 0.45)), color.w)
+        let legColor = SIMD4(tone * 0.6, color.w)
+        let swing = gait.swing(offset: step)
+        let lift = gait.lift(offset: step)
+
+        func instance(
+            _ side: Float, _ height: Float, _ front: Float, _ scale: SIMD3<Float>, _ outline: Outline,
+            _ color: SIMD4<Float>, lean: Float = 0
+        ) -> Instance {
+            let spot = foot + (across * side + forward * front) * size
+            return Instance(
+                positionRotation: SIMD4(spot.x, height * size, spot.y, heading),
+                scale: SIMD4(scale * size, outline.rawValue), color: color, tilt: SIMD4(lean, 0, 0, 0)
+            )
+        }
+        /// A limb `length` long hanging from `top`, swung by `lean` about that end.
+        func limb(_ side: Float, top: Float, length: Float, width: Float, lean: Float, _ color: SIMD4<Float>) -> Instance {
+            instance(
+                side, top - length / 2 * cos(lean), -length / 2 * sin(lean), SIMD3(width, length, width), .can, color,
+                lean: lean
+            )
+        }
+        let bodyCenter = Self.visitorHeight - Self.headDiameter * 0.8 - Self.bodyHeight / 2 + lift
+        let shoulder = Self.bodyRadius + Self.armWidth / 2 - 0.02
+        let armTop = bodyCenter + Self.bodyHeight / 2 - 0.1
+        for side in [Float(-1), 1] {
+            figures.limbs.append(limb(
+                side * 0.08, top: Self.legHeight + lift, length: Self.legHeight, width: Self.legWidth, lean: -side * swing,
+                legColor
+            ))
+            figures.limbs.append(limb(
+                side * shoulder, top: armTop, length: Self.armLength, width: Self.armWidth, lean: side * swing * 0.7, color
+            ))
+        }
+        figures.bodies.append(instance(0, bodyCenter, 0, SIMD3(1, 1, Self.bodyDepth), .figure, color))
+        figures.heads.append(instance(
+            0, Self.visitorHeight - Self.headDiameter / 2 + lift, 0, SIMD3(1, 1, 1), .figure, headColor
+        ))
     }
 }
