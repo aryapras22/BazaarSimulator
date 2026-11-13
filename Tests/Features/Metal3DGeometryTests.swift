@@ -86,11 +86,66 @@ struct VenueGeometryTests {
 
     // MARK: Plain objects
 
-    @Test("Tables and pillars are cylinders as wide as their smaller side")
+    @Test("A round table is a top on a pedestal with a chair at each seat, turned to face it")
+    func roundTable() {
+        let table = object(.table, size: SIMD2(1.5, 1.5), catalogID: "table-round-6")
+        let parts = VenueGeometry.blocks(for: table)
+        #expect(parts.count == 3 + 6 * 6)
+        #expect(parts[0].shape == .cylinder && parts[0].size.x == 1.5 && abs(top(parts[0]) - 0.75) < 0.001)
+        let backs = parts.filter { $0.size.y == 0.4 }
+        #expect(backs.count == 6)
+        let seats = parts.filter { $0.size == SIMD3(0.4, 0.05, 0.4) }
+        for (seat, back) in zip(seats, backs) {
+            let fromTable = simd_length(SIMD2(seat.center.x - 10, seat.center.z - 6))
+            #expect(simd_length(SIMD2(back.center.x - 10, back.center.z - 6)) > fromTable, "the back is on the far side")
+        }
+    }
+
+    @Test("A rectangular table stands on four legs, and a table of no known model has no chairs")
+    func rectTable() {
+        let parts = VenueGeometry.blocks(for: object(.table, size: SIMD2(1.2, 0.7), catalogID: "table-rect-4"))
+        #expect(parts.count == 5 + 4 * 6)
+        #expect(parts[0].shape == .box && parts[0].size.x == 1.2)
+        #expect(VenueGeometry.blocks(for: object(.table)).count == 5)
+    }
+
+    @Test("Seating is rows of chairs on a mat, turned toward the stage they are given")
+    func seating() {
+        let block = object(.seating, size: SIMD2(2, 1))
+        let plain = VenueGeometry.blocks(for: block)
+        #expect(plain.count == 1 + 8 * 6)
+        func backSide(_ parts: [VenueBlock]) -> SIMD2<Float> {
+            let seat = parts.first { $0.size == SIMD3(0.4, 0.05, 0.4) }!
+            let back = parts.first { $0.size.y == 0.4 }!
+            return simd_normalize(SIMD2(back.center.x - seat.center.x, back.center.z - seat.center.z))
+        }
+        #expect(backSide(plain).y > 0.99, "with no stage the chairs face the top of the plan")
+        let towardRight = VenueGeometry.seating(block, toward: SIMD2(30, 6))
+        #expect(backSide(towardRight).x < -0.99, "the backs are away from the stage")
+    }
+
+    @Test("A stage has a deck, a backdrop and truss at the back, and steps at its open side")
+    func stage() {
+        let stage = object(.entertainment, label: "Stage", open: [.top])
+        let parts = VenueGeometry.blocks(for: stage)
+        #expect(parts[0].size == SIMD3(4, 0.5, 2))
+        let backdrop = parts.first { $0.size.y == 2.6 }!
+        #expect(local(backdrop, in: stage).z > 0.5, "the backdrop is at the side away from the open one")
+        let steps = parts.filter { $0.size.z == 0.3 || $0.size.x == 0.3 }
+        #expect(steps.count == 2 && steps.allSatisfy { local($0, in: stage).z < -1 })
+    }
+
+    @Test("A photobooth is a walled cabin and a display is a fenced platform")
+    func otherAttractions() {
+        let cabin = VenueGeometry.blocks(for: object(.entertainment, label: "PHOTO BOX"))
+        #expect(cabin.filter { $0.size.y == 2.1 }.count == 3, "three walls")
+        let display = VenueGeometry.blocks(for: object(.entertainment, label: "Display"))
+        #expect(display.filter { $0.shape == .cylinder && $0.size.y == 0.9 }.count == 4, "four posts")
+        #expect(display[0].size.y == 0.15)
+    }
+
+    @Test("Columns are cylinders as wide as their smaller side")
     func cylinders() {
-        let table = VenueGeometry.blocks(for: object(.table))
-        #expect(table.count == 1 && table[0].shape == .cylinder)
-        #expect(table[0].size == SIMD3(2, 0.75, 2))
         #expect(VenueGeometry.blocks(for: object(.block, catalogID: ObjectCatalog.columnID))[0].size.y == 3.5)
     }
 
@@ -99,9 +154,7 @@ struct VenueGeometryTests {
         #expect(VenueGeometry.blocks(for: object(.wall))[0].size.y == 2.8)
         #expect(VenueGeometry.blocks(for: object(.entertainment))[0].size.y == 0.5)
         #expect(VenueGeometry.blocks(for: object(.block))[0].size.y == 0.8)
-        for kind in [LayoutObjectKind.closedArea, .seating] {
-            #expect(VenueGeometry.blocks(for: object(kind))[0].size.y == 0.15, "\(kind)")
-        }
+        #expect(VenueGeometry.blocks(for: object(.closedArea))[0].size.y == 0.15)
     }
 
     @Test("A turned plain object lands exactly where the 2D plan puts its corners")
@@ -125,11 +178,14 @@ struct VenueGeometryTests {
 
     // MARK: Booths
 
-    @Test("A booth is a stall: a mat, an awning, four posts, and one part for each side")
+    @Test("A booth is a stall: a mat, an awning, four posts, one part for each side, then valance and goods")
     func boothParts() {
         let booth = object(.booth, label: "B3", open: [.bottom])
         let parts = VenueGeometry.blocks(for: booth)
-        #expect(parts.count == 1 + 1 + 4 + 4)
+        #expect(parts.count > 1 + 1 + 4 + 4)
+        let valance = parts.dropFirst(10).filter { $0.size.y == 0.28 }
+        #expect(valance.count >= 2 && valance.allSatisfy { local($0, in: booth).z > 1 }, "the valance hangs at the open side")
+        #expect(Set(valance.map(\.color)).count == 2, "in two colors")
         let roof = parts.max { top($0) < top($1) }!
         #expect(top(roof) > 2.3)
         let roofPlace = local(roof, in: booth)
@@ -150,7 +206,7 @@ struct VenueGeometryTests {
     @Test("Each open side has a low counter, and each closed side a tall panel")
     func openAndClosedSides() {
         let booth = object(.booth, label: "B3", open: [.bottom, .right])
-        let parts = VenueGeometry.blocks(for: booth).dropFirst(6)   // after the mat, awning and posts
+        let parts = VenueGeometry.blocks(for: booth).dropFirst(6).prefix(4)   // after the mat, awning and posts
         let counters = parts.filter { $0.size.y < 1.2 }
         let panels = parts.filter { $0.size.y > 2 }
         #expect(counters.count == 2 && panels.count == 2)
@@ -167,7 +223,7 @@ struct VenueGeometryTests {
     func turnedBooth() {
         for degrees in [0.0, 90, 180, 270, 40] {
             let booth = object(.booth, rotation: degrees * .pi / 180, open: [.bottom])
-            let counter = VenueGeometry.blocks(for: booth).dropFirst(6).first { $0.size.y < 1.2 }!
+            let counter = VenueGeometry.blocks(for: booth).dropFirst(6).prefix(4).first { $0.size.y < 1.2 }!
             let strip = LayoutGeometry.stripPlacement(for: .bottom, of: booth.placement, depthM: 0.5).center
             let toCounter = SIMD2(counter.center.x - 10, counter.center.z - 6)
             let toStrip = SIMD2(Float(strip.x) - 10, Float(strip.y) - 6)
@@ -198,6 +254,7 @@ struct VenueGeometryTests {
     @Test("A booth with no open side is closed all round")
     func closedBooth() {
         let parts = VenueGeometry.blocks(for: object(.booth)).dropFirst(6)
+        #expect(parts.count == 4)
         #expect(parts.allSatisfy { $0.size.y > 2 })
     }
 
@@ -207,10 +264,14 @@ struct VenueGeometryTests {
         object(.door, label: "Door A", center: SIMD2(5, 3), size: size, flow: DoorFlow(direction: direction))
     }
 
-    @Test("A door is a frame with a beam, a leaf standing open, and a colored strip on the floor")
+    @Test("A door is a frame with a beam, leaves standing open, a colored strip on the floor, and a sign")
     func doorParts() {
         let parts = VenueGeometry.blocks(for: door(.entrance))
-        #expect(parts.count == 5)
+        #expect(parts.count == 7)
+        let leaves = parts.filter { $0.size.z == 0.05 }
+        #expect(leaves.count == 2 && leaves[0].rotationY == -leaves[1].rotationY, "a wide door has two leaves, mirrored")
+        #expect(VenueGeometry.blocks(for: door(.entrance, size: SIMD2(0.9, 0.2))).filter { $0.size.z == 0.05 }.count == 1)
+        #expect(parts.last!.center.y > 2.4 && parts.last!.color == leaves[0].color, "the sign sits over the beam")
         #expect(parts.filter { $0.size.y == 2.3 }.count == 2, "two posts")
         let beam = parts.first { $0.size.y == 0.15 }!
         #expect(beam.center.y > 2.3 && beam.size.x == 1.8)
@@ -320,7 +381,7 @@ struct VenueGeometryTests {
         #expect(blocks[1].size.z == 7.8)
         let stalls = base.objects.filter { $0.kind == .booth }.count
         let doors = base.objects.filter { $0.kind == .door }.count
-        #expect(blocks.count == 2 + stalls * 10 + doors * 5)
+        #expect(blocks.count >= 2 + stalls * 10 + doors * 5)
     }
 
     @Test("Without a hall outline the floor is the layout's size")

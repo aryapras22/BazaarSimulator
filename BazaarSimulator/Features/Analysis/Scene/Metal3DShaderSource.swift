@@ -120,6 +120,10 @@ enum Metal3DShaderSource {
         } else {
             float edge = roundEdgeDistance(in, normal, u.cameraPosition.xyz, outline < 1.5);
             line = 1.0 - smoothstep(width - 0.5, width + 0.5, edge);
+            // A shape only a few pixels across is thinned the same way a narrow box face is. A figure's
+            // parts are about a third of a meter across.
+            float across = (outline < 1.5 ? min(in.scale.x, in.scale.y) : 0.34) / max(length(fwidth(in.world)) * 0.7, 1e-5);
+            line *= mix(0.35, 1.0, smoothstep(2.0 * width, 5.0 * width, across));
         }
         rgb = mix(rgb, u.inkColor.rgb, line);
         return float4(rgb * in.color.a, in.color.a);

@@ -286,7 +286,7 @@ struct Metal3DRendererTests {
             kind: .wall, label: "Wall", placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(12, 0.4))
         )
         let door = LayoutObject(
-            kind: .door, label: "Door A", placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(2, 0.6)),
+            kind: .door, label: "Door A", placement: Placement(center: SIMD2(0, 0), sizeM: SIMD2(1.4, 0.6)),
             doorFlow: DoorFlow(direction: .entrance)
         )
         let layout = Layout(name: "T", sizeM: SIMD2(12, 8), hall: [], objects: [wall, door])
@@ -300,8 +300,8 @@ struct Metal3DRendererTests {
         }
         #expect(!near(try at(-4, 1.5, 0.2), background, 0.03), "wall on the left")
         #expect(!near(try at(4, 1.5, 0.2), background, 0.03), "wall on the right")
-        #expect(near(try at(0.75, 1.4, 0), background, 0.04), "the doorway is open")
-        let leaf = try at(-0.45, 1.0, 0.55)
+        #expect(near(try at(0.35, 1.4, 0), background, 0.04), "the doorway is open")
+        let leaf = try at(-0.38, 1.0, 0.545)
         #expect(leaf.y > leaf.x && leaf.y > leaf.z, "the open leaf is green, for an entrance")
     }
 

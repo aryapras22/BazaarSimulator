@@ -54,8 +54,16 @@ final class Metal3DRenderer {
     static let inkColor = SIMD3<Float>(0.11, 0.15, 0.34)
     static let outlineWidthPixels: Float = 1.3
 
+    /// A visitor is legs, a body and a head, this tall in all.
     static let visitorHeight: Float = 1.7
-    static let visitorRadius: Float = 0.28
+    static let headDiameter: Float = 0.34
+    static let legHeight: Float = 0.78
+    static let legWidth: Float = 0.27
+    static let bodyRadius: Float = 0.22
+    /// The body's rounded ends sink into the legs below and the head above.
+    static let bodyHeight: Float = 0.86
+    /// A group is drawn as this many figures at most, standing around the group's own spot.
+    static let figuresPerGroup = 4
     static let spotRadius: Float = 2.0
     /// A label's width and height, in meters.
     static let labelSize = SIMD2<Float>(9, 1.7)
@@ -74,7 +82,8 @@ final class Metal3DRenderer {
     private let readingDepth: MTLDepthStencilState
     private let cube: GPUMesh
     private let cylinder: GPUMesh
-    private let capsule: GPUMesh
+    private let body: GPUMesh
+    private let head: GPUMesh
 
     private var venueID: UUID?
     private var venueBoxes: (buffer: MTLBuffer?, count: Int) = (nil, 0)
@@ -145,7 +154,8 @@ final class Metal3DRenderer {
               let reading = depthState(writes: false),
               let cube = upload(.cube),
               let cylinder = upload(.cylinder),
-              let capsule = upload(.capsule(radius: Self.visitorRadius, height: Self.visitorHeight)) else {
+              let body = upload(.capsule(radius: Self.bodyRadius, height: Self.bodyHeight)),
+              let head = upload(.capsule(radius: Self.headDiameter / 2, height: Self.headDiameter)) else {
             return nil
         }
         opaquePipeline = opaque
@@ -156,7 +166,8 @@ final class Metal3DRenderer {
         readingDepth = reading
         self.cube = cube
         self.cylinder = cylinder
-        self.capsule = capsule
+        self.body = body
+        self.head = head
     }
 
     // MARK: Drawing
@@ -215,8 +226,10 @@ final class Metal3DRenderer {
         encoder.setRenderPipelineState(opaquePipeline)
         draw(venueBoxes.buffer, count: venueBoxes.count, mesh: cube, uniforms: &uniforms, encoder: encoder)
         draw(venueCylinders.buffer, count: venueCylinders.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
-        let visitors = visitorInstances(frame.visitors)
-        draw(buffer(visitors), count: visitors.count, mesh: capsule, uniforms: &uniforms, encoder: encoder)
+        let figures = figureInstances(frame.visitors)
+        draw(buffer(figures.bodies), count: figures.bodies.count, mesh: body, uniforms: &uniforms, encoder: encoder)
+        draw(buffer(figures.heads), count: figures.heads.count, mesh: head, uniforms: &uniforms, encoder: encoder)
+        draw(buffer(figures.legs), count: figures.legs.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
 
         // Then see-through things: hidden by solid ones, but not hiding each other. The flat pictures are
         // seen from either side, so they are drawn whichever way they face.
@@ -291,15 +304,38 @@ final class Metal3DRenderer {
         venueCylinders = (buffer(cylinders), cylinders.count)
     }
 
-    private func visitorInstances(_ visitors: [SimulationSceneFrame.Visitor]) -> [Instance] {
-        visitors.map { visitor in
-            let spread = min(1 + 0.15 * Float(max(visitor.people - 1, 0)), 2.5)
-            return Instance(
-                positionRotation: SIMD4(Float(visitor.x), Self.visitorHeight / 2, Float(visitor.z), 0),
-                scale: SIMD4(spread, 1, spread, Outline.figure.rawValue),
-                color: Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
-            )
+    /// Legs, a body and a head for each person drawn. One visitor alone stands on its spot. A group stands
+    /// in a ring around it, turned by the visitor's id so groups do not all line up the same way. The body is
+    /// the visitor type's color, the head a lighter tint of it so the type still reads from straight above,
+    /// and the legs a darker shade.
+    private func figureInstances(
+        _ visitors: [SimulationSceneFrame.Visitor]
+    ) -> (bodies: [Instance], heads: [Instance], legs: [Instance]) {
+        var bodies: [Instance] = [], heads: [Instance] = [], legs: [Instance] = []
+        bodies.reserveCapacity(visitors.count)
+        heads.reserveCapacity(visitors.count)
+        legs.reserveCapacity(visitors.count)
+        let plain = SIMD4<Float>(1, 1, 1, Outline.figure.rawValue)
+        let legScale = SIMD4<Float>(Self.legWidth, Self.legHeight, Self.legWidth, Outline.can.rawValue)
+        let bodyCenter = Self.visitorHeight - Self.headDiameter * 0.8 - Self.bodyHeight / 2
+        for visitor in visitors {
+            let color = Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
+            let tone = SIMD3(color.x, color.y, color.z)
+            let headColor = SIMD4(simd_mix(tone, SIMD3<Float>(1, 1, 1), SIMD3<Float>(repeating: 0.45)), color.w)
+            let legColor = SIMD4(tone * 0.6, color.w)
+            let count = min(max(visitor.people, 1), Self.figuresPerGroup)
+            let ring: Float = count == 1 ? 0 : 0.2 + 0.07 * Float(count)
+            for index in 0..<count {
+                let angle = (Float(index) / Float(count)) * 2 * .pi + Float(visitor.id % 7)
+                let x = Float(visitor.x) + ring * cos(angle), z = Float(visitor.z) + ring * sin(angle)
+                legs.append(Instance(positionRotation: SIMD4(x, Self.legHeight / 2, z, 0), scale: legScale, color: legColor))
+                bodies.append(Instance(positionRotation: SIMD4(x, bodyCenter, z, 0), scale: plain, color: color))
+                heads.append(Instance(
+                    positionRotation: SIMD4(x, Self.visitorHeight - Self.headDiameter / 2, z, 0), scale: plain, color: headColor
+                ))
+            }
         }
+        return (bodies, heads, legs)
     }
 
     /// A glowing disc on the floor and a beam above it for each watched spot. A more crowded spot is wider

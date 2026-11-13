@@ -26,18 +26,33 @@ enum VenueGeometry {
 
     static func blocks(for layout: Layout) -> [VenueBlock] {
         let doors = layout.objects.filter { $0.kind == .door }
+        let attractions = layout.objects.filter { $0.kind == .entertainment }.map(\.placement.center)
         var result = floors(for: layout)
         for object in layout.objects {
-            result += object.kind == .wall ? wall(object, cutBy: doors) : blocks(for: object)
+            switch object.kind {
+            case .wall:
+                result += wall(object, cutBy: doors)
+            case .seating:
+                let nearest = attractions.min {
+                    simd_distance_squared($0, object.placement.center) < simd_distance_squared($1, object.placement.center)
+                }
+                result += seating(object, toward: nearest)
+            default:
+                result += blocks(for: object)
+            }
         }
         return result
     }
 
-    /// Everything one object is made of. A booth is a stall and a door is a frame with a leaf.
+    /// Everything one object is made of. A booth is a stall, a door is a frame with leaves, tables and
+    /// seating come with their chairs, and an attraction is a stage, a photobooth or a display.
     static func blocks(for object: LayoutObject) -> [VenueBlock] {
         switch object.kind {
         case .booth: booth(object)
         case .door: door(object)
+        case .table: table(object)
+        case .seating: seating(object)
+        case .entertainment: entertainment(object)
         default: [solid(object)]
         }
     }
@@ -74,9 +89,14 @@ enum VenueGeometry {
     // MARK: Placing parts
 
     /// An object's own frame: parts are placed relative to its middle, and turn with it.
-    private struct Frame {
+    struct Frame {
         let middle: SIMD2<Float>
         let turn: Float
+
+        init(middle: SIMD2<Float>, turn: Float) {
+            self.middle = middle
+            self.turn = turn
+        }
 
         init(_ object: LayoutObject) {
             middle = SIMD2(Float(object.placement.center.x), Float(object.placement.center.y))
@@ -102,13 +122,22 @@ enum VenueGeometry {
         }
     }
 
-    private static func size(of object: LayoutObject) -> (width: Float, depth: Float) {
+    static func size(of object: LayoutObject) -> (width: Float, depth: Float) {
         (Float(object.placement.sizeM.x), Float(object.placement.sizeM.y))
     }
 
     // MARK: Plain objects
 
-    private static func solid(_ object: LayoutObject) -> VenueBlock {
+    static let frameColor = SIMD4<Float>(0.11, 0.15, 0.34, 1)
+    static let creamColor = SIMD4<Float>(0.99, 0.97, 0.92, 1)
+    static let whiteColor = SIMD4<Float>(1, 1, 1, 1)
+    static let cobaltColor = SIMD4<Float>(0.20, 0.38, 0.75, 1)
+    static let vermilionColor = SIMD4<Float>(0.92, 0.33, 0.16, 1)
+    static let yellowColor = SIMD4<Float>(0.94, 0.78, 0.25, 1)
+    static let coralColor = SIMD4<Float>(0.96, 0.60, 0.50, 1)
+    static let paleBlueColor = SIMD4<Float>(0.80, 0.85, 0.94, 1)
+
+    static func solid(_ object: LayoutObject) -> VenueBlock {
         let (width, depth) = size(of: object)
         let frame = Frame(object)
 
@@ -121,150 +150,10 @@ enum VenueGeometry {
         }
 
         switch object.kind {
-        case .table: return cylinder(0.75, SIMD4(0.94, 0.78, 0.25, 1))
         case .wall: return box(wallHeight, SIMD4(1, 1, 1, 1))
         case .block where object.isColumn: return cylinder(Float(object.heightM ?? 3.5), SIMD4(0.20, 0.38, 0.75, 1))
         case .block: return box(Float(object.heightM ?? 0.8), SIMD4(0.56, 0.63, 0.82, 1))
-        case .entertainment: return box(0.5, SIMD4(0.96, 0.60, 0.50, 1))
         default: return box(0.15, SIMD4(0.80, 0.85, 0.94, 1))
-        }
-    }
-
-    // MARK: Booths
-
-    private static let frameColor = SIMD4<Float>(0.11, 0.15, 0.34, 1)
-    private static let counterColor = SIMD4<Float>(0.99, 0.97, 0.92, 1)
-
-    /// A stall: posts at the corners, an awning on top, a low counter along each open side, and a tall panel
-    /// along each closed side, over a mat on the floor.
-    private static func booth(_ object: LayoutObject) -> [VenueBlock] {
-        let (width, depth) = size(of: object)
-        let frame = Frame(object)
-        let awning = boothColor(for: object)
-        let panel = SIMD4(awning.x * 0.55, awning.y * 0.55, awning.z * 0.55, 1)
-        let postSize: Float = 0.12
-        let postHeight: Float = 2.3
-
-        var parts = [
-            frame.part(
-                at: SIMD3(0, 0.015, 0), size: SIMD3(max(width - 0.1, 0.1), 0.03, max(depth - 0.1, 0.1)),
-                color: SIMD4(0.84, 0.88, 0.95, 1)
-            ),
-            awningPart(of: object, frame: frame, height: postHeight + 0.05, color: awning)
-        ]
-        for (sx, sz) in [(-1, -1), (1, -1), (1, 1), (-1, 1)] as [(Float, Float)] {
-            parts.append(frame.part(
-                at: SIMD3(sx * (width / 2 - postSize / 2), postHeight / 2, sz * (depth / 2 - postSize / 2)),
-                size: SIMD3(postSize, postHeight, postSize), color: frameColor
-            ))
-        }
-
-        // top and bottom run along the width, left and right along the depth.
-        let sides: [(side: OpenSides, alongWidth: Bool, direction: Float)] = [
-            (.top, true, -1), (.bottom, true, 1), (.left, false, -1), (.right, false, 1)
-        ]
-        for (side, alongWidth, direction) in sides {
-            let length = max((alongWidth ? width : depth) - postSize * 2, 0.05)
-            let reach = (alongWidth ? depth : width) / 2
-            let isOpen = object.openSides.contains(side)
-            let thickness: Float = isOpen ? 0.45 : 0.08
-            let height: Float = isOpen ? 0.95 : 2.1
-            let offset = direction * (reach - thickness / 2)
-            parts.append(frame.part(
-                at: alongWidth ? SIMD3(0, height / 2, offset) : SIMD3(offset, height / 2, 0),
-                size: alongWidth ? SIMD3(length, height, thickness) : SIMD3(thickness, height, length),
-                color: isOpen ? counterColor : panel
-            ))
-        }
-        return parts
-    }
-
-    /// The awning stops just short of the stall's edges, so neighbors do not merge into one roof, and juts out
-    /// over each open side.
-    private static func awningPart(of object: LayoutObject, frame: Frame, height: Float, color: SIMD4<Float>) -> VenueBlock {
-        let (width, depth) = size(of: object)
-        let gap: Float = 0.04, jut: Float = 0.3
-        var low = SIMD2(-width / 2 + gap, -depth / 2 + gap)
-        var high = SIMD2(width / 2 - gap, depth / 2 - gap)
-        if object.openSides.contains(.left) { low.x -= jut + gap }
-        if object.openSides.contains(.right) { high.x += jut + gap }
-        if object.openSides.contains(.top) { low.y -= jut + gap }
-        if object.openSides.contains(.bottom) { high.y += jut + gap }
-        return frame.part(
-            at: SIMD3((low.x + high.x) / 2, height, (low.y + high.y) / 2),
-            size: SIMD3(max(high.x - low.x, 0.1), 0.1, max(high.y - low.y, 0.1)),
-            color: color
-        )
-    }
-
-    private static func boothColor(for object: LayoutObject) -> SIMD4<Float> {
-        let label = object.label.lowercased()
-        if label.contains("food") || label.contains("f&b") || label.hasPrefix("f") {
-            return SIMD4(0.92, 0.33, 0.16, 1)
-        }
-        return SIMD4(0.20, 0.38, 0.75, 1)
-    }
-
-    // MARK: Doors
-
-    private static let doorFrameHeight: Float = 2.3
-    private static let leafAngle: Float = 70 * .pi / 180
-
-    /// A door: a frame of two posts and a beam, a leaf standing open, and a colored strip on the floor that
-    /// shows which way people may go. A disabled door is just the frame and a gray strip.
-    private static func door(_ object: LayoutObject) -> [VenueBlock] {
-        let (width, depth) = size(of: object)
-        let frame = Frame(object)
-        let opensAlongWidth = width >= depth
-        let opening = opensAlongWidth ? width : depth
-        let thickness = opensAlongWidth ? depth : width
-        let color = doorColor(for: object)
-
-        // Parts are described along the opening and across it, then placed on the right axes.
-        func place(_ along: Float, _ height: Float, _ across: Float) -> SIMD3<Float> {
-            opensAlongWidth ? SIMD3(along, height, across) : SIMD3(across, height, along)
-        }
-        func sized(_ along: Float, _ height: Float, _ across: Float) -> SIMD3<Float> {
-            opensAlongWidth ? SIMD3(along, height, across) : SIMD3(across, height, along)
-        }
-
-        let postSize: Float = 0.12
-        let reach = thickness + 0.12
-        var parts = [
-            frame.part(at: place(0, 0.02, 0), size: sized(opening, 0.04, thickness), color: color),
-            frame.part(
-                at: place(0, doorFrameHeight + 0.075, 0), size: sized(opening, 0.15, reach), color: frameColor
-            )
-        ]
-        for end in [Float(-1), 1] {
-            parts.append(frame.part(
-                at: place(end * (opening / 2 - postSize / 2), doorFrameHeight / 2, 0),
-                size: sized(postSize, doorFrameHeight, reach), color: frameColor
-            ))
-        }
-
-        if object.doorFlow?.direction != .disabled {
-            // The leaf is hinged at one post and swung open, so the doorway reads as a doorway.
-            let leafWidth = max(opening - postSize * 2, 0.2)
-            let hinge = -(opening / 2 - postSize)
-            let leafAlong = hinge + leafWidth / 2 * cos(leafAngle)
-            let leafAcross = leafWidth / 2 * sin(leafAngle)
-            parts.append(frame.part(
-                at: place(leafAlong, 1.05, leafAcross),
-                size: SIMD3(leafWidth, 2.1, 0.05),
-                color: color,
-                extraTurn: opensAlongWidth ? -leafAngle : leafAngle - .pi / 2
-            ))
-        }
-        return parts
-    }
-
-    private static func doorColor(for object: LayoutObject) -> SIMD4<Float> {
-        switch object.doorFlow?.direction {
-        case .entrance: SIMD4(0.18, 0.62, 0.42, 1)
-        case .exit: SIMD4(0.85, 0.20, 0.22, 1)
-        case .disabled: SIMD4(0.62, 0.64, 0.68, 1)
-        default: SIMD4(0.20, 0.38, 0.75, 1)
         }
     }
 
