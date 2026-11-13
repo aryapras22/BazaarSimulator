@@ -152,6 +152,13 @@ struct VenueGeometryTests {
         let display = VenueGeometry.blocks(for: object(.entertainment, label: "Display"))
         #expect(display.filter { $0.shape == .cylinder && $0.size.y == 0.9 }.count == 4, "four posts")
         #expect(display[0].size.y == 0.15)
+        let bowl = SIMD3<Float>(0.26, 0.22, 0.26)
+        #expect(display.filter { $0.size.x == 0.5 && $0.size.z == 0.5 }.count == 3, "a 4 m display has three plinths")
+        let contest = VenueGeometry.blocks(for: object(.entertainment, label: "Lomba Mewarnai"))
+        let steps = contest.filter { $0.size.z == 0.7 }
+        #expect(steps.count == 3 && steps.max { top($0) < top($1) }!.center.x == 10, "the middle step is the highest")
+        let cup = contest.first { $0.size == bowl }!
+        #expect(cup.center.x == 10 && cup.center.y > 0.75, "the trophy stands on it")
     }
 
     @Test("Columns are cylinders as wide as their smaller side")
