@@ -160,7 +160,7 @@ struct VenueGeometryTests {
         #expect(counters.allSatisfy { local($0, in: booth).z > 0.5 || local($0, in: booth).x > 1 })
         #expect(sides.filter { $0.z > 0.5 }.count == 1 && sides.filter { $0.x > 1 }.count == 1)
         #expect(panels.allSatisfy { local($0, in: booth).z < -0.5 || local($0, in: booth).x < -1 })
-        #expect(counters.allSatisfy { $0.color == SIMD4(0.93, 0.88, 0.78, 1) })
+        #expect(counters.allSatisfy { $0.color == SIMD4(0.99, 0.97, 0.92, 1) })
     }
 
     @Test("A turned booth keeps its counter on the same side as in the 2D plan")
@@ -390,9 +390,9 @@ struct OrbitCameraTests {
         camera.zoom(-60)
         #expect(camera.distance > start)
         camera.zoom(100_000)
-        #expect(camera.distance == 6)
+        #expect(camera.distance == 15)
         camera.zoom(-100_000)
-        #expect(camera.distance == 800)
+        #expect(camera.distance == 1200)
     }
 
     @Test("Moving slides the target across the floor and never up")

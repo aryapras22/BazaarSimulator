@@ -14,6 +14,8 @@ enum Metal3DShaderSource {
         float4 cameraUp;
         float4 overlayRect;      // x0, z0, x1, z1 of the plan, in meters
         float4 overlayHeight;    // x: how high above the floor the overlay lies
+        float4 cameraPosition;
+        float4 inkColor;         // rgb: the outline color, w: outline width in pixels
     };
 
     struct MeshVertex {
@@ -23,7 +25,7 @@ enum Metal3DShaderSource {
 
     struct Instance {
         float4 positionRotation; // xyz: where, w: turn about the vertical axis
-        float4 scale;            // xyz: size
+        float4 scale;            // xyz: size, w: how it is outlined (0 box, 1 can, 2 figure, 3 not at all)
         float4 color;
     };
 
@@ -31,6 +33,10 @@ enum Metal3DShaderSource {
         float4 position [[position]];
         float3 normal;
         float4 color;
+        float3 world;
+        float3 local;            // where on the unit shape, before it is sized
+        float3 localNormal;
+        float4 scale [[flat]];
     };
 
     // Solid things: the venue, the visitors, and the glow markers. One draw call per shape, however many.
@@ -49,14 +55,73 @@ enum Metal3DShaderSource {
         out.position = u.viewProjection * float4(turned + inst.positionRotation.xyz, 1.0);
         out.normal = normal;
         out.color = inst.color;
+        out.world = turned + inst.positionRotation.xyz;
+        out.local = v.position;
+        out.localNormal = v.normal;
+        out.scale = inst.scale;
         return out;
     }
 
+    // How strongly this point of a box is inked: 1 on an edge, 0 away from one. Each axis measures the
+    // distance to its pair of faces, in meters, then divides by how many meters one pixel covers. The axis
+    // the face itself looks along is always at zero, so it is left out. A face only a few pixels across
+    // would be all line, so its lines are thinned to let its color show.
+    float boxLine(SolidOut in, float width) {
+        float3 perPixel = max(fwidth(in.local * in.scale.xyz), 1e-5);
+        float3 away = abs(in.localNormal) * 1e5;
+        float3 pixels = (0.5 - abs(in.local)) * in.scale.xyz / perPixel + away;
+        float3 across = in.scale.xyz / perPixel + away;
+        float narrowest = min(across.x, min(across.y, across.z));
+        float line = 1.0 - smoothstep(width - 0.5, width + 0.5, min(pixels.x, min(pixels.y, pixels.z)));
+        return line * mix(0.35, 1.0, smoothstep(2.0 * width, 5.0 * width, narrowest));
+    }
+
+    // How many pixels this point of a round shape is from its outline, which is where the surface turns
+    // away from the eye. A can also has a rim around each end.
+    float roundEdgeDistance(SolidOut in, float3 normal, float3 cameraPosition, bool rimmed) {
+        float turning = abs(dot(normal, normalize(cameraPosition - in.world)));
+        float pixels = turning / max(fwidth(turning), 1e-5);
+        if (!rimmed) { return pixels; }
+        float rim;
+        if (abs(in.localNormal.y) > 0.5) {
+            float radius = length(in.local.xz) * in.scale.x;
+            rim = (0.5 * in.scale.x - radius) / max(fwidth(radius), 1e-5);
+        } else {
+            float height = in.local.y * in.scale.y;
+            rim = (0.5 * in.scale.y - abs(height)) / max(fwidth(height), 1e-5);
+        }
+        return min(pixels, rim);
+    }
+
+    // Drawn like an ink illustration: each face is one flat tone, faces turned from the light are hatched,
+    // and every edge is a line.
     fragment float4 solidFragment(SolidOut in [[stage_in]], constant Uniforms &u [[buffer(2)]]) {
-        float ambient = u.lightDirection.w;
-        float diffuse = max(dot(normalize(in.normal), -normalize(u.lightDirection.xyz)), 0.0);
-        float light = min(ambient + (1.0 - ambient) * 1.4 * diffuse, 1.15);
-        float3 rgb = in.color.rgb * light;
+        float3 normal = normalize(in.normal);
+        float outline = in.scale.w;
+        if (outline > 2.5) {
+            return float4(in.color.rgb * in.color.a, in.color.a);
+        }
+        bool top = normal.y > 0.5;
+        bool lit = dot(normal, -normalize(u.lightDirection.xyz)) > 0.0;
+        float3 rgb = in.color.rgb * (top ? 1.0 : (lit ? 0.93 : 0.82));
+
+        if (!top && !lit) {
+            // Slanted lines 0.3 m apart, fading to a plain tone when they would be closer than the pixels.
+            float stripe = (in.world.x + in.world.z + in.world.y) / 0.3;
+            float spacing = fwidth(stripe);
+            float hatch = 1.0 - smoothstep(0.12, 0.12 + spacing, abs(fract(stripe) - 0.5));
+            rgb = mix(rgb, u.inkColor.rgb, 0.45 * hatch * (1.0 - smoothstep(0.25, 0.6, spacing)));
+        }
+
+        float width = u.inkColor.w;
+        float line;
+        if (outline < 0.5) {
+            line = boxLine(in, width);
+        } else {
+            float edge = roundEdgeDistance(in, normal, u.cameraPosition.xyz, outline < 1.5);
+            line = 1.0 - smoothstep(width - 0.5, width + 0.5, edge);
+        }
+        rgb = mix(rgb, u.inkColor.rgb, line);
         return float4(rgb * in.color.a, in.color.a);
     }
 

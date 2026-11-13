@@ -22,7 +22,7 @@ struct Metal3DRendererTests {
 
     private let size = SIMD2<Int>(240, 180)
     // Computed, not stored: a suite instance with a 32-byte aligned stored property crashes the test runner.
-    private var background: SIMD3<Double> { SIMD3(0.06, 0.08, 0.14) }
+    private var background: SIMD3<Double> { SIMD3(0.957, 0.937, 0.890) }
 
     private func plan(_ w: Double = 40, _ d: Double = 40) -> PlanFrame {
         PlanFrame(origin: SIMD2(-w / 2, -d / 2), size: SIMD2(w, d))
@@ -36,8 +36,11 @@ struct Metal3DRendererTests {
         VenueBlock(shape: .box, center: center, size: size, rotationY: 0, color: color)
     }
 
+    /// The cameras here were placed for a 60 degree view. This moves them back so they frame the same scene.
+    private var reach: Float { tan(.pi / 6) / tan(OrbitCamera.fieldOfView / 2) }
+
     private func topDown(distance: Float = 40) -> OrbitCamera {
-        OrbitCamera(target: .zero, yaw: 0, pitch: OrbitCamera.maximumPitch, distance: distance)
+        OrbitCamera(target: .zero, yaw: 0, pitch: OrbitCamera.maximumPitch, distance: distance * reach)
     }
 
     private func draw(
@@ -116,7 +119,7 @@ struct Metal3DRendererTests {
             var frame = SimulationSceneFrame()
             frame.visitors = [visitor(1, x: 0, z: 0, type: 3, people: people)]
             let picture = try draw(frame)
-            return (0..<(size.x * size.y)).filter { picture.pixel($0 % size.x, $0 / size.x).x > 0.4 }.count
+            return (0..<(size.x * size.y)).filter { !near(picture.pixel($0 % size.x, $0 / size.x), background, 0.02) }.count
         }
         #expect(try lit(8) > lit(1))
     }
@@ -136,7 +139,7 @@ struct Metal3DRendererTests {
     @Test("A wall hides a visitor behind it, and does not hide one in front of it")
     func depth() throws {
         let wall = box(at: SIMD3(0, 2, 0), size: SIMD3(40, 4, 1), color: SIMD4(0, 1, 0, 1))
-        let camera = OrbitCamera(target: SIMD3(0, 1, 0), yaw: 0, pitch: 0.2, distance: 30)
+        let camera = OrbitCamera(target: SIMD3(0, 1, 0), yaw: 0, pitch: 0.2, distance: 30 * reach)
         let viewport = SIMD2(Float(size.x), Float(size.y))
         var frame = SimulationSceneFrame()
         frame.visitors = [visitor(1, x: 0, z: -4, type: 3), visitor(2, x: 6, z: 9, type: 3)]
@@ -190,20 +193,20 @@ struct Metal3DRendererTests {
         #expect(top.z > top.x, "the booth is on top of the red overlay")
     }
 
-    @Test("A congested spot glows red and wears a bright label")
+    @Test("A congested spot glows red and wears a label")
     func marker() throws {
         var frame = SimulationSceneFrame()
         frame.spots = [.init(number: 2, x: 0, z: 0, level: 1, grade: .e)]
-        let camera = OrbitCamera(target: SIMD3(0, 4, 0), yaw: 0, pitch: 0.9, distance: 13)
+        let camera = OrbitCamera(target: SIMD3(0, 4, 0), yaw: 0, pitch: 0.9, distance: 13 * reach)
         let viewport = SIMD2(Float(size.x), Float(size.y))
         let picture = try draw(frame, camera: camera)
         let glow = picture.pixel(try #require(camera.project(SIMD3(1.5, 0.08, 0), viewport: viewport)))
-        #expect(glow.x > background.x + 0.1 && glow.x > glow.z)
+        #expect(glow.x > glow.z + 0.1 && glow.z < background.z - 0.1)
 
         let label = try #require(camera.project(SIMD3(0, Metal3DRenderer.labelHeight, 0), viewport: viewport))
-        var bright = 0
-        for dy in -14...14 { for dx in -60...60 where picture.pixel(Int(label.x) + dx, Int(label.y) + dy).x > 0.8 { bright += 1 } }
-        #expect(bright > 20, "white text pixels")
+        var dark = 0
+        for dy in -14...14 { for dx in -60...60 where picture.pixel(Int(label.x) + dx, Int(label.y) + dy).x < 0.5 { dark += 1 } }
+        #expect(dark > 20, "the label's dark plate")
     }
 
     @Test("Antialiasing softens edges that plain drawing leaves jagged")
@@ -265,7 +268,7 @@ struct Metal3DRendererTests {
             openSides: [.bottom]
         )
         let scene = venue(VenueGeometry.blocks(for: booth))
-        let camera = OrbitCamera(target: SIMD3(0, 1, 0), yaw: 0, pitch: 0.35, distance: 11)
+        let camera = OrbitCamera(target: SIMD3(0, 1, 0), yaw: 0, pitch: 0.35, distance: 11 * reach)
         let picture = try draw(venue: scene, camera: camera)
         let viewport = SIMD2(Float(size.x), Float(size.y))
 
@@ -288,20 +291,18 @@ struct Metal3DRendererTests {
         )
         let layout = Layout(name: "T", sizeM: SIMD2(12, 8), hall: [], objects: [wall, door])
         let scene = venue(Array(VenueGeometry.blocks(for: layout).dropFirst()))
-        let camera = OrbitCamera(target: SIMD3(0, 1.4, 0), yaw: 0, pitch: 0.2, distance: 16)
+        let camera = OrbitCamera(target: SIMD3(0, 1.4, 0), yaw: 0, pitch: 0.2, distance: 16 * reach)
         let picture = try draw(venue: scene, camera: camera)
         let viewport = SIMD2(Float(size.x), Float(size.y))
 
         func at(_ x: Float, _ y: Float, _ z: Float) throws -> SIMD3<Double> {
             picture.pixel(try #require(camera.project(SIMD3(x, y, z), viewport: viewport)))
         }
-        let wallColor = SIMD3<Double>(0.28, 0.32, 0.40)
         #expect(!near(try at(-4, 1.5, 0.2), background, 0.03), "wall on the left")
         #expect(!near(try at(4, 1.5, 0.2), background, 0.03), "wall on the right")
         #expect(near(try at(0.75, 1.4, 0), background, 0.04), "the doorway is open")
         let leaf = try at(-0.45, 1.0, 0.55)
         #expect(leaf.y > leaf.x && leaf.y > leaf.z, "the open leaf is green, for an entrance")
-        _ = wallColor
     }
 
     @Test("A real layout draws, with its booths standing above the floor")

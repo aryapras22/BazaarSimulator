@@ -17,6 +17,16 @@ final class Metal3DRenderer {
         var cameraUp: SIMD4<Float>
         var overlayRect: SIMD4<Float>
         var overlayHeight: SIMD4<Float>
+        var cameraPosition: SIMD4<Float>
+        var inkColor: SIMD4<Float>
+    }
+
+    /// How a shape's edges are found, passed to the shader in the spare slot of an instance's scale.
+    private enum Outline: Float {
+        case box = 0
+        case can = 1
+        case figure = 2
+        case none = 3
     }
 
     private struct Instance {
@@ -39,7 +49,10 @@ final class Metal3DRenderer {
 
     static let colorFormat = MTLPixelFormat.bgra8Unorm
     static let depthFormat = MTLPixelFormat.depth32Float
-    static let background = MTLClearColor(red: 0.06, green: 0.08, blue: 0.14, alpha: 1)
+    /// Paper, with the venue drawn on it in ink.
+    static let background = MTLClearColor(red: 0.957, green: 0.937, blue: 0.890, alpha: 1)
+    static let inkColor = SIMD3<Float>(0.11, 0.15, 0.34)
+    static let outlineWidthPixels: Float = 1.3
 
     static let visitorHeight: Float = 1.7
     static let visitorRadius: Float = 0.28
@@ -192,7 +205,9 @@ final class Metal3DRenderer {
                 Float(plan.origin.x), Float(plan.origin.y),
                 Float(plan.origin.x + plan.size.x), Float(plan.origin.y + plan.size.y)
             ),
-            overlayHeight: SIMD4(0.04, 0, 0, 0)
+            overlayHeight: SIMD4(0.04, 0, 0, 0),
+            cameraPosition: SIMD4(camera.position, 1),
+            inkColor: SIMD4(Self.inkColor, Self.outlineWidthPixels)
         )
 
         // Solid things first, with the depth buffer sorting out what hides what.
@@ -266,7 +281,7 @@ final class Metal3DRenderer {
             venue.blocks.filter { $0.shape == shape }.map {
                 Instance(
                     positionRotation: SIMD4($0.center, $0.rotationY),
-                    scale: SIMD4($0.size, 0),
+                    scale: SIMD4($0.size, (shape == .box ? Outline.box : .can).rawValue),
                     color: $0.color
                 )
             }
@@ -281,7 +296,7 @@ final class Metal3DRenderer {
             let spread = min(1 + 0.15 * Float(max(visitor.people - 1, 0)), 2.5)
             return Instance(
                 positionRotation: SIMD4(Float(visitor.x), Self.visitorHeight / 2, Float(visitor.z), 0),
-                scale: SIMD4(spread, 1, spread, 0),
+                scale: SIMD4(spread, 1, spread, Outline.figure.rawValue),
                 color: Self.visitorColors[visitor.typeIndex % Self.visitorColors.count]
             )
         }
@@ -299,10 +314,10 @@ final class Metal3DRenderer {
             var beam = Self.glowColor
             beam.w = 0.4
             instances.append(Instance(
-                positionRotation: SIMD4(Float(spot.x), 0.08, Float(spot.z), 0), scale: SIMD4(width, 0.06, width, 0), color: disc
+                positionRotation: SIMD4(Float(spot.x), 0.08, Float(spot.z), 0), scale: SIMD4(width, 0.06, width, Outline.none.rawValue), color: disc
             ))
             instances.append(Instance(
-                positionRotation: SIMD4(Float(spot.x), 3, Float(spot.z), 0), scale: SIMD4(0.6, 6, 0.6, 0), color: beam
+                positionRotation: SIMD4(Float(spot.x), 3, Float(spot.z), 0), scale: SIMD4(0.6, 6, 0.6, Outline.none.rawValue), color: beam
             ))
         }
         return instances

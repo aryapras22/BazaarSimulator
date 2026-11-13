@@ -46,8 +46,8 @@ enum VenueGeometry {
 
     private static func floors(for layout: Layout) -> [VenueBlock] {
         var result: [VenueBlock] = []
-        let hallColor = SIMD4<Float>(0.11, 0.14, 0.22, 1)
-        let lobbyColor = SIMD4<Float>(0.09, 0.12, 0.18, 1)
+        let hallColor = SIMD4<Float>(0.99, 0.98, 0.95, 1)
+        let lobbyColor = SIMD4<Float>(0.94, 0.80, 0.33, 1)
         if layout.hall.count >= 3 {
             result.append(floor(of: LayoutGeometry.bounds(of: layout.hall), color: hallColor))
         } else {
@@ -121,19 +121,19 @@ enum VenueGeometry {
         }
 
         switch object.kind {
-        case .table: return cylinder(0.75, SIMD4(0.82, 0.75, 0.62, 1))
-        case .wall: return box(wallHeight, SIMD4(0.28, 0.32, 0.40, 1))
-        case .block where object.isColumn: return cylinder(Float(object.heightM ?? 3.5), SIMD4(0.35, 0.38, 0.45, 1))
-        case .block: return box(Float(object.heightM ?? 0.8), SIMD4(0.18, 0.22, 0.30, 1))
-        case .entertainment: return box(0.5, SIMD4(0.52, 0.40, 0.72, 1))
-        default: return box(0.15, SIMD4(0.18, 0.22, 0.30, 1))
+        case .table: return cylinder(0.75, SIMD4(0.94, 0.78, 0.25, 1))
+        case .wall: return box(wallHeight, SIMD4(1, 1, 1, 1))
+        case .block where object.isColumn: return cylinder(Float(object.heightM ?? 3.5), SIMD4(0.20, 0.38, 0.75, 1))
+        case .block: return box(Float(object.heightM ?? 0.8), SIMD4(0.56, 0.63, 0.82, 1))
+        case .entertainment: return box(0.5, SIMD4(0.96, 0.60, 0.50, 1))
+        default: return box(0.15, SIMD4(0.80, 0.85, 0.94, 1))
         }
     }
 
     // MARK: Booths
 
-    private static let frameColor = SIMD4<Float>(0.17, 0.19, 0.24, 1)
-    private static let counterColor = SIMD4<Float>(0.93, 0.88, 0.78, 1)
+    private static let frameColor = SIMD4<Float>(0.11, 0.15, 0.34, 1)
+    private static let counterColor = SIMD4<Float>(0.99, 0.97, 0.92, 1)
 
     /// A stall: posts at the corners, an awning on top, a low counter along each open side, and a tall panel
     /// along each closed side, over a mat on the floor.
@@ -148,7 +148,7 @@ enum VenueGeometry {
         var parts = [
             frame.part(
                 at: SIMD3(0, 0.015, 0), size: SIMD3(max(width - 0.1, 0.1), 0.03, max(depth - 0.1, 0.1)),
-                color: SIMD4(0.20, 0.24, 0.32, 1)
+                color: SIMD4(0.84, 0.88, 0.95, 1)
             ),
             awningPart(of: object, frame: frame, height: postHeight + 0.05, color: awning)
         ]
@@ -200,9 +200,9 @@ enum VenueGeometry {
     private static func boothColor(for object: LayoutObject) -> SIMD4<Float> {
         let label = object.label.lowercased()
         if label.contains("food") || label.contains("f&b") || label.hasPrefix("f") {
-            return SIMD4(0.95, 0.52, 0.20, 1)
+            return SIMD4(0.92, 0.33, 0.16, 1)
         }
-        return SIMD4(0.25, 0.55, 0.90, 1)
+        return SIMD4(0.20, 0.38, 0.75, 1)
     }
 
     // MARK: Doors
@@ -261,10 +261,10 @@ enum VenueGeometry {
 
     private static func doorColor(for object: LayoutObject) -> SIMD4<Float> {
         switch object.doorFlow?.direction {
-        case .entrance: SIMD4(0.20, 0.78, 0.45, 1)
-        case .exit: SIMD4(0.92, 0.30, 0.30, 1)
-        case .disabled: SIMD4(0.40, 0.42, 0.47, 1)
-        default: SIMD4(0.35, 0.65, 0.95, 1)
+        case .entrance: SIMD4(0.18, 0.62, 0.42, 1)
+        case .exit: SIMD4(0.85, 0.20, 0.22, 1)
+        case .disabled: SIMD4(0.62, 0.64, 0.68, 1)
+        default: SIMD4(0.20, 0.38, 0.75, 1)
         }
     }
 

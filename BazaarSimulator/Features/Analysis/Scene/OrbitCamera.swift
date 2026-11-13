@@ -3,7 +3,8 @@ import simd
 
 /// A camera that circles a point: drag to orbit, scroll to zoom, shift-drag to move.
 struct OrbitCamera: Equatable {
-    static let fieldOfView: Float = .pi / 3
+    /// Narrow, so the venue reads like an axonometric drawing: far things barely shrink and uprights stay upright.
+    static let fieldOfView: Float = .pi / 7
     static let minimumPitch: Float = 0.12
     static let maximumPitch: Float = 1.5
     static let nearPlane: Float = 0.5
@@ -23,7 +24,7 @@ struct OrbitCamera: Equatable {
             target: SIMD3(Float(plan.origin.x + plan.size.x / 2), 0, Float(plan.origin.y + plan.size.y / 2)),
             yaw: 0,
             pitch: atan2(0.85, 0.5),
-            distance: span * sqrt(0.85 * 0.85 + 0.5 * 0.5)
+            distance: span * 0.57 / tan(fieldOfView / 2)
         )
     }
 
@@ -87,13 +88,13 @@ struct OrbitCamera: Equatable {
 
     /// Positive moves in, negative moves out.
     mutating func zoom(_ amount: Float) {
-        distance = min(max(distance * exp(-amount * 0.01), 6), 800)
+        distance = min(max(distance * exp(-amount * 0.01), 15), 1200)
     }
 
     /// Slide the view across the floor by `dx` and `dy` points.
     mutating func pan(dx: Float, dy: Float) {
         let axes = screenAxes
-        let scale = distance * 0.0012
+        let scale = distance * 0.0021 * tan(Self.fieldOfView / 2)
         let forward = simd_normalize(SIMD3(-sin(yaw), 0, -cos(yaw)))
         target += (-axes.right * dx + forward * dy) * scale
     }
