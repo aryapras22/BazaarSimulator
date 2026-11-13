@@ -155,6 +155,25 @@ struct SimulationEngineTests {
         #expect(engine.metrics.meanDensity > meanWhileOccupied * 0.5)
     }
 
+    @Test("Final heatmap loosens proportionally as visitor count increases")
+    func heatmapLoosensForHigherVisitorCounts() {
+        #expect(CrowdParameters.visitorDensityScale(for: 200) == 1.0)
+        let scale2000 = CrowdParameters.visitorDensityScale(for: 2000)
+        let scale5000 = CrowdParameters.visitorDensityScale(for: 5000)
+        #expect(scale2000 < 0.5)
+        #expect(scale5000 < scale2000)
+
+        var heatmapSmall = CrowdHeatmap(sizeM: SIMD2(20, 20), totalVisitors: 200)
+        var heatmapLarge = CrowdHeatmap(sizeM: SIMD2(20, 20), totalVisitors: 2000)
+        let sample = [SimulatedVisitor(id: 1, position: SIMD2(10.5, 10.5), peopleCount: 4)]
+        heatmapSmall.update(with: sample)
+        heatmapLarge.update(with: sample)
+
+        #expect(heatmapLarge.peakDensity < heatmapSmall.peakDensity * 0.5)
+        let summaryPeak = heatmapSmall.finalSummaryCells().map(\.peoplePerSquareMetre).max() ?? 0
+        #expect(summaryPeak < heatmapSmall.peakDensity)
+    }
+
     private static func openFloor() -> Layout {
         Layout(
             name: "Open floor",

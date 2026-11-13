@@ -28,15 +28,13 @@ nonisolated enum CrowdParameters {
     /// How often (in simulated seconds) each party re-evaluates its target, detours, and queue state.
     static let thinkInterval = 0.5
     /// Default interval (in simulated seconds) between recorded replay frames.
-    static let defaultFrameIntervalSeconds = 5.0
-    /// How often (in simulated seconds) the recorded replay updates its stored heatmap snapshot.
-    static let recordedHeatmapIntervalSeconds = 30.0
+    static let defaultFrameIntervalSeconds = 10.0
     /// How often (in simulated seconds) the live heatmap refreshes.
     static let liveDensityUpdateIntervalSeconds = 1.0
     /// Minimum agent count before parallelizing the steering pass across CPU cores.
-    static let minimumAgentsForThreads = 96
+    static let minimumAgentsForThreads = 400
     /// Chunk size of agents per parallel work item.
-    static let parallelChunkSize = 32
+    static let parallelChunkSize = 64
 
     // MARK: - 2. World Grid, Walls, Doors & Booths
 
@@ -210,9 +208,28 @@ nonisolated enum CrowdParameters {
 
     static let heatmapKernelRadius = 3
     static let heatmapKernelSigma = 1.5
-    static let heatmapSmoothingRetain = 0.72
-    static let heatmapSmoothingNew = 0.28
+    static let heatmapSmoothingRetain = 0.65
+    static let heatmapSmoothingNew = 0.35
     static let heatmapMinActiveDensity = 0.004
+
+    /// Reference visitor count at or below which raw per-person density is unscaled (`1.0`).
+    /// Above this visitor count, per-person heatmap contribution loosens proportionally so high-visitor
+    /// runs highlight relative congestion hotspots instead of turning the entire floor red.
+    static let heatmapReferenceVisitors = 400
+    static let heatmapVisitorScaleExponent = 0.65
+
+    /// Weights used to compute the final summary heatmap in AnalysisView:
+    /// blends time-averaged density across the event with a small fraction of peak density, then loosens it.
+    static let finalHeatmapMeanWeight = 0.82
+    static let finalHeatmapPeakWeight = 0.18
+    static let finalHeatmapLooseningFactor = 0.55
+
+    /// Returns the visitor-proportional density scale factor for a given `totalVisitors` count.
+    static func visitorDensityScale(for totalVisitors: Int) -> Double {
+        guard totalVisitors > heatmapReferenceVisitors else { return 1.0 }
+        let ratio = Double(totalVisitors) / Double(max(1, heatmapReferenceVisitors))
+        return 1.0 / pow(ratio, heatmapVisitorScaleExponent)
+    }
 
     // MARK: - 8. Visitor Personas
 

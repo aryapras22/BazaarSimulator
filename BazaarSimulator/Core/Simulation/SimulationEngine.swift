@@ -144,40 +144,36 @@ private nonisolated struct CrowdRecordingJob: Sendable {
 
     func run() -> SimulationResult {
         let crowd = CrowdSimulation(world: world, settings: settings)
-        var heatmap = CrowdHeatmap(sizeM: sizeM)
+        var heatmap = CrowdHeatmap(sizeM: sizeM, totalVisitors: settings.totalVisitors)
         var metrics = SimulationMetrics()
         var frames: [SimulationFrame] = []
-        // Frames between heatmap refreshes share one array, which keeps an 11-hour recording small.
-        var recordedHeatmap: [DensityCell] = []
 
         let stepsPerSecond = CrowdParameters.stepsPerSecond
         let totalSteps = durationMinutes * 60 * stepsPerSecond
         let stepsPerFrame = max(1, Int(frameIntervalSeconds * Double(stepsPerSecond)))
-        let stepsPerHeatmap = max(1, Int(CrowdParameters.recordedHeatmapIntervalSeconds * Double(stepsPerSecond)))
+        frames.reserveCapacity(totalSteps / stepsPerFrame + 2)
 
         for stepIndex in 1...totalSteps {
             crowd.step()
-            if stepIndex % stepsPerSecond == 0 {
-                heatmap.update(withAgents: crowd.agents)
-            }
 
             if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
+                heatmap.update(withAgents: crowd.agents)
                 metrics.elapsedSeconds = crowd.time
                 crowd.copyCounts(into: &metrics)
                 metrics.meanDensity = heatmap.meanDensity
                 metrics.peakDensity = heatmap.peakDensity
-                if stepIndex % stepsPerHeatmap < stepsPerFrame || stepIndex == totalSteps {
-                    recordedHeatmap = heatmap.cells
-                }
                 frames.append(SimulationFrame(
                     elapsedSeconds: metrics.elapsedSeconds,
                     visitors: crowd.snapshots(),
-                    densityCells: recordedHeatmap,
+                    densityCells: heatmap.cells,
                     metrics: metrics
                 ))
             }
             if stepIndex % 256 == 0 && Task.isCancelled { break }
         }
+
+        let summaryCells = heatmap.finalSummaryCells()
+        metrics.peakDensity = heatmap.summaryPeakDensity
 
         return SimulationResult(
             layoutID: layoutID,
@@ -185,7 +181,7 @@ private nonisolated struct CrowdRecordingJob: Sendable {
             durationSeconds: Double(durationMinutes * 60),
             startMinutesFromMidnight: settings.startMinutesFromMidnight,
             metrics: metrics,
-            densityCells: heatmap.peakCellsByID.values.sorted { $0.id < $1.id },
+            densityCells: summaryCells,
             frames: frames
         )
     }

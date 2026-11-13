@@ -118,11 +118,11 @@ struct LayoutHeatmapCanvas: View {
 
                 let density = cell.peoplePerSquareMetre
                 let baseColor = heatColor(for: density)
-                let peakAlpha = min(0.82, max(0.14, density / 0.90))
+                let peakAlpha = min(0.58, max(0.08, density / 1.45))
 
                 let gradient = Gradient(stops: [
                     .init(color: baseColor.opacity(peakAlpha), location: 0.0),
-                    .init(color: baseColor.opacity(peakAlpha * 0.65), location: 0.45),
+                    .init(color: baseColor.opacity(peakAlpha * 0.48), location: 0.45),
                     .init(color: baseColor.opacity(0.0), location: 1.0)
                 ])
 
