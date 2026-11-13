@@ -37,7 +37,7 @@ extension CrowdWorld {
                 isEntertainment: object.kind == .entertainment,
                 footprint: CrowdFootprint(object.placement, margin: isFood ? 0 : Self.stockSpill(for: size)),
                 pull: min(5, max(1, object.attractiveness)),
-                capacity: max(1, Int(max(size.x, size.y) / 0.75))
+                capacity: max(1, Int(max(size.x, size.y) / CrowdParameters.boothLengthPerBrowserM))
             ))
         }
         for object in layout.objects where object.kind == .table {
@@ -134,8 +134,8 @@ extension CrowdWorld {
 
     private func carvedPlacement(of door: LayoutObject) -> Placement {
         var carved = door.placement
-        carved.sizeM.x = max(carved.sizeM.x, 1.4)
-        carved.sizeM.y = max(carved.sizeM.y, 1.6)
+        carved.sizeM.x = max(carved.sizeM.x, CrowdParameters.doorCarvedMinWidthM)
+        carved.sizeM.y = max(carved.sizeM.y, CrowdParameters.doorCarvedMinDepthM)
         return carved
     }
 
@@ -234,7 +234,10 @@ extension CrowdWorld {
                 simd_distance($0.placement.center, gate) < simd_distance($1.placement.center, gate)
             }
             // Assumption: a venue with no entry door admits people like a 2 m doorway.
-            return max(0.3, nearest.map { max($0.placement.sizeM.x, $0.placement.sizeM.y) } ?? 2.0)
+            return max(
+                0.3,
+                nearest.map { max($0.placement.sizeM.x, $0.placement.sizeM.y) } ?? CrowdParameters.fallbackDoorWidthM
+            )
         }
     }
 
@@ -273,13 +276,21 @@ extension CrowdWorld {
     func measureRoutesFromGates() {
         let gateFields = gates.indices.map { flowField(to: .gate($0)) }
         for index in booths.indices {
-            let ring = ringCells(around: booths[index].footprint, from: 0, to: 0.8)
+            let ring = ringCells(
+                around: booths[index].footprint,
+                from: 0,
+                to: CrowdParameters.boothBrowseRingRadiusM
+            )
             booths[index].gateCosts = gateFields.map { field in
                 ring.map { field.costs[$0] }.min() ?? .infinity
             }
         }
         for index in tables.indices {
-            let ring = ringCells(around: tables[index].footprint, from: 0, to: 0.6)
+            let ring = ringCells(
+                around: tables[index].footprint,
+                from: 0,
+                to: CrowdParameters.tableArrivalRingRadiusM
+            )
             tables[index].isReachable = gateFields.contains { field in
                 (ring.map { field.costs[$0] }.min() ?? .infinity) < Self.reachableCostLimit
             }

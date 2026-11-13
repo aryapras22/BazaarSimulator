@@ -58,7 +58,7 @@ private nonisolated struct CrowdCostHeap {
 }
 
 nonisolated extension CrowdWorld {
-    private static let lookAheadCells = 4
+    private static let lookAheadCells = CrowdParameters.flowLookAheadCells
     private static let neighborSteps: [(col: Int, row: Int)] = [
         (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)
     ]
@@ -74,10 +74,14 @@ nonisolated extension CrowdWorld {
 
     private func sourceCells(for target: CrowdFlowTarget) -> [Int] {
         switch target {
-        case .exit: return exits.flatMap { cells(within: 0.8, of: $0) }
-        case .gate(let index): return cells(within: 1.2, of: gates[index])
-        case .booth(let index): return ringCells(around: booths[index].footprint, from: 0, to: 0.8)
-        case .table(let index): return ringCells(around: tables[index].footprint, from: 0, to: 0.6)
+        case .exit:
+            return exits.flatMap { cells(within: CrowdParameters.boothBrowseRingRadiusM, of: $0) }
+        case .gate(let index):
+            return cells(within: CrowdParameters.gateCrowdCheckRadiusM, of: gates[index])
+        case .booth(let index):
+            return ringCells(around: booths[index].footprint, from: 0, to: CrowdParameters.boothBrowseRingRadiusM)
+        case .table(let index):
+            return ringCells(around: tables[index].footprint, from: 0, to: CrowdParameters.tableArrivalRingRadiusM)
         }
     }
 
@@ -160,9 +164,17 @@ nonisolated extension CrowdWorld {
 
     /// Extra cost that keeps routes away from walls and rules out gaps too narrow to walk.
     private static func wallPenalty(_ distance: Float) -> Float {
-        if distance < 0.2 { return 3000 }
-        if distance < 0.3 { return 20 }
-        if distance < 0.7 { return 3 * (0.7 - distance) / 0.4 }
+        if distance < CrowdParameters.wallPenaltyBlockedDistanceM {
+            return CrowdParameters.wallPenaltyBlockedCost
+        }
+        if distance < CrowdParameters.wallPenaltyTightDistanceM {
+            return CrowdParameters.wallPenaltyTightCost
+        }
+        if distance < CrowdParameters.wallPenaltyBufferDistanceM {
+            let buffer = CrowdParameters.wallPenaltyBufferDistanceM
+            let span = buffer - CrowdParameters.wallPenaltyTightDistanceM
+            return CrowdParameters.wallPenaltyBufferScale * (buffer - distance) / span
+        }
         return 0
     }
 }
