@@ -133,6 +133,10 @@ struct VenueGeometryTests {
         #expect(local(backdrop, in: stage).z > 0.5, "the backdrop is at the side away from the open one")
         let steps = parts.filter { $0.size.z == 0.3 || $0.size.x == 0.3 }
         #expect(steps.count == 2 && steps.allSatisfy { local($0, in: stage).z < -1 })
+        #expect(parts.filter { $0.shape == .cylinder && $0.size.y == 3.2 }.count == 4, "four truss posts")
+        #expect(!parts.contains { $0.size == SIMD3(0.6, 0.45, 0.6) }, "a shallow stage has no drum kit")
+        let big = VenueGeometry.blocks(for: object(.entertainment, label: "Stage", size: SIMD2(8, 5)))
+        #expect(big.contains { $0.size == SIMD3(0.6, 0.45, 0.6) }, "a deep one does")
     }
 
     @Test("A photobooth is a walled cabin and a display is a fenced platform")

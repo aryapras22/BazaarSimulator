@@ -29,52 +29,6 @@ extension VenueGeometry {
         return stage(width: width, depth: depth, height: Float(object.heightM ?? 0.5), frame: frame)
     }
 
-    // MARK: Stage
-
-    /// A raised deck with a backdrop hung from a truss at the back, speakers at the front corners, lamps
-    /// under the truss, and steps up the front.
-    private static func stage(width: Float, depth: Float, height: Float, frame: Frame) -> [VenueBlock] {
-        let back = -depth / 2
-        let trussHeight: Float = 3.0
-        var parts = [
-            frame.part(at: SIMD3(0, height / 2, 0), size: SIMD3(width, height, depth), color: coralColor),
-            frame.part(
-                at: SIMD3(0, height + 1.3, back + 0.2), size: SIMD3(max(width - 0.5, 0.2), 2.6, 0.08), color: cobaltColor
-            ),
-            frame.part(
-                at: SIMD3(0, height + trussHeight, back + 0.2), size: SIMD3(width, 0.16, 0.16), color: frameColor
-            )
-        ]
-        for side in [Float(-1), 1] {
-            let across = side * (width / 2 - 0.08)
-            parts.append(frame.part(
-                .cylinder, at: SIMD3(across, height + trussHeight / 2, back + 0.2),
-                size: SIMD3(0.14, trussHeight, 0.14), color: frameColor
-            ))
-            parts.append(frame.part(
-                at: SIMD3(side * (width / 2 - 0.45), height + 0.45, depth / 2 - 0.4), size: SIMD3(0.5, 0.9, 0.4),
-                color: frameColor
-            ))
-        }
-        let lamps = max(2, Int(width / 1.5))
-        for index in 0..<lamps {
-            let across = (Float(index) - Float(lamps - 1) / 2) * (width - 1) / Float(max(lamps - 1, 1))
-            parts.append(frame.part(
-                .cylinder, at: SIMD3(across, height + trussHeight - 0.2, back + 0.2), size: SIMD3(0.2, 0.24, 0.2),
-                color: yellowColor
-            ))
-        }
-        let stepWidth = min(1.4, width * 0.5)
-        for step in 0..<2 {
-            let rise = height * Float(2 - step) / 3
-            parts.append(frame.part(
-                at: SIMD3(0, rise / 2, depth / 2 + 0.15 + 0.3 * Float(step)), size: SIMD3(stepWidth, rise, 0.3),
-                color: creamColor
-            ))
-        }
-        return parts
-    }
-
     // MARK: Photobooth
 
     /// A cabin closed on three sides, with a curtain half across the front, a bench inside, and a sign on
