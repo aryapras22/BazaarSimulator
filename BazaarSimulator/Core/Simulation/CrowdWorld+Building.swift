@@ -31,12 +31,16 @@ extension CrowdWorld {
         for object in layout.objects where object.kind == .booth || object.kind == .entertainment {
             let isFood = object.categoryID.map(foodCategories.contains) ?? false
             let size = object.placement.sizeM
+            let pull = min(5, max(1, object.attractiveness))
+            if pull >= CrowdParameters.windowShoppingMinPull {
+                highPullBoothIndices.append(booths.count)
+            }
             booths.append(CrowdBooth(
                 id: object.id,
                 isFood: isFood,
                 isEntertainment: object.kind == .entertainment,
                 footprint: CrowdFootprint(object.placement, margin: isFood ? 0 : Self.stockSpill(for: size)),
-                pull: min(5, max(1, object.attractiveness)),
+                pull: pull,
                 capacity: max(1, Int(max(size.x, size.y) / CrowdParameters.boothLengthPerBrowserM))
             ))
         }

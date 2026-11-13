@@ -110,6 +110,7 @@ nonisolated final class CrowdParty {
     var queuedAt: Double?
     var seat: Int?
     var heldForward: SIMD2<Double>?
+    var grazingSpeedFactor = 1.0
 
     init(id: Int, draw: CrowdPartyDraw, gate: Int, speed: Double, loyalty: Double, time: Double, nextThink: Double) {
         self.id = id

@@ -72,8 +72,23 @@ nonisolated extension CrowdSimulation {
             thinkInQueue(party)
             return
         }
+        party.grazingSpeedFactor = computeGrazingSpeedFactor(for: party, position: leader.position)
         considerDetour(party)
         advanceTowardTarget(party)
+    }
+
+    private func computeGrazingSpeedFactor(for party: CrowdParty, position: SIMD2<Double>) -> Double {
+        let radius = CrowdParameters.windowShoppingRadiusM
+        for index in world.highPullBoothIndices where !party.visited.contains(index) {
+            let footprint = world.booths[index].footprint
+            let maxSpan = radius + footprint.boundingRadius
+            guard abs(footprint.center.x - position.x) <= maxSpan,
+                  abs(footprint.center.y - position.y) <= maxSpan else { continue }
+            if footprint.distance(to: position) <= radius {
+                return CrowdParameters.windowShoppingSpeedFactor
+            }
+        }
+        return 1.0
     }
 
     private func thinkInQueue(_ party: CrowdParty) {
@@ -354,7 +369,12 @@ nonisolated extension CrowdSimulation {
     /// The distance left to the booth's influence circle, or nil when the booth is out of sight.
     private func visibleReach(of booth: Int, from position: SIMD2<Double>, heading: Double) -> Double? {
         let influence = CrowdParameters.influenceRadius
-        let nearest = world.booths[booth].footprint.nearestPoint(to: position)
+        let footprint = world.booths[booth].footprint
+        let maxSpan = CrowdParameters.viewDepth + influence + footprint.boundingRadius
+        guard abs(footprint.center.x - position.x) <= maxSpan,
+              abs(footprint.center.y - position.y) <= maxSpan else { return nil }
+
+        let nearest = footprint.nearestPoint(to: position)
         let delta = nearest - position
         let distance = simd_length(delta)
         let reach = max(0, distance - influence)

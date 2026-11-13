@@ -134,16 +134,30 @@ final class ProjectSession: ProjectSessionProtocol {
         simulationResultsByProject[projectID] = [:]
         simulatingProjects.insert(projectID)
         simulationTasks[projectID] = Task { [weak self] in
-            for layout in layouts {
-                let engine = SimulationEngine(layout: layout, settings: settings, legend: legend)
-                let result = await engine.runWithRecordedFootage(
-                    durationMinutes: settings.durationMinutes,
-                    frameIntervalSeconds: 5.0
-                )
-                if Task.isCancelled { return }
-                self?.setSimulationResult(result, for: layout.id, in: projectID)
+            let engines = layouts.map {
+                (id: $0.id, engine: SimulationEngine(layout: $0, settings: settings, legend: legend))
             }
-            self?.simulatingProjects.remove(projectID)
+            await withTaskGroup(of: (Layout.ID, SimulationResult)?.self) { group in
+                for item in engines {
+                    group.addTask {
+                        guard !Task.isCancelled else { return nil }
+                        let result = await item.engine.runWithRecordedFootage(
+                            durationMinutes: settings.durationMinutes,
+                            frameIntervalSeconds: CrowdParameters.defaultFrameIntervalSeconds
+                        )
+                        return Task.isCancelled ? nil : (item.id, result)
+                    }
+                }
+                for await pair in group {
+                    if Task.isCancelled { return }
+                    if let (layoutID, result) = pair {
+                        self?.setSimulationResult(result, for: layoutID, in: projectID)
+                    }
+                }
+            }
+            if !Task.isCancelled {
+                self?.simulatingProjects.remove(projectID)
+            }
         }
     }
 }

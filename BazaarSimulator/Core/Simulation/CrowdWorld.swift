@@ -140,6 +140,7 @@ nonisolated final class CrowdWorld: @unchecked Sendable {
     var cornerWeights: [Float]
     var doorRules: [Int: CrowdDoorRule] = [:]
     var booths: [CrowdBooth] = []
+    var highPullBoothIndices: [Int] = []
     var tables: [CrowdTable] = []
     var gates: [SIMD2<Double>]
     var gateWidths: [Double] = []

@@ -24,6 +24,13 @@ nonisolated final class CrowdSimulation {
     var choiceRandom: SeededRandom
     var spatialHash: CrowdSpatialHash
 
+    var bodyScratch: [CrowdBody] = []
+    var motionScratch: [CrowdPartyMotion] = []
+    var velocityScratch: [SIMD2<Double>] = []
+    var previousPosScratch: [SIMD2<Double>] = []
+    var nearbyScratch: [Int] = []
+    var neighborScratch: [CrowdNeighbor] = []
+
     private var nextArrival = 0.0
     private var drawnPeople = 0
     private var nextPartyID = 1
@@ -59,8 +66,14 @@ nonisolated final class CrowdSimulation {
     var peopleInside: Int { parties.reduce(0) { $0 + $1.people } }
 
     func step() {
+        if parties.isEmpty && drawnPeople >= totalVisitors && waitingOutside.allSatisfy(\.isEmpty) {
+            stepCount += 1
+            return
+        }
         refillGateTokens()
-        drawArrivals()
+        if drawnPeople < totalVisitors {
+            drawArrivals()
+        }
         admitWaitingParties()
         for party in parties where time >= party.nextThink {
             party.nextThink = time + CrowdParameters.thinkInterval

@@ -79,40 +79,47 @@ nonisolated extension CrowdSimulation {
 
     func moveAgents() {
         guard !agents.isEmpty else { return }
-        let prepared = makeBodies()
-        var bodies = prepared.bodies
-        spatialHash.rebuild(with: bodies)
-        let velocities = steeredVelocities(bodies: bodies, motions: prepared.motions)
+        populateScratchBuffers()
+        spatialHash.rebuild(with: bodyScratch)
+        computeSteeredVelocities()
 
-        let previous = bodies.map(\.position)
-        for index in bodies.indices where !bodies[index].isSeated {
-            bodies[index].velocity = velocities[index]
-            bodies[index].position += velocities[index] * CrowdParameters.stepSeconds
+        previousPosScratch.removeAll(keepingCapacity: true)
+        for index in bodyScratch.indices {
+            previousPosScratch.append(bodyScratch[index].position)
+            if !bodyScratch[index].isSeated {
+                bodyScratch[index].velocity = velocityScratch[index]
+                bodyScratch[index].position += velocityScratch[index] * CrowdParameters.stepSeconds
+            }
         }
-        var nearby: [Int] = []
-        for index in bodies.indices where !bodies[index].isSeated {
-            separateOverlaps(ofBodyAt: index, in: &bodies, nearby: &nearby)
-            pushOffWalls(&bodies[index])
-            var body = bodies[index]
-            applyDoorRule(position: &body.position, velocity: &body.velocity, from: previous[index])
-            bodies[index] = body
+        for index in bodyScratch.indices where !bodyScratch[index].isSeated {
+            separateOverlaps(ofBodyAt: index, in: &bodyScratch, nearby: &nearbyScratch)
+            pushOffWalls(&bodyScratch[index])
+            var body = bodyScratch[index]
+            applyDoorRule(position: &body.position, velocity: &body.velocity, from: previousPosScratch[index])
+            bodyScratch[index] = body
         }
         for index in agents.indices {
-            agents[index].position = bodies[index].position
-            agents[index].velocity = bodies[index].velocity
+            agents[index].position = bodyScratch[index].position
+            agents[index].velocity = bodyScratch[index].velocity
         }
     }
 
-    private func makeBodies() -> (bodies: [CrowdBody], motions: [CrowdPartyMotion]) {
-        var bodies = [CrowdBody](repeating: CrowdBody(), count: agents.count)
-        var motions = [CrowdPartyMotion](repeating: CrowdPartyMotion(), count: parties.count)
+    private func populateScratchBuffers() {
+        bodyScratch.removeAll(keepingCapacity: true)
+        if bodyScratch.capacity < agents.count { bodyScratch.reserveCapacity(agents.count) }
+        for _ in 0..<agents.count { bodyScratch.append(CrowdBody()) }
+
+        motionScratch.removeAll(keepingCapacity: true)
+        if motionScratch.capacity < parties.count { motionScratch.reserveCapacity(parties.count) }
+
         for (index, agent) in agents.enumerated() { agent.bodyIndex = index }
 
         for (partyIndex, party) in parties.enumerated() {
             let field = party.state == .seated ? nil : targetField(of: party)
-            motions[partyIndex] = motion(of: party, field: field)
+            let partyMotion = motion(of: party, field: field)
+            motionScratch.append(partyMotion)
             for member in party.members {
-                bodies[member.bodyIndex] = CrowdBody(
+                bodyScratch[member.bodyIndex] = CrowdBody(
                     position: member.position,
                     velocity: member.velocity,
                     routeDirection: field?.direction(atCell: world.cell(at: member.position)) ?? .zero,
@@ -122,12 +129,11 @@ nonisolated extension CrowdSimulation {
                     partyIndex: partyIndex,
                     slotIndex: member.slotIndex,
                     isSeated: member.isSeated,
-                    isStationary: member.isSeated || motions[partyIndex].isStill,
+                    isStationary: member.isSeated || partyMotion.isStill,
                     isLeader: member === party.leader
                 )
             }
         }
-        return (bodies, motions)
     }
 
     private func motion(of party: CrowdParty, field: CrowdFlowField?) -> CrowdPartyMotion {
@@ -150,7 +156,7 @@ nonisolated extension CrowdSimulation {
         case .walking:
             var speed = party.speed * world.cornerSpeedFactor(at: leader.position)
             speed *= groupLagFactor(for: party, leaderPosition: leader.position)
-            speed *= windowShoppingFactor(for: party, leaderPosition: leader.position)
+            speed *= party.grazingSpeedFactor
             speed *= fatigueFactor(for: party)
             return speed
         case .queueing:
@@ -179,18 +185,6 @@ nonisolated extension CrowdSimulation {
         return 1.0
     }
 
-    /// Window-shopping rule: visitors gently slow down when walking right past an attractive booth.
-    private func windowShoppingFactor(for party: CrowdParty, leaderPosition: SIMD2<Double>) -> Double {
-        let radius = CrowdParameters.windowShoppingRadiusM
-        for (index, booth) in world.booths.enumerated()
-        where booth.pull >= CrowdParameters.windowShoppingMinPull && !party.visited.contains(index) {
-            if booth.footprint.distance(to: leaderPosition) <= radius {
-                return CrowdParameters.windowShoppingSpeedFactor
-            }
-        }
-        return 1.0
-    }
-
     /// Fatigue rule: visitors who have spent a long time in the bazaar walk slightly slower.
     private func fatigueFactor(for party: CrowdParty) -> Double {
         let stayDuration = time - party.enteredAt
@@ -201,15 +195,21 @@ nonisolated extension CrowdSimulation {
 
     /// Every velocity depends only on the state at the start of the step, so the agents can be
     /// computed on separate cores in any order and the run stays repeatable.
-    private func steeredVelocities(bodies: [CrowdBody], motions: [CrowdPartyMotion]) -> [SIMD2<Double>] {
-        let count = bodies.count
+    private func computeSteeredVelocities() {
+        let count = bodyScratch.count
+        velocityScratch.removeAll(keepingCapacity: true)
+        if velocityScratch.capacity < count { velocityScratch.reserveCapacity(count) }
+        for _ in 0..<count { velocityScratch.append(.zero) }
+
         let chunks = count < Self.minimumAgentsForThreads ? 1 : (count + Self.chunkSize - 1) / Self.chunkSize
         let chunkSize = chunks == 1 ? count : Self.chunkSize
-        var velocities = [SIMD2<Double>](repeating: .zero, count: count)
+        if neighborScratch.capacity < CrowdSteeringPass.maxNeighbors {
+            neighborScratch.reserveCapacity(CrowdSteeringPass.maxNeighbors)
+        }
 
-        bodies.withUnsafeBufferPointer { bodyBuffer in
-            motions.withUnsafeBufferPointer { motionBuffer in
-                velocities.withUnsafeMutableBufferPointer { output in
+        bodyScratch.withUnsafeBufferPointer { bodyBuffer in
+            motionScratch.withUnsafeBufferPointer { motionBuffer in
+                velocityScratch.withUnsafeMutableBufferPointer { output in
                     let pass = CrowdSteeringPass(
                         bodies: bodyBuffer,
                         motions: motionBuffer,
@@ -218,25 +218,22 @@ nonisolated extension CrowdSimulation {
                     )
                     guard let target = output.baseAddress else { return }
                     if chunks == 1 {
-                        var neighbors: [CrowdNeighbor] = []
-                        neighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
                         for index in 0..<count where !bodyBuffer[index].isSeated {
-                            target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighbors)
+                            target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighborScratch)
                         }
                     } else {
                         DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
-                            var neighbors: [CrowdNeighbor] = []
-                            neighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
+                            var localNeighbors: [CrowdNeighbor] = []
+                            localNeighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
                             for index in (chunk * chunkSize)..<min(count, (chunk + 1) * chunkSize)
                             where !bodyBuffer[index].isSeated {
-                                target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighbors)
+                                target[index] = pass.velocity(ofBodyAt: index, neighbors: &localNeighbors)
                             }
                         }
                     }
                 }
             }
         }
-        return velocities
     }
 
     // MARK: - Constraints
