@@ -4,7 +4,8 @@ import simd
 /// One solid thing in the 3D venue: a box or a cylinder with a color. Positions are layout meters, with the
 /// plan's y as depth (z) and height as y.
 struct VenueBlock: Equatable {
-    enum Shape { case box, cylinder }
+    /// A wedge is a pitched roof whose ridge runs along its width.
+    enum Shape { case box, cylinder, wedge }
 
     var shape: Shape
     /// Center of the block.

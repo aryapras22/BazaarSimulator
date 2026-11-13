@@ -27,6 +27,7 @@ final class Metal3DRenderer {
         case can = 1
         case figure = 2
         case none = 3
+        case wedge = 4
     }
 
     struct Instance {
@@ -73,12 +74,14 @@ final class Metal3DRenderer {
     private let readingDepth: MTLDepthStencilState
     private let cube: GPUMesh
     private let cylinder: GPUMesh
+    private let wedge: GPUMesh
     private let body: GPUMesh
     private let head: GPUMesh
 
     private var venueID: UUID?
     private var venueBoxes: (buffer: MTLBuffer?, count: Int) = (nil, 0)
     private var venueCylinders: (buffer: MTLBuffer?, count: Int) = (nil, 0)
+    private var venueWedges: (buffer: MTLBuffer?, count: Int) = (nil, 0)
     /// Two textures that take turns, so the GPU never reads one while it is being rewritten.
     private var overlayTextures: [MTLTexture] = []
     private var nextOverlayTexture = 0
@@ -147,6 +150,7 @@ final class Metal3DRenderer {
               let reading = depthState(writes: false),
               let cube = upload(.cube),
               let cylinder = upload(.cylinder),
+              let wedge = upload(.wedge),
               let body = upload(.capsule(radius: Self.bodyRadius, height: Self.bodyHeight)),
               let head = upload(.capsule(radius: Self.headDiameter / 2, height: Self.headDiameter)) else {
             return nil
@@ -159,6 +163,7 @@ final class Metal3DRenderer {
         readingDepth = reading
         self.cube = cube
         self.cylinder = cylinder
+        self.wedge = wedge
         self.body = body
         self.head = head
     }
@@ -219,6 +224,7 @@ final class Metal3DRenderer {
         encoder.setRenderPipelineState(opaquePipeline)
         draw(venueBoxes.buffer, count: venueBoxes.count, mesh: cube, uniforms: &uniforms, encoder: encoder)
         draw(venueCylinders.buffer, count: venueCylinders.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
+        draw(venueWedges.buffer, count: venueWedges.count, mesh: wedge, uniforms: &uniforms, encoder: encoder)
         let figures = figureInstances(frame.visitors)
         draw(buffer(figures.bodies), count: figures.bodies.count, mesh: body, uniforms: &uniforms, encoder: encoder)
         draw(buffer(figures.heads), count: figures.heads.count, mesh: head, uniforms: &uniforms, encoder: encoder)
@@ -283,16 +289,17 @@ final class Metal3DRenderer {
     private func loadVenue(_ venue: SimulationVenue) {
         guard venueID != venue.id else { return }
         venueID = venue.id
-        func instances(_ shape: VenueBlock.Shape) -> [Instance] {
+        func instances(_ shape: VenueBlock.Shape, _ outline: Outline) -> [Instance] {
             venue.blocks.filter { $0.shape == shape }.map {
                 Instance(
                     positionRotation: SIMD4($0.center, $0.rotationY),
-                    scale: SIMD4($0.size, (shape == .box ? Outline.box : .can).rawValue),
+                    scale: SIMD4($0.size, outline.rawValue),
                     color: $0.color
                 )
             }
         }
-        let boxes = instances(.box), cylinders = instances(.cylinder)
+        let boxes = instances(.box, .box), cylinders = instances(.cylinder, .can), wedges = instances(.wedge, .wedge)
+        venueWedges = (buffer(wedges), wedges.count)
         venueBoxes = (buffer(boxes), boxes.count)
         venueCylinders = (buffer(cylinders), cylinders.count)
     }

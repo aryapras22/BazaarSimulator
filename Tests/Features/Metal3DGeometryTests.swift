@@ -253,8 +253,7 @@ struct VenueGeometryTests {
 
     @Test("A booth with no open side is closed all round")
     func closedBooth() {
-        let parts = VenueGeometry.blocks(for: object(.booth)).dropFirst(6)
-        #expect(parts.count == 4)
+        let parts = VenueGeometry.blocks(for: object(.booth)).dropFirst(6).prefix(4)
         #expect(parts.allSatisfy { $0.size.y > 2 })
     }
 

@@ -77,6 +77,30 @@ struct MeshData {
         return mesh
     }()
 
+    /// A pitched roof one unit on each side: a flat base, two slopes that meet in a ridge running along x, and
+    /// a triangle closing each end. The slopes carry the normal of a low roof, so both read as facing up.
+    static let wedge: MeshData = {
+        var mesh = MeshData()
+        func face(_ corners: [SIMD3<Float>], _ normal: SIMD3<Float>) {
+            let base = UInt16(mesh.vertices.count)
+            mesh.vertices += corners.map { Vertex(position: $0, normal: simd_normalize(normal)) }
+            for index in 1..<(corners.count - 1) {
+                mesh.addTriangle(base, base + UInt16(index), base + UInt16(index + 1))
+            }
+        }
+        for side in [Float(-1), 1] {
+            face(
+                [SIMD3(-0.5, -0.5, side * 0.5), SIMD3(0.5, -0.5, side * 0.5), SIMD3(0.5, 0.5, 0), SIMD3(-0.5, 0.5, 0)],
+                SIMD3(0, 1, side * 0.45)
+            )
+            face([SIMD3(side * 0.5, -0.5, -0.5), SIMD3(side * 0.5, -0.5, 0.5), SIMD3(side * 0.5, 0.5, 0)], SIMD3(side, 0, 0))
+        }
+        face(
+            [SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, -0.5, -0.5), SIMD3(0.5, -0.5, 0.5), SIMD3(-0.5, -0.5, 0.5)], SIMD3(0, -1, 0)
+        )
+        return mesh
+    }()
+
     /// A standing figure: a can with rounded ends, `height` tall in total and `radius` across.
     static func capsule(radius: Float, height: Float) -> MeshData {
         var mesh = MeshData()

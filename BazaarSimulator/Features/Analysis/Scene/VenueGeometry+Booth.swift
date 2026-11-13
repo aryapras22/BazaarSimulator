@@ -22,6 +22,7 @@ extension VenueGeometry {
         let panel = SIMD4(awning.x * 0.55, awning.y * 0.55, awning.z * 0.55, 1)
         let postSize = boothPostSize
         let postHeight = boothPostHeight
+        let isFood = awning == vermilionColor
 
         var parts = [
             frame.part(
@@ -63,11 +64,11 @@ extension VenueGeometry {
             parts += valance(length: length, out: reach + awningJut - 0.12, color: awning) { along, height, out, size in
                 frame.part(at: place(along, height, out), size: sized(size.x, size.y, size.z), color: size.w > 0 ? awning : whiteColor)
             }
-            parts += goods(length: length, out: reach - 0.225) { shape, along, height, out, size, color in
+            parts += goods(isFood: isFood, length: length, out: reach - 0.225) { shape, along, height, out, size, color in
                 frame.part(shape, at: place(along, height, out), size: sized(size.x, size.y, size.z), color: color)
             }
         }
-        return parts
+        return parts + boothDetails(of: object, awning: parts[1], frame: frame)
     }
 
     /// A band hanging from the awning's edge, in stripes of the awning's color and white. The fourth number
@@ -84,14 +85,18 @@ extension VenueGeometry {
         }
     }
 
-    /// A few things for sale on a counter: boxes and jars, spaced along it.
+    /// A few things on a counter, spaced along it: pots and jars at a food stall, boxes anywhere else.
     private static func goods(
-        length: Float, out: Float,
+        isFood: Bool, length: Float, out: Float,
         make: (VenueBlock.Shape, _ along: Float, _ height: Float, _ out: Float, _ size: SIMD3<Float>, SIMD4<Float>) -> VenueBlock
     ) -> [VenueBlock] {
-        let kinds: [(shape: VenueBlock.Shape, size: SIMD3<Float>, color: SIMD4<Float>)] = [
+        let kinds: [(shape: VenueBlock.Shape, size: SIMD3<Float>, color: SIMD4<Float>)] = isFood ? [
+            (.cylinder, SIMD3(0.34, 0.2, 0.34), frameColor),
+            (.cylinder, SIMD3(0.16, 0.28, 0.16), yellowColor),
+            (.cylinder, SIMD3(0.26, 0.14, 0.26), whiteColor)
+        ] : [
             (.box, SIMD3(0.30, 0.18, 0.24), yellowColor),
-            (.cylinder, SIMD3(0.18, 0.26, 0.18), coralColor),
+            (.box, SIMD3(0.20, 0.30, 0.20), coralColor),
             (.box, SIMD3(0.24, 0.12, 0.24), paleBlueColor)
         ]
         let count = min(max(Int(length / 0.9), 1), 5)

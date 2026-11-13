@@ -25,7 +25,7 @@ enum Metal3DShaderSource {
 
     struct Instance {
         float4 positionRotation; // xyz: where, w: turn about the vertical axis
-        float4 scale;            // xyz: size, w: how it is outlined (0 box, 1 can, 2 figure, 3 not at all)
+        float4 scale;            // xyz: size, w: how it is outlined (0 box, 1 can, 2 figure, 3 not at all, 4 pitched roof)
         float4 color;
     };
 
@@ -93,12 +93,26 @@ enum Metal3DShaderSource {
         return min(pixels, rim);
     }
 
+    // How many pixels this point of a pitched roof is from an edge. A slope has its two ends, its eave and
+    // the ridge. An end is a triangle, with its base and the two slanted edges where the slopes meet it.
+    float roofEdgeDistance(SolidOut in) {
+        float3 local = in.local;
+        if (abs(in.localNormal.x) > 0.5) {
+            float base = (local.y + 0.5) / max(fwidth(local.y), 1e-5);
+            float slant = 0.5 * (0.5 - local.y) - abs(local.z);
+            return min(base, slant / max(fwidth(slant), 1e-5));
+        }
+        float ends = (0.5 - abs(local.x)) / max(fwidth(local.x), 1e-5);
+        float run = min(0.5 - abs(local.z), abs(local.z)) / max(fwidth(local.z), 1e-5);
+        return min(ends, run);
+    }
+
     // Drawn like an ink illustration: each face is one flat tone, faces turned from the light are hatched,
     // and every edge is a line.
     fragment float4 solidFragment(SolidOut in [[stage_in]], constant Uniforms &u [[buffer(2)]]) {
         float3 normal = normalize(in.normal);
         float outline = in.scale.w;
-        if (outline > 2.5) {
+        if (outline > 2.5 && outline < 3.5) {
             return float4(in.color.rgb * in.color.a, in.color.a);
         }
         bool top = normal.y > 0.5;
@@ -117,6 +131,8 @@ enum Metal3DShaderSource {
         float line;
         if (outline < 0.5) {
             line = boxLine(in, width);
+        } else if (outline > 3.5) {
+            line = 1.0 - smoothstep(width - 0.5, width + 0.5, roofEdgeDistance(in));
         } else {
             float edge = roundEdgeDistance(in, normal, u.cameraPosition.xyz, outline < 1.5);
             line = 1.0 - smoothstep(width - 0.5, width + 0.5, edge);
