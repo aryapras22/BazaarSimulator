@@ -44,7 +44,7 @@ nonisolated final class CrowdSimulation {
         arrivalRatePerSecond = settings.arrivalsPer15Min / 900.0 / Self.meanPartySize(personaWeights)
 
         waitingOutside = Array(repeating: [], count: world.gates.count)
-        gateTokens = Array(repeating: 3, count: world.gates.count)
+        gateTokens = Array(repeating: CrowdParameters.initialGateTokens, count: world.gates.count)
         browsers = Array(repeating: [], count: world.booths.count)
         queues = Array(repeating: [], count: world.booths.count)
         tableOccupants = Array(repeating: nil, count: world.tables.count)
@@ -143,7 +143,7 @@ nonisolated final class CrowdSimulation {
             }
             let rank = max(0, queues[booth].firstIndex { $0 === party } ?? 0)
             let cost = Double(targetField(of: party).costs[world.cell(at: party.leader.position)])
-            party.isHoldingInQueue = cost <= queueSpot(booth: booth, rank: rank) + 0.15
+            party.isHoldingInQueue = cost <= queueSpot(booth: booth, rank: rank) + CrowdParameters.queueHoldToleranceM
         }
     }
 
@@ -206,10 +206,15 @@ nonisolated final class CrowdSimulation {
     @discardableResult
     func spawn(_ draw: CrowdPartyDraw, atGate gate: Int) -> Bool {
         let gatePoint = world.gates[gate]
-        let peopleNearGate = agents.filter {
-            abs($0.position.x - gatePoint.x) < 1.2 && abs($0.position.y - gatePoint.y) < 1.2
-        }.count
-        guard peopleNearGate <= 9, gateTokens[gate] >= 1 else { return false }
+        let checkRadius = CrowdParameters.gateCrowdCheckRadiusM
+        var peopleNearGate = 0
+        for agent in agents {
+            if abs(agent.position.x - gatePoint.x) < checkRadius && abs(agent.position.y - gatePoint.y) < checkRadius {
+                peopleNearGate += 1
+                if peopleNearGate > CrowdParameters.maxAgentsNearGate { return false }
+            }
+        }
+        guard gateTokens[gate] >= 1 else { return false }
         gateTokens[gate] -= Double(draw.people)
 
         let speed = min(
@@ -219,7 +224,8 @@ nonisolated final class CrowdSimulation {
                 Self.baseSpeed(for: draw.kind) + CrowdParameters.speedSpread * traitRandom.nextGaussian()
             )
         )
-        let loyalty = min(12, max(0, draw.persona.loyalty + (traitRandom.nextDouble() * 2 - 1) * 3))
+        let loyaltyJitter = (traitRandom.nextDouble() * 2 - 1) * CrowdParameters.loyaltyRandomSpread
+        let loyalty = min(CrowdParameters.maxLoyaltyScore, max(0, draw.persona.loyalty + loyaltyJitter))
         let party = CrowdParty(
             id: nextPartyID,
             draw: draw,
@@ -262,11 +268,15 @@ nonisolated final class CrowdSimulation {
         for slot in 0..<draw.walkers {
             let isKid = slot >= draw.adults
             let isCarrying = !isKid && slot < draw.carried
+            let radius = isKid
+                ? CrowdParameters.kidRadiusM
+                : (isCarrying ? CrowdParameters.carryingAdultRadiusM : CrowdParameters.adultRadiusM)
+            let weight = isCarrying ? CrowdParameters.carryingAdultPeopleWeight : CrowdParameters.adultPeopleWeight
             let member = CrowdAgent(
                 id: nextAgentID,
                 party: party,
                 slotIndex: slot,
-                body: (radius: isKid ? 0.18 : (isCarrying ? 0.32 : 0.25), weight: isCarrying ? 2 : 1),
+                body: (radius: radius, weight: weight),
                 idleOffset: SIMD2(choiceRandom.nextDouble() - 0.5, choiceRandom.nextDouble() - 0.5) * 1.4,
                 position: entryPoint(near: gatePoint)
             )

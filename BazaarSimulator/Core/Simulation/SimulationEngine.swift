@@ -83,7 +83,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     /// Cancelling the calling task stops the run early.
     func runWithRecordedFootage(
         durationMinutes: Int = 0,
-        frameIntervalSeconds: Double = 5.0
+        frameIntervalSeconds: Double = CrowdParameters.defaultFrameIntervalSeconds
     ) async -> SimulationResult {
         reset()
         let job = CrowdRecordingJob(
@@ -114,7 +114,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         if metrics.elapsedSeconds >= nextDensityUpdate {
             publishCrowdState()
             updateDensityCells()
-            nextDensityUpdate = metrics.elapsedSeconds + 1.0
+            nextDensityUpdate = metrics.elapsedSeconds + CrowdParameters.liveDensityUpdateIntervalSeconds
         }
     }
 
@@ -153,11 +153,13 @@ private nonisolated struct CrowdRecordingJob: Sendable {
         let stepsPerSecond = CrowdParameters.stepsPerSecond
         let totalSteps = durationMinutes * 60 * stepsPerSecond
         let stepsPerFrame = max(1, Int(frameIntervalSeconds * Double(stepsPerSecond)))
-        let stepsPerHeatmap = 30 * stepsPerSecond
+        let stepsPerHeatmap = max(1, Int(CrowdParameters.recordedHeatmapIntervalSeconds * Double(stepsPerSecond)))
 
         for stepIndex in 1...totalSteps {
             crowd.step()
-            if stepIndex % stepsPerSecond == 0 { heatmap.update(with: crowd.snapshots()) }
+            if stepIndex % stepsPerSecond == 0 {
+                heatmap.update(withAgents: crowd.agents)
+            }
 
             if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
                 metrics.elapsedSeconds = crowd.time
