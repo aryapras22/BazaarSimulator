@@ -135,7 +135,7 @@ struct PlacementResolverTests {
         )
 
         #expect(!candidate.isValid)
-        #expect(candidate.note == "Overlaps blocked area")
+        #expect(candidate.note == "Overlaps restricted area")
     }
 
     @Test("A booth on top of another booth stays valid with an overlap note")

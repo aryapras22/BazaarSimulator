@@ -32,7 +32,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. The empty state reads "Add project to get started" |
 | Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
 | Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, hall outline edge handles that grow or shrink the hall, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
-| Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, peak hours, bazaar type, visitor type mix, group size. Applies to every layout in the project |
+| Parameters | A dialog opened from the project header, with Cancel and Apply. Total visitors per day, event duration, bazaar type, visitor type mix. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Analysis | Below the cards. Tabs for Crowd Density, Flow Rate, Congestion, and Duration. Each tab shows a recommendation ("Our choice"), a comparison table, and a chart over the day |
 | Simulation | A Preparing Layout screen (2D to 3D), then a 3D view of one layout with Density, Congestion, and Footfall overlays and playback controls |
@@ -179,7 +179,7 @@ BazaarSimulation/
 │   ├── Services/
 │   │   ├── PDFImportService.swift
 │   │   └── FloorPlanReading/            # Protocol, registry, four reader backends
-│   ├── Simulation/                      # Engine, SpawnScheduler, NavigationGrid, ZoneMap, MovementModel, MetricsCollector
+│   ├── Simulation/                      # Engine, CrowdSimulation, CrowdWorld, ZoneMap, MetricsCollector
 │   ├── Analysis/                        # AnalysisService, RecommendationBuilder
 │   ├── Session/
 │   │   └── ProjectSession.swift
@@ -215,7 +215,7 @@ All positions are in metres from the layout origin, never in PDF pixels. Import 
 ```swift
 struct LayoutObject: Codable, Identifiable, Sendable {
     var id = UUID()
-    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating
+    var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating, entertainment
     var label: String                // "B-7", "NW"
     var placement: Placement
     var categoryID: LegendEntry.ID?  // booths: a legend category
@@ -227,6 +227,7 @@ struct Placement: Codable, Sendable {
     var center: SIMD2<Double>        // metres
     var sizeM: SIMD2<Double>
     var rotationRadians: Double = 0
+    var shape: FootprintShape = .rect // .round fills the box with an oval; only blocks and restricted areas
     func snapped(toGrid cellM: Double) -> Placement { /* ... */ }
 }
 ```
@@ -236,7 +237,7 @@ struct Placement: Codable, Sendable {
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
 | `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
 | `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
-| `EventParameters` | Total visitors per day, event hours, peak periods, bazaar type, `VisitorMix`, group size. Shared by every layout |
+| `EventParameters` | Total visitors per day, event hours, bazaar type, `VisitorMix`. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |
 | `VisitorMix` | A percentage per visitor type. Rescales so the total stays 100. A locked share is left out of rescaling |
 | `SimulationConfig` | Tick rate and random seed |
@@ -254,10 +255,8 @@ The Hi-Fi presets are Socializer, Family Member, Stroller, and Purpose Buyer, ea
 struct EventParameters: Codable, Sendable {
     var totalVisitors: Int                 // per day
     var eventHours: TimeRange              // start and end, minutes from midnight
-    var peakPeriods: [TimeRange] = []      // empty when peak hours are off
     var bazaarType: BazaarType
     var mix: VisitorMix
-    var groupSize: Int
 }
 ```
 
@@ -296,7 +295,8 @@ enum ReadingMode { case modelOnly, agentic }   // raw model first, then with too
 ```
 
 Four backends (Apple on-device, Apple Private Cloud Compute, Qwen3-VL 4B, Gemma 4 E4B) sit behind this one protocol, so comparing them is a loop. A backend that cannot measure progress reports none, and its row shows an indeterminate bar. If the model cannot find a scale, the user calibrates by clicking two points and typing the real distance.
-The first backend in the code is `ExtractorFloorPlanReader`. It wraps the local `Extractor` package, which uses classical image processing and Vision instead of a model, so nothing is downloaded. The package reads pixels and no scale, so `ExtractedLayoutMapper` converts them to metres with a scale assumed from the median booth (2.5 m) until the user calibrates. It keeps booths, walls, wall openings (as doors), and blocked areas. Pillars, the stage, entrances, exits, and other unlabelled objects become blocks. It drops swing symbols, chairs, and tables. Python and model options of the package stay off, because the sandbox cannot run them. `ImportQueue` is the real queue behind `ImportQueueing`; `ScriptedImportQueue` remains for previews and tests.
+The first backend in the code is `ExtractorFloorPlanReader`. It wraps the local `Extractor` package, which uses classical image processing and Vision instead of a model, so nothing is downloaded. The package reads pixels and no scale. The reader takes the scale from sizes printed on the plan or in legend class names, and when none is printed it assumes the median booth is 2.5 m. It also reads the words printed in boxes with Vision: a box of a legend class with a paper white swatch is kept only when it prints a class name, and a booth that came back without an ID takes the number printed in it. `ExtractedLayoutMapper` then converts the pixels to metres. It keeps booths, walls, blocked areas, and doors from both wall openings and swing symbols. Tables are kept as the standard table that fits their chairs, and chairs without a table become seating blocks. The stage becomes an entertainment object, and other legend classes become blocks. Pillars and entrance and exit areas are dropped. `ExtractedLayoutMapperTruthTests` scores the mapped sample plans against their truth files, on detections recorded from the reader. Python and model options of the package stay off, because the sandbox cannot run them. `ImportQueue` is the real queue behind `ImportQueueing`; `ScriptedImportQueue` remains for previews and tests.
+`ImportQueue` also keeps an in-memory log of each file's steps and error text, capped at 2000 lines. The reader adds its own lines through `PlanReadingEvent.note`. The Developer menu's Dev Mode toggle is stored in `UserDefaults` and shows that log at the bottom of project setup.
 Extraction quality has been poor so far, so the editor must work without the reader. A user can place everything by hand in an empty layout.
 ### Simulation engine
 An `actor` owns all agent state. One engine instance serves one run. It advances in fixed steps, independent of how often the UI redraws, and publishes snapshots.
@@ -314,9 +314,9 @@ protocol SimulationEngineProtocol: Sendable {
 ```
 
 *   Fixed time step and a seeded random generator: the same input and seed give the same run. That makes bugs reproducible and tests possible. It also means the 3D view and the Analysis show the same event, because Analysis calls `runToEnd()` and Simulation plays the run live.
-*   `MovementModel` is a protocol. Start simple (grid path following with local avoidance). A social-force or other model can replace it without touching the loop or any view.
-*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors, event hours, and peak periods into arrival times (a time-varying Poisson process, with a higher rate inside peak periods). Each arrival draws a visitor type from the mix, comes in a group of the configured size, enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
-*   The layout becomes a `NavigationGrid` and a `ZoneMap` once, in `prepare`. `prepare` reports progress for the Preparing Layout screen. Editing while running is not supported. Stop, edit, prepare again.
+*   Every walking person is simulated. `CrowdSimulation` steps at 10 Hz: a leader follows the flow field of its target, followers keep a slot beside the leader, time-to-collision steering avoids neighbours and walls, and local density slows people down along the Weidmann curve. Parties decide every half second: planned booths are picked by food share and pull, a booth in view can draw a party off its plan, and strollers stop on the way. Entertainment (one object for a stage, photobooth, competition area or display) starts at attractiveness 5, editable like a booth, but is never planned and uses up no detour or stopover. A party that wants to sit takes a free table, or a group of up to four chairs in a seating block, and half the parties at entertainment sit in seating within 15 m to watch. The values come from the crowd behaviour research and live in `CrowdParameters`.
+*   The event clock covers the event duration from `EventParameters`. `SpawnScheduler` turns total visitors and event hours into arrival times (a Poisson process at a steady rate). Each arrival draws a visitor type from the mix, comes as a party (a family of two adults with one or two kids, anyone else alone or with one or two friends), waits outside while the door is at its flow limit, enters through a door whose flow allows entry, visits booths according to its type, and leaves through a door that allows exit. The Hi-Fi has no stage, so the earlier show phase with front-of-stage crowding is removed.
+*   The layout becomes a `CrowdWorld` and a `ZoneMap` once, in `prepare`. `CrowdWorld` holds the 0.25 m floor grid, distance to walls, one-way doors, and one routing field per target. `prepare` reports progress for the Preparing Layout screen. Editing while running is not supported. Stop, edit, prepare again.
 *   `ZoneMap` splits the walkable area into named zones (A to F in the Hi-Fi). The Hi-Fi does not say how zones are cut, so that is decided with the metrics research. A zone's risk level (low, medium, high) comes from its density against `RiskThresholds`, loaded from bundled JSON.
 
 Metrics follow the four Analysis tabs. Crowd Density is people per square metre per zone, shown as a risk level. Flow Rate is visitors per minute through the doors over the day, summarized as low, average, and peak. Congestion is where and for how long visitors are slowed or queue. Duration is how long a visitor needs to see everything. Footfall appears only as a 3D overlay and counts visits per cell. Exact definitions come from the metrics research, not from the Hi-Fi.
@@ -541,7 +541,7 @@ A type is too large when different methods use different subsets of its properti
 | Growing type | Split into |
 | ---| --- |
 | `LayoutEditorViewModel` | `SelectionState`, `PlacementTool` (drag and snap), `EditHistory` (undo and redo), `InspectorDraft` (field values being typed; a valid draft is applied at once). The view model orchestrates them |
-| `SimulationEngine` | `SpawnScheduler`, `NavigationGrid`, `ZoneMap`, `MovementModel`, `MetricsCollector` (already separate) |
+| `SimulationEngine` | `CrowdSimulation`, `CrowdWorld`, `ZoneMap`, `MetricsCollector` (already separate) |
 | `ParametersViewModel` | `MixEditor` (rescaling percentages to 100), `ParametersDraft` (form state held until Apply) |
 | `ProjectSetupViewModel` | `ImportQueue` (one file at a time, cancel) and a row state type per file |
 | Floor plan readers | `FloorPlanPrompt` and `ExtractedLayoutParser` shared by all four backends. Each backend only calls its model |
@@ -574,7 +574,7 @@ Initializers count too. Defaults are not counted by the linter, but they do not 
 | Symptom | Technique | Example in this app |
 | ---| ---| --- |
 | Values that always travel together. Test: delete one, and if the others lose their meaning, they are a clump | Introduce Parameter Object | `x, y, width, depth, rotation` become `Placement` |
-| Several values are read from one object you already have | Pass the whole object | `NavigationGrid(layout:cellSizeM:)` instead of width, depth, and objects |
+| Several values are read from one object you already have | Pass the whole object | `CrowdWorld(layout:legend:)` instead of width, depth, and objects |
 | The callee can find the value itself | Replace the parameter with a method call | The reader reads the scale from the page, so no `scale:` argument |
 | A Boolean flag or mode switches the behavior | Split into two functions, or use an enum | `ReadingRequest(... mode: .agentic)`, not a `useTools: true` flag |
 | Many optional tuning values | Options struct with defaults | `ReadingOptions`, `SimulationConfig` |
@@ -642,7 +642,7 @@ What to test per layer:
 | ---| --- |
 | Domain | Pure unit tests |
 | Mapper | Unit tests with fixtures: pixels convert to metres, a missing scale asks for calibration |
-| Engine pieces | Unit tests with a fixed seed: the mix spawns the right counts, peak periods get a larger share of arrivals, movement avoids obstacles |
+| Engine pieces | Unit tests with a fixed seed: the mix spawns the right counts, movement avoids obstacles |
 | Engine, full run | Headless integration test: every agent has left when the run ends, no agent stands inside an obstacle, the same seed gives the same result |
 | Analysis | Unit tests with fixed `LayoutAnalysis` values: the layout with the lower peak density is recommended on Crowd Density, and a tie gives a defined result |
 | ViewModel | Unit tests with fake services: a snapshot from a fake engine updates state, an error from a fake reader sets the message |
@@ -829,11 +829,11 @@ Review rules:
 * * *
 ## Suggested build order
 The floor plan reader is the riskiest part, so the app should not depend on it early. Write tests alongside each step.
-1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals with peak periods, `ZoneMap`, and `runToEnd()`.
+1. Domain models and a headless `SimulationEngine` with a hard-coded layout and parameters, tested with a fixed seed. Include arrivals, `ZoneMap`, and `runToEnd()`.
 2. Simulation view: the Preparing Layout step, the 3D scene with moving agents, and the three overlays. If 3D slows the team down, start with a top-down `Canvas` behind the same snapshot interface and swap later.
 3. Layout editor with Structure and Booths layers, manual placement, wall graph editing, and the inspector, so a layout can exist without any model.
 4. Project library, project screen with layout cards, and `ProjectSession` wiring.
-5. Parameters dialog: mix sliders with rescaling, peak periods, bazaar type presets, Cancel and Apply on a draft.
+5. Parameters dialog: mix sliders with rescaling, bazaar type presets, Cancel and Apply on a draft.
 6. Analysis: `AnalysisService`, the four tabs, `RecommendationBuilder`, the table and the chart.
 7. Project setup: PDF import, `ImportQueue`, one reader backend, then the other three behind the same protocol.
 * * *

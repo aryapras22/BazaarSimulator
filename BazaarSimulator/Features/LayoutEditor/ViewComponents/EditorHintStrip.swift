@@ -37,7 +37,7 @@ struct EditorHintStrip: View {
         case .place:
             return "Click to place · Shift for free move · Escape to cancel"
         case .blockedArea:
-            return "Drag to define blocked area · Escape to cancel"
+            return "Drag to define restricted area · Escape to cancel"
         }
     }
 }

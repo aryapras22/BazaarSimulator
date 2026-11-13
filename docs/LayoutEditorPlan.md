@@ -76,8 +76,8 @@ Two files, `annyeong-market-layout.json` (70.1 x 84.2 m) and `beyond-market-layo
 | `kids` + `kidsLabel` + `kidsSeats` | rect, string, bool | Area in front of the stage, labelled "AUDIENCE" in Annyeong, with or without seats | 1 | 1 |
 | `columns` | `x y d` | Round pillars, diameter `d` | 0 | 23 at 0.6 m |
 | `pilasters` | `kind` + rect | Thin obstacles: `rail`, `wall`, `block` | 5 | 8 |
-| `fixtures` | `label`, `kind` + rect | Labelled items: "CLAW MACHINES", "DOORPRIZE", "DECOR"; `kind` `fixture` or `stage` ("EXT", a stage extension) | 1 | 6 |
-| `closed` | rects | Non-walkable areas inside the hall (back of house, closed strips) | 4 | 6 |
+| `fixtures` | `label`, `kind` + rect, optional `shape`, `rot` | Labelled items: "CLAW MACHINES", "DOORPRIZE", "DECOR"; `kind` `fixture` or `stage` ("EXT", a stage extension); `shape: "round"` fills the rect with an oval and `rot` turns it in degrees | 1 | 6 |
+| `closed` | rects, optional `shape`, `rot` | Non-walkable areas inside the hall (back of house, closed strips, atrium voids); `shape` and `rot` as for fixtures | 4 | 6 |
 | `foyer`, `corridor` | `x0 x1` + `label [x, y]` | Named lobby zones with a label position (Annyeong only) | 1 each | absent |
 | `lobbyBlock` | rect of zeros | Unused (all zero) | | |
 | `pantia`, `arrows` | empty arrays | Unused | | |
@@ -361,7 +361,7 @@ Only errors block Save Changes. Warnings never block; the guide's flow allows ed
 *   `RootView` holds `columnVisibility` for the `NavigationSplitView` and sets it to `.detailOnly` on the review destination, `.all` elsewhere. The Hi-Fi hides the sidebar in the editor.
 *   Toolbar (not in the Hi-Fi, needed to use the screen): a back chevron to setup, a layout popup ("Layout 1 · plan-original.pdf") when the project has more than one layout, and the segmented control in the principal position.
 *   Minimum detail size 960 x 640. The inspector is a fixed 340 points wide, inset 16 from the top, right, and bottom.
-*   Passing `-seedMockProject YES` in the Debug scheme's Run arguments seeds the sample "Annyeong Market" project and opens directly on the editor.
+*   Passing `-seedMockProject YES` in the Debug scheme's Run arguments seeds the sample "More Market" and "Annyeong Market" projects and opens directly on the Annyeong one.
 * * *
 ## Design tokens
 

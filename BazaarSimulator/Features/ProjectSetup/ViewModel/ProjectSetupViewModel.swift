@@ -31,7 +31,7 @@ final class ProjectSetupViewModel {
             .filter { !removedLegendEntryIDs.contains($0.id) }
             .map { entry in
                 var typed = entry
-                if let type = legendEntryTypes[entry.id] { typed.type = type }
+                typed.type = legendEntryTypes[entry.id] ?? entry.type ?? CategoryMatcher.defaultType(for: entry)
                 return typed
             }
     }
@@ -73,6 +73,10 @@ final class ProjectSetupViewModel {
         }
     }
     
+    var logEntries: [ImportLogEntry] {
+        importQueue.logEntries(for: projectID)
+    }
+
     var hasLegend: Bool {
         importQueue.legend(for: projectID) != nil
     }
@@ -202,6 +206,15 @@ final class ProjectSetupViewModel {
         importQueue.remove(fileID: id)
     }
     
+    func deleteAllLegends() {
+        bannerMessage = nil
+        for file in legendFiles {
+            importQueue.remove(fileID: file.id)
+        }
+        removedLegendEntryIDs.removeAll()
+        legendEntryTypes.removeAll()
+    }
+
     func retryLegendFile(id: UUID) {
         bannerMessage = nil
         importQueue.retry(fileID: id)

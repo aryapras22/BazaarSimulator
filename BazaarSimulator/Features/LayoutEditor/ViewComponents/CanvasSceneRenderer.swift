@@ -186,6 +186,14 @@ enum CanvasSceneRenderer {
             BlockedAreaRenderer.draw(objectState, in: &context, transform: transform)
         case .table, .seating:
             SeatingRenderer.draw(objectState, in: &context, transform: transform)
+        case .entertainment:
+            ObstacleRenderer.draw(objectState, in: &context, transform: transform)
+            BoothRenderer.drawOpenSideStrips(
+                of: object,
+                blockedSides: snapshot.issues.blockedSidesByBoothID[object.id] ?? [],
+                in: &context,
+                transform: transform
+            )
         default:
             ObstacleRenderer.draw(objectState, in: &context, transform: transform)
         }

@@ -31,6 +31,7 @@ extension FocusedValues {
 
 struct AppCommands: Commands {
     @FocusedValue(\.editorCommandActions) private var actions
+    @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
@@ -65,7 +66,6 @@ struct AppCommands: Commands {
             Button("Delete") {
                 actions?.deleteSelected()
             }
-            .keyboardShortcut(.delete, modifiers: .command)
             .disabled(!(actions?.hasSelection ?? false))
         }
 
@@ -101,6 +101,10 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("2", modifiers: .command)
             .disabled(actions == nil)
+        }
+
+        CommandMenu("Developer") {
+            Toggle("Dev Mode", isOn: $isDevModeOn)
         }
     }
 }

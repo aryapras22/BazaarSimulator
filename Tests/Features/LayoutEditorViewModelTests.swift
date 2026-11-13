@@ -150,12 +150,12 @@ struct LayoutEditorViewModelTests {
         let session = ProjectSession()
         let project = session.createProject(named: "Test")
         let first = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
-        #expect(first.canvasBackground == .standard)
+        #expect(first.canvasBackground == .grey)
 
-        first.canvasBackground = .grey
+        first.canvasBackground = .white
         let second = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
 
-        #expect(second.canvasBackground == .grey)
+        #expect(second.canvasBackground == .white)
     }
 
     @Test("An unknown stored canvas background falls back to the default")
@@ -169,7 +169,7 @@ struct LayoutEditorViewModelTests {
 
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session, defaults: defaults)
 
-        #expect(viewModel.canvasBackground == .standard)
+        #expect(viewModel.canvasBackground == .grey)
     }
 
     @Test("Focusing an issue switches layer, selects its object and centres it")

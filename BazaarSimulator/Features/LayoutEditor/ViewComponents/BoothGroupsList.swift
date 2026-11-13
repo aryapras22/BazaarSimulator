@@ -13,21 +13,26 @@ struct BoothGroupsList: View {
     let sizeRows: [BoothGroupRowDisplay]
     let onHover: (BoothGroupKind?) -> Void
     let onSelect: (BoothGroupKind) -> Void
+    let onDeleteGroup: (BoothGroupKind) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
-            section("By name", rows: nameRows)
-            section("By size", rows: sizeRows)
+            section("By name", rows: nameRows, onDelete: onDeleteGroup)
+            section("By size", rows: sizeRows, onDelete: onDeleteGroup)
         }
     }
 
-    private func section(_ title: String, rows: [BoothGroupRowDisplay]) -> some View {
+    private func section(
+        _ title: String,
+        rows: [BoothGroupRowDisplay],
+        onDelete: @escaping (BoothGroupKind) -> Void
+    ) -> some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(title)
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textSecondary)
             ForEach(rows) { row in
-                BoothGroupRow(row: row, onHover: onHover, onSelect: onSelect)
+                BoothGroupRow(row: row, onHover: onHover, onSelect: onSelect, onDelete: onDelete)
             }
         }
     }
@@ -37,10 +42,35 @@ private struct BoothGroupRow: View {
     let row: BoothGroupRowDisplay
     let onHover: (BoothGroupKind?) -> Void
     let onSelect: (BoothGroupKind) -> Void
+    let onDelete: (BoothGroupKind) -> Void
 
     @State private var isHovering = false
 
     var body: some View {
+        ZStack(alignment: .trailing) {
+            selectButton
+            if isHovering {
+                Button {
+                    onDelete(row.id)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(Typography.body)
+                        .foregroundStyle(Palette.destructive)
+                        .padding(.horizontal, Spacing.s)
+                        .background(Palette.controlOnSurface)
+                }
+                .buttonStyle(.plain)
+                .help("Delete these booths")
+                .accessibilityLabel("Delete \(row.title) booths")
+            }
+        }
+        .onHover { hovering in
+            isHovering = hovering
+            onHover(hovering ? row.id : nil)
+        }
+    }
+
+    private var selectButton: some View {
         Button {
             onSelect(row.id)
         } label: {
@@ -74,10 +104,6 @@ private struct BoothGroupRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovering = hovering
-            onHover(hovering ? row.id : nil)
-        }
     }
 }
 
@@ -105,7 +131,8 @@ private struct BoothGroupRow: View {
                 )
             ],
             onHover: { _ in },
-            onSelect: { _ in }
+            onSelect: { _ in },
+            onDeleteGroup: { _ in }
         )
     } footer: {
         EmptyView()

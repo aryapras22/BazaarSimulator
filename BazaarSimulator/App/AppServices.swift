@@ -16,13 +16,23 @@ final class AppServices {
         self.importQueue = queue
         self.projectSession = session
 
-        // The seed is read by its own scripted queue so that projects created afterwards go through the extractor.
+        // Each seed is read by its own scripted queue so that projects created afterwards go through the extractor.
         // Its finished files are copied into the app's queue, which is where project setup reads them.
+        // The last seed stays selected.
         if seedsMockProject {
-            let scripted = ScriptedImportQueue(isSynchronous: true)
-            let projectID = Self.seedMockProject(in: session, importQueue: scripted)
-            if let readQueue = queue as? ImportQueue {
-                Self.copyFinishedFiles(of: projectID, from: scripted, into: readQueue)
+            var projectID = UUID()
+            for seed in Self.mockSeeds {
+                let scripted = ScriptedImportQueue(isSynchronous: true)
+                scripted.mockLayoutFileNames = seed.layoutNames
+                projectID = Self.seedMockProject(
+                    named: seed.name,
+                    layoutNames: seed.layoutNames,
+                    in: session,
+                    importQueue: scripted
+                )
+                if let readQueue = queue as? ImportQueue {
+                    Self.copyFinishedFiles(of: projectID, from: scripted, into: readQueue)
+                }
             }
             initialDestination = .setup(projectID: projectID)
         } else {
@@ -30,21 +40,33 @@ final class AppServices {
         }
     }
 
+    private static let mockSeeds: [(name: String, layoutNames: [String])] = [
+        ("More Market", [
+            "more-market-i-layout",
+            "more-market-ii-layout",
+            "more-market-iii-layout",
+            "more-market-iv-layout",
+            "more-market-v-layout",
+            "more-market-vi-layout",
+            "more-market-viii-layout"
+        ]),
+        ("Annyeong Market", ["annyeong-market-layout", "beyond-market-layout"])
+    ]
+
     private static func seedMockProject(
+        named name: String,
+        layoutNames: [String],
         in session: any ProjectSessionProtocol,
         importQueue: ScriptedImportQueue
     ) -> UUID {
-        let project = session.createProject(named: "Annyeong Market")
+        let project = session.createProject(named: name)
         importQueue.add(
             urls: [URL(fileURLWithPath: "/mock/legend.pdf")],
             kind: .legend,
             projectID: project.id
         )
         importQueue.add(
-            urls: [
-                URL(fileURLWithPath: "/mock/annyeong-market-layout.pdf"),
-                URL(fileURLWithPath: "/mock/beyond-market-layout.pdf")
-            ],
+            urls: layoutNames.map { URL(fileURLWithPath: "/mock/\($0).pdf") },
             kind: .floorPlan,
             projectID: project.id
         )

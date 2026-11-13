@@ -40,20 +40,15 @@ final class ProjectLibraryViewModel {
     }
 
     private func nextFreeProjectName() -> String {
-        var existingNumbers = Set<Int>()
-        let prefix = "Bazaar "
+        let baseName = "Untitled"
+        let existingNames = Set(session.projects.map(\.name))
 
-        for project in session.projects where project.name.hasPrefix(prefix) {
-            let suffix = project.name.dropFirst(prefix.count)
-            if let number = Int(suffix) {
-                existingNumbers.insert(number)
-            }
+        var candidate = baseName
+        var number = 1
+        while existingNames.contains(candidate) {
+            number += 1
+            candidate = "\(baseName) \(number)"
         }
-
-        var candidate = 1
-        while existingNumbers.contains(candidate) {
-            candidate += 1
-        }
-        return "\(prefix)\(candidate)"
+        return candidate
     }
 }

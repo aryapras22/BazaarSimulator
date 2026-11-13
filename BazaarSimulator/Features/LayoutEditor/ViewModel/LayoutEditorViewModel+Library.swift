@@ -6,7 +6,7 @@ extension LayoutEditorViewModel {
         let key = boothTemplateKey()
         guard key != templateKey else { return }
         templateKey = key
-        cachedBoothTemplates = BoothTemplates.templates(layouts: layouts, legend: legend)
+        cachedBoothTemplates = [BoothTemplates.standard(layouts: layouts)]
     }
 
     /// Hashes only what `BoothTemplates` reads, so moving a booth leaves the key unchanged.
@@ -14,11 +14,9 @@ extension LayoutEditorViewModel {
         var hasher = Hasher()
         for layout in layouts {
             for object in layout.objects where object.kind == .booth {
-                hasher.combine(object.categoryID)
                 hasher.combine(BoothGrouping.sizeKey(of: object.placement))
             }
         }
-        hasher.combine(legend.entries.map(\.id))
         return hasher.finalize()
     }
 
@@ -27,29 +25,26 @@ extension LayoutEditorViewModel {
 
         if activeLayer == .booths {
             let templateRows = cachedBoothTemplates.map { template -> LibraryRowDisplay in
-                let categoryName = legend.entries.first { $0.id == template.categoryID }?.name ?? "Booth"
-                let title = "\(categoryName) booth"
                 let shortText = DimensionInput.text(for: template.sizeKey.shortM)
                 let longText = DimensionInput.text(for: template.sizeKey.longM)
                 let detail = "\(shortText) × \(longText) m · \(template.count) placed"
-                let tint = legend.entries.first { $0.id == template.categoryID }?.color
                 return LibraryRowDisplay(
                     id: template.id,
                     source: .template(template),
-                    title: title,
+                    title: "Booth",
                     detail: detail,
                     category: .project,
                     footprint: .rect,
                     sizeM: SIMD2(template.sizeKey.shortM, template.sizeKey.longM),
                     openSides: [.bottom],
                     seats: [],
-                    tint: tint
+                    tint: nil
                 )
             }
             rows.append(contentsOf: templateRows)
         }
 
-        let catalogRows = ObjectCatalog.items
+        let catalogRows = ObjectCatalog.libraryItems
             .filter { $0.category.layer == activeLayer }
             .map { item -> LibraryRowDisplay in
                 let detail: String
@@ -72,10 +67,6 @@ extension LayoutEditorViewModel {
                 )
             }
         rows.append(contentsOf: catalogRows)
-
-        if let selectedCategory = libraryCategory, selectedCategory.layer == activeLayer {
-            rows = rows.filter { $0.category == selectedCategory }
-        }
 
         let trimmedSearch = librarySearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !trimmedSearch.isEmpty {
@@ -201,14 +192,18 @@ extension LayoutEditorViewModel {
         let item = ObjectCatalog.item(itemID)
         let kind = item?.kind ?? .block
         let label = nextLabel(for: kind, in: layout)
-        let object = LayoutObject(
+        var placement = candidate.placement
+        placement.shape = item?.placementShape ?? .rect
+        var object = LayoutObject(
             id: UUID(),
             kind: kind,
             label: label,
-            placement: candidate.placement,
+            placement: placement,
             catalogID: itemID,
-            heightM: item?.heightM
+            heightM: item?.heightM,
+            attractiveness: kind.defaultAttractiveness
         )
+        if kind.hasOpenSides { object.openSides = OpenSideInference.defaultSide(for: object, in: layout) }
         commitEdit(.insert(object, index: layout.objects.count))
         applySelection(object.id)
     }
@@ -268,14 +263,18 @@ extension LayoutEditorViewModel {
         )
         guard candidate.isValid else { return }
         let label = nextLabel(for: item.kind, in: layout)
-        let object = LayoutObject(
+        var placement = candidate.placement
+        placement.shape = item.placementShape
+        var object = LayoutObject(
             id: UUID(),
             kind: item.kind,
             label: label,
-            placement: candidate.placement,
+            placement: placement,
             catalogID: item.id,
-            heightM: item.heightM
+            heightM: item.heightM,
+            attractiveness: item.kind.defaultAttractiveness
         )
+        if item.kind.hasOpenSides { object.openSides = OpenSideInference.defaultSide(for: object, in: layout) }
         withSingleRefresh {
             commitEdit(.insert(object, index: layout.objects.count))
             applySelection(object.id)

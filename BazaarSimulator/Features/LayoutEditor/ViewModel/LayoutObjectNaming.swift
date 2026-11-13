@@ -6,7 +6,7 @@ enum LayoutObjectNaming {
         case .booth:
             return nextPrefixedLabel(prefix: "N", kind: kind, in: layout)
         case .closedArea:
-            return "Blocked area"
+            return "Restricted area"
         default:
             let existingCount = layout.objects.filter { $0.kind == kind }.count + 1
             return "\(kind.displayName) \(existingCount)"

@@ -4,7 +4,7 @@ import Testing
 
 @Suite("ProjectLibraryViewModelTests")
 struct ProjectLibraryViewModelTests {
-    @Test("New projects are numbered Bazaar 1, Bazaar 2, and so on")
+    @Test("New projects are named Untitled, Untitled 2, and so on")
     @MainActor
     func newProjectsAreNumberedIncrementally() {
         let session = ProjectSession()
@@ -12,15 +12,15 @@ struct ProjectLibraryViewModelTests {
 
         viewModel.createProject()
         #expect(session.projects.count == 1)
-        #expect(session.projects[0].name == "Bazaar 1")
+        #expect(session.projects[0].name == "Untitled")
 
         viewModel.createProject()
         #expect(session.projects.count == 2)
-        #expect(session.projects[1].name == "Bazaar 2")
+        #expect(session.projects[1].name == "Untitled 2")
 
         viewModel.createProject()
         #expect(session.projects.count == 3)
-        #expect(session.projects[2].name == "Bazaar 3")
+        #expect(session.projects[2].name == "Untitled 3")
     }
 
     @Test("A freed number is reused")
@@ -37,7 +37,7 @@ struct ProjectLibraryViewModelTests {
         session.renameProject(id: secondID, to: "Renamed")
 
         viewModel.createProject()
-        #expect(session.projects.last?.name == "Bazaar 2")
+        #expect(session.projects.last?.name == "Untitled 2")
     }
 
     @Test("Search filters by name, case-insensitive")

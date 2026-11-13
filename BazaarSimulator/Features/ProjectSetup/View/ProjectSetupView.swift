@@ -6,6 +6,7 @@ struct ProjectSetupView: View {
     @State private var importTarget: ImportFileKind?
     @State private var lastImportTarget: ImportFileKind?
     @State private var showParameterModal = false
+    @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -22,6 +23,11 @@ struct ProjectSetupView: View {
             Spacer(minLength: Spacing.m)
 
             footerView
+
+            if isDevModeOn {
+                ImportLogPanel(entries: viewModel.logEntries)
+                    .padding(.top, Spacing.m)
+            }
         }
         .padding(Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -122,8 +128,17 @@ struct ProjectSetupView: View {
             let label = viewModel.legendEntries.isEmpty
                 ? "SCANNED LEGENDS"
                 : "SCANNED LEGENDS · \(viewModel.legendEntries.count) Elements"
-            Text(label)
-                .sectionLabel()
+            HStack {
+                Text(label)
+                    .sectionLabel()
+
+                Spacer()
+
+                Button("Delete all", action: viewModel.deleteAllLegends)
+                    .buttonStyle(.plain)
+                    .font(Typography.caption)
+                    .foregroundColor(Palette.destructive)
+            }
 
             VStack(spacing: Spacing.xs) {
                 ForEach(viewModel.pendingLegendRows) { row in
@@ -213,12 +228,6 @@ struct ProjectSetupView: View {
             Text(viewModel.statusText)
                 .font(Typography.caption)
                 .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
-
-            Button("Cancel") {
-                viewModel.cancel()
-            }
-            .buttonStyle(.secondary)
-            .disabled(!viewModel.isCancelEnabled)
 
             Button("Continue") {
                 if viewModel.saveDraftToSession() {

@@ -4,29 +4,13 @@ import simd
 enum CatalogCategory: String, CaseIterable, Hashable, Sendable {
     case project
     case furniture
+    case entertainment
     case structure
-
-    var title: String {
-        switch self {
-        case .project: return "From this project"
-        case .furniture: return "Furniture"
-        case .structure: return "Structure"
-        }
-    }
 
     var layer: EditorLayer {
         switch self {
         case .structure: return .structure
-        case .project, .furniture: return .booths
-        }
-    }
-
-    static func categories(for layer: EditorLayer) -> [CatalogCategory] {
-        switch layer {
-        case .structure:
-            return [.structure]
-        case .booths:
-            return [.project, .furniture]
+        case .project, .furniture, .entertainment: return .booths
         }
     }
 }
@@ -61,6 +45,11 @@ struct CatalogItem: Identifiable, Hashable, Sendable {
     let placement: CatalogPlacement
     let keywords: [String]
     let seats: [SIMD2<Double>]
+
+    /// The footprint an object placed from this item starts with.
+    var placementShape: FootprintShape {
+        footprint == .circle && kind.canBeRound ? .round : .rect
+    }
 
     func shape(size: SIMD2<Double>, height: Double) -> [ShapePrimitive] {
         ObjectShapes.shape(for: id, size: size, height: height)

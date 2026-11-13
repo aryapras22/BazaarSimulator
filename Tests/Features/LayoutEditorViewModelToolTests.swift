@@ -25,7 +25,7 @@ struct LayoutEditorViewModelToolTests {
         #expect(context.viewModel.tool == .select)
         let selected = try #require(context.viewModel.selectedObject)
         #expect(selected.kind == .closedArea)
-        #expect(selected.label == "Blocked area")
+        #expect(selected.label == "Restricted area")
         #expect(selected.placement == placement)
 
         context.viewModel.undo()

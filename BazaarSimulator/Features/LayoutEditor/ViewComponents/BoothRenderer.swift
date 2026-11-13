@@ -39,7 +39,7 @@ enum BoothRenderer {
 
         context.fill(path, with: .color(fillColor))
 
-        drawOpenSideStrips(for: state, in: &context, transform: transform)
+        drawOpenSideStrips(of: state.booth, blockedSides: state.blockedSides, in: &context, transform: transform)
 
         let outlineColor = state.hasObjectWarning ? Palette.canvasIssue : strokeColor
         let lineWidth: CGFloat = state.hasObjectWarning ? 2.0 : 1.0
@@ -97,18 +97,20 @@ enum BoothRenderer {
         context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
-    private static func drawOpenSideStrips(
-        for state: BoothDrawState,
+    /// Booths and entertainment both mark their open sides, red where something blocks them.
+    static func drawOpenSideStrips(
+        of object: LayoutObject,
+        blockedSides: OpenSides,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let placement = state.booth.placement
+        let placement = object.placement
         let halfW = placement.sizeM.x / 2.0
         let halfH = placement.sizeM.y / 2.0
         let depth = min(stripThicknessM, min(placement.sizeM.x, placement.sizeM.y) * 0.25)
         let halfDepth = depth / 2.0
 
-        for side in OpenSides.ordered where state.booth.openSides.contains(side) {
+        for side in OpenSides.ordered where object.openSides.contains(side) {
             let localCenter: SIMD2<Double>
             let stripSize: SIMD2<Double>
             if side == .top {
@@ -134,7 +136,7 @@ enum BoothRenderer {
                 for: LayoutGeometry.corners(of: stripPlacement),
                 transform: transform
             )
-            let isBlocked = state.blockedSides.contains(side)
+            let isBlocked = blockedSides.contains(side)
             let stripColor = isBlocked ? Palette.canvasIssue : Palette.canvasOpenSide
             context.fill(stripPath, with: .color(stripColor))
         }

@@ -41,6 +41,8 @@ struct AnalysisView: View {
 
             if let result = currentResult {
                 resultsContent(for: result)
+            } else if session.isSimulating(projectID) {
+                simulatingIndicator
             } else {
                 emptyResultsPrompt
             }
@@ -48,7 +50,7 @@ struct AnalysisView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background)
         .onAppear {
-            if currentResult == nil && !layouts.isEmpty {
+            if currentResult == nil && !layouts.isEmpty && !session.isSimulating(projectID) {
                 session.runSimulations(for: projectID)
             }
         }
@@ -329,6 +331,17 @@ struct AnalysisView: View {
         }
         .padding(Spacing.m)
         .card()
+    }
+
+    private var simulatingIndicator: some View {
+        VStack(spacing: Spacing.l) {
+            Spacer()
+            ProgressView()
+            Text("Running Simulation")
+                .font(Typography.title)
+                .foregroundStyle(Palette.textPrimary)
+            Spacer()
+        }
     }
 
     private var emptyResultsPrompt: some View {

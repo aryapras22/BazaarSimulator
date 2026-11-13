@@ -11,7 +11,7 @@ enum BlockedAreaRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let corners = LayoutGeometry.corners(of: state.object.placement)
+        let corners = LayoutGeometry.outline(of: state.object.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
         let isSelected = state.isSelected
@@ -71,7 +71,7 @@ enum BlockedAreaRenderer {
         let size = object.placement.sizeM
         guard min(size.x, size.y) >= minimumDimensionForLabelM else { return }
         let trimmed = object.label.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != "Blocked area" else { return }
+        guard !trimmed.isEmpty, trimmed != "Restricted area", trimmed != "Blocked area" else { return }
 
         let centerView = transform.toView(object.placement.center)
         let text = Text(trimmed)

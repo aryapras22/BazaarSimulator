@@ -25,6 +25,7 @@ protocol ProjectSessionProtocol: AnyObject {
     func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> SimulationResult?
     func setSimulationResult(_ result: SimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
+    func isSimulating(_ projectID: UUID) -> Bool
 }
 
 @Observable
@@ -36,6 +37,8 @@ final class ProjectSession: ProjectSessionProtocol {
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
     private var parametersByProject: [UUID: EventParameters] = [:]
     private var simulationResultsByProject: [UUID: [Layout.ID: SimulationResult]] = [:]
+    private var simulationTasks: [UUID: Task<Void, Never>] = [:]
+    private var simulatingProjects: Set<UUID> = []
 
     var activeProject: ProjectSummary? {
         projects.first { $0.id == activeProjectID }
@@ -117,20 +120,30 @@ final class ProjectSession: ProjectSessionProtocol {
         simulationResultsByProject[projectID] = projectMap
     }
 
+    func isSimulating(_ projectID: UUID) -> Bool {
+        simulatingProjects.contains(projectID)
+    }
+
+    /// Replaces the project's results in the background. A newer run cancels one still going.
     func runSimulations(for projectID: UUID) {
         guard let layouts = drafts[projectID]?.layouts, !layouts.isEmpty else { return }
         let settings = parameters(for: projectID).toSimulationSettings()
-        var projectMap: [Layout.ID: SimulationResult] = [:]
+        let legend = drafts[projectID]?.legend ?? Legend()
 
-        for layout in layouts {
-            let engine = SimulationEngine(layout: layout, settings: settings)
-            let result = engine.runWithRecordedFootage(
-                durationMinutes: settings.durationMinutes,
-                frameIntervalSeconds: 5.0
-            )
-            projectMap[layout.id] = result
+        simulationTasks[projectID]?.cancel()
+        simulationResultsByProject[projectID] = [:]
+        simulatingProjects.insert(projectID)
+        simulationTasks[projectID] = Task { [weak self] in
+            for layout in layouts {
+                let engine = SimulationEngine(layout: layout, settings: settings, legend: legend)
+                let result = await engine.runWithRecordedFootage(
+                    durationMinutes: settings.durationMinutes,
+                    frameIntervalSeconds: 5.0
+                )
+                if Task.isCancelled { return }
+                self?.setSimulationResult(result, for: layout.id, in: projectID)
+            }
+            self?.simulatingProjects.remove(projectID)
         }
-
-        simulationResultsByProject[projectID] = projectMap
     }
 }

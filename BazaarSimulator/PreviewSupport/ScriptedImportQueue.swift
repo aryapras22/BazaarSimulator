@@ -43,6 +43,10 @@ final class ScriptedImportQueue: ImportQueueing {
         extractedLayouts[fileID]
     }
 
+    func logEntries(for projectID: UUID) -> [ImportLogEntry] {
+        []
+    }
+
     func add(urls: [URL], kind: ImportFileKind, projectID: UUID) {
         for url in urls {
             let fileSize = fileSize(for: url)
@@ -153,12 +157,12 @@ final class ScriptedImportQueue: ImportQueueing {
                 LegendEntry(
                     name: "Fashion",
                     color: LegendColor(red: 42 / 255.0, green: 222 / 255.0, blue: 49 / 255.0),
-                    type: .fashion
+                    type: .goods
                 ),
                 LegendEntry(
                     name: "Lifestyle & Hobbies",
                     color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0),
-                    type: .lifestyleAndHobbies
+                    type: .goods
                 )
             ])
             legendsByFile[file.id] = defaultLegend

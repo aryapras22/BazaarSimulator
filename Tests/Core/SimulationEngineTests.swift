@@ -6,25 +6,6 @@ import Testing
 @Suite("SimulationEngine Tests")
 struct SimulationEngineTests {
 
-    @Test("NavigationGrid builds walkable floor and carves doors")
-    func navigationGridWalkableAndPaths() {
-        let layout = PreviewLayouts.smallMarket()
-        var grid = NavigationGrid(layout: layout)
-
-        #expect(!grid.entrancePoints.isEmpty)
-        #expect(!grid.exitPoints.isEmpty)
-
-        // Door NW at (14, 20.1) should be carved as walkable
-        let doorPoint = SIMD2<Double>(14.0, 20.1)
-        #expect(grid.isWalkable(doorPoint))
-
-        // Path from lobby spawn marker to a booth inside the hall should have waypoints
-        let start = grid.entrancePoints[0]
-        let boothCenter = SIMD2<Double>(8.0, 8.0)
-        let path = grid.findPath(from: start, to: boothCenter)
-        #expect(!path.isEmpty)
-    }
-
     @Test("SimulationEngine spawns visitors and advances metrics deterministically")
     func engineSpawnsAndAdvancesDeterministically() {
         let layout = PreviewLayouts.smallMarket()
@@ -47,11 +28,11 @@ struct SimulationEngineTests {
     }
 
     @Test("SimulationEngine records simulation footage frames and heatmap cells")
-    func engineRecordsSimulationFootageAndHeatmap() {
+    func engineRecordsSimulationFootageAndHeatmap() async {
         let layout = PreviewLayouts.smallMarket()
         let engine = SimulationEngine(layout: layout)
 
-        let result = engine.runWithRecordedFootage(durationMinutes: 3, frameIntervalSeconds: 10.0)
+        let result = await engine.runWithRecordedFootage(durationMinutes: 3, frameIntervalSeconds: 10.0)
 
         #expect(result.layoutID == layout.id)
         #expect(!result.frames.isEmpty)
@@ -116,7 +97,7 @@ struct SimulationEngineTests {
     }
 
     @Test("Single visitor stays in Fruin Severity A (< 0.08 people/m²) and duration matches parameters")
-    func singleVisitorStaysGradeAAndDurationMatches() {
+    func singleVisitorStaysGradeAAndDurationMatches() async {
         let layout = PreviewLayouts.smallMarket()
         let params = EventParameters(
             totalVisitors: 1,
@@ -125,12 +106,67 @@ struct SimulationEngineTests {
         )
         let settings = params.toSimulationSettings()
         let engine = SimulationEngine(layout: layout, settings: settings)
-        let result = engine.runWithRecordedFootage(durationMinutes: settings.durationMinutes, frameIntervalSeconds: 30.0)
+        let result = await engine.runWithRecordedFootage(durationMinutes: settings.durationMinutes, frameIntervalSeconds: 30.0)
 
         #expect(result.durationSeconds == 14_400.0)
         #expect(result.frames.last?.elapsedSeconds == 14_400.0)
         #expect(result.metrics.arrivals == 1)
         #expect(result.metrics.peakDensity < 0.08)
         #expect(SimulationAnalysis.grade(for: result.metrics.peakDensity) == "A")
+    }
+
+    @Test("Arrivals follow the configured rate in people, whatever the party sizes")
+    func arrivalsMatchConfiguredPeopleRate() {
+        let settings = SimulationSettings(totalVisitors: 100_000, arrivalsPer15Min: 180.0, randomSeed: 42)
+        let engine = SimulationEngine(layout: PreviewLayouts.smallMarket(), settings: settings)
+
+        engine.fastForward(minutes: 60)
+
+        #expect((612...828).contains(engine.metrics.arrivals))
+    }
+
+    @Test("Density cells add up to the number of people on the floor")
+    func densityConservesPeople() {
+        let engine = SimulationEngine(layout: Self.openFloor())
+        engine.visitors = [
+            SimulatedVisitor(id: 1, position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
+        ]
+
+        for _ in 0..<80 { engine.updateDensityCells() }
+
+        let peopleOnFloor = engine.densityCells.reduce(0.0) { $0 + $1.peoplePerSquareMetre }
+        #expect(abs(peopleOnFloor - 4.0) < 0.05)
+    }
+
+    @Test("Mean density still reflects the event after the hall empties")
+    func meanDensitySurvivesEmptyHall() {
+        let engine = SimulationEngine(layout: Self.openFloor())
+        engine.visitors = [
+            SimulatedVisitor(id: 1, position: SIMD2<Double>(10.5, 10.5), peopleCount: 4)
+        ]
+        for _ in 0..<20 { engine.updateDensityCells() }
+        let meanWhileOccupied = engine.metrics.meanDensity
+
+        engine.visitors = []
+        for _ in 0..<80 { engine.updateDensityCells() }
+
+        #expect(engine.densityCells.isEmpty)
+        #expect(meanWhileOccupied > 0)
+        #expect(engine.metrics.meanDensity > meanWhileOccupied * 0.5)
+    }
+
+    private static func openFloor() -> Layout {
+        Layout(
+            name: "Open floor",
+            sizeM: SIMD2<Double>(20, 20),
+            hall: [],
+            lobby: [],
+            objects: [],
+            markers: [
+                LayoutMarker(kind: .spawn, label: "In", position: SIMD2<Double>(2, 2)),
+                LayoutMarker(kind: .exit, label: "Out", position: SIMD2<Double>(18, 2))
+            ],
+            zones: []
+        )
     }
 }

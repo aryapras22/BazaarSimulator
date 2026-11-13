@@ -103,11 +103,13 @@ final class PlaceTool: EditorToolHandling {
             let item = ObjectCatalog.item(itemID)
             let kind = item?.kind ?? .block
             let label = LayoutObjectNaming.nextLabel(for: kind, in: context.layout)
+            var placement = candidate.placement
+            placement.shape = item?.placementShape ?? .rect
             let object = LayoutObject(
                 id: UUID(),
                 kind: kind,
                 label: label,
-                placement: candidate.placement,
+                placement: placement,
                 catalogID: itemID,
                 heightM: item?.heightM
             )

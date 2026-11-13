@@ -19,7 +19,8 @@ struct MockLayoutMapperTests {
         #expect(count(.booth, in: layout) == 209)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 4)
-        #expect(count(.block, in: layout) == 5)
+        #expect(count(.block, in: layout) == 4)
+        #expect(count(.entertainment, in: layout) == 1)
         #expect(count(.wall, in: layout) == 3)
         #expect(count(.table, in: layout) == 26)
         #expect(count(.seating, in: layout) == 0)
@@ -27,7 +28,7 @@ struct MockLayoutMapperTests {
         #expect(layout.zones.count == 2)
     }
 
-    @Test("Beyond maps to expected counts, with stages, rails and fixtures as blocks")
+    @Test("Beyond maps to expected counts, with the stage as entertainment and round columns as blocks")
     func beyondCounts() throws {
         let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "beyond-market-layout")
 
@@ -36,12 +37,26 @@ struct MockLayoutMapperTests {
         #expect(count(.booth, in: layout) == 154)
         #expect(count(.door, in: layout) == 4)
         #expect(count(.closedArea, in: layout) == 6)
-        #expect(count(.block, in: layout) == 13)
+        #expect(count(.block, in: layout) == 34)
+        let columns = layout.objects.filter { $0.label == "Column" }
+        #expect(columns.count == 23)
+        #expect(columns.allSatisfy { $0.placement.shape == .round && $0.catalogID == "column" })
         #expect(count(.wall, in: layout) == 3)
         #expect(count(.table, in: layout) == 136)
         #expect(count(.seating, in: layout) == 1)
         #expect(layout.zones.isEmpty)
-        #expect(layout.objects.contains { $0.kind == .block && $0.label == "Stage" })
+        let entertainment = layout.objects.filter { $0.kind == .entertainment }
+        #expect(entertainment.map(\.label) == ["Stage", "EXT"])
+        #expect(entertainment.allSatisfy { $0.catalogID == ObjectCatalog.entertainmentID && $0.attractiveness == 5 })
+    }
+
+    @Test("Plan labels for stages, photobooths, competitions and displays read as entertainment")
+    func entertainmentLabels() {
+        #expect(ObjectCatalog.namesEntertainment("PHOTO BOX"))
+        #expect(ObjectCatalog.namesEntertainment("Stage"))
+        #expect(ObjectCatalog.namesEntertainment("Area Lomba"))
+        #expect(ObjectCatalog.namesEntertainment("Product Display"))
+        #expect(!ObjectCatalog.namesEntertainment("DECOR"))
     }
 
     @Test("A rect maps to the right center and size")
@@ -71,6 +86,21 @@ struct MockLayoutMapperTests {
         #expect(first.placement.rotationDegrees == 90)
         #expect(first.doorFlow?.direction == .entrance)
         #expect(second.doorFlow?.direction == .exit)
+    }
+
+    @Test("An upright wall and its doors turn a quarter so their length runs along x, and an exit role maps to exit")
+    func uprightWallAndDoorsTurnAQuarter() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "more-market-i-layout")
+
+        let layout = MockLayoutMapper.layout(from: dto, legend: sampleLegend)
+        let wall = try #require(layout.objects.first { $0.kind == .wall && $0.label == "Lobby wall" })
+        let exitDoor = try #require(layout.objects.first { $0.kind == .door && $0.label == "Door B" })
+
+        #expect(abs(wall.placement.sizeM.x - 31.71) < 1e-6)
+        #expect(wall.placement.rotationDegrees == 90)
+        #expect(abs(exitDoor.placement.sizeM.x - 3.0) < 1e-6)
+        #expect(exitDoor.placement.rotationDegrees == 90)
+        #expect(exitDoor.doorFlow?.direction == .exit)
     }
 
     private func count(_ kind: LayoutObjectKind, in layout: Layout) -> Int {

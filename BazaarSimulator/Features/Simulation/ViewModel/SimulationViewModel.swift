@@ -11,6 +11,7 @@ final class SimulationViewModel {
     private var engine: any SimulationEngineProtocol
     private let onLayoutSelected: ((UUID) -> Void)?
     private let resultProvider: ((UUID) -> SimulationResult?)?
+    private let makeEngine: (Layout) -> any SimulationEngineProtocol
 
     private(set) var visitors: [SimulatedVisitor] = []
     private(set) var metrics = SimulationMetrics()
@@ -32,13 +33,14 @@ final class SimulationViewModel {
         layout: Layout,
         availableLayouts: [Layout] = [],
         savedResult: SimulationResult? = nil,
-        engine: (any SimulationEngineProtocol)? = nil,
+        makeEngine: @escaping (Layout) -> any SimulationEngineProtocol = { SimulationEngine(layout: $0) },
         onLayoutSelected: ((UUID) -> Void)? = nil,
         resultProvider: ((UUID) -> SimulationResult?)? = nil
     ) {
         self.layout = layout
         self.availableLayouts = availableLayouts.isEmpty ? [layout] : availableLayouts
-        self.engine = engine ?? SimulationEngine(layout: layout)
+        self.makeEngine = makeEngine
+        self.engine = makeEngine(layout)
         self.onLayoutSelected = onLayoutSelected
         self.resultProvider = resultProvider
 
@@ -82,7 +84,7 @@ final class SimulationViewModel {
     func selectLayout(_ newLayout: Layout) {
         guard newLayout.id != layout.id else { return }
         layout = newLayout
-        engine = SimulationEngine(layout: newLayout)
+        engine = makeEngine(newLayout)
         if let saved = resultProvider?(newLayout.id), !saved.frames.isEmpty {
             loadSavedResult(saved)
         } else {

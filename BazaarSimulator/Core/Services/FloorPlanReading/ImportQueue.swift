@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 
@@ -8,15 +9,18 @@ final class ImportQueue: ImportQueueing {
     private(set) var files: [ImportFile] = []
     private var legendsByFile: [UUID: Legend] = [:]
     private var extractedLayouts: [UUID: ExtractedLayout] = [:]
+    private var logEntries: [ImportLogEntry] = []
 
     private let pdf: any PDFImporting
     private let reader: any FloorPlanReading
     private var worker: Task<Void, Never>?
     private var currentFileID: UUID?
+    private let logLimit: Int
 
-    init(pdf: any PDFImporting, reader: any FloorPlanReading) {
+    init(pdf: any PDFImporting, reader: any FloorPlanReading, logLimit: Int = 2000) {
         self.pdf = pdf
         self.reader = reader
+        self.logLimit = logLimit
     }
 
     func files(for projectID: UUID) -> [ImportFile] {
@@ -35,10 +39,16 @@ final class ImportQueue: ImportQueueing {
         extractedLayouts[fileID]
     }
 
+    func logEntries(for projectID: UUID) -> [ImportLogEntry] {
+        logEntries.filter { $0.projectID == projectID }
+    }
+
     func add(urls: [URL], kind: ImportFileKind, projectID: UUID) {
         for url in urls {
             let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-            files.append(ImportFile(projectID: projectID, url: url, kind: kind, fileSize: size ?? 0))
+            let file = ImportFile(projectID: projectID, url: url, kind: kind, fileSize: size ?? 0)
+            files.append(file)
+            log("Picked, \(file.fileSize.formatted(.byteCount(style: .file)))", for: file)
         }
         startWorkerIfNeeded()
     }
@@ -52,6 +62,7 @@ final class ImportQueue: ImportQueueing {
 
     func remove(fileID: UUID) {
         let wasCurrent = currentFileID == fileID
+        if let file = files.first(where: { $0.id == fileID }) { log("Removed", for: file) }
         files.removeAll { $0.id == fileID }
         forgetResults(of: [fileID])
         if wasCurrent { restartWorker() }
@@ -61,6 +72,7 @@ final class ImportQueue: ImportQueueing {
         guard let index = files.firstIndex(where: { $0.id == fileID }) else { return }
         forgetResults(of: [fileID])
         files[index].state = .waiting
+        log("Queued again", for: files[index])
         startWorkerIfNeeded()
     }
 
@@ -71,6 +83,7 @@ final class ImportQueue: ImportQueueing {
             case .waiting, .reading:
                 cancelledCurrent = cancelledCurrent || files[index].id == currentFileID
                 files[index].state = .cancelled
+                log("Cancelled", for: files[index])
             case .done, .failed, .cancelled:
                 break
             }
@@ -83,6 +96,7 @@ final class ImportQueue: ImportQueueing {
         let removedCurrent = currentFileID.map(ids.contains) ?? false
         forgetResults(of: ids)
         files.removeAll { ids.contains($0.id) }
+        logEntries.removeAll { $0.projectID == projectID }
         if removedCurrent { restartWorker() }
     }
 
@@ -122,7 +136,11 @@ final class ImportQueue: ImportQueueing {
     }
 
     private func read(_ file: ImportFile) async {
+        // Files from the file picker are sandbox-scoped and unreadable without this; dropped files return false.
+        let scoped = file.url.startAccessingSecurityScopedResource()
+        defer { if scoped { file.url.stopAccessingSecurityScopedResource() } }
         setState(.reading(progress: nil), for: file.id)
+        log("Started reading", for: file)
         do {
             switch file.kind {
             case .legend:
@@ -130,21 +148,43 @@ final class ImportQueue: ImportQueueing {
                 guard isCurrent(file.id) else { return }
                 legendsByFile[file.id] = legend
                 setState(.done(booths: 0, doors: 0), for: file.id)
+                let names = legend.entries.map(\.name).joined(separator: ", ")
+                log("Legend read: \(legend.entries.count) entries (\(names))", for: file)
             case .floorPlan:
-                let layout = try await readPlan(file)
+                var layout = try await readPlan(file)
                 guard isCurrent(file.id) else { return }
+                // Project setup finds a plan's layout by its file's ID, so Edit does nothing when they differ.
+                layout.layout.id = file.id
                 extractedLayouts[file.id] = layout
                 setState(.done(booths: layout.booths, doors: layout.doors), for: file.id)
+                log("Done: \(layout.booths) booths, \(layout.doors) doors", for: file)
             }
         } catch {
             guard isCurrent(file.id) else { return }
-            let noun = file.kind == .legend ? "legend" : "plan"
-            setState(.failed(message: "Couldn't read this \(noun)"), for: file.id)
+            setState(.failed(message: Self.failureMessage(for: error, kind: file.kind)), for: file.id)
+            log("Failed: \(error)", for: file, severity: .failure)
+        }
+    }
+
+    private static func failureMessage(for error: Error, kind: ImportFileKind) -> String {
+        switch error {
+        case PDFImportError.unreadable:
+            return "Can't open this PDF. It may be damaged or password-protected."
+        case PDFImportError.noPermission:
+            return "No permission to read this file. Try adding it again, or move it to another folder."
+        case FloorPlanReadingError.noLegend:
+            return "No legend has been read yet. Add a legend, then retry."
+        case FloorPlanReadingError.noBooths:
+            return "No booths found. Check that this is a floor plan with booths drawn on it."
+        default:
+            let noun = kind == .legend ? "legend" : "plan"
+            return "Something went wrong while reading this \(noun). Try again."
         }
     }
 
     private func readLegend(_ file: ImportFile) async throws -> Legend {
-        let page = try pdf.renderFirstPage(of: file.url)
+        let page = try renderPage(of: file.url, loggedFor: file)
+        log("Reading legend entries", for: file)
         return try await reader.readLegend(page)
     }
 
@@ -153,26 +193,63 @@ final class ImportQueue: ImportQueueing {
             guard legendFile.kind == .legend, let legend = legendsByFile[legendFile.id] else { return nil }
             return (legendFile, legend)
         }
-        guard !readLegends.isEmpty else { throw PDFImportError.unreadable }
-        let page = try pdf.renderFirstPage(of: file.url)
-        let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend)) ?? 0
-        let chosen = readLegends[match]
-        let legendPage = try pdf.renderFirstPage(of: chosen.file.url)
-        let fileID = file.id
+        guard !readLegends.isEmpty else {
+            log("No legend has been read for this project", for: file, severity: .failure)
+            throw FloorPlanReadingError.noLegend
+        }
+        let page = try renderPage(of: file.url, loggedFor: file)
+        let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend))
+        let chosen = readLegends[match ?? 0]
+        let legendName = chosen.file.url.lastPathComponent
+        log(match == nil ? "No legend colours found, using \(legendName)" : "Matched \(legendName)", for: file)
+        let legendScoped = chosen.file.url.startAccessingSecurityScopedResource()
+        defer { if legendScoped { chosen.file.url.stopAccessingSecurityScopedResource() } }
+        let legendPage = try renderPage(of: chosen.file.url, loggedFor: file)
+        log("Reading plan", for: file)
         return try await reader.readPlan(
             page,
             legendPage: legendPage,
             legend: chosen.legend,
             name: file.url.deletingPathExtension().lastPathComponent
-        ) { [weak self] progress in
-            Task { @MainActor in self?.reportProgress(progress, for: fileID) }
+        ) { [weak self] event in
+            self?.handle(event, for: file)
         }
     }
 
-    private func reportProgress(_ progress: Double, for fileID: UUID) {
-        guard let index = files.firstIndex(where: { $0.id == fileID }),
-              case .reading = files[index].state else { return }
+    private func renderPage(of url: URL, loggedFor file: ImportFile) throws -> CGImage {
+        let page = try pdf.renderFirstPage(of: url)
+        log("Rendered \(url.lastPathComponent), \(page.width) x \(page.height) px", for: file)
+        return page
+    }
+
+    /// Dropped once the file was removed or cancelled, so a stopped read leaves nothing after its last log line.
+    private func handle(_ event: PlanReadingEvent, for file: ImportFile) {
+        guard isCurrent(file.id) else { return }
+        switch event {
+        case .progress(let progress):
+            reportProgress(progress, for: file)
+        case .note(let note):
+            log(note, for: file)
+        }
+    }
+
+    private func reportProgress(_ progress: Double, for file: ImportFile) {
+        guard let index = files.firstIndex(where: { $0.id == file.id }),
+              case .reading(let previous) = files[index].state else { return }
         files[index].state = .reading(progress: progress)
+        let quarter = Int(progress * 4)
+        if quarter > Int((previous ?? 0) * 4) { log("Extractor at \(quarter * 25)%", for: file) }
+    }
+
+    private func log(_ message: String, for file: ImportFile, severity: ImportLogEntry.Severity = .info) {
+        logEntries.append(ImportLogEntry(
+            date: .now,
+            projectID: file.projectID,
+            fileName: file.url.lastPathComponent,
+            message: message,
+            severity: severity
+        ))
+        if logEntries.count > logLimit { logEntries.removeFirst(logEntries.count - logLimit) }
     }
 
     /// False once the file was removed or cancelled while the reader was still running.

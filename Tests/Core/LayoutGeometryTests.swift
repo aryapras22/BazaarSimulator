@@ -104,4 +104,35 @@ struct LayoutGeometryTests {
 
         #expect(LayoutValidator.issues(in: layout).filter { $0.kind == .overlappingObjects }.isEmpty)
     }
+
+    @Test("A round footprint holds points on its oval but not the corners of its box")
+    func roundFootprintContainment() {
+        let oval = Placement(center: .zero, sizeM: SIMD2<Double>(4, 2), shape: .round)
+        let box = Placement(center: .zero, sizeM: SIMD2<Double>(4, 2))
+
+        #expect(LayoutGeometry.contains(oval, point: SIMD2<Double>(1.9, 0)))
+        #expect(LayoutGeometry.contains(oval, point: SIMD2<Double>(0, 0.95)))
+        #expect(!LayoutGeometry.contains(oval, point: SIMD2<Double>(1.8, 0.8)))
+        #expect(LayoutGeometry.contains(box, point: SIMD2<Double>(1.8, 0.8)))
+    }
+
+    @Test("A round column misses a box corner its bounding box hits, and two columns overlap by their shared depth")
+    func roundFootprintOverlap() {
+        let box = Placement(center: SIMD2<Double>(1, 1), sizeM: SIMD2<Double>(2, 2))
+        let nearCorner = Placement(center: SIMD2<Double>(2.8, 2.8), sizeM: SIMD2<Double>(2, 2), shape: .round)
+        let column = Placement(center: .zero, sizeM: SIMD2<Double>(2, 2), shape: .round)
+        let neighbour = Placement(center: SIMD2<Double>(1.5, 0), sizeM: SIMD2<Double>(2, 2), shape: .round)
+
+        #expect(!LayoutGeometry.intersects(box, nearCorner))
+        #expect(abs(LayoutGeometry.overlapDepth(column, neighbour) - 0.5) < 0.05)
+    }
+
+    @Test("A placement saved before shapes existed reads as a rectangle")
+    func placementWithoutShapeDecodesAsRect() throws {
+        let json = Data(#"{"center":[1,2],"sizeM":[3,4],"rotationRadians":0}"#.utf8)
+
+        let placement = try JSONDecoder().decode(Placement.self, from: json)
+
+        #expect(placement.shape == .rect)
+    }
 }

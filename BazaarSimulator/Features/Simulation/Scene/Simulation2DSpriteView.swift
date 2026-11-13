@@ -78,7 +78,9 @@ final class Venue2DScene: SKScene {
     private let heatmapSprite = SKSpriteNode()
     private let objectLayer = SKNode()
     private let visitorLayer = SKNode()
-    private var visitorNodes: [Int: SKShapeNode] = [:]
+    private var visitorNodes: [Int: SKSpriteNode] = [:]
+    private var lastHeatmapCells: [DensityCell] = []
+    private lazy var visitorDotTexture = VisitorDots.makeTexture()
 
     override func didMove(to view: SKView) {
         backgroundColor = NSColor(calibratedRed: 0.06, green: 0.08, blue: 0.14, alpha: 1.0)
@@ -121,6 +123,7 @@ final class Venue2DScene: SKScene {
             rebuildStaticLayout(layout)
             visitorNodes.removeAll()
             visitorLayer.removeAllChildren()
+            lastHeatmapCells = []
             let fallbackSize = (size.width > 80 && size.height > 80) ? size : CGSize(width: 1000, height: 700)
             fitCamera(to: layout, viewSize: fallbackSize)
         }
@@ -243,6 +246,9 @@ final class Venue2DScene: SKScene {
         case .seating:
             node.fillColor = NSColor(calibratedRed: 0.35, green: 0.24, blue: 0.50, alpha: 0.75)
             node.strokeColor = .clear
+        case .entertainment:
+            node.fillColor = NSColor(calibratedRed: 0.90, green: 0.55, blue: 0.20, alpha: 1.0)
+            node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
         case .door:
             let isExit = object.doorFlow?.direction == .exit
             node.fillColor = isExit ? NSColor.systemRed : NSColor.systemGreen
@@ -254,11 +260,17 @@ final class Venue2DScene: SKScene {
         return node
     }
 
-    // MARK: - Smooth 10x10 per m² Radial Heatmap Overlay (Matching 3D View)
+    // MARK: - Smooth Radial Heatmap Overlay (Matching 3D View)
 
     private func updateSmoothHeatmap(cells: [DensityCell], showHeatmap: Bool, layout: Layout) {
-        guard showHeatmap, !cells.isEmpty,
-              let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells) else {
+        guard showHeatmap, !cells.isEmpty else {
+            heatmapSprite.isHidden = true
+            return
+        }
+        heatmapSprite.isHidden = false
+        guard cells != lastHeatmapCells else { return }
+        lastHeatmapCells = cells
+        guard let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells) else {
             heatmapSprite.isHidden = true
             return
         }
@@ -271,11 +283,10 @@ final class Venue2DScene: SKScene {
         heatmapSprite.texture = texture
         heatmapSprite.size = CGSize(width: worldW, height: worldH)
         heatmapSprite.position = CGPoint(x: worldW / 2, y: worldH / 2)
-        heatmapSprite.isHidden = false
     }
 
     private func renderSmoothHeatmapCGImage(for layout: Layout, cells: [DensityCell]) -> CGImage? {
-        let pixelsPerMetre = 10.0
+        let pixelsPerMetre = 5.0
         let texWidth = max(10, Int(ceil(layout.sizeM.x * pixelsPerMetre)))
         let texHeight = max(10, Int(ceil(layout.sizeM.y * pixelsPerMetre)))
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -324,14 +335,14 @@ final class Venue2DScene: SKScene {
         // Clear booth and obstacle footprints from the heatmap texture so it never bleeds into booths
         context.setBlendMode(.clear)
         for object in layout.objects where object.kind.blocksWalking {
-            let cx = CGFloat(object.placement.center.x * pixelsPerMetre)
-            let cy = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
-            let w = CGFloat(object.placement.sizeM.x * pixelsPerMetre)
-            let h = CGFloat(object.placement.sizeM.y * pixelsPerMetre)
+            let centerX = CGFloat(object.placement.center.x * pixelsPerMetre)
+            let centerY = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
+            let width = CGFloat(object.placement.sizeM.x * pixelsPerMetre)
+            let height = CGFloat(object.placement.sizeM.y * pixelsPerMetre)
             context.saveGState()
-            context.translateBy(x: cx, y: cy)
+            context.translateBy(x: centerX, y: centerY)
             context.rotate(by: CGFloat(-object.placement.rotationRadians))
-            context.fill(CGRect(x: -w / 2, y: -h / 2, width: w, height: h))
+            context.fill(CGRect(x: -width / 2, y: -height / 2, width: width, height: height))
             context.restoreGState()
         }
 
@@ -364,37 +375,22 @@ final class Venue2DScene: SKScene {
             visitorNodes.removeValue(forKey: id)
         }
 
-        let dotRadius = pointsPerMetre * 0.28
+        let dotSize = CGSize(width: pointsPerMetre * 0.56, height: pointsPerMetre * 0.56)
         for visitor in visitors {
             let targetPos = toScene(visitor.position, in: layout)
+            let color = VisitorDots.color(for: visitor.state)
 
             if let existing = visitorNodes[visitor.id] {
-                existing.fillColor = visitorColor(for: visitor.state)
-                let dist = hypot(targetPos.x - existing.position.x, targetPos.y - existing.position.y)
-                if dist > 0.1 && dist < pointsPerMetre * 6.0 {
-                    existing.run(SKAction.move(to: targetPos, duration: 0.055), withKey: "move")
-                } else {
-                    existing.removeAction(forKey: "move")
-                    existing.position = targetPos
-                }
+                existing.position = targetPos
+                if existing.color != color { existing.color = color }
             } else {
-                let created = SKShapeNode(circleOfRadius: dotRadius)
-                created.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.75)
-                created.lineWidth = 0.8
+                let created = SKSpriteNode(texture: visitorDotTexture, size: dotSize)
+                created.colorBlendFactor = 1
+                created.color = color
                 created.position = targetPos
-                created.fillColor = visitorColor(for: visitor.state)
                 visitorLayer.addChild(created)
                 visitorNodes[visitor.id] = created
             }
-        }
-    }
-
-    private func visitorColor(for state: VisitorState) -> NSColor {
-        switch state {
-        case .walking: return .systemBlue
-        case .queueing: return .systemOrange
-        case .browsing: return .systemPurple
-        case .exiting: return .systemGreen
         }
     }
 }

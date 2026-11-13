@@ -69,7 +69,7 @@ enum LayoutHitTester {
         switch kind {
         case .closedArea: return 0
         case .wall, .block, .seating: return 1
-        case .booth, .table: return 2
+        case .booth, .table, .entertainment: return 2
         case .door: return 3
         }
     }

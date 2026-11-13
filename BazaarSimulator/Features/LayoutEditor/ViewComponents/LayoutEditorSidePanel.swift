@@ -10,10 +10,8 @@ struct LayoutEditorSidePanel: View {
 
             if viewModel.inspectorPanelTab == .library {
                 LibraryPanel(
-                    layer: viewModel.activeLayer,
                     rows: viewModel.libraryRows,
                     searchText: $viewModel.librarySearch,
-                    selectedCategory: $viewModel.libraryCategory,
                     onSelect: { viewModel.startPlacing($0) }
                 )
             } else {
@@ -21,7 +19,8 @@ struct LayoutEditorSidePanel: View {
                     nameRows: viewModel.nameGroupRows,
                     sizeRows: viewModel.sizeGroupRows,
                     onHover: { viewModel.hoveredGroup = $0 },
-                    onSelect: { viewModel.selectGroup($0) }
+                    onSelect: { viewModel.selectGroup($0) },
+                    onDeleteGroup: { viewModel.requestDeleteGroup($0) }
                 )
             }
         }
@@ -38,11 +37,17 @@ struct LayoutEditorSidePanel: View {
 
     private var header: some View {
         HStack(spacing: Spacing.s) {
-            SegmentedTabs(
-                selection: $viewModel.inspectorPanelTab,
-                tabs: InspectorPanelTab.allCases,
-                title: \.title
-            )
+            if viewModel.activeLayer == .booths {
+                SegmentedTabs(
+                    selection: $viewModel.inspectorPanelTab,
+                    tabs: InspectorPanelTab.allCases,
+                    title: \.title
+                )
+            } else {
+                Text(InspectorPanelTab.library.title)
+                    .font(Typography.inspectorLabel)
+                    .foregroundStyle(Palette.textPrimary)
+            }
 
             Spacer(minLength: 0)
 

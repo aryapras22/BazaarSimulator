@@ -2,7 +2,13 @@ import Foundation
 import simd
 
 enum ObjectCatalog {
-    static let items: [CatalogItem] = structureItems + furnitureItems
+    static let items: [CatalogItem] = structureItems + furnitureItems + entertainmentItems
+    static let columnID = "column"
+
+    /// The furniture the library offers. Imported tables of other models still resolve through `items`.
+    static let libraryItems: [CatalogItem] = structureItems
+        + furnitureItems.filter { $0.id == "table-rect-4" || $0.id == FurnitureModels.seatingBlockID }
+        + entertainmentItems
 
     static func item(_ id: String) -> CatalogItem? {
         items.first { $0.id == id }
@@ -51,6 +57,39 @@ enum ObjectCatalog {
         seats: FurnitureModels.gridOffsets(for: FurnitureModels.seatingBlockSizeM)
     )
 
+    static let entertainmentID = "entertainment"
+
+    /// One object for every attraction: a stage, photobooth, competition area or display.
+    static let entertainmentItems: [CatalogItem] = [
+        CatalogItem(
+            id: entertainmentID, name: "Entertainment", category: .entertainment, kind: .entertainment,
+            sizeM: SIMD2(4, 3), heightM: 0.6, footprint: .rect,
+            resize: .free, placement: .point,
+            keywords: ["entertainment", "attraction", "stage", "photobooth", "competition", "display"], seats: []
+        )
+    ]
+
+    private static let entertainmentWords = ["stage", "photo", "competition", "lomba", "display"]
+
+    /// Whether a plan label names an attraction, such as "PHOTO BOX" or "Stage".
+    static func namesEntertainment(_ label: String) -> Bool {
+        let lowered = label.lowercased()
+        return entertainmentWords.contains { lowered.contains($0) }
+    }
+
+    /// An entertainment object read from a plan, at the default attractiveness.
+    static func detectedEntertainment(label: String, placement: Placement) -> LayoutObject {
+        LayoutObject(
+            kind: .entertainment,
+            label: label,
+            placement: placement,
+            reviewState: .detected,
+            catalogID: entertainmentID,
+            heightM: item(entertainmentID)?.heightM,
+            attractiveness: LayoutObjectKind.entertainment.defaultAttractiveness
+        )
+    }
+
     static let structureItems: [CatalogItem] = [
         CatalogItem(
             id: "wall", name: "Wall", category: .structure, kind: .wall,
@@ -65,13 +104,19 @@ enum ObjectCatalog {
             keywords: ["block", "concrete", "barrier", "cube"], seats: []
         ),
         CatalogItem(
+            id: columnID, name: "Column", category: .structure, kind: .block,
+            sizeM: SIMD2(0.6, 0.6), heightM: 3.0, footprint: .circle,
+            resize: .free, placement: .point,
+            keywords: ["column", "pillar", "post", "round", "circle"], seats: []
+        ),
+        CatalogItem(
             id: "door", name: "Door", category: .structure, kind: .door,
             sizeM: SIMD2(0.9, 0.2), heightM: 2.1, footprint: .rect,
             resize: .none, placement: .door,
             keywords: ["door", "entrance", "exit", "opening"], seats: []
         ),
         CatalogItem(
-            id: "blocked-area", name: "Blocked area", category: .structure, kind: .closedArea,
+            id: "blocked-area", name: "Restricted area", category: .structure, kind: .closedArea,
             sizeM: SIMD2(2.0, 2.0), heightM: 0.05, footprint: .rect,
             resize: .free, placement: .drawArea,
             keywords: ["blocked", "restricted", "closed", "void", "hazard"], seats: []

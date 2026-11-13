@@ -104,7 +104,7 @@ enum LayoutValidator {
     ) -> [LayoutIssue] {
         var issues: [LayoutIssue] = []
         let blockingObjects = layout.objects.filter(\.kind.blocksWalking)
-        for booth in layout.objects where booth.kind == .booth {
+        for booth in layout.objects where booth.kind.hasOpenSides {
             if booth.openSides.isEmpty {
                 issues.append(
                     LayoutIssue(

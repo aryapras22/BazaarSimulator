@@ -19,9 +19,9 @@ struct LegendEntryRow: View {
 
             Spacer()
 
-            Picker("Booth type", selection: typeSelection) {
+            Picker("Category", selection: typeSelection) {
                 if type == nil {
-                    Text("Choose type").tag(BoothType?.none)
+                    Text("Category").tag(BoothType?.none)
                 }
                 ForEach(BoothType.allCases, id: \.self) { option in
                     Text(option.displayName).tag(Optional(option))
@@ -30,7 +30,7 @@ struct LegendEntryRow: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
-            .accessibilityLabel("Booth type for \(name)")
+            .accessibilityLabel("Category for \(name)")
 
             Button("Remove", action: onRemove)
                 .buttonStyle(.removePill)
@@ -52,7 +52,7 @@ struct LegendEntryRow: View {
 #Preview {
     VStack(spacing: Spacing.s) {
         LegendEntryRow(name: "Booth A", color: .red, type: .fnb, onTypeChange: { _ in }, onRemove: {})
-        LegendEntryRow(name: "Booth B", color: .green, type: .fashion, onTypeChange: { _ in }, onRemove: {})
+        LegendEntryRow(name: "Booth B", color: .green, type: .goods, onTypeChange: { _ in }, onRemove: {})
         LegendEntryRow(name: "Booth C", color: .yellow, type: nil, onTypeChange: { _ in }, onRemove: {})
     }
     .padding()

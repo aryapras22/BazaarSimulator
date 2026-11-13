@@ -1,7 +1,7 @@
 import Foundation
 
 /// A simple deterministic random number generator so simulation runs are repeatable.
-struct SeededRandom: Sendable {
+nonisolated struct SeededRandom: Sendable {
     private var state: UInt64
 
     init(seed: UInt64) {
@@ -29,6 +29,12 @@ struct SeededRandom: Sendable {
         let span = max(1, range.upperBound - range.lowerBound + 1)
         let offset = Int(nextDouble() * Double(span))
         return min(range.upperBound, range.lowerBound + offset)
+    }
+
+    /// Returns a normally distributed value with mean 0 and standard deviation 1 (Box-Muller).
+    mutating func nextGaussian() -> Double {
+        let radius = (-2 * log(max(0.000_001, 1.0 - nextDouble()))).squareRoot()
+        return radius * cos(2 * Double.pi * nextDouble())
     }
 
     /// Returns an exponentially distributed wait time for a given rate.

@@ -5,7 +5,7 @@ import SwiftUI
 
 /// A SwiftUI NSViewRepresentable wrapper around SceneKit's SCNView.
 /// Supports native macOS trackpad orbit (drag), pan (two-finger/shift-drag), and zoom (scroll/pinch),
-/// and renders 3D visitor capsules plus a smooth 10x10-per-m² floor heatmap overlay.
+/// and renders 3D visitor capsules plus a smooth floor heatmap overlay.
 struct Simulation3DSceneView: NSViewRepresentable {
     let layout: Layout
     var visitors: [SimulatedVisitor] = []
@@ -32,6 +32,7 @@ struct Simulation3DSceneView: NSViewRepresentable {
             scnView.scene = VenueSceneBuilder.buildScene(from: layout)
             context.coordinator.visitorNodes.removeAll()
             context.coordinator.heatmapPlaneNode = nil
+            context.coordinator.lastHeatmapCells = []
         }
 
         guard let rootNode = scnView.scene?.rootNode else { return }
@@ -47,6 +48,24 @@ struct Simulation3DSceneView: NSViewRepresentable {
         var lastLayoutID: UUID?
         var visitorNodes: [Int: SCNNode] = [:]
         var heatmapPlaneNode: SCNNode?
+        var lastHeatmapCells: [DensityCell] = []
+        private var geometries: [VisitorState: SCNGeometry] = [:]
+
+        /// Every visitor in a state shares one low-poly capsule, which SceneKit can draw as a batch.
+        func geometry(for state: VisitorState, color: NSColor) -> SCNGeometry {
+            if let existing = geometries[state] { return existing }
+
+            let capsule = SCNCapsule(capRadius: 0.22, height: 1.3)
+            capsule.radialSegmentCount = 8
+            capsule.capSegmentCount = 3
+            capsule.heightSegmentCount = 1
+            let material = SCNMaterial()
+            material.diffuse.contents = color
+            material.lightingModel = .lambert
+            capsule.materials = [material]
+            geometries[state] = capsule
+            return capsule
+        }
     }
 
     // MARK: - Visitor Node Updates
@@ -59,37 +78,26 @@ struct Simulation3DSceneView: NSViewRepresentable {
             coordinator.visitorNodes.removeValue(forKey: id)
         }
 
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = 0.055
         for visitor in visitors {
             let targetPos = SCNVector3(
                 CGFloat(visitor.position.x),
                 0.65,
                 CGFloat(visitor.position.y)
             )
+            let geometry = coordinator.geometry(for: visitor.state, color: color(for: visitor.state))
             if let existing = coordinator.visitorNodes[visitor.id] {
-                SCNTransaction.begin()
-                SCNTransaction.animationDuration = 0.055
                 existing.position = targetPos
-                SCNTransaction.commit()
-                existing.geometry?.firstMaterial?.diffuse.contents = color(for: visitor.state)
+                if existing.geometry !== geometry { existing.geometry = geometry }
             } else {
-                let created = makeVisitorNode(for: visitor)
+                let created = SCNNode(geometry: geometry)
                 created.position = targetPos
                 rootNode.addChildNode(created)
                 coordinator.visitorNodes[visitor.id] = created
             }
         }
-    }
-
-    private func makeVisitorNode(for visitor: SimulatedVisitor) -> SCNNode {
-        let capsule = SCNCapsule(capRadius: 0.22, height: 1.3)
-        let material = SCNMaterial()
-        material.diffuse.contents = color(for: visitor.state)
-        material.lightingModel = .lambert
-        capsule.materials = [material]
-
-        let node = SCNNode(geometry: capsule)
-        node.name = "visitor-\(visitor.id)"
-        return node
+        SCNTransaction.commit()
     }
 
     private func color(for state: VisitorState) -> NSColor {
@@ -100,12 +108,14 @@ struct Simulation3DSceneView: NSViewRepresentable {
             return NSColor.systemOrange
         case .browsing:
             return NSColor.systemPurple
+        case .seated:
+            return NSColor.systemTeal
         case .exiting:
             return NSColor.systemGreen
         }
     }
 
-    // MARK: - Smooth 10x10 per m² Heatmap Plane
+    // MARK: - Smooth Heatmap Plane
 
     private func updateSmoothHeatmapOverlay(in rootNode: SCNNode, coordinator: Coordinator) {
         if !showHeatmap || densityCells.isEmpty {
@@ -124,6 +134,8 @@ struct Simulation3DSceneView: NSViewRepresentable {
         }
 
         planeNode.isHidden = false
+        guard densityCells != coordinator.lastHeatmapCells else { return }
+        coordinator.lastHeatmapCells = densityCells
         if let image = renderSmoothHeatmapImage(for: layout, cells: densityCells) {
             planeNode.geometry?.firstMaterial?.diffuse.contents = image
         }
@@ -150,9 +162,9 @@ struct Simulation3DSceneView: NSViewRepresentable {
         return node
     }
 
-    /// Renders a smooth heatmap texture at 10x10 pixels per m² (0.1m resolution) with radial gradients.
+    /// Renders a smooth heatmap texture at 5 pixels per metre with radial gradients.
     private func renderSmoothHeatmapImage(for layout: Layout, cells: [DensityCell]) -> NSImage? {
-        let pixelsPerMetre = 10.0
+        let pixelsPerMetre = 5.0
         let texWidth = max(10, Int(ceil(layout.sizeM.x * pixelsPerMetre)))
         let texHeight = max(10, Int(ceil(layout.sizeM.y * pixelsPerMetre)))
         let colorSpace = CGColorSpaceCreateDeviceRGB()

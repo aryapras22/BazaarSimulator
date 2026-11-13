@@ -2,11 +2,13 @@ import Foundation
 
 /// What a floor plan reader found, in pixels of the page image.
 /// Readers fill it, `ExtractedLayoutMapper` turns it into metres.
-struct DetectedPlan: Sendable, Equatable {
+struct DetectedPlan: Sendable, Equatable, Codable {
     var items: [DetectedItem]
+    /// The scale read from sizes printed on the plan, when it prints any.
+    var printedPixelsPerMetre: Double?
 }
 
-struct DetectedItem: Sendable, Equatable {
+struct DetectedItem: Sendable, Equatable, Codable {
     /// "Booth B" style names for booths, a legend label for other legend classes,
     /// otherwise wall, pillar, door, opening or object.
     var cls: String

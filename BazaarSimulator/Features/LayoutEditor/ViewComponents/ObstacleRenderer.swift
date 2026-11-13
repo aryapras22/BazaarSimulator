@@ -20,7 +20,7 @@ enum ObstacleRenderer {
         if object.kind == .wall, state.cornerExtensions.start > 0 || state.cornerExtensions.end > 0 {
             corners = WallCornerExtensions.extendedCorners(for: object, extensions: state.cornerExtensions)
         } else {
-            corners = LayoutGeometry.corners(of: object.placement)
+            corners = LayoutGeometry.outline(of: object.placement)
         }
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
@@ -45,7 +45,7 @@ enum ObstacleRenderer {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
 
-        if transform.scale >= 10.0, object.kind == .block {
+        if transform.scale >= 10.0, object.kind == .block, !object.isColumn {
             let centerView = transform.toView(object.placement.center)
             let labelColor = state.isSelected ? Color.white : strokeColor
             let text = Text(object.label)

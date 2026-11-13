@@ -8,7 +8,7 @@ struct LayoutObjectKindTests {
     func blockedAreaKindFacts() {
         let kind = LayoutObjectKind.closedArea
 
-        #expect(kind.displayName == "Blocked area")
+        #expect(kind.displayName == "Restricted area")
         #expect(kind.isMovable)
         #expect(kind.isResizable)
         #expect(kind.isRotatable)
@@ -26,10 +26,10 @@ struct LayoutObjectKindTests {
         #expect(LayoutObjectKind.booth.rotationStepDegrees == 90)
     }
 
-    @Test("Booths, blocks, blocked areas and seating resize by handles, walls, doors and tables do not")
+    @Test("Booths, blocks, blocked areas, seating and entertainment resize by handles, walls, doors and tables do not")
     func resizeHandleKinds() {
         #expect(LayoutObjectKind.allCases.filter(\.hasResizeHandles).map(\.rawValue).sorted()
-            == [LayoutObjectKind.block, .booth, .closedArea, .seating].map(\.rawValue).sorted())
+            == [LayoutObjectKind.block, .booth, .closedArea, .seating, .entertainment].map(\.rawValue).sorted())
     }
 
     @Test("Decoding old project without floor succeeds")
@@ -59,7 +59,7 @@ struct LayoutObjectKindTests {
         switch kind {
         case .wall, .block, .door, .closedArea:
             #expect(layer == .structure)
-        case .booth, .table, .seating:
+        case .booth, .table, .seating, .entertainment:
             #expect(layer == .booths)
         }
     }

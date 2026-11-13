@@ -26,6 +26,10 @@ struct PlanRowStatusView: View {
             Text(message)
                 .font(Typography.caption)
                 .foregroundColor(Palette.destructive)
+                .lineLimit(3)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 240, alignment: .trailing)
+                .help(message)
         case .cancelled(let text):
             Text(text)
                 .font(Typography.caption)

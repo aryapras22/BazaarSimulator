@@ -8,6 +8,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     case closedArea
     case table
     case seating
+    case entertainment
 
     var displayName: String {
         switch self {
@@ -15,9 +16,10 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .door: return "Door"
         case .wall: return "Wall"
         case .block: return "Block"
-        case .closedArea: return "Blocked area"
+        case .closedArea: return "Restricted area"
         case .table: return "Table"
         case .seating: return "Seating"
+        case .entertainment: return "Entertainment"
         }
     }
 
@@ -25,13 +27,18 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         switch self {
         case .wall, .block, .door, .closedArea:
             return .structure
-        case .booth, .table, .seating:
+        case .booth, .table, .seating, .entertainment:
             return .booths
         }
     }
 
     var isMovable: Bool {
         true
+    }
+
+    /// Columns, totems and voids can be round; booths, walls and doors keep square corners.
+    var canBeRound: Bool {
+        self == .block || self == .closedArea
     }
 
     /// A table takes its size from its standard model.
@@ -53,11 +60,11 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 
     var hasOpenSides: Bool {
-        self == .booth
+        self == .booth || self == .entertainment
     }
 
     var allowsMultipleOpenSides: Bool {
-        self == .booth
+        hasOpenSides
     }
 
     var blocksWalking: Bool {
@@ -69,7 +76,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var minimumDimensionM: Double {
         switch self {
-        case .booth, .closedArea, .table, .seating: return 0.5
+        case .booth, .closedArea, .table, .seating, .entertainment: return 0.5
         case .door: return 0.8
         case .wall, .block: return 0.1
         }
@@ -81,7 +88,16 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     /// Walls resize through their end nodes and doors are fitted to their wall, so neither gets box handles.
     var hasResizeHandles: Bool {
-        self == .closedArea || self == .booth || self == .block || self == .seating
+        self == .closedArea || self == .booth || self == .block || self == .seating || self == .entertainment
+    }
+
+    var hasAttractiveness: Bool {
+        self == .booth || self == .entertainment
+    }
+
+    /// Entertainment starts at the top of the scale. The user can lower it like a booth's.
+    var defaultAttractiveness: Double {
+        self == .entertainment ? 5 : 1
     }
 
     var isStructural: Bool {

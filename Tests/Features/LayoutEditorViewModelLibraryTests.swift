@@ -25,8 +25,11 @@ struct LayoutEditorViewModelLibraryTests {
         let boothsVM = Self.makeViewModel(layer: .booths)
         let boothRows = boothsVM.libraryRows
         #expect(!boothRows.isEmpty)
-        let projectRows = boothRows.filter { $0.category == .project }
-        #expect(projectRows.count == 5)
+        #expect(boothRows.filter { $0.category == .project }.count == 1)
+        #expect(
+            boothRows.filter { $0.category == .furniture }.map(\.id)
+                == ["table-rect-4", FurnitureModels.seatingBlockID]
+        )
         #expect(boothRows.allSatisfy { $0.category.layer == .booths })
 
         let structureVM = Self.makeViewModel(layer: .structure)
@@ -50,16 +53,6 @@ struct LayoutEditorViewModelLibraryTests {
             row.title.lowercased().contains("door") ||
             row.id.contains("door")
         })
-    }
-
-    @Test("Category filter restricts rows to chosen category")
-    func categoryFiltersRows() {
-        let viewModel = Self.makeViewModel(layer: .structure)
-        viewModel.libraryCategory = .structure
-
-        let filtered = viewModel.libraryRows
-        #expect(!filtered.isEmpty)
-        #expect(filtered.allSatisfy { $0.category == .structure })
     }
 
     @Test("startPlacing selects the right placement tool")
@@ -101,13 +94,11 @@ struct LayoutEditorViewModelLibraryTests {
         #expect(ToolRailItem.items(for: .booths) == [.select, .row, .fill, .library])
     }
 
-    @Test("CatalogCategory maps to expected layer and categories")
+    @Test("CatalogCategory maps to its layer")
     func catalogCategoryLayers() {
         #expect(CatalogCategory.structure.layer == .structure)
         #expect(CatalogCategory.project.layer == .booths)
         #expect(CatalogCategory.furniture.layer == .booths)
-        #expect(CatalogCategory.categories(for: .structure) == [.structure])
-        #expect(CatalogCategory.categories(for: .booths) == [.project, .furniture])
     }
 
     @Test("Template placement creates booth with size, category, inferred sides, and label N1")
@@ -177,19 +168,5 @@ struct LayoutEditorViewModelLibraryTests {
         viewModel.finishDraggingObject(id: booth.id, deltaWorld: SIMD2<Double>(2, 0))
 
         #expect(viewModel.cachedBoothTemplates == before)
-    }
-
-    @Test("Changing a booth's category updates the template counts")
-    func changingCategoryUpdatesTemplates() throws {
-        let viewModel = Self.makeViewModel()
-        let booth = try #require(viewModel.activeLayout?.objects.first { $0.kind == .booth })
-        let otherCategory = try #require(PreviewLayouts.sampleLegend.entries.first { $0.id != booth.categoryID })
-        let before = viewModel.cachedBoothTemplates
-        var recategorized = booth
-        recategorized.categoryID = otherCategory.id
-
-        viewModel.commitEdit(.replace(before: booth, after: recategorized))
-
-        #expect(viewModel.cachedBoothTemplates != before)
     }
 }

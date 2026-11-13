@@ -132,6 +132,17 @@ enum VenueSceneBuilder {
                 position: SCNVector3(posX, height / 2, posZ)
             )
 
+        case .entertainment:
+            let height = CGFloat(max(0.05, object.heightM ?? 1.0))
+            let color = NSColor(calibratedRed: 0.90, green: 0.55, blue: 0.20, alpha: 1.0)
+            node = makeBoxNode(
+                width: width,
+                height: height,
+                length: depth,
+                color: color,
+                position: SCNVector3(posX, height / 2, posZ)
+            )
+
         case .table:
             let height: CGFloat = 0.75
             let radius = min(width, depth) / 2

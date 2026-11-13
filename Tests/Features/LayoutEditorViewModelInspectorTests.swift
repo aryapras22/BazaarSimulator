@@ -20,18 +20,51 @@ struct LayoutEditorViewModelInspectorTests {
         #expect(context.viewModel.canUndo)
     }
 
-    @Test("A booth starts at attractiveness 1, a valid edit applies and a negative one does not")
+    @Test("A booth starts at attractiveness 1, a whole number from 1 to 5 applies and a negative or fractional one does not")
     func attractivenessEdit() throws {
         let context = LayoutEditorViewModelTests.makeContext()
         let booth = try #require(context.layout.objects.first { $0.kind == .booth })
         #expect(booth.attractiveness == 1)
 
         context.viewModel.selectObject(booth.id)
-        context.viewModel.editInspectorDraft { $0.attractiveness = 2.5 }
+        context.viewModel.editInspectorDraft { $0.attractiveness = 3 }
         context.viewModel.editInspectorDraft { $0.attractiveness = -1 }
+        context.viewModel.editInspectorDraft { $0.attractiveness = 2.5 }
 
         let edited = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
-        #expect(edited.attractiveness == 2.5)
+        #expect(edited.attractiveness == 3)
+    }
+
+    @Test("A block can be made round from the inspector, while a booth stays rectangular")
+    func inspectorShapeEdit() throws {
+        let structure = LayoutEditorViewModelTests.makeContext(layer: .structure)
+        let booths = LayoutEditorViewModelTests.makeContext()
+        let block = try #require(structure.layout.objects.first { $0.kind == .block })
+        let booth = try #require(booths.layout.objects.first { $0.kind == .booth })
+
+        structure.viewModel.selectObject(block.id)
+        structure.viewModel.editInspectorDraft { $0.shape = .round }
+        booths.viewModel.selectObject(booth.id)
+        booths.viewModel.editInspectorDraft { $0.shape = .round }
+
+        #expect(structure.viewModel.activeLayout?.objects.first { $0.id == block.id }?.placement.shape == .round)
+        #expect(booths.viewModel.activeLayout?.objects.first { $0.id == booth.id }?.placement.shape == .rect)
+    }
+
+    @Test("A block's label can be edited and titles its inspector, while a column shows no label field")
+    func blockLabelEdit() throws {
+        let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
+        let block = try #require(context.layout.objects.first { $0.kind == .block })
+        var column = block
+        column.catalogID = ObjectCatalog.columnID
+
+        context.viewModel.selectObject(block.id)
+        context.viewModel.editInspectorDraft { $0.label = "Ticket desk" }
+
+        #expect(context.viewModel.activeLayout?.objects.first { $0.id == block.id }?.label == "Ticket desk")
+        #expect(context.viewModel.inspectorTitle == "Ticket desk")
+        #expect(InspectorFields.forObject(block).showsLabel)
+        #expect(!InspectorFields.forObject(column).showsLabel)
     }
 
     @Test("Several edits to one object undo in one step")
@@ -133,7 +166,7 @@ struct LayoutEditorViewModelInspectorTests {
         viewModel.selectObject(area.id)
 
         #expect(viewModel.inspectorDraft?.kind == .closedArea)
-        #expect(viewModel.inspectorTitle == "Blocked area")
+        #expect(viewModel.inspectorTitle == "Restricted area")
     }
 
     @Test("Renaming a blocked area applies the label")

@@ -177,6 +177,9 @@ struct LayoutHeatmapCanvas: View {
                     with: .color(.white.opacity(0.45)),
                     lineWidth: 0.7
                 )
+            case .entertainment:
+                let entertainmentColor = Color(red: 0.90, green: 0.55, blue: 0.20).opacity(0.82)
+                context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(entertainmentColor))
             case .table:
                 context.fill(Path(ellipseIn: rect), with: .color(Color.gray.opacity(0.6)))
             case .seating:

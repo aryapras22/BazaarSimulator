@@ -66,7 +66,7 @@ enum OpenSideInference {
     ) -> (start: Double, end: Double)? {
         let isHorizontalSide = side == .top || side == .bottom
         let halfLength = (isHorizontalSide ? boothPlacement.sizeM.x : boothPlacement.sizeM.y) / 2.0
-        let localCorners = LayoutGeometry.corners(of: obstaclePlacement).map {
+        let localCorners = LayoutGeometry.outline(of: obstaclePlacement).map {
             LayoutGeometry.toLocal(point: $0, in: boothPlacement)
         }
         let coords = localCorners.map { isHorizontalSide ? $0.x : $0.y }

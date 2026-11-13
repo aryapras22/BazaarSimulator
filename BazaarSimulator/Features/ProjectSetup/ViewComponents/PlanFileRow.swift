@@ -25,10 +25,34 @@ struct PlanFileRow: View {
 
             PlanRowStatusView(status: display.status)
 
-            menuButton
+            if isInProgress {
+                cancelButton
+            } else {
+                menuButton
+            }
         }
         .padding(.vertical, Spacing.m)
         .frame(minHeight: 45)
+    }
+
+    private var isInProgress: Bool {
+        switch display.status {
+        case .reading, .waiting: true
+        case .done, .failed, .cancelled: false
+        }
+    }
+
+    private var cancelButton: some View {
+        Button(action: onDelete) {
+            Image(systemName: "xmark")
+                .font(Typography.body)
+                .foregroundColor(Palette.textSecondary)
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Cancel")
+        .accessibilityLabel("Cancel")
     }
 
     @ViewBuilder

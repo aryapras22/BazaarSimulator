@@ -5,6 +5,7 @@ import os
 
 enum FloorPlanReadingError: Error {
     case noBooths
+    case noLegend
 }
 
 struct ExtractorFloorPlanReader: FloorPlanReading {
@@ -42,36 +43,60 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         legendPage: CGImage,
         legend: Legend,
         name: String,
-        onProgress: @escaping @Sendable (Double) -> Void
+        onEvent: @escaping @MainActor @Sendable (PlanReadingEvent) -> Void
     ) async throws -> ExtractedLayout {
+        let detected = try await detectPlan(page, legendPage: legendPage) { progress in
+            Task { @MainActor in onEvent(.progress(progress)) }
+        }
+        let itemSummary = Self.itemSummary(of: detected)
+        onEvent(.note("Plan read: \(detected.items.count) items (\(itemSummary))"))
+        let printedScale = detected.printedPixelsPerMetre
+        guard let scale = printedScale ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
+            throw FloorPlanReadingError.noBooths
+        }
+        let scaleBasis = printedScale == nil ? "booth size" : "printed sizes"
+        let scaleText = scale.formatted(.number.precision(.fractionLength(1)))
+        onEvent(.note("Scale: \(scaleText) px per metre from \(scaleBasis)"))
+        let layout = ExtractedLayoutMapper.layout(
+            from: detected,
+            legend: legend,
+            pixelsPerMetre: scale,
+            name: name,
+            scaleBasis: scaleBasis
+        )
+        // Items that came in against what reached the layout, so a class the mapper discards shows up in the log.
+        Logger.reading.info("read \(detected.items.count) items (\(itemSummary)), kept \(layout.objects.count) objects")
+        onEvent(.note("Mapped to a layout: kept \(layout.objects.count) objects"))
+        return ExtractedLayout(layout: layout)
+    }
+
+    /// Everything read from the page before it is mapped to metres.
+    func detectPlan(
+        _ page: CGImage,
+        legendPage: CGImage,
+        onProgress: @escaping @Sendable (Double) -> Void = { _ in }
+    ) async throws -> DetectedPlan {
         let reading = try await PlanExtractor.plan(
             page,
             legend: legendPage,
             symbols: symbolStore.symbols,
             onProgress: onProgress
         )
-        let items = await PlanPrintedText.relabelingDecor(reading.items.map(Self.detectedItem), on: page)
-        let detected = DetectedPlan(items: items)
-        let printedScale = await PlanPrintedText.pixelsPerMetre(from: items, on: page)
-        guard let scale = printedScale ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected) else {
-            throw FloorPlanReadingError.noBooths
-        }
-        let layout = ExtractedLayoutMapper.layout(
-            from: detected,
-            legend: legend,
-            pixelsPerMetre: scale,
-            name: name,
-            scaleBasis: printedScale == nil ? "booth size" : "printed sizes"
+        let named = await PlanPrintedText.keepingNamedPaperWhiteBoxes(
+            reading.items.map(Self.detectedItem),
+            classNames: reading.legend.map(\.label),
+            on: page
         )
-        Self.logLedger(of: detected, layout: layout)
-        return ExtractedLayout(layout: layout)
+        let items = await PlanPrintedText.numberingBooths(named, on: page)
+        return DetectedPlan(
+            items: items,
+            printedPixelsPerMetre: await PlanPrintedText.pixelsPerMetre(from: items, on: page)
+        )
     }
 
-    /// Items that came in against what reached the layout, so a class the mapper discards shows up in the log.
-    private static func logLedger(of plan: DetectedPlan, layout: Layout) {
+    private static func itemSummary(of plan: DetectedPlan) -> String {
         let raw = Dictionary(grouping: plan.items) { $0.kind ?? $0.cls }.mapValues(\.count)
-        let summary = raw.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
-        Logger.reading.info("read \(plan.items.count) items (\(summary)), kept \(layout.objects.count) objects")
+        return raw.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
     }
 
     private static func detectedItem(_ item: PlanItem) -> DetectedItem {

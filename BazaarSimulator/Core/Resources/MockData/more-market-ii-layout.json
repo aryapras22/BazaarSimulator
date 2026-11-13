@@ -1,0 +1,395 @@
+{
+  "meta": {
+    "name": "MORE MARKET II",
+    "sheet": "MORE MARKET II",
+    "world": {
+      "w": 37.5,
+      "h": 37.5
+    },
+    "note": "Booths come from the colour-segmented JSON at 18.7 px per metre, which assumes gray booths are 3 by 2 m. The round room is squared off to its bounding square. The plan draws no entrance, so the gate is assumed at the red block at the bottom and the exit at the gap between the two green posts on the right. The hall and lobby are rectangles; walls, voids and rooms inside them are restricted areas. Booth sizes are rounded to 0.5 m."
+  },
+  "hall": [
+    [
+      1.0,
+      1.0
+    ],
+    [
+      36.5,
+      1.0
+    ],
+    [
+      36.5,
+      36.5
+    ],
+    [
+      1.0,
+      36.5
+    ]
+  ],
+  "lobby": [],
+  "doors": [],
+  "outerDoors": [],
+  "gates": [
+    {
+      "id": "Entrance",
+      "sx": 14.42,
+      "sy": 32.82
+    }
+  ],
+  "exitPt": {
+    "id": "Exit",
+    "sx": 34.5,
+    "sy": 17.9
+  },
+  "booths": [
+    {
+      "id": "G1",
+      "type": "goods",
+      "cx": 8.57,
+      "cy": 16.4,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G2",
+      "type": "goods",
+      "cx": 10.57,
+      "cy": 16.4,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G3",
+      "type": "goods",
+      "cx": 8.57,
+      "cy": 19.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G4",
+      "type": "goods",
+      "cx": 10.57,
+      "cy": 19.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G5",
+      "type": "goods",
+      "cx": 9.56,
+      "cy": 23.94,
+      "w": 3.0,
+      "h": 2.0
+    },
+    {
+      "id": "G6",
+      "type": "goods",
+      "cx": 8.57,
+      "cy": 26.43,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G7",
+      "type": "goods",
+      "cx": 10.57,
+      "cy": 26.46,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G8",
+      "type": "goods",
+      "cx": 10.57,
+      "cy": 29.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G9",
+      "type": "goods",
+      "cx": 8.57,
+      "cy": 29.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G10",
+      "type": "goods",
+      "cx": 14.58,
+      "cy": 29.44,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G11",
+      "type": "goods",
+      "cx": 14.58,
+      "cy": 15.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G12",
+      "type": "goods",
+      "cx": 16.59,
+      "cy": 15.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G13",
+      "type": "goods",
+      "cx": 14.58,
+      "cy": 18.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G14",
+      "type": "goods",
+      "cx": 16.59,
+      "cy": 18.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G15",
+      "type": "goods",
+      "cx": 14.58,
+      "cy": 21.43,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G16",
+      "type": "goods",
+      "cx": 16.59,
+      "cy": 21.43,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G17",
+      "type": "goods",
+      "cx": 14.56,
+      "cy": 26.45,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G18",
+      "type": "goods",
+      "cx": 16.59,
+      "cy": 26.48,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G19",
+      "type": "goods",
+      "cx": 16.61,
+      "cy": 29.45,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G21",
+      "type": "goods",
+      "cx": 21.61,
+      "cy": 15.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G22",
+      "type": "goods",
+      "cx": 21.61,
+      "cy": 18.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G23",
+      "type": "goods",
+      "cx": 21.61,
+      "cy": 21.43,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G24",
+      "type": "goods",
+      "cx": 21.59,
+      "cy": 26.45,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G25",
+      "type": "goods",
+      "cx": 21.61,
+      "cy": 29.48,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G26",
+      "type": "goods",
+      "cx": 23.62,
+      "cy": 15.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G27",
+      "type": "goods",
+      "cx": 23.62,
+      "cy": 18.41,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G28",
+      "type": "goods",
+      "cx": 23.62,
+      "cy": 21.43,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G29",
+      "type": "goods",
+      "cx": 23.65,
+      "cy": 26.48,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G30",
+      "type": "goods",
+      "cx": 23.65,
+      "cy": 29.48,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G31",
+      "type": "goods",
+      "cx": 27.66,
+      "cy": 16.4,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G32",
+      "type": "goods",
+      "cx": 27.66,
+      "cy": 19.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G33",
+      "type": "goods",
+      "cx": 28.65,
+      "cy": 23.89,
+      "w": 3.0,
+      "h": 2.0
+    },
+    {
+      "id": "G34",
+      "type": "goods",
+      "cx": 27.66,
+      "cy": 26.46,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G35",
+      "type": "goods",
+      "cx": 27.66,
+      "cy": 29.44,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G36",
+      "type": "goods",
+      "cx": 29.66,
+      "cy": 16.4,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G37",
+      "type": "goods",
+      "cx": 29.69,
+      "cy": 19.42,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G38",
+      "type": "goods",
+      "cx": 29.69,
+      "cy": 26.45,
+      "w": 2.0,
+      "h": 3.0
+    },
+    {
+      "id": "G39",
+      "type": "goods",
+      "cx": 29.66,
+      "cy": 29.42,
+      "w": 2.0,
+      "h": 3.0
+    }
+  ],
+  "tables": [],
+  "stage": {
+    "face": "y0",
+    "x0": 11.64,
+    "x1": 26.56,
+    "y0": 5.76,
+    "y1": 13.83
+  },
+  "columns": [],
+  "pilasters": [],
+  "fixtures": [
+    {
+      "label": "VIP",
+      "kind": "fixture",
+      "x0": 16.72,
+      "x1": 21.48,
+      "y0": 2.44,
+      "y1": 5.71
+    },
+    {
+      "label": "PHOTOBOOTH",
+      "kind": "fixture",
+      "x0": 17.63,
+      "x1": 20.63,
+      "y0": 33.03,
+      "y1": 35.01
+    },
+    {
+      "label": "GREEN BLOCK",
+      "kind": "fixture",
+      "x0": 32.82,
+      "x1": 34.32,
+      "y0": 15.01,
+      "y1": 16.4
+    },
+    {
+      "label": "GREEN BLOCK",
+      "kind": "fixture",
+      "x0": 32.87,
+      "x1": 34.32,
+      "y0": 19.4,
+      "y1": 20.84
+    }
+  ],
+  "closed": []
+}

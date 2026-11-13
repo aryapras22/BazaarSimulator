@@ -4,6 +4,14 @@ import Testing
 
 @Suite
 struct CategoryMatcherTests {
+    @Test("A legend entry starts as FNB when its name is food, and as Goods otherwise")
+    func defaultTypeIsFnbOrGoods() {
+        let color = LegendColor(red: 1, green: 0, blue: 0)
+        #expect(CategoryMatcher.defaultType(for: LegendEntry(name: "Food & Beverage", color: color)) == .fnb)
+        #expect(CategoryMatcher.defaultType(for: LegendEntry(name: "Fashion & Beauty", color: color)) == .goods)
+        #expect(CategoryMatcher.defaultType(for: LegendEntry(name: "Lifestyle & Hobbies", color: color)) == .goods)
+    }
+
     @Test("fnb matches Food & Beverage, F&B, and FNB case-insensitively")
     func fnbMatchesFoodNames() {
         let color = LegendColor(red: 1, green: 0, blue: 0)
