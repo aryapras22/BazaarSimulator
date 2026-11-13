@@ -4,17 +4,23 @@ import Foundation
 final class AppServices {
     let importQueue: any ImportQueueing
     let projectSession: any ProjectSessionProtocol
+    let analysisService: any AnalysisServiceProtocol
+    let presetCatalog: PresetCatalog
     let initialDestination: AppDestination
 
     init(
         importQueue: (any ImportQueueing)? = nil,
         projectSession: (any ProjectSessionProtocol)? = nil,
+        analysisService: (any AnalysisServiceProtocol)? = nil,
+        presetCatalog: PresetCatalog? = nil,
         seedsMockProject: Bool = false
     ) {
         let session = projectSession ?? ProjectSession()
         let queue = importQueue ?? ImportQueue(pdf: PDFImportService(), reader: ExtractorFloorPlanReader())
         self.importQueue = queue
         self.projectSession = session
+        self.analysisService = analysisService ?? AnalysisService()
+        self.presetCatalog = presetCatalog ?? PresetCatalog.bundled()
 
         // Each seed is read by its own scripted queue so that projects created afterwards go through the extractor.
         // Its finished files are copied into the app's queue, which is where project setup reads them.

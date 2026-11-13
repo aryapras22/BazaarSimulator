@@ -48,7 +48,7 @@ struct ExtractedLayoutMapperTruthTests {
         let detected = try TestFixtureLoader.load(DetectedPlan.self, from: "\(plan)-detected")
         let truthFile = try MockDataStore.load(BazaarLayoutDTO.self, from: "\(plan)-truth")
         let truth = MockLayoutMapper.layout(from: truthFile, legend: Legend())
-        let frame = try MockDataStore.load(PlanFrame.self, from: "\(plan)-frame")
+        let frame = try MockDataStore.load(MockPlanFrame.self, from: "\(plan)-frame")
         let readScale = detected.printedPixelsPerMetre ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected)
         guard let scale = readScale else { return nil }
 

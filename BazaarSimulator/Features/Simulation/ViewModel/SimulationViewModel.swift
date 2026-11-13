@@ -10,7 +10,7 @@ final class SimulationViewModel {
     let availableLayouts: [Layout]
     private var engine: any SimulationEngineProtocol
     private let onLayoutSelected: ((UUID) -> Void)?
-    private let resultProvider: ((UUID) -> SimulationResult?)?
+    private let resultProvider: ((UUID) -> RecordedSimulationResult?)?
     private let makeEngine: (Layout) -> any SimulationEngineProtocol
 
     private(set) var visitors: [SimulatedVisitor] = []
@@ -32,10 +32,10 @@ final class SimulationViewModel {
     init(
         layout: Layout,
         availableLayouts: [Layout] = [],
-        savedResult: SimulationResult? = nil,
+        savedResult: RecordedSimulationResult? = nil,
         makeEngine: @escaping (Layout) -> any SimulationEngineProtocol = { SimulationEngine(layout: $0) },
         onLayoutSelected: ((UUID) -> Void)? = nil,
-        resultProvider: ((UUID) -> SimulationResult?)? = nil
+        resultProvider: ((UUID) -> RecordedSimulationResult?)? = nil
     ) {
         self.layout = layout
         self.availableLayouts = availableLayouts.isEmpty ? [layout] : availableLayouts
@@ -202,7 +202,7 @@ final class SimulationViewModel {
         syncStateFromEngine()
     }
 
-    private func loadSavedResult(_ result: SimulationResult) {
+    private func loadSavedResult(_ result: RecordedSimulationResult) {
         recordedFrames = result.frames
         totalDurationSeconds = max(result.durationSeconds, result.frames.last?.elapsedSeconds ?? 0)
         startMinutesFromMidnight = result.startMinutesFromMidnight

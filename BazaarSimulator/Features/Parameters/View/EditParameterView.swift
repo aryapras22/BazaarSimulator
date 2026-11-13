@@ -292,7 +292,7 @@ struct EditParameterView: View {
         let endComps = Calendar.current.dateComponents([.hour, .minute], from: endTime)
         let startMins = (startComps.hour ?? 10) * 60 + (startComps.minute ?? 0)
         let rawEndMins = (endComps.hour ?? 21) * 60 + (endComps.minute ?? 0)
-        let updated = EventParameters(
+        let updated = ModalParameters(
             totalVisitors: totalVisitors,
             startMinutes: startMins,
             endMinutes: rawEndMins > startMins ? rawEndMins : startMins + 60,

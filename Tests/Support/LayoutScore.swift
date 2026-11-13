@@ -114,7 +114,7 @@ extension LayoutScore {
 }
 
 /// Where a truth file's metres sit on its plan image: pixel = (metres - 1) * pixelsPerMetre + origin.
-struct PlanFrame: Decodable {
+struct MockPlanFrame: Decodable {
     struct ImageSize: Decodable {
         let width: Double
         let height: Double

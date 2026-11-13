@@ -52,7 +52,7 @@ struct SimulationViewModelTests {
         let project = session.createProject(named: "Run")
         let layout = PreviewLayouts.smallMarket()
         session.setDraft(ProjectDraft(name: "Run", layouts: [layout]), for: project.id)
-        var parameters = EventParameters(totalVisitors: 20, startMinutes: 600, endMinutes: 615)
+        var parameters = ModalParameters(totalVisitors: 20, startMinutes: 600, endMinutes: 615)
         session.setParameters(parameters, for: project.id)
 
         session.runSimulations(for: project.id)
