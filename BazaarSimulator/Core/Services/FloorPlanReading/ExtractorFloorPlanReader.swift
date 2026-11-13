@@ -82,7 +82,12 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             symbols: symbolStore.symbols,
             onProgress: onProgress
         )
-        let items = await PlanPrintedText.relabelingDecor(reading.items.map(Self.detectedItem), on: page)
+        let named = await PlanPrintedText.keepingNamedPaperWhiteBoxes(
+            reading.items.map(Self.detectedItem),
+            classNames: reading.legend.map(\.label),
+            on: page
+        )
+        let items = await PlanPrintedText.numberingBooths(named, on: page)
         return DetectedPlan(
             items: items,
             printedPixelsPerMetre: await PlanPrintedText.pixelsPerMetre(from: items, on: page)
