@@ -90,9 +90,11 @@ struct VenueGeometryTests {
     func roundTable() {
         let table = object(.table, size: SIMD2(1.5, 1.5), catalogID: "table-round-6")
         let parts = VenueGeometry.blocks(for: table)
-        #expect(parts.count == 3 + 6 * 6)
+        #expect(parts.count == 3 + 3 + 6 * 2 + 6 * 6, "top and pedestal, cloth and vase, a setting and a chair per seat")
         #expect(parts[0].shape == .cylinder && parts[0].size.x == 1.5 && abs(top(parts[0]) - 0.75) < 0.001)
-        let backs = parts.filter { $0.size.y == 0.4 }
+        let backs = parts.filter { $0.size.y == 0.22 }
+        let plates = parts.filter { $0.size == SIMD3(0.2, 0.02, 0.2) }
+        #expect(plates.count == 6 && plates.allSatisfy { simd_length(SIMD2($0.center.x - 10, $0.center.z - 6)) < 0.75 }, "plates are on the table")
         #expect(backs.count == 6)
         let seats = parts.filter { $0.size == SIMD3(0.4, 0.05, 0.4) }
         for (seat, back) in zip(seats, backs) {
@@ -104,9 +106,9 @@ struct VenueGeometryTests {
     @Test("A rectangular table stands on four legs, and a table of no known model has no chairs")
     func rectTable() {
         let parts = VenueGeometry.blocks(for: object(.table, size: SIMD2(1.2, 0.7), catalogID: "table-rect-4"))
-        #expect(parts.count == 5 + 4 * 6)
+        #expect(parts.count == 5 + 1 + 4 * 2 + 4 * 6)
         #expect(parts[0].shape == .box && parts[0].size.x == 1.2)
-        #expect(VenueGeometry.blocks(for: object(.table)).count == 5)
+        #expect(VenueGeometry.blocks(for: object(.table)).count == 6)
     }
 
     @Test("Seating is rows of chairs on a mat, turned toward the stage they are given")
@@ -116,7 +118,7 @@ struct VenueGeometryTests {
         #expect(plain.count == 1 + 8 * 6)
         func backSide(_ parts: [VenueBlock]) -> SIMD2<Float> {
             let seat = parts.first { $0.size == SIMD3(0.4, 0.05, 0.4) }!
-            let back = parts.first { $0.size.y == 0.4 }!
+            let back = parts.first { $0.size.y == 0.22 }!
             return simd_normalize(SIMD2(back.center.x - seat.center.x, back.center.z - seat.center.z))
         }
         #expect(backSide(plain).y > 0.99, "with no stage the chairs face the top of the plan")
