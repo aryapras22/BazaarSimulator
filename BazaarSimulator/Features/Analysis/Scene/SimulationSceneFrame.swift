@@ -6,6 +6,8 @@ struct SimulationVenue {
     let id: UUID
     let blocks: [VenueBlock]
     let plan: PlanFrame
+    /// The middles of the booths and attractions, in layout meters. A visitor who stops turns to the nearest.
+    var attractions: [SIMD2<Float>] = []
 }
 
 /// What the 3D view shows at one moment. Positions are in layout meters.

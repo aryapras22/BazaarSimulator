@@ -229,7 +229,7 @@ final class Metal3DRenderer {
         draw(venueBoxes.buffer, count: venueBoxes.count, mesh: cube, uniforms: &uniforms, encoder: encoder)
         draw(venueCylinders.buffer, count: venueCylinders.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
         draw(venueWedges.buffer, count: venueWedges.count, mesh: wedge, uniforms: &uniforms, encoder: encoder)
-        let figures = figureInstances(frame.visitors)
+        let figures = figureInstances(frame.visitors, attractions: venue.attractions)
         draw(buffer(figures.bodies), count: figures.bodies.count, mesh: body, uniforms: &uniforms, encoder: encoder)
         draw(buffer(figures.heads), count: figures.heads.count, mesh: head, uniforms: &uniforms, encoder: encoder)
         draw(buffer(figures.limbs), count: figures.limbs.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)

@@ -160,6 +160,26 @@ struct Metal3DRendererTests {
         #expect(scrubbed.walk == 0 && scrubbed.phase == 0)
     }
 
+    @Test("A figure that stops turns to the nearest booth within reach, and looks away again when it walks on")
+    func gaitSettles() {
+        func stopped(near attractions: [SIMD2<Float>]) -> FigureGait {
+            var gait = FigureGait(at: .zero)
+            for step in 1...10 { gait.step(to: SIMD2(0, Float(step) * 0.1), seconds: 0.05) }
+            for _ in 0..<40 {
+                gait.step(to: SIMD2(0, 1), seconds: 0.05)
+                if gait.needsSettling { gait.settle(among: attractions) }
+            }
+            return gait
+        }
+        #expect(abs(stopped(near: []).heading) < 0.001, "with nothing near it keeps facing the way it walked")
+        #expect(abs(stopped(near: [SIMD2(30, 1)]).heading) < 0.001, "a booth out of reach is ignored")
+        var gait = stopped(near: [SIMD2(-2, 1), SIMD2(4, 1)])
+        #expect(abs(gait.heading + .pi / 2) < 0.001, "the nearer booth is toward -x")
+        #expect(!gait.needsSettling, "it chooses once")
+        for step in 1...20 { gait.step(to: SIMD2(0, 1 + Float(step) * 0.1), seconds: 0.05) }
+        #expect(abs(gait.heading) < 0.001, "walking on, it faces the way it goes")
+    }
+
     @Test("A walking figure's limbs lean and a standing one's hang straight")
     func figureLimbs() throws {
         let renderer = try #require(Metal3DRenderer())

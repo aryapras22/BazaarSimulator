@@ -45,6 +45,13 @@ enum VenueGeometry {
         return result
     }
 
+    /// The middle of every booth and attraction: the things a visitor stops to look at.
+    static func attractions(in layout: Layout) -> [SIMD2<Float>] {
+        layout.objects.filter { $0.kind == .booth || $0.kind == .entertainment }.map {
+            SIMD2(Float($0.placement.center.x), Float($0.placement.center.y))
+        }
+    }
+
     /// Everything one object is made of. A booth is a stall, a door is a frame with leaves, tables and
     /// seating come with their chairs, and an attraction is a stage, a photobooth or a display.
     static func blocks(for object: LayoutObject) -> [VenueBlock] {

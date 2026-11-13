@@ -17,6 +17,8 @@ struct FigureGait: Equatable {
     static let legSwing: Float = 0.6
     /// A move this long in one frame is the timeline being scrubbed, not a step.
     static let jump: Float = 3
+    /// A visitor who stops turns to a booth or attraction no farther off than this, in meters.
+    static let attentionReach: Float = 5
 
     /// Where the visitor last moved from, for working out its heading.
     private var anchor: SIMD2<Float>
@@ -28,6 +30,8 @@ struct FigureGait: Equatable {
     private(set) var phase: Float = 0
     /// 0 standing, 1 walking fully.
     private(set) var walk: Float = 0
+    /// Whether the figure has chosen what to look at since it last came to rest.
+    private(set) var isSettled = false
 
     init(at place: SIMD2<Float>) {
         anchor = place
@@ -59,9 +63,22 @@ struct FigureGait: Equatable {
         let isWalking = speed > 0.05
         walk = min(max(walk + (isWalking ? 1 : -1) * Self.easeRate * seconds, 0), 1)
         if isWalking {
+            isSettled = false
             let strides = min(max(speed / Self.strideLength, Self.cadence.lowerBound), Self.cadence.upperBound)
             phase = (phase + 2 * .pi * strides * seconds).truncatingRemainder(dividingBy: 2 * .pi)
         }
+    }
+
+    /// Whether the figure has just come to rest and has yet to choose what to look at.
+    var needsSettling: Bool { walk == 0 && !isSettled }
+
+    /// Called once the figure is at rest: it turns to the nearest of `attractions` within reach, or keeps
+    /// facing the way it was walking if none is.
+    mutating func settle(among attractions: [SIMD2<Float>]) {
+        isSettled = true
+        let nearest = attractions.min { simd_distance_squared($0, last) < simd_distance_squared($1, last) }
+        guard let nearest, simd_distance(nearest, last) <= Self.attentionReach, nearest != last else { return }
+        target = atan2(nearest.x - last.x, nearest.y - last.y)
     }
 
     /// How far the left leg is swung forward, in radians, for a figure `offset` radians out of step with

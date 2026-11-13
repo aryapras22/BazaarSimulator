@@ -204,7 +204,10 @@ final class SimulationPlayerViewModel {
     func venue() -> SimulationVenue? {
         if let cachedVenue { return cachedVenue }
         guard let layout else { return nil }
-        let venue = SimulationVenue(id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan)
+        let venue = SimulationVenue(
+            id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan,
+            attractions: VenueGeometry.attractions(in: layout)
+        )
         cachedVenue = venue
         return venue
     }

@@ -15,6 +15,8 @@ The usual way to animate a character is a skeleton with keyframed clips, blended
 5. Pose: the left leg leans by `sin(phase) × legSwing × walk`, the right leg by the opposite, and each arm opposite to the leg on its side. The body and head rise by `|sin(phase)|`, once per step.
 6. Pivot: the renderer can only lean a shape about its own middle. A leg should swing from the hip, so the code moves the leg's middle to where it would be if the leg hung from the hip at that angle: half a leg length down and back along the lean. The vertex shader then applies the lean (`tilt.x`) before turning the shape to its heading.
 
+7. Settling: the first frame a figure is fully at rest, it looks up the nearest booth or attraction within 5 m and makes that its target heading. The same turning rule then swings it round. The lookup happens once per stop, so a standing crowd costs nothing extra.
+
 ## Terms
 
 - Phase: where in a repeating cycle something is, as an angle.

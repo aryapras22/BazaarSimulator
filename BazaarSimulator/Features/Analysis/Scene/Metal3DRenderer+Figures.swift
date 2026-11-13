@@ -28,10 +28,11 @@ extension Metal3DRenderer {
     /// The parts of every person drawn at `now`, a time in seconds. One visitor alone stands on its spot. A
     /// group stands in a ring around it, turned by the visitor's id so groups do not all line up the same
     /// way, and every third member of a group of three or more is a child. A visitor that is moving walks:
-    /// its legs and arms swing and its body rises with each step. The body is the visitor type's color, the
+    /// its legs and arms swing and its body rises with each step. One that stops turns to face the nearest
+    /// of `attractions`. The body is the visitor type's color, the
     /// head a lighter tint of it so the type still reads from straight above, and the legs a darker shade.
     func figureInstances(
-        _ visitors: [SimulationSceneFrame.Visitor], now: Double = CACurrentMediaTime()
+        _ visitors: [SimulationSceneFrame.Visitor], attractions: [SIMD2<Float>] = [], now: Double = CACurrentMediaTime()
     ) -> FigureInstances {
         var figures = FigureInstances(bodies: [], heads: [], limbs: [])
         figures.bodies.reserveCapacity(visitors.count)
@@ -47,6 +48,7 @@ extension Metal3DRenderer {
             let place = SIMD2(Float(visitor.x), Float(visitor.z))
             var gait = gaits[visitor.id] ?? FigureGait(at: place)
             gait.step(to: place, seconds: seconds)
+            if gait.needsSettling { gait.settle(among: attractions) }
             seen[visitor.id] = gait
 
             let count = min(max(visitor.people, 1), Self.figuresPerGroup)
