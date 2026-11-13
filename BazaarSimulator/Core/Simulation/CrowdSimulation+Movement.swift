@@ -27,8 +27,8 @@ nonisolated struct CrowdPartyMotion {
 }
 
 nonisolated extension CrowdSimulation {
-    private static let chunkSize = 32
-    private static let minimumAgentsForThreads = 64
+    private static let chunkSize = CrowdParameters.parallelChunkSize
+    private static let minimumAgentsForThreads = CrowdParameters.minimumAgentsForThreads
 
     /// Share of walking speed left at this density, from the Weidmann curve. People squeeze past and never stop dead.
     static func crowdFactor(density: Double) -> Double {
@@ -55,6 +55,26 @@ nonisolated extension CrowdSimulation {
         let discriminant = linear * linear - 4 * quadratic * gap
         if discriminant < 0 { return .infinity }
         return (-linear - discriminant.squareRoot()) / (2 * quadratic)
+    }
+
+    /// Helbing Social Force between two pedestrians, weighted by directional field of view (anisotropy).
+    static func socialRepulsionForce(
+        offsetToNeighbor: SIMD2<Double>,
+        combinedRadius: Double,
+        forwardDirection: SIMD2<Double>
+    ) -> SIMD2<Double> {
+        let dist = simd_length(offsetToNeighbor)
+        guard dist > 1e-5 else { return .zero }
+        let awayUnit = -offsetToNeighbor / dist
+        let penetration = combinedRadius - dist
+        let magnitude = CrowdParameters.socialForceStrength * exp(penetration / CrowdParameters.socialForceRangeM)
+
+        // Anisotropic vision weight: stronger response to pedestrians in front than behind.
+        let forwardLen = simd_length(forwardDirection)
+        let cosTheta = forwardLen > 1e-4 ? simd_dot(forwardDirection / forwardLen, -awayUnit) : 1.0
+        let lambda = CrowdParameters.socialForceAnisotropyLambda
+        let directionalWeight = lambda + (1.0 - lambda) * ((1.0 + cosTheta) * 0.5)
+        return awayUnit * (magnitude * directionalWeight)
     }
 
     func moveAgents() {
@@ -129,24 +149,54 @@ nonisolated extension CrowdSimulation {
         switch party.state {
         case .walking:
             var speed = party.speed * world.cornerSpeedFactor(at: leader.position)
-            let farthest = party.members.dropFirst()
-                .filter { !$0.isSeated }
-                .map { simd_distance($0.position, leader.position) }
-                .max() ?? 0
-            if farthest > 3.2 {
-                speed *= 0.55
-            } else if farthest > 2.2 {
-                speed *= 0.85
-            }
+            speed *= groupLagFactor(for: party, leaderPosition: leader.position)
+            speed *= windowShoppingFactor(for: party, leaderPosition: leader.position)
+            speed *= fatigueFactor(for: party)
             return speed
         case .queueing:
             guard case .booth(let booth, _) = party.target, let field else { return 0 }
             let rank = max(0, queues[booth].firstIndex { $0 === party } ?? 0)
             let cost = Double(field.costs[world.cell(at: leader.position)])
-            return cost > queueSpot(booth: booth, rank: rank) + 0.15 ? min(party.speed, 0.9) : 0
+            let holdThreshold = queueSpot(booth: booth, rank: rank) + CrowdParameters.queueHoldToleranceM
+            return cost > holdThreshold ? min(party.speed, CrowdParameters.queueAdvanceMaxSpeed) : 0
         case .visiting, .seated:
             return 0
         }
+    }
+
+    /// Slows the party leader down when group members lag behind in busy corridors.
+    private func groupLagFactor(for party: CrowdParty, leaderPosition: SIMD2<Double>) -> Double {
+        guard party.members.count > 1 else { return 1.0 }
+        var farthest = 0.0
+        for member in party.members.dropFirst() where !member.isSeated {
+            farthest = max(farthest, simd_distance(member.position, leaderPosition))
+        }
+        if farthest > CrowdParameters.leaderFarLagDistanceM {
+            return CrowdParameters.leaderFarLagSpeedFactor
+        } else if farthest > CrowdParameters.leaderNearLagDistanceM {
+            return CrowdParameters.leaderNearLagSpeedFactor
+        }
+        return 1.0
+    }
+
+    /// Window-shopping rule: visitors gently slow down when walking right past an attractive booth.
+    private func windowShoppingFactor(for party: CrowdParty, leaderPosition: SIMD2<Double>) -> Double {
+        let radius = CrowdParameters.windowShoppingRadiusM
+        for (index, booth) in world.booths.enumerated()
+        where booth.pull >= CrowdParameters.windowShoppingMinPull && !party.visited.contains(index) {
+            if booth.footprint.distance(to: leaderPosition) <= radius {
+                return CrowdParameters.windowShoppingSpeedFactor
+            }
+        }
+        return 1.0
+    }
+
+    /// Fatigue rule: visitors who have spent a long time in the bazaar walk slightly slower.
+    private func fatigueFactor(for party: CrowdParty) -> Double {
+        let stayDuration = time - party.enteredAt
+        guard stayDuration > CrowdParameters.fatigueOnsetSeconds else { return 1.0 }
+        let extraHours = min(1.0, (stayDuration - CrowdParameters.fatigueOnsetSeconds) / 3600.0)
+        return 1.0 - (1.0 - CrowdParameters.fatigueMaxSlowdownFactor) * extraHours
     }
 
     /// Every velocity depends only on the state at the start of the step, so the agents can be
@@ -167,12 +217,20 @@ nonisolated extension CrowdSimulation {
                         walls: world.walls
                     )
                     guard let target = output.baseAddress else { return }
-                    DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+                    if chunks == 1 {
                         var neighbors: [CrowdNeighbor] = []
                         neighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
-                        for index in (chunk * chunkSize)..<min(count, (chunk + 1) * chunkSize)
-                        where !bodyBuffer[index].isSeated {
+                        for index in 0..<count where !bodyBuffer[index].isSeated {
                             target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighbors)
+                        }
+                    } else {
+                        DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+                            var neighbors: [CrowdNeighbor] = []
+                            neighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
+                            for index in (chunk * chunkSize)..<min(count, (chunk + 1) * chunkSize)
+                            where !bodyBuffer[index].isSeated {
+                                target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighbors)
+                            }
                         }
                     }
                 }
@@ -192,7 +250,7 @@ nonisolated extension CrowdSimulation {
         for other in nearby {
             let offset = bodies[other].position - bodies[index].position
             let distance = simd_length(offset)
-            let minimum = (bodies[index].radius + bodies[other].radius) * 0.97
+            let minimum = (bodies[index].radius + bodies[other].radius) * CrowdParameters.overlapSeparationFactor
 
             if distance <= 1e-4 {
                 bodies[index].position += SIMD2(Double(index % 3 - 1), Double(index % 5 - 2)) * 0.01
@@ -209,12 +267,16 @@ nonisolated extension CrowdSimulation {
 
     private func pushOffWalls(_ body: inout CrowdBody) {
         let distance = world.walls.wallDistance(at: body.position)
-        let wanted = body.radius * 0.85
+        let wanted = body.radius * CrowdParameters.wallClearanceFactor
         guard distance < wanted else { return }
         let gradient = world.walls.wallGradient(at: body.position)
         let length = simd_length(gradient)
-        guard length > 0 else { return }
-        body.position += gradient / length * min(wanted - distance, 0.25)
+        if length > 0 {
+            body.position += gradient / length * min(wanted - distance, CrowdParameters.maxWallPushPerStepM)
+        }
+        if !world.walls.isFree(body.position) {
+            body.position = world.nearestFreePoint(to: body.position)
+        }
     }
 
     /// Stepping into a one-way door from its wrong side is undone.

@@ -30,6 +30,24 @@ struct CrowdSimulationTests {
         #expect(leaving == .infinity)
     }
 
+    @Test("Helbing social repulsion force pushes away and is stronger for pedestrians in front than behind")
+    func socialRepulsionForceAnisotropy() {
+        let inFront = CrowdSimulation.socialRepulsionForce(
+            offsetToNeighbor: SIMD2(0.6, 0),
+            combinedRadius: 0.5,
+            forwardDirection: SIMD2(1, 0)
+        )
+        let behind = CrowdSimulation.socialRepulsionForce(
+            offsetToNeighbor: SIMD2(-0.6, 0),
+            combinedRadius: 0.5,
+            forwardDirection: SIMD2(1, 0)
+        )
+
+        #expect(inFront.x < 0)
+        #expect(behind.x > 0)
+        #expect(simd_length(inFront) > simd_length(behind))
+    }
+
     @Test("Families are two adults with one or two kids, and no party passes four people")
     func partyComposition() {
         let simulation = makeSimulation()
