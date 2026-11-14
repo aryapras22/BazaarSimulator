@@ -14,7 +14,7 @@ protocol SimulationEngineProtocol: AnyObject {
     func reset()
     func advance(realSeconds: Double, speed: Double)
     func fastForward(minutes: Int)
-    func runWithRecordedFootage(durationMinutes: Int, frameIntervalSeconds: Double) async -> SimulationResult
+    func runWithRecordedFootage(durationMinutes: Int, frameIntervalSeconds: Double) async -> RecordedSimulationResult
 }
 
 /// Runs the crowd model on one layout with a fixed step, and turns it into visitors, metrics and heatmaps.
@@ -84,7 +84,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     func runWithRecordedFootage(
         durationMinutes: Int = 0,
         frameIntervalSeconds: Double = 5.0
-    ) async -> SimulationResult {
+    ) async -> RecordedSimulationResult {
         reset()
         let job = CrowdRecordingJob(
             world: world,
@@ -142,7 +142,7 @@ private nonisolated struct CrowdRecordingJob: Sendable {
     let durationMinutes: Int
     let frameIntervalSeconds: Double
 
-    func run() -> SimulationResult {
+    func run() -> RecordedSimulationResult {
         let crowd = CrowdSimulation(world: world, settings: settings)
         var heatmap = CrowdHeatmap(sizeM: sizeM)
         var metrics = SimulationMetrics()
@@ -177,7 +177,7 @@ private nonisolated struct CrowdRecordingJob: Sendable {
             if stepIndex % 256 == 0 && Task.isCancelled { break }
         }
 
-        return SimulationResult(
+        return RecordedSimulationResult(
             layoutID: layoutID,
             layoutName: layoutName,
             durationSeconds: Double(durationMinutes * 60),
