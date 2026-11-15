@@ -6,17 +6,18 @@ import Observation
 final class DashboardViewModel {
     enum Phase: Equatable {
         case loading
-        case needsTwoLayouts(count: Int)
+        case needsLayouts(count: Int)
         case ready
     }
 
-    private struct InputSignature: Equatable {
-        let layouts: [Layout]
-        let legend: Legend
-        let parameters: EventParameters?
+    /// What the page shows: the project's latest analysis, or one saved run opened from the sidebar.
+    enum Source: Equatable {
+        case latest
+        case saved(SavedAnalysis.ID)
     }
 
     let projectID: UUID
+    let source: Source
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
@@ -27,6 +28,7 @@ final class DashboardViewModel {
 
     var tab: AnalysisTab = .congestionPoints
     var isParametersPresented: Bool = false
+    var isInsightsPresented: Bool = false
     private(set) var phase: Phase = .loading
     private(set) var isRunning = false
     private(set) var simulationResult: SimulationResult?
@@ -34,11 +36,11 @@ final class DashboardViewModel {
     private(set) var previewFrame = SimulationSceneFrame()
     private(set) var loadingProgress: Double = 0.0
     private var runTask: Task<Void, Never>?
-    private var activeRunID: UUID?
-    private var lastInputSignature: InputSignature?
+    private var runCount = 0
 
     init(
         projectID: UUID,
+        source: Source = .latest,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
@@ -48,6 +50,7 @@ final class DashboardViewModel {
         onEdit: @escaping (LayoutID) -> Void = { _ in }
     ) {
         self.projectID = projectID
+        self.source = source
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
@@ -55,10 +58,29 @@ final class DashboardViewModel {
         self.onBack = onBack
         self.onSimulate = onSimulate
         self.onEdit = onEdit
+        // A saved run is already complete, so its page shows it from the start and never waits to be told to load.
+        if case .saved(let id) = source { showSaved(id) }
     }
 
     var projectName: String {
         session.projects.first { $0.id == projectID }?.name ?? "Project"
+    }
+
+    /// A saved run is a record, so its parameters and layouts cannot be changed from it.
+    var canEdit: Bool { source == .latest }
+
+    /// The layouts the page shows, one or two.
+    var layoutIDs: [LayoutID] {
+        LayoutID.allCases.filter { simulationResult?.layouts[$0] != nil }
+    }
+
+    var isSingleLayout: Bool { layoutIDs.count == 1 }
+
+    var title: String {
+        guard case .saved(let id) = source, let saved = session.savedAnalysis(id: id, in: projectID) else {
+            return projectName
+        }
+        return "\(projectName) · \(saved.name)"
     }
 
     var peakHourText: String {
@@ -67,19 +89,24 @@ final class DashboardViewModel {
 
     // MARK: Running the simulation
 
-    /// Starts the simulation only when it has not started yet or the project's layouts/parameters changed.
-    func startSimulationIfNeeded() {
-        let current = currentInputSignature()
-        if lastInputSignature == current {
-            if runTask != nil || phase != .loading {
-                return
-            }
-        }
-        startSimulation()
+    /// What a result was made from. The page runs again only when these change, so coming back to it, or another
+    /// window opening over it, never throws away the analysis it is showing.
+    private struct Inputs: Equatable {
+        let parameters: EventParameters
+        let layouts: [Layout]
     }
 
-    /// Starts a run in the background. A run already under way is cancelled first.
+    private var currentInputs: Inputs { Inputs(parameters: currentParameters, layouts: comparedLayouts) }
+    private var shownInputs: Inputs?
+    private var runningInputs: Inputs?
+
+    /// Starts a run in the background. A run already under way is cancelled first, unless it is for the same
+    /// layouts and parameters, and a page that already shows them stays as it is.
     func startSimulation() {
+        if source == .latest {
+            if isRunning, runningInputs == currentInputs { return }
+            if !isRunning, simulationResult != nil, shownInputs == currentInputs { return }
+        }
         runTask?.cancel()
         let runID = UUID()
         activeRunID = runID
@@ -96,21 +123,29 @@ final class DashboardViewModel {
     }
 
     func runSimulation() async {
-        let runID = UUID()
-        activeRunID = runID
-        lastInputSignature = currentInputSignature()
-        await executeSimulation(runID: runID)
-    }
+        if case .saved(let id) = source {
+            showSaved(id)
+            return
+        }
+        if let saved = unchangedSavedAnalysis() {
+            simulationResult = SimulationResult(saved: saved, visitorTypes: catalog.visitorTypes)
+            shownInputs = currentInputs
+            phase = .ready
+            return
+        }
+        let inputs = currentInputs
 
-    private func executeSimulation(runID: UUID) async {
-        isRunning = true
+        runCount += 1
+        let run = runCount
         phase = .loading
-        loadingProgress = 0.0
-        preparePreviewVenue(for: nil)
+        isRunning = true
+        runningInputs = inputs
+        session.setAnalysisRunning(true, for: projectID)
         defer {
-            if activeRunID == runID {
+            if run == runCount {
                 isRunning = false
-                runTask = nil
+                runningInputs = nil
+                session.setAnalysisRunning(false, for: projectID)
             }
         }
         switch await SimulationLoader.load(
@@ -128,80 +163,85 @@ final class DashboardViewModel {
         case .needsLayouts(let count):
             guard activeRunID == runID, !Task.isCancelled else { return }
             simulationResult = nil
-            phase = .needsTwoLayouts(count: count)
+            phase = .needsLayouts(count: count)
         case .ready(let result):
             guard activeRunID == runID, !Task.isCancelled else { return }
             loadingProgress = 1.0
             simulationResult = result
+            shownInputs = inputs
             phase = .ready
+            record(result)
         case .cancelled:
             break
         }
     }
 
-    private func currentInputSignature() -> InputSignature {
-        let draft = session.draft(for: projectID)
-        let layouts = Array((draft?.layouts ?? []).prefix(LayoutID.allCases.count))
-        let legend = draft?.legend ?? Legend()
-        let parameters = fixedParameters ?? session.eventParameters(for: projectID)
-        return InputSignature(layouts: layouts, legend: legend, parameters: parameters)
-    }
-
-    private func preparePreviewVenue(for targetLayoutID: UUID?) {
-        let layouts = session.draft(for: projectID)?.layouts ?? []
-        let targetLayout = (targetLayoutID.flatMap { id in layouts.first { $0.id == id } }) ?? layouts.first
-        guard let targetLayout else {
-            previewVenue = nil
+    private func showSaved(_ id: SavedAnalysis.ID) {
+        guard let saved = session.savedAnalysis(id: id, in: projectID),
+              let result = SimulationResult(saved: saved, visitorTypes: catalog.visitorTypes)
+        else {
+            phase = .needsLayouts(count: 0)
             return
         }
-        if previewVenue?.id != targetLayout.id {
-            let grid = NavigationGrid(layout: targetLayout)
-            previewVenue = SimulationVenue(
-                id: targetLayout.id,
-                blocks: VenueGeometry.blocks(for: targetLayout),
-                plan: grid.plan,
-                attractions: VenueGeometry.attractions(in: targetLayout),
-                seats: VenueGeometry.seats(in: targetLayout)
-            )
-            previewFrame = SimulationSceneFrame()
-        } else if targetLayoutID == nil {
-            previewFrame = SimulationSceneFrame()
-        }
+        simulationResult = result
+        phase = .ready
     }
 
-    private func applyLiveVisitors(
-        _ visitors: [MeasuredVisitor],
-        layoutID: UUID,
-        progress: Double,
-        runID: UUID
-    ) {
-        guard phase == .loading, activeRunID == runID else { return }
-        loadingProgress = max(loadingProgress, progress)
-        if !visitors.isEmpty {
-            if previewVenue?.id != layoutID {
-                preparePreviewVenue(for: layoutID)
-            }
-            var frame = SimulationSceneFrame()
-            frame.visitors = visitors.map { visitor in
-                SimulationSceneFrame.Visitor(
-                    id: visitor.id,
-                    x: Double(visitor.position.x),
-                    z: Double(visitor.position.y),
-                    typeIndex: visitor.typeIndex,
-                    people: visitor.people,
-                    isSeated: visitor.isSeated
-                )
-            }
-            previewFrame = frame
-        }
+    private var currentParameters: EventParameters {
+        session.eventParameters(for: projectID) ?? catalog.defaultParameters()
     }
 
-    /// Closes the Parameters sheet without resetting an existing saved result.
+    private var comparedLayouts: [Layout] {
+        Array((session.draft(for: projectID)?.layouts ?? []).prefix(LayoutID.allCases.count))
+    }
+
+    /// The project's latest saved run, when it was made from the layouts and parameters now in the project. Opening
+    /// the page then shows it at once, also after the app was restarted, instead of simulating again.
+    private func unchangedSavedAnalysis() -> SavedAnalysis? {
+        let layouts = comparedLayouts
+        guard !layouts.isEmpty,
+              let latest = session.savedAnalyses(for: projectID).last,
+              latest.matches(parameters: currentParameters, layouts: layouts)
+        else { return nil }
+        return latest
+    }
+
+    /// Keeps a finished analysis as the next saved run in the sidebar.
+    private func record(_ result: SimulationResult) {
+        let ordered = LayoutID.allCases.filter { result.layouts[$0] != nil }
+        let layouts = ordered.compactMap { result.layouts[$0] }
+        let analyses = ordered.compactMap { result.analyses[$0] }
+        guard !ordered.isEmpty, analyses.count == ordered.count else { return }
+        session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: currentParameters,
+            peakMinute: result.schedule.peakMinute, in: projectID
+        )
+    }
+
+    /// Closes the Parameters sheet and runs the simulation again with whatever was applied.
     func closeParameters() {
         isParametersPresented = false
     }
 
     // MARK: Reading the result
+
+    /// The better layout, why, and the three checks behind it, for the summary under the cards.
+    var bestLayout: BestLayoutSummary? {
+        guard let result = simulationResult, result.layouts.count == LayoutID.allCases.count else { return nil }
+        return BestLayoutSummary(
+            engine: CompareRulesEngine(
+                outcomes: result.outcomes, peakHourText: result.peakHourText, windowMinutes: result.windowMinutes
+            ),
+            outcomes: result.outcomes
+        )
+    }
+
+    /// The three headline numbers when the project has one layout.
+    var singleSummary: SingleLayoutSummary? {
+        guard let result = simulationResult, result.layouts.count == 1,
+              let layout = layoutIDs.first, let outcome = result.outcomes[layout] else { return nil }
+        return SingleLayoutSummary(layout: layout, outcome: outcome)
+    }
 
     var activeContent: AnalysisContent? {
         content(for: tab)
@@ -209,6 +249,11 @@ final class DashboardViewModel {
 
     func content(for targetTab: AnalysisTab) -> AnalysisContent? {
         guard let result = simulationResult else { return nil }
+        if result.layouts.count == 1, let outcome = result.outcomes[.one] {
+            return SingleLayoutContent.content(
+                for: targetTab, outcome: outcome, peakHourText: result.peakHourText, windowMinutes: result.windowMinutes
+            )
+        }
         return CompareRulesEngine(
             outcomes: result.outcomes,
             peakHourText: result.peakHourText,

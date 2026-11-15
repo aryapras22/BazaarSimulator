@@ -14,6 +14,9 @@ struct DashboardMetrics {
     static let analysisTitleHeight: CGFloat = 24
     static let tabBarHeight: CGFloat = 35
     static let cardGap: CGFloat = 28
+    static let summaryHeight: CGFloat = 239
+    /// The Result bar under a single layout has no "why" row, so it is lower.
+    static let singleSummaryHeight: CGFloat = 168
 
     static let referencePlanHeight: CGFloat = 425
     static let referenceLowerHeight: CGFloat = 433
@@ -27,14 +30,14 @@ struct DashboardMetrics {
     let lowerHeight: CGFloat
     let recommendationWidth: CGFloat
 
-    init(size: CGSize) {
+    init(size: CGSize, layoutCount: Int = 2) {
         let progress = min(max((size.height - 900) / (Self.referenceHeight - 900), 0), 1)
         self.progress = progress
         contentWidth = size.width - Self.horizontalPadding.leading - Self.horizontalPadding.trailing
 
         func lerp(_ compact: CGFloat, _ regular: CGFloat) -> CGFloat { compact + (regular - compact) * progress }
 
-        let cardChrome = LayoutCardInset.top + ControlButtonStyle.height + lerp(20, 41) + 3
+        let cardChrome = LayoutCardInset.top + ControlButtonStyle.height + lerp(18, 28) + 3
             + SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight
             + LayoutCardInset.bottom
         let fixed = lerp(16, 29) + Self.headerHeight + lerp(14, 25)
@@ -43,12 +46,18 @@ struct DashboardMetrics {
             + lerp(18, 32)
         let available = max(size.height - fixed, 0)
 
-        let cardWidth = (contentWidth - Self.cardGap) / 2
+        let cardWidth = layoutCount == 1 ? contentWidth : (contentWidth - Self.cardGap) / 2
         let widthLimitedPlan = (cardWidth - LayoutCardInset.horizontal * 2) / FloorPlan.aspectRatio
         let lower = min(max(available * Self.referenceLowerHeight / (Self.referencePlanHeight + Self.referenceLowerHeight),
                             Self.minimumLowerHeight), Self.referenceLowerHeight)
-        planHeight = max(min(available - lower, Self.referencePlanHeight, widthLimitedPlan), 160)
-        lowerHeight = max(available - planHeight, lower)
+        // The Insights tabs are laid out at the reference size, which is where this part is read.
+        let tabsPlan = max(min(available - lower, Self.referencePlanHeight, widthLimitedPlan), 160)
+        lowerHeight = max(available - tabsPlan, lower)
+
+        // On the page itself the plan takes the room the header and the Best Layout summary leave.
+        let pageFixed = lerp(16, 29) + Self.headerHeight + lerp(14, 25) + cardChrome
+            + lerp(16, 24) + (layoutCount == 1 ? Self.singleSummaryHeight : Self.summaryHeight) + lerp(16, 26)
+        planHeight = max(min(size.height - pageFixed, widthLimitedPlan), 200)
         recommendationWidth = contentWidth * 509 / 1143
     }
 
@@ -58,11 +67,13 @@ struct DashboardMetrics {
 
     var topPadding: CGFloat { lerp(16, 29) }
     var headerToCards: CGFloat { lerp(14, 25) }
+    var cardsToSummary: CGFloat { lerp(16, 24) }
+    var bottomPadding: CGFloat { lerp(16, 26) }
     var cardsToAnalysis: CGFloat { lerp(16, 26) }
     var titleToTabs: CGFloat { lerp(12, 20) }
     var tabsToLower: CGFloat { lerp(16, 29) }
 
-    var planTopPadding: CGFloat { lerp(20, 41) }
+    var planTopPadding: CGFloat { lerp(18, 28) }
 
     var tableHeight: CGFloat { (lowerHeight - Self.cardGap) / 2 }
 

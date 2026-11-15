@@ -219,6 +219,7 @@ struct ProjectSetupView: View {
                 .font(Typography.caption)
                 .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
 
+            // Saves the draft and opens the Parameters sheet, once, from the app root.
             Button("Continue") {
                 viewModel.continueToReview()
             }

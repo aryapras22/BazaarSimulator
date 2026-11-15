@@ -7,6 +7,7 @@ final class ProjectScreenFactory {
     private var setupViewModels: [UUID: ProjectSetupViewModel] = [:]
     private var layoutEditorViewModels: [UUID: LayoutEditorViewModel] = [:]
     private var dashboardViewModels: [UUID: DashboardViewModel] = [:]
+    private var savedDashboardViewModels: [UUID: DashboardViewModel] = [:]
 
     init(services: AppServices, router: AppRouter) {
         self.services = services
@@ -16,12 +17,13 @@ final class ProjectScreenFactory {
     func makeLibraryViewModel() -> ProjectLibraryViewModel {
         ProjectLibraryViewModel(
             session: services.projectSession,
-            onOpenProject: { [weak router] id in
-                router?.showSetup(projectID: id)
+            destination: { [weak router] in router?.destination ?? .empty },
+            // A project folder opens its setup page. Its saved runs sit inside it.
+            onOpenProject: { [weak router] id in router?.showSetup(projectID: id) },
+            onOpenAnalysis: { [weak router] projectID, analysisID in
+                router?.showSavedAnalysis(projectID: projectID, analysisID: analysisID)
             },
-            onOpenResult: { [weak router] tab in
-                router?.showAnalysis(projectID: tab.projectID)
-            }
+            onOpenLatestAnalysis: { [weak router] id in router?.showAnalysis(projectID: id) }
         )
     }
 
@@ -57,6 +59,27 @@ final class ProjectScreenFactory {
             }
         )
         layoutEditorViewModels[projectID] = created
+        return created
+    }
+
+    /// One view model for each saved run. The app root builds its screens again whenever it refreshes, for example
+    /// when a simulator window is requested, and a new view model would start over on the loading page.
+    func makeSavedDashboardViewModel(projectID: UUID, analysisID: UUID) -> DashboardViewModel {
+        if let existing = savedDashboardViewModels[analysisID] {
+            return existing
+        }
+        let created = DashboardViewModel(
+            projectID: projectID,
+            source: .saved(analysisID),
+            session: services.projectSession,
+            analysisService: services.analysisService,
+            catalog: services.presetCatalog,
+            onBack: { [weak router] in router?.showSetup(projectID: projectID) },
+            onSimulate: { [weak router] layout in
+                router?.requestSimulation(projectID: projectID, layout: layout, analysisID: analysisID)
+            }
+        )
+        savedDashboardViewModels[analysisID] = created
         return created
     }
 

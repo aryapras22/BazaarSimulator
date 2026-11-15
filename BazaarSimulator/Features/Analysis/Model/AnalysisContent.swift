@@ -59,6 +59,8 @@ struct AnalysisContent: Sendable {
     var measure = ""
     var columns = ["Lowest", "Average", "Peak"]
     var facts: [Fact] = []
+    /// Overrides "Best <tab>" on the recommendation card, for a project with one layout.
+    var cardTitle: String?
 
     func unit(for value: Double) -> String {
         value == 1 ? singularUnit ?? unit : unit

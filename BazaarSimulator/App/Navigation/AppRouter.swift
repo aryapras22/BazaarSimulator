@@ -7,12 +7,15 @@ enum AppDestination: Equatable, Sendable {
     case review(projectID: UUID)
     case analysis(projectID: UUID)
     case editor(projectID: UUID)
+    case savedAnalysis(projectID: UUID, analysisID: UUID)
 }
 
 /// A request to open the simulator for one layout of a project, in its own window.
 struct SimulationRequest: Codable, Hashable, Sendable {
     let projectID: UUID
     let layout: LayoutID
+    /// The saved run to play. Nil plays the project's layouts as they are now.
+    var analysisID: UUID?
 }
 
 @Observable
@@ -45,12 +48,16 @@ final class AppRouter {
         destination = .analysis(projectID: projectID)
     }
 
+    func showSavedAnalysis(projectID: UUID, analysisID: UUID) {
+        destination = .savedAnalysis(projectID: projectID, analysisID: analysisID)
+    }
+
     func showEditor(projectID: UUID) {
         destination = .editor(projectID: projectID)
     }
 
-    func requestSimulation(projectID: UUID, layout: LayoutID) {
-        simulationRequest = SimulationRequest(projectID: projectID, layout: layout)
+    func requestSimulation(projectID: UUID, layout: LayoutID, analysisID: UUID? = nil) {
+        simulationRequest = SimulationRequest(projectID: projectID, layout: layout, analysisID: analysisID)
     }
 
     func clearSimulationRequest() {

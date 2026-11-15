@@ -3,7 +3,7 @@ import simd
 
 /// The part of the layout the plan shows, in layout meters. Spots and visitors are placed by
 /// their share of it.
-struct PlanFrame: Sendable, Equatable {
+struct PlanFrame: Codable, Sendable, Equatable {
     var origin: SIMD2<Double>
     var size: SIMD2<Double>
 

@@ -32,6 +32,8 @@ struct RootView: View {
         } detail: {
             detailView
         }
+        // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
+        .frame(minWidth: 1280, minHeight: 800)
         .appBackground()
         .preferredColorScheme(.dark)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
@@ -80,7 +82,12 @@ struct RootView: View {
             DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID)) { close in
                 ParametersView(viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close))
             }
-            .id("\(projectID)-\(activeResultID?.uuidString ?? "default")")
+            .id(projectID)
+        case .savedAnalysis(let projectID, let analysisID):
+            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { _ in
+                EmptyView()
+            }
+            .id(analysisID)
         case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)

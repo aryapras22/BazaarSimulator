@@ -7,7 +7,6 @@ import Observation
 final class ParametersViewModel {
     static let groupSizeOptions = Array(1...10)
     static let maxVisitors = 1_000_000
-    private static let slotLengthMinutes = 120
 
     let projectID: UUID
     let catalog: PresetCatalog
@@ -16,8 +15,6 @@ final class ParametersViewModel {
     private let onApply: (() -> Void)?
 
     private(set) var draft: EventParameters
-    var isPeakEnabled: Bool
-    private(set) var peakSlots: [TimeRange]
 
     init(
         projectID: UUID,
@@ -34,8 +31,6 @@ final class ParametersViewModel {
 
         let stored = session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         draft = stored
-        isPeakEnabled = !stored.peakPeriods.isEmpty
-        peakSlots = Self.slots(including: stored.peakPeriods)
     }
 
     // MARK: Total visitors
@@ -70,47 +65,6 @@ final class ParametersViewModel {
             draft.eventHours.endMinute = minute
         }
         return endText
-    }
-
-    // MARK: Peak hours
-
-    func isPeakSelected(_ slot: TimeRange) -> Bool {
-        draft.peakPeriods.contains(slot)
-    }
-
-    func togglePeak(_ slot: TimeRange) {
-        guard isPeakEnabled else { return }
-        if let index = draft.peakPeriods.firstIndex(of: slot) {
-            draft.peakPeriods.remove(at: index)
-        } else {
-            draft.peakPeriods.append(slot)
-        }
-    }
-
-    var canAddPeakSlot: Bool {
-        isPeakEnabled && nextSlot != nil
-    }
-
-    func addPeakSlot() {
-        guard canAddPeakSlot, let slot = nextSlot else { return }
-        peakSlots.append(slot)
-        draft.peakPeriods.append(slot)
-    }
-
-    private var nextSlot: TimeRange? {
-        let start = peakSlots.last?.endMinute ?? 0
-        let end = start + Self.slotLengthMinutes
-        return end <= TimeRange.minutesPerDay ? TimeRange(startMinute: start, endMinute: end) : nil
-    }
-
-    private static func slots(including periods: [TimeRange]) -> [TimeRange] {
-        var slots = stride(from: 8 * 60, to: 20 * 60, by: slotLengthMinutes).map {
-            TimeRange(startMinute: $0, endMinute: $0 + slotLengthMinutes)
-        }
-        for period in periods where !slots.contains(period) {
-            slots.append(period)
-        }
-        return slots.sorted { $0.startMinute < $1.startMinute }
     }
 
     // MARK: Bazaar type, visitor mix, group size
@@ -150,14 +104,7 @@ final class ParametersViewModel {
     }
 
     func apply() {
-        var result = draft
-        if !isPeakEnabled {
-            result.peakPeriods = []
-        } else {
-            result.peakPeriods.sort { $0.startMinute < $1.startMinute }
-        }
-        session.setEventParameters(result, for: projectID)
-        session.addResultTab(for: projectID, parameters: result)
+        session.setEventParameters(draft, for: projectID)
         onClose()
         onApply?()
     }

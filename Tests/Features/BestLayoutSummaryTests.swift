@@ -1,58 +1,69 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import BazaarSimulator
 
 @Suite("BestLayoutSummaryTests")
-@MainActor
 struct BestLayoutSummaryTests {
-    @Test("The reasons read as one sentence")
-    func sentenceJoinsReasons() {
-        #expect(BestLayoutSummary.sentence(["fewer stuck spots", "less time stuck", "calmer crowds"])
-            == "Fewer stuck spots, less time stuck and calmer crowds.")
-        #expect(BestLayoutSummary.sentence(["calmer crowds"]) == "Calmer crowds.")
-        #expect(BestLayoutSummary.sentence([]) == "Both layouts do about the same.")
-    }
-
-    private func viewModel(layoutCount: Int) async -> (DashboardViewModel, ProjectSession, UUID) {
-        let session = ProjectSession()
-        let project = session.createProject(named: "Alpha")
-        let layouts = [PreviewLayouts.annyeong(), PreviewLayouts.beyond(), PreviewLayouts.smallMarket()]
-        session.setDraft(
-            ProjectDraft(name: "Alpha", legend: Legend(), layouts: Array(layouts.prefix(layoutCount))),
-            for: project.id
+    private func spot(_ number: Int, peak: Double, stuck: Double) -> SpotOutcome {
+        SpotOutcome(
+            number: number, name: "Spot \(number)", cause: "", location: .zero,
+            lowestDensity: peak / 3, peakDensity: peak, peakVisitors: 20, stuckMin: stuck
         )
-        var parameters = EventParameters()
-        parameters.totalVisitors = 20
-        parameters.startMinutes = 10 * 60
-        parameters.endMinutes = 10 * 60 + 15
-        session.setParameters(parameters, for: project.id)
-        session.runSimulations(for: project.id)
-        while session.isSimulating(project.id) { try? await Task.sleep(for: .milliseconds(50)) }
-        return (DashboardViewModel(projectID: project.id, session: session), session, project.id)
     }
 
-    @Test("The page names a best layout with three headline numbers")
-    func bestLayoutHasThreeStats() async {
-        let (model, _, _) = await viewModel(layoutCount: 2)
-
-        let summary = model.bestLayout
-        #expect(summary?.stats.map(\.title) == ["Crowded Spots", "Time Stuck", "Crowd Level"])
-        #expect(summary?.stats.allSatisfy { !$0.value.isEmpty && $0.other.hasPrefix("Layout") } == true)
+    private func outcome(_ layout: LayoutID, spots: [SpotOutcome]) -> LayoutOutcome {
+        LayoutOutcome(
+            layout: layout, name: layout.name, windowMinutes: 10, spots: spots,
+            dayPoints: [
+                DayPoint(hour: 10, worstDensity: 0.5, heavyMinutes: 0, jammedSpots: 0, flowRate: 9),
+                DayPoint(hour: 14, worstDensity: spots.map(\.peakDensity).max() ?? 0, heavyMinutes: 1, jammedSpots: 1, flowRate: 12)
+            ]
+        )
     }
 
-    @Test("A card can show any layout of the run, and picking the other card's layout swaps them")
-    func selectingALayoutSwaps() async {
-        let (model, _, _) = await viewModel(layoutCount: 3)
-        #expect(model.layoutOptions.count == 3)
-        #expect(model.selectedIndex(for: .one) == 0)
-        #expect(model.selectedIndex(for: .two) == 1)
+    private func summary(busy: [SpotOutcome], calm: [SpotOutcome]) -> BestLayoutSummary {
+        let outcomes: [LayoutID: LayoutOutcome] = [.one: outcome(.one, spots: busy), .two: outcome(.two, spots: calm)]
+        let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00", windowMinutes: 10)
+        return BestLayoutSummary(engine: engine, outcomes: outcomes)
+    }
 
-        model.select(2, for: .two)
-        #expect(model.selectedIndex(for: .two) == 2)
-        #expect(model.floorPlan(for: .two)?.name == model.layoutOptions[2].name)
+    @Test("The calmer layout is best, and the sentence lists what it does better")
+    func calmerLayoutWins() {
+        let result = summary(
+            busy: [spot(1, peak: 2.9, stuck: 6), spot(2, peak: 2.4, stuck: 4), spot(3, peak: 2.2, stuck: 3)],
+            calm: [spot(1, peak: 0.5, stuck: 0)]
+        )
 
-        model.select(0, for: .two)
-        #expect(model.selectedIndex(for: .two) == 0)
-        #expect(model.selectedIndex(for: .one) == 2)
+        #expect(result.best == .two)
+        #expect(result.checks.map(\.label) == ["Congestion Points", "Congestion Duration", "Crowd Density"])
+        #expect(result.sentence == "Fewer stuck spots, less time stuck and calmer crowds.")
+        #expect(result.checks.allSatisfy { $0.winner == .two })
+    }
+
+    @Test("Each check shows the best layout's value and how the other layout did")
+    func valuesAndCaptions() throws {
+        let result = summary(
+            busy: [spot(1, peak: 2.9, stuck: 6), spot(2, peak: 2.4, stuck: 4)],
+            calm: [spot(1, peak: 0.5, stuck: 0)]
+        )
+
+        let points = try #require(result.checks.first { $0.tab == .congestionPoints })
+        #expect(points.values[.two]?.text == "0")
+        #expect(points.values[.two]?.unit == "spots")
+        #expect(result.caption(for: points).hasPrefix("Layout 1: "))
+
+        let level = try #require(result.checks.first { $0.tab == .crowdDensity })
+        #expect(level.values[.two]?.unit == "")
+        #expect(level.values[.two]?.text.isEmpty == false)
+    }
+
+    @Test("Strengths read as one sentence")
+    func listing() {
+        #expect(BestLayoutSummary.list(["a", "b", "c"]) == "a, b and c")
+        #expect(BestLayoutSummary.list(["a", "b"]) == "a and b")
+        #expect(BestLayoutSummary.list(["a"]) == "a")
+        #expect(BestLayoutSummary.list([]) == "")
+        #expect(BestLayoutSummary.capitalized("fewer stuck spots") == "Fewer stuck spots")
     }
 }

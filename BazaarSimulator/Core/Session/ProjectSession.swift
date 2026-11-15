@@ -46,6 +46,14 @@ protocol ProjectSessionProtocol: AnyObject {
     func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
     func savedAnalyses(for projectID: UUID) -> [SavedAnalysis]
+    /// Keeps a finished analysis as the project's next saved run. Nothing is added when the latest saved run was
+    /// made from the same layouts and parameters.
+    @discardableResult
+    func recordAnalysis(
+        layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
+    ) -> SavedAnalysis?
+    /// Marks an analysis as under way, so the sidebar shows a loading row under the project.
+    func setAnalysisRunning(_ isRunning: Bool, for projectID: UUID)
     func savedAnalysis(id: SavedAnalysis.ID, in projectID: UUID) -> SavedAnalysis?
     func renameSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID, to name: String)
     func deleteSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID)
@@ -77,6 +85,7 @@ final class ProjectSession: ProjectSessionProtocol {
     private var simulationResultsByProject: [UUID: [Layout.ID: RecordedSimulationResult]] = [:]
     private var simulationTasks: [UUID: Task<Void, Never>] = [:]
     private var simulatingProjects: Set<UUID> = []
+    private var analysingProjects: Set<UUID> = []
     private var savedAnalysesByProject: [UUID: [SavedAnalysis]] = [:]
     private let store: (any SavedAnalysisStoring)?
 
@@ -231,22 +240,19 @@ final class ProjectSession: ProjectSessionProtocol {
     }
 
     func isSimulating(_ projectID: UUID) -> Bool {
-        simulatingProjects.contains(projectID)
+        simulatingProjects.contains(projectID) || analysingProjects.contains(projectID)
     }
 
     /// Replaces the project's results in the background. A newer run cancels one still going.
     func runSimulations(for projectID: UUID) {
         guard let layouts = drafts[projectID]?.layouts, !layouts.isEmpty else { return }
-        let eventParameters = parameters(for: projectID)
-        let settings = eventParameters.toSimulationSettings()
+        let settings = parameters(for: projectID).toSimulationSettings()
         let legend = drafts[projectID]?.legend ?? Legend()
 
         simulationTasks[projectID]?.cancel()
         simulationResultsByProject[projectID] = [:]
         simulatingProjects.insert(projectID)
         simulationTasks[projectID] = Task { [weak self] in
-            var measurements: [LayoutAnalysis] = []
-            var peakMinute = eventParameters.startMinutes
             for layout in layouts {
                 let engine = SimulationEngine(layout: layout, settings: settings, legend: legend)
                 let result = await engine.runWithRecordedFootage(
@@ -255,15 +261,7 @@ final class ProjectSession: ProjectSessionProtocol {
                 )
                 if Task.isCancelled { return }
                 self?.setSimulationResult(result, for: layout.id, in: projectID)
-                if measurements.isEmpty { peakMinute = LayoutMeasurementBuilder.busiestMinute(in: result) }
-                measurements.append(
-                    LayoutMeasurementBuilder.build(result: result, layout: layout, parameters: eventParameters)
-                )
             }
-            self?.saveAnalysis(
-                SavedRun(layouts: layouts, measurements: measurements, parameters: eventParameters, peakMinute: peakMinute),
-                in: projectID
-            )
             self?.simulatingProjects.remove(projectID)
         }
     }
@@ -291,23 +289,29 @@ final class ProjectSession: ProjectSessionProtocol {
         store?.delete(analysisID: id, in: projectID)
     }
 
-    private struct SavedRun {
-        let layouts: [Layout]
-        let measurements: [LayoutAnalysis]
-        let parameters: EventParameters
-        let peakMinute: Int
-    }
-
-    private func saveAnalysis(_ run: SavedRun, in projectID: UUID) {
-        let number = (savedAnalyses(for: projectID).map(\.number).max() ?? 0) + 1
+    @discardableResult
+    func recordAnalysis(
+        layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
+    ) -> SavedAnalysis? {
+        let existing = savedAnalyses(for: projectID)
+        if existing.last?.matches(parameters: parameters, layouts: layouts) == true { return nil }
         let saved = SavedAnalysis(
-            number: number,
-            parameters: run.parameters,
-            layouts: run.layouts,
-            measurements: run.measurements,
-            peakMinute: run.peakMinute
+            number: (existing.map(\.number).max() ?? 0) + 1,
+            parameters: parameters,
+            layouts: layouts,
+            analyses: analyses,
+            peakMinute: peakMinute
         )
         savedAnalysesByProject[projectID, default: []].append(saved)
         store?.save(saved, in: projectID)
+        return saved
+    }
+
+    func setAnalysisRunning(_ isRunning: Bool, for projectID: UUID) {
+        if isRunning {
+            analysingProjects.insert(projectID)
+        } else {
+            analysingProjects.remove(projectID)
+        }
     }
 }

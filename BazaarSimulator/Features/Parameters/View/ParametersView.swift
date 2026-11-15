@@ -9,12 +9,16 @@ struct ParametersView: View {
             headerView
                 .padding(.bottom, Spacing.l)
 
-            VStack(alignment: .leading, spacing: 0) {
-                totalVisitorsRow
-                divider
-                eventDurationRow
-                divider
-                bazaarAndVisitorRows
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    totalVisitorsRow
+                    divider
+                    eventDurationRow
+                    divider
+                    bazaarAndVisitorRows
+                    divider
+                    groupSizeRow
+                }
             }
 
             footerView
@@ -88,14 +92,12 @@ struct ParametersView: View {
             Spacer()
             Button("Cancel") { viewModel.cancel() }
                 .buttonStyle(.secondary)
-            Button("Apply") {
-                commitScope.commitAll()
-                viewModel.apply()
-            }
+            Button("Apply") { viewModel.apply() }
                 .buttonStyle(.primary)
         }
     }
 }
+
 
 #Preview("Parameters") {
     let session = ProjectSession()

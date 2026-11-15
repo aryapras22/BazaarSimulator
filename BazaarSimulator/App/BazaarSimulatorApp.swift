@@ -2,7 +2,19 @@ import SwiftUI
 
 @main
 struct BazaarSimulatorApp: App {
-    @State private var services = AppServices(seedsMockProject: LaunchOptions.seedsMockProject)
+    @State private var services = AppServices(
+        projectSession: ProjectSession(store: LaunchOptions.isRunningTests ? nil : FileSavedAnalysisStore()),
+        seedsMockProject: LaunchOptions.seedsMockProject
+    )
+
+    init() {
+        if LaunchOptions.isRunningTests {
+            // macOS can quietly quit an app that sits idle with no window. A test run is idle for minutes while a
+            // simulation finishes, and the quit ends the whole run.
+            ProcessInfo.processInfo.disableAutomaticTermination("Running tests")
+            ProcessInfo.processInfo.disableSuddenTermination()
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

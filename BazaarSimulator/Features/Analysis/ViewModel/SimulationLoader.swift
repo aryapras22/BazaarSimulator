@@ -2,6 +2,11 @@ import Foundation
 
 /// Runs (or reads from the cache) the simulation for a project's first two layouts, using the
 /// project's parameters. Anything the project has not set falls back to the simulator's defaults.
+///
+/// The busiest time is not a parameter. The simulation is run once with a provisional window, which measures the
+/// whole event, and the ten minutes with the most people at the monitored spots become the window the page and
+/// the simulator show. When that is another window, the simulation is asked again for it. Both asks go through
+/// `AnalysisService` as it is, so the simulation itself is the same as ever.
 @MainActor
 enum SimulationLoader {
     enum Result {
@@ -10,28 +15,44 @@ enum SimulationLoader {
         case cancelled
     }
 
+    /// With `savedAnalysis` the layouts and parameters are the ones that run was made from, so its simulator plays
+    /// what its page showed. Without one they are the project's as they are now.
     static func load(
         projectID: UUID,
+        savedAnalysis: SavedAnalysis? = nil,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
         parameters overrideParameters: EventParameters? = nil,
         onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> Result {
-        let layouts = Array((session.draft(for: projectID)?.layouts ?? []).prefix(LayoutID.allCases.count))
-        guard layouts.count == LayoutID.allCases.count else { return .needsLayouts(count: layouts.count) }
+        let layouts = Array((savedAnalysis?.layouts ?? session.draft(for: projectID)?.layouts ?? [])
+            .prefix(LayoutID.allCases.count))
+        // One layout is analysed on its own. Two are analysed and compared.
+        guard !layouts.isEmpty else { return .needsLayouts(count: 0) }
 
-        let parameters = overrideParameters ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
-        let schedule = DaySchedule(parameters: parameters)
-        let analyses = await analysisService.analyses(
-            for: layouts,
-            parameters: parameters,
-            visitorTypes: catalog.visitorTypes,
-            focus: schedule.window,
-            legend: session.draft(for: projectID)?.legend ?? Legend(),
-            onLiveFrame: onLiveFrame
+        let parameters = savedAnalysis?.parameters
+            ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
+        let legend = session.draft(for: projectID)?.legend ?? Legend()
+        func analyses(focus: TimeRange) async -> [LayoutAnalysis] {
+            await analysisService.analyses(
+                for: layouts, parameters: parameters, visitorTypes: catalog.visitorTypes, focus: focus, legend: legend
+            )
+        }
+
+        let provisional = DaySchedule(parameters: parameters)
+        var measured = await analyses(focus: provisional.window)
+        guard !Task.isCancelled, measured.count == layouts.count else { return .cancelled }
+
+        let busiest = BusiestWindow.startMinute(
+            in: measured, hours: parameters.eventHours, windowMinutes: Int(provisional.windowMinutes)
         )
-        guard !Task.isCancelled, analyses.count == layouts.count else { return .cancelled }
+        let schedule = DaySchedule(parameters: parameters, peakMinute: busiest)
+        if schedule.peakMinute != provisional.peakMinute {
+            measured = await analyses(focus: schedule.window)
+            guard !Task.isCancelled, measured.count == layouts.count else { return .cancelled }
+        }
+        let analyses = measured
 
         var outcomes: [LayoutID: LayoutOutcome] = [:]
         var layoutsByID: [LayoutID: Layout] = [:]

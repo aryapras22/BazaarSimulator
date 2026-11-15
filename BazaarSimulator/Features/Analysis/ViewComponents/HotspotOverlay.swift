@@ -7,26 +7,35 @@ struct HotspotOverlay: View {
     var showsCallout = true
     var showsMarkers = true
 
+    /// A click keeps one spot's details open after the pointer moves away.
+    @State private var pinned: Int?
+    @State private var calloutHeight: CGFloat = 110
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let gap: CGFloat = 18
 
     var body: some View {
         GeometryReader { geometry in
             let size = geometry.size
+            let shown = pinned ?? hovered
+
             ZStack(alignment: .topLeading) {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { animate { pinned = nil } }
+                    .allowsHitTesting(pinned != nil)
+
                 ForEach(outcome.spots, id: \.number) { spot in
-                    let center = CGPoint(
-                        x: spot.location.x * size.width,
-                        y: spot.location.y * size.height
-                    )
                     HotspotTarget(
                         number: spot.number,
                         grade: showsMarkers ? spot.grade : nil,
-                        isHovered: hovered == spot.number,
+                        isHovered: shown == spot.number,
                         diameter: min(max(size.width * 0.05, 14), 18)
                     )
-                    .position(center)
+                    .position(center(of: spot, in: size))
                     .onHover { inside in
-                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) {
+                        animate {
                             if inside {
                                 hovered = spot.number
                             } else if hovered == spot.number {
@@ -34,30 +43,56 @@ struct HotspotOverlay: View {
                             }
                         }
                     }
+                    .onTapGesture { animate { pinned = pinned == spot.number ? nil : spot.number } }
+                    .help(pinned == spot.number ? "Click to close" : "Click to keep the details open")
                     .accessibilityElement()
+                    .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("Spot \(spot.number), \(spot.name)")
-                    .accessibilityValue("Grade \(spot.grade.letter), \(spot.peakDensity.formatted(.number.precision(.fractionLength(1)))) people per square metre at peak. \(spot.cause)")
+                    .accessibilityValue(
+                        "Grade \(spot.grade.letter), \(spot.grade.title). \(HotspotCallout.summary(for: spot)) \(spot.cause)"
+                    )
                 }
 
-                if showsCallout,
-                   let spot = outcome.spots.first(where: { $0.number == hovered }) {
+                if showsCallout, let spot = outcome.spots.first(where: { $0.number == shown }) {
                     HotspotCallout(spot: spot)
-                        .fixedSize()
-                        .alignmentGuide(.leading) { card in
-                            let x = spot.location.x * size.width
-                            return spot.location.x < 0.5 ? -(x + 20) : card.width - x + 20
-                        }
-                        .alignmentGuide(.top) { card in
-                            let y = spot.location.y * size.height
-                            return spot.location.y < 0.5 ? -(y + 16) : card.height - y + 16
-                        }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { calloutHeight = $0 }
+                        .offset(x: calloutOrigin(for: spot, in: size).x, y: calloutOrigin(for: spot, in: size).y)
                         .allowsHitTesting(false)
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                        .transition(.opacity)
                         .zIndex(1)
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         }
+    }
+
+    private func center(of spot: SpotOutcome, in size: CGSize) -> CGPoint {
+        CGPoint(x: spot.location.x * size.width, y: spot.location.y * size.height)
+    }
+
+    /// The box goes above or below the spot, or beside it, wherever it fits without covering another marker.
+    private func calloutOrigin(for spot: SpotOutcome, in size: CGSize) -> CGPoint {
+        let point = center(of: spot, in: size)
+        let card = CGSize(width: HotspotCallout.width, height: calloutHeight)
+        let bounds = CGRect(origin: .zero, size: size).insetBy(dx: 6, dy: 6)
+        let markers = outcome.spots.filter { $0.number != spot.number }
+            .map { center(of: $0, in: size) }
+            .map { CGRect(x: $0.x - 12, y: $0.y - 12, width: 24, height: 24) }
+        let x = min(max(point.x - card.width / 2, bounds.minX), max(bounds.maxX - card.width, bounds.minX))
+        let middleY = min(max(point.y - card.height / 2, bounds.minY), max(bounds.maxY - card.height, bounds.minY))
+        let candidates = [
+            CGPoint(x: x, y: point.y - Self.gap - card.height),
+            CGPoint(x: x, y: point.y + Self.gap),
+            CGPoint(x: point.x + Self.gap, y: middleY),
+            CGPoint(x: point.x - Self.gap - card.width, y: middleY)
+        ].map { CGRect(origin: $0, size: card) }
+        let inside = candidates.filter { bounds.contains($0) }
+        let best = inside.first { rect in !markers.contains { $0.intersects(rect) } } ?? inside.first ?? candidates[0]
+        return best.origin
+    }
+
+    private func animate(_ change: () -> Void) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15), change)
     }
 }
 
@@ -114,36 +149,44 @@ private struct HotspotTarget: View {
 }
 
 struct HotspotCallout: View {
+    static let width: CGFloat = 250
+
     let spot: SpotOutcome
 
+    /// One plain sentence about how long people are stuck here.
+    static func summary(for spot: SpotOutcome) -> String {
+        let minutes = (spot.stuckMin * 2).rounded() / 2
+        guard minutes >= 0.25 else { return "People keep moving here." }
+        let text = minutes == minutes.rounded()
+            ? String(Int(minutes))
+            : minutes.formatted(.number.precision(.fractionLength(1)))
+        return "People get stuck here for \(text) min."
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
                 Text(spot.name)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.textPrimary)
-                    .fixedSize()
-                Spacer(minLength: 12)
+                Spacer(minLength: 8)
                 GradePill(grade: spot.grade)
             }
-
-            SpotStats(spot: spot, valueSize: 20)
-
+            Text(Self.summary(for: spot))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(spot.cause)
                 .font(.system(size: 12))
                 .foregroundStyle(.textSecondary)
-                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .frame(minWidth: 300, alignment: .leading)
+        .frame(width: Self.width, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.backgroundMain.opacity(0.95))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
-                }
+                .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.3), lineWidth: 1) }
                 .shadow(color: .black.opacity(0.45), radius: 14, y: 6)
         }
     }
@@ -162,44 +205,5 @@ struct GradePill: View {
             .overlay { Capsule().strokeBorder(.white.opacity(0.3), lineWidth: 0.75) }
             .fixedSize()
             .help("Grade \(grade.letter): \(grade.meaning)")
-    }
-}
-
-struct SpotStats: View {
-    let spot: SpotOutcome
-    var valueSize: CGFloat = 20
-    var inline = false
-
-    var body: some View {
-        HStack(alignment: inline ? .firstTextBaseline : .top, spacing: inline ? 14 : 18) {
-            stat(spot.peakDensity.formatted(.number.precision(.fractionLength(1))), "per m²")
-            stat("\(formatMinutes(spot.stuckMin)) min", "stuck")
-            stat("\(spot.peakVisitors)", "people at once")
-        }
-        .fixedSize()
-    }
-
-    @ViewBuilder
-    private func stat(_ value: String, _ label: String) -> some View {
-        let number = Text(value)
-            .font(.system(size: valueSize, weight: .semibold))
-            .foregroundStyle(.textPrimary)
-            .monospacedDigit()
-        let caption = Text(label)
-            .font(.system(size: 11))
-            .foregroundStyle(.textSecondary)
-        if inline {
-            HStack(alignment: .firstTextBaseline, spacing: 4) { number; caption }
-        } else {
-            VStack(alignment: .leading, spacing: 1) { number; caption }
-        }
-    }
-
-    private func formatMinutes(_ value: Double) -> String {
-        let rounded = (value * 2).rounded() / 2
-        if rounded == rounded.rounded() {
-            return String(Int(rounded))
-        }
-        return rounded.formatted(.number.precision(.fractionLength(1)))
     }
 }

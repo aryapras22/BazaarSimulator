@@ -1,53 +1,64 @@
 import SwiftUI
 
-/// The panel at the top left of the simulator: who is inside, what the colors mean, and the spots.
 struct SimulationInfoPanel: View {
     static let width: CGFloat = 293.5
-    private static let inset: CGFloat = 16
 
     let layoutName: String
     let visitorsInside: Int
-    let windowText: String
     let mode: SimulationMode
-    let progress: Double
-    let spots: [SpotOutcome]
-    let windowMinutes: Double
     let visitorTypes: [VisitorType]
-    var highlightedSpot: Int?
-    var footfall: (total: Int, busiest: Int)?
+
+    private static let inset: CGFloat = 16
 
     @State private var showsGradeRanges = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(layoutName) · \(visitorsInside) visitors inside")
-                .font(.system(size: 14.5, weight: .semibold))
-                .foregroundStyle(.textPrimary)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .frame(height: 20)
-            Text("Event hours \(windowText)")
-                .font(.system(size: 11.5))
-                .foregroundStyle(.textMuted)
-                .frame(height: 16)
-                .padding(.top, 5.5)
+            HStack(spacing: 8) {
+                Text(layoutName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.textPrimary)
+                Spacer(minLength: 8)
+                HStack(spacing: 5) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 11))
+                    Text("\(visitorsInside) people")
+                        .font(.system(size: 13, weight: .medium))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                }
+                .foregroundStyle(.textSecondary)
+                .accessibilityElement(children: .combine)
+                .help("People inside right now")
+            }
+            .frame(height: 20)
 
             Group {
                 switch mode {
                 case .congestion: congestionLegend
-                case .density:
-                    scaleLegend(
-                        labels: ["Comfortable", "Stop-and-go", "Jammed"],
-                        text: "People per m² of aisle. At 2 per m² each person has about half a square metre."
-                    )
-                case .footfall: scaleLegend(labels: ["Rarely walked", "", "Most walked"], text: footfallText)
+                case .density: scaleLegend(labels: ["Calm", "Crowded", "Jammed"])
+                case .footfall: scaleLegend(labels: ["Rarely walked", "", "Most walked"])
                 }
             }
             .padding(.top, 13)
 
-            visitorLegend
-                .padding(.top, mode == .congestion ? 21.5 : 17)
+            Text("Visitor types")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.textSecondary)
+                .padding(.top, 20)
+
+            LazyVGrid(
+                columns: [GridItem(.fixed(141.8), spacing: 0, alignment: .leading),
+                          GridItem(.fixed(141.8), spacing: 0, alignment: .leading)],
+                alignment: .leading,
+                spacing: 8
+            ) {
+                ForEach(Array(visitorTypes.enumerated()), id: \.element.id) { index, type in
+                    legendItem(name: type.name, color: Palette.visitorSeriesColors[index % Palette.visitorSeriesColors.count])
+                }
+            }
+            .padding(.top, 8)
         }
         .padding(.horizontal, Self.inset)
         .padding(.top, 16.5)
@@ -63,12 +74,7 @@ struct SimulationInfoPanel: View {
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: showsGradeRanges)
     }
 
-    private var footfallText: String {
-        guard let footfall else { return "How often each path has been walked since the window opened." }
-        return "\(footfall.total.formatted()) walks since \(windowText.prefix(5)). The busiest path has been walked \(footfall.busiest.formatted()) times."
-    }
-
-    private func scaleLegend(labels: [String], text: String) -> some View {
+    private func scaleLegend(labels: [String]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             LinearGradient(colors: HeatScale.colors, startPoint: .leading, endPoint: .trailing)
                 .frame(height: 7)
@@ -78,17 +84,10 @@ struct SimulationInfoPanel: View {
                 Text(labels[1]).frame(maxWidth: .infinity, alignment: .center)
                 Text(labels[2]).frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .font(.system(size: 9.5))
-            .tracking(0.2)
-            .foregroundStyle(.textMuted)
-            .frame(height: 12)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.textSecondary)
+            .frame(height: 14)
             .padding(.top, 6.5)
-            Text(text)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.textMuted)
-                .lineSpacing(-1)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 12)
         }
         .accessibilityElement(children: .combine)
     }
@@ -101,12 +100,12 @@ struct SimulationInfoPanel: View {
                 showsGradeRanges.toggle()
             } label: {
                 HStack(spacing: 4) {
-                    Text(showsGradeRanges ? "Hide grade ranges" : "Show grade ranges")
+                    Text(showsGradeRanges ? "Hide what the grades mean" : "What do the grades mean?")
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .bold))
                         .rotationEffect(.degrees(showsGradeRanges ? 180 : 0))
                 }
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color(hex: 0x82A9DC))
                 .frame(height: 16)
                 .contentShape(Rectangle())
@@ -115,95 +114,46 @@ struct SimulationInfoPanel: View {
             .padding(.top, 14)
 
             if showsGradeRanges {
-                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                VStack(alignment: .leading, spacing: 12) {
                     ForEach(SeverityGrade.allCases) { grade in
-                        GridRow {
+                        HStack(alignment: .top, spacing: 12) {
                             Text(grade.letter)
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundStyle(.white)
-                                .frame(width: 18, height: 18)
-                                .background(grade.color, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                            Text(grade.rangeText)
-                                .font(.system(size: 11))
-                                .foregroundStyle(.textMuted)
-                                .monospacedDigit()
-                            Text(grade.title)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.textPrimary)
+                                .frame(width: 26, height: 26)
+                                .background(grade.color, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(grade.title)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(.textPrimary)
+                                Text(grade.meaning)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
-                        .help(grade.meaning)
                     }
                 }
-                .padding(.top, 10)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.top, 12)
                 .transition(.opacity)
             }
-
-            Rectangle()
-                .fill(Color.white.opacity(0.14))
-                .frame(height: 1)
-                .padding(.top, 9.5)
-
-            VStack(alignment: .leading, spacing: 9) {
-                ForEach(spots, id: \.number) { spot in
-                    spotRow(spot)
-                }
-            }
-            .padding(.top, 11.5)
         }
     }
 
-    private func spotRow(_ spot: SpotOutcome) -> some View {
-        let density = spot.density(at: progress)
-        let grade = SeverityGrade.grade(forDensity: density)
-        let stuck = spot.heavyMinutes(upTo: progress, windowMinutes: windowMinutes)
-        return HStack(spacing: 7.5) {
-            SpotNumber(number: spot.number)
-            VStack(alignment: .leading, spacing: 2.5) {
-                Text(spot.name)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.textPrimary)
-                Text("\(density.formatted(.number.precision(.fractionLength(1))))/m² · \(spot.visitors(at: progress)) people · stuck \(PlaybackBar.format(stuck * 60))")
-                    .font(.system(size: 8.5))
-                    .foregroundStyle(.textMuted)
-                    .monospacedDigit()
-            }
-            Spacer(minLength: 0)
-            Text("Grade \(grade.letter)")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 68, height: 27.5)
-                .background(grade.color, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .help("\(grade.title): \(grade.meaning)")
+    private func legendItem(name: String, color: Color) -> some View {
+        HStack(spacing: 10.5) {
+            Circle()
+                .fill(color)
+                .frame(width: 13, height: 13)
+            Text(name)
+                .font(.system(size: 12.25, weight: .bold))
+                .foregroundStyle(.textPrimary)
+                .fixedSize()
         }
-        .frame(height: 32)
-        .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(highlightedSpot == spot.number ? 0.1 : 0))
-                .padding(-4)
-        }
-        .animation(.easeOut(duration: 0.15), value: highlightedSpot)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var visitorLegend: some View {
-        let colors = Palette.visitorSeriesColors
-        return LazyVGrid(
-            columns: [GridItem(.fixed(141.8), spacing: 0, alignment: .leading), GridItem(.fixed(141.8), spacing: 0, alignment: .leading)],
-            alignment: .leading,
-            spacing: 7
-        ) {
-            ForEach(Array(visitorTypes.enumerated()), id: \.element.id) { index, type in
-                HStack(spacing: 10.5) {
-                    Circle()
-                        .fill(colors[index % colors.count])
-                        .frame(width: 12, height: 12)
-                    Text(type.name)
-                        .font(.system(size: 12.25, weight: .bold))
-                        .foregroundStyle(.textPrimary)
-                        .fixedSize()
-                }
-                .frame(height: 18, alignment: .leading)
-            }
-        }
+        .frame(width: 141.8, height: 18, alignment: .leading)
     }
 }
+

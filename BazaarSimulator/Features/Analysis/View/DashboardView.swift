@@ -17,7 +17,7 @@ struct DashboardView<ParametersSheet: View>: View {
         GeometryReader { geometry in
             DashboardContent(
                 viewModel: viewModel,
-                metrics: DashboardMetrics(size: geometry.size)
+                metrics: DashboardMetrics(size: geometry.size, layoutCount: max(viewModel.layoutIDs.count, 1))
             )
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
@@ -27,7 +27,10 @@ struct DashboardView<ParametersSheet: View>: View {
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
-        .task { viewModel.startSimulationIfNeeded() }
+        .sheet(isPresented: $viewModel.isInsightsPresented) {
+            InsightsSheet(viewModel: viewModel)
+        }
+        .task { viewModel.startSimulation() }
     }
 }
 
@@ -51,27 +54,16 @@ struct DashboardContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             DashboardHeader(
-                title: viewModel.projectName,
+                title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: { viewModel.isParametersPresented = true }
+                onOpenParameters: viewModel.canEdit ? { viewModel.isParametersPresented = true } : nil
             )
 
             switch viewModel.phase {
             case .loading:
-                RunningNotice(
-                    text: "Running the simulation…",
-                    showsProgress: true,
-                    progress: viewModel.loadingProgress,
-                    previewVenue: viewModel.previewVenue,
-                    previewFrame: viewModel.previewFrame
-                )
-            case .needsTwoLayouts(let count):
-                RunningNotice(
-                    text: count == 0
-                        ? "Add two layouts to compare them."
-                        : "Add a second layout to compare. This project has \(count).",
-                    showsProgress: false
-                )
+                RunningNotice(text: "Running the simulation…", showsProgress: true)
+            case .needsLayouts:
+                RunningNotice(text: "Add a floor plan to analyse it.", showsProgress: false)
             case .ready:
                 comparison
             }
@@ -79,12 +71,14 @@ struct DashboardContent: View {
         .padding(.leading, DashboardMetrics.horizontalPadding.leading)
         .padding(.trailing, DashboardMetrics.horizontalPadding.trailing)
         .padding(.top, metrics.topPadding)
+        .padding(.bottom, metrics.bottomPadding)
     }
 
     @ViewBuilder
     private var comparison: some View {
+        // One layout fills the page on its own. Two sit side by side and are compared.
         HStack(alignment: .top, spacing: CardSpacing.gap) {
-            ForEach(LayoutID.allCases) { layout in
+            ForEach(viewModel.layoutIDs) { layout in
                 LayoutComparisonCard(
                     layout: layout,
                     outcome: viewModel.outcome(for: layout),
@@ -92,6 +86,9 @@ struct DashboardContent: View {
                     plan: viewModel.plan(for: layout),
                     peakHourText: viewModel.peakHourText,
                     metrics: metrics,
+                    showsSimulate: true,
+                    showsEdit: viewModel.canEdit,
+                    showsWorstSpot: viewModel.isSingleLayout,
                     onSimulate: { viewModel.onSimulate(layout) },
                     onEdit: { viewModel.onEdit(layout) }
                 )
@@ -99,13 +96,12 @@ struct DashboardContent: View {
         }
         .padding(.top, metrics.headerToCards)
 
-        if let content = viewModel.activeContent {
-            AnalysisSection(
-                tab: $viewModel.tab,
-                content: content,
-                metrics: metrics
-            )
-            .padding(.top, metrics.cardsToAnalysis)
+        if let summary = viewModel.singleSummary {
+            SingleLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
+                .padding(.top, metrics.cardsToSummary)
+        } else if let summary = viewModel.bestLayout {
+            BestLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
+                .padding(.top, metrics.cardsToSummary)
         }
 
         Spacer(minLength: 0)
@@ -177,7 +173,7 @@ private struct RunningNotice: View {
 struct DashboardHeader: View {
     let title: String
     var onBack: () -> Void = {}
-    var onOpenParameters: () -> Void = {}
+    var onOpenParameters: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -205,8 +201,11 @@ struct DashboardHeader: View {
 
             Spacer()
 
-            Button("Parameters", action: onOpenParameters)
-                .buttonStyle(ControlButtonStyle(fill: .headerButtonFill, minWidth: 108))
+            if let onOpenParameters {
+                Button("Parameters", action: onOpenParameters)
+                    .buttonStyle(ControlButtonStyle())
+                    .help("Change visitors, opening hours and visitor types")
+            }
         }
         .frame(height: DashboardMetrics.headerHeight)
     }

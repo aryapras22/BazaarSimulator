@@ -1,8 +1,9 @@
 import Foundation
 
-/// One finished parameter run, kept so the user can come back to it from the sidebar, also after the app was closed.
+/// One finished analysis, kept so the user can come back to it from the sidebar, also after the app was closed.
 /// It holds copies of the layouts, the parameters, and the measurements the Analysis page reads, so later edits to
-/// the project do not change it. The recorded footage is not kept: it is large and only the 3D replay needs it.
+/// the project do not change it. The simulator's replay is not kept: it is large, and it is made again from the
+/// same layout and parameters when a simulator opens.
 struct SavedAnalysis: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     var name: String
@@ -10,8 +11,8 @@ struct SavedAnalysis: Identifiable, Codable, Hashable, Sendable {
     let createdAt: Date
     let parameters: EventParameters
     let layouts: [Layout]
-    let measurements: [LayoutAnalysis]
-    /// Minute of the day with the most people inside, in the first layout.
+    let analyses: [LayoutAnalysis]
+    /// Minute of the day the simulation showed the venue busiest.
     let peakMinute: Int
 
     init(
@@ -20,7 +21,7 @@ struct SavedAnalysis: Identifiable, Codable, Hashable, Sendable {
         createdAt: Date = Date(),
         parameters: EventParameters,
         layouts: [Layout],
-        measurements: [LayoutAnalysis],
+        analyses: [LayoutAnalysis],
         peakMinute: Int
     ) {
         self.id = id
@@ -29,15 +30,15 @@ struct SavedAnalysis: Identifiable, Codable, Hashable, Sendable {
         self.createdAt = createdAt
         self.parameters = parameters
         self.layouts = layouts
-        self.measurements = measurements
+        self.analyses = analyses
         self.peakMinute = peakMinute
     }
-}
 
-extension LayoutAnalysis: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(layoutID)
-        hasher.combine(eventStartMinute)
-        hasher.combine(simulatedPeople)
+    /// True when a run with these inputs would give the same analysis again.
+    func matches(parameters: EventParameters, layouts: [Layout]) -> Bool {
+        self.parameters == parameters && self.layouts == layouts
     }
+
+    static func == (lhs: SavedAnalysis, rhs: SavedAnalysis) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }

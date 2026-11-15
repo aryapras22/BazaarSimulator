@@ -27,6 +27,8 @@ final class SimulationPlayerViewModel {
 
     let projectID: UUID
     let layoutID: LayoutID
+    /// The saved run being played, or nil for the project as it is now.
+    let analysisID: UUID?
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
@@ -43,20 +45,24 @@ final class SimulationPlayerViewModel {
     init(
         projectID: UUID,
         layoutID: LayoutID,
+        analysisID: UUID? = nil,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog
     ) {
         self.projectID = projectID
         self.layoutID = layoutID
+        self.analysisID = analysisID
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
     }
 
     func load() async {
+        let saved = analysisID.flatMap { session.savedAnalysis(id: $0, in: projectID) }
         switch await SimulationLoader.load(
-            projectID: projectID, session: session, analysisService: analysisService, catalog: catalog
+            projectID: projectID, savedAnalysis: saved, session: session, analysisService: analysisService,
+            catalog: catalog
         ) {
         case .needsLayouts:
             phase = .needsLayouts

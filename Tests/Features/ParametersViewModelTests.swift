@@ -30,7 +30,6 @@ struct ParametersViewModelTests {
         #expect(model.draft.totalVisitors == 5000)
         #expect(model.startText == "10:00")
         #expect(model.endText == "21:00")
-        #expect(!model.isPeakEnabled)
     }
 
     @Test("Picking a bazaar type reseeds the visitor total and the mix")
@@ -60,47 +59,16 @@ struct ParametersViewModelTests {
         #expect(model.commitTotalVisitors("99999999") == "1000000")
     }
 
-    @Test("Peak chips only toggle while peak hours are on")
-    func peakToggle() {
-        let (model, _, _) = makeModel()
-        let slot = model.peakSlots[0]
-        model.togglePeak(slot)
-        #expect(!model.isPeakSelected(slot))
-        model.isPeakEnabled = true
-        model.togglePeak(slot)
-        #expect(model.isPeakSelected(slot))
-        model.togglePeak(slot)
-        #expect(!model.isPeakSelected(slot))
-    }
-
-    @Test("Adding a peak slot appends the next two hours and selects it, until midnight")
-    func addPeakSlot() {
-        let (model, _, _) = makeModel()
-        #expect(!model.canAddPeakSlot)
-        model.isPeakEnabled = true
-        #expect(model.peakSlots.last?.label == "18:00 - 20:00")
-        model.addPeakSlot()
-        #expect(model.peakSlots.last?.label == "20:00 - 22:00")
-        #expect(model.isPeakSelected(model.peakSlots.last!))
-        model.addPeakSlot()
-        #expect(model.peakSlots.last?.label == "22:00 - 24:00")
-        #expect(!model.canAddPeakSlot)
-    }
-
-    @Test("Apply stores the draft and closes, turning peak hours off clears them")
+    @Test("Apply stores the draft and closes")
     func applyStores() {
         var closed = false
         let (model, session, id) = makeModel { closed = true }
-        model.isPeakEnabled = true
-        model.togglePeak(model.peakSlots[1])
         model.setPercent(70, for: "a")
         model.groupSize = 8
-        model.isPeakEnabled = false
         model.apply()
 
         let stored = session.eventParameters(for: id)
         #expect(closed)
-        #expect(stored?.peakPeriods == [])
         #expect(stored?.mix.share(for: "a")?.percent == 70)
         #expect(stored?.groupSize == 8)
     }
@@ -115,16 +83,16 @@ struct ParametersViewModelTests {
         #expect(session.eventParameters(for: id) == nil)
     }
 
-    @Test("Reopening shows the applied values, including a custom peak slot")
+    @Test("Reopening shows the applied values")
     func reopenRestores() {
         let (model, session, id) = makeModel()
-        model.isPeakEnabled = true
-        model.addPeakSlot()
+        model.setPercent(70, for: "a")
+        model.groupSize = 8
         model.apply()
 
         let reopened = ParametersViewModel(projectID: id, session: session, catalog: catalog, onClose: {})
-        #expect(reopened.isPeakEnabled)
-        #expect(reopened.peakSlots.contains { $0.label == "20:00 - 22:00" })
+        #expect(reopened.draft.mix.share(for: "a")?.percent == 70)
+        #expect(reopened.groupSize == 8)
     }
 
     @Test("FormCommitScope flushes pending visitor count edits before apply")

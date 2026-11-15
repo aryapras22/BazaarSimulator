@@ -1,67 +1,106 @@
 import Foundation
 
-/// The one-line answer on the compare page: which layout is better overall, why, and three headline numbers for it.
-struct BestLayoutSummary: Sendable {
-    struct Stat: Identifiable, Sendable {
-        let title: String
+/// The one-line answer on the compare page: which layout is better overall, why, what it costs, and the three checks
+/// behind it. Every value is read from the same results the Insights tabs show.
+struct BestLayoutSummary {
+    struct Check: Identifiable {
+        let tab: AnalysisTab
+        let label: String
         let symbol: String
-        /// The best layout's value, such as "1 spot" or "Crowded".
-        let value: String
-        /// How the other layout did, such as "Layout 1: 3 spots".
-        let other: String
-        var id: String { title }
+        let winner: LayoutID
+        /// Each layout's value, with the unit apart so the number can be set large.
+        let values: [LayoutID: (text: String, unit: String)]
+        let strength: String
+        let tradeOff: String
+
+        var id: AnalysisTab { tab }
     }
 
+    let checks: [Check]
     let best: LayoutID
-    let reason: String
-    let stats: [Stat]
 
-    /// The layout that wins most of the three measures, and on a tie the one that wins Congestion Points.
+    /// The layout that wins most of the three checks, and on a tie the one that wins Congestion Points.
     init(engine: CompareRulesEngine, outcomes: [LayoutID: LayoutOutcome]) {
-        let points = engine.content(for: .congestionPoints)
-        let duration = engine.content(for: .congestionDuration)
-        let density = engine.content(for: .crowdDensity)
-        let winners = [points.recommended, duration.recommended, density.recommended]
-        let best = LayoutID.allCases.max { first, second in
-            let firstWins = winners.filter { $0 == first }.count
-            let secondWins = winners.filter { $0 == second }.count
-            return firstWins == secondWins ? first == points.recommended : firstWins < secondWins
-        } ?? points.recommended
-        let other = best.other
-
-        var reasons: [String] = []
-        if points.recommended == best { reasons.append("fewer stuck spots") }
-        if duration.recommended == best { reasons.append("less time stuck") }
-        if density.recommended == best { reasons.append("calmer crowds") }
-
-        self.best = best
-        self.reason = Self.sentence(reasons)
-        self.stats = [
-            Self.stat("Crowded Spots", "exclamationmark.triangle.fill", points, best, other),
-            Self.stat("Time Stuck", "clock.fill", duration, best, other),
-            Stat(
-                title: "Crowd Level",
-                symbol: "person.3.fill",
-                value: outcomes[best]?.worstSpot.grade.title ?? "",
-                other: "\(other.name): \(outcomes[other]?.worstSpot.grade.title ?? "")"
+        let tabs: [AnalysisTab] = [.congestionPoints, .congestionDuration, .crowdDensity]
+        checks = tabs.map { tab in
+            let content = engine.content(for: tab)
+            return Check(
+                tab: tab,
+                label: tab.title,
+                symbol: Self.symbol(for: tab),
+                winner: content.recommended,
+                values: Dictionary(uniqueKeysWithValues: LayoutID.allCases.map { layout in
+                    (layout, Self.value(for: tab, layout: layout, content: content, outcomes: outcomes))
+                }),
+                strength: Self.strength(for: tab),
+                tradeOff: Self.tradeOff(for: tab)
             )
-        ]
+        }
+        let winsOne = checks.filter { $0.winner == .one }.count
+        let winsTwo = checks.count - winsOne
+        best = winsOne == winsTwo ? checks[0].winner : (winsTwo > winsOne ? .two : .one)
     }
 
-    private static func stat(
-        _ title: String, _ symbol: String, _ content: AnalysisContent, _ best: LayoutID, _ other: LayoutID
-    ) -> Stat {
-        let value = content.tiles.first { $0.layout == best }?.value ?? ""
-        let otherValue = content.tiles.first { $0.layout == other }?.value ?? ""
-        return Stat(title: title, symbol: symbol, value: value, other: "\(other.name): \(otherValue)")
+    /// "Fewer stuck spots, less time stuck and calmer crowds. The trade-off: ..."
+    var sentence: String {
+        let strengths = checks.filter { $0.winner == best }.map(\.strength)
+        let tradeOffs = checks.filter { $0.winner != best }.map(\.tradeOff)
+        var text = Self.capitalized(Self.list(strengths)) + "."
+        if !tradeOffs.isEmpty {
+            text += " The trade-off: \(Self.list(tradeOffs))."
+        }
+        return text
     }
 
-    /// "Fewer stuck spots, less time stuck and calmer crowds."
-    static func sentence(_ reasons: [String]) -> String {
-        guard let last = reasons.last else { return "Both layouts do about the same." }
-        let joined = reasons.count == 1
-            ? last
-            : reasons.dropLast().joined(separator: ", ") + " and " + last
-        return joined.prefix(1).uppercased() + joined.dropFirst() + "."
+    /// How the other layout did, such as "Layout 1: 3 spots".
+    func caption(for check: Check) -> String {
+        guard let other = check.values[best.other] else { return "" }
+        return "\(best.other.name): \(other.text)\(other.unit.isEmpty ? "" : " \(other.unit)")"
+    }
+
+    // MARK: Words
+
+    private static func value(
+        for tab: AnalysisTab, layout: LayoutID, content: AnalysisContent, outcomes: [LayoutID: LayoutOutcome]
+    ) -> (text: String, unit: String) {
+        if tab == .crowdDensity {
+            return (outcomes[layout]?.worstSpot.grade.title ?? "", "")
+        }
+        let tile = content.tiles.first { $0.layout == layout }?.value ?? ""
+        let parts = tile.split(separator: " ", maxSplits: 1).map(String.init)
+        return (parts.first ?? tile, parts.count > 1 ? parts[1] : "")
+    }
+
+    private static func symbol(for tab: AnalysisTab) -> String {
+        switch tab {
+        case .congestionPoints: "exclamationmark.triangle"
+        case .congestionDuration: "clock"
+        default: "person.3"
+        }
+    }
+
+    private static func strength(for tab: AnalysisTab) -> String {
+        switch tab {
+        case .congestionPoints: "fewer stuck spots"
+        case .congestionDuration: "less time stuck"
+        default: "calmer crowds"
+        }
+    }
+
+    private static func tradeOff(for tab: AnalysisTab) -> String {
+        switch tab {
+        case .congestionPoints: "it has more stuck spots"
+        case .congestionDuration: "people stay stuck longer"
+        default: "it gets more crowded"
+        }
+    }
+
+    static func list(_ items: [String]) -> String {
+        guard let last = items.last else { return "" }
+        return items.count > 1 ? items.dropLast().joined(separator: ", ") + " and " + last : last
+    }
+
+    static func capitalized(_ text: String) -> String {
+        text.prefix(1).uppercased() + text.dropFirst()
     }
 }

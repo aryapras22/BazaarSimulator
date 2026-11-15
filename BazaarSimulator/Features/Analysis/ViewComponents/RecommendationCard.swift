@@ -17,7 +17,7 @@ struct RecommendationCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Best \(tab.title)")
+            Text(content.cardTitle ?? "Best \(tab.title)")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.textPrimary)
                 .frame(height: Self.titleHeight)

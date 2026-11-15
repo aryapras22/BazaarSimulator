@@ -10,6 +10,7 @@ struct SimulationWindowContent: View {
         _viewModel = State(initialValue: SimulationPlayerViewModel(
             projectID: request.projectID,
             layoutID: request.layout,
+            analysisID: request.analysisID,
             session: services.projectSession,
             analysisService: services.analysisService,
             catalog: services.presetCatalog

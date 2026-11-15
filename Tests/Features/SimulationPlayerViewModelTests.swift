@@ -14,7 +14,6 @@ struct SimulationPlayerViewModelTests {
     private func makeModel(layoutCount: Int = 2, layout: LayoutID = .one) -> SimulationPlayerViewModel {
         var parameters = TestLayouts.parameters
         parameters.totalVisitors = 400
-        parameters.peakPeriods = [TimeRange(startMinute: 11 * 60, endMinute: 12 * 60)]
         let session = ProjectSession()
         let project = session.createProject(named: "P")
         let layouts = (0..<layoutCount).map { _ in TestLayouts.hall() }
@@ -31,31 +30,43 @@ struct SimulationPlayerViewModelTests {
         #expect(makeModel().phase == .loading)
     }
 
-    @Test("With fewer than two layouts there is nothing to play")
+    @Test("With no layout there is nothing to play")
     func needsLayouts() async {
-        let model = makeModel(layoutCount: 1)
+        let model = makeModel(layoutCount: 0)
         await model.load()
         #expect(model.phase == .needsLayouts)
     }
 
-    @Test("With two layouts it is ready, and shows the full event duration")
-    func ready() async {
+    @Test("A project with one layout can still be simulated")
+    func oneLayoutPlays() async {
+        let model = makeModel(layoutCount: 1)
+        await model.load()
+        #expect(model.phase == .ready)
+        #expect(model.replay != nil)
+    }
+
+    @Test("With two layouts it is ready, and shows the busiest window")
+    func ready() async throws {
         let model = makeModel()
         await model.load()
         #expect(model.phase == .ready)
-        #expect(model.windowText == "10:00 - 13:00")
+        // The window is the busiest ten minutes the simulation found, so it is read back from the result.
+        let window = try #require(model.result?.schedule.window)
+        #expect(model.windowText == "\(TimeRange.format(window.startMinute)) - \(TimeRange.format(window.endMinute))")
+        #expect(window.durationMinutes == 10)
         #expect(model.outcome?.name == "Layout 1")
         #expect(model.replay != nil)
         #expect(model.planAspect > 0)
     }
 
-    @Test("The playback clock shows the time of day across the full event")
-    func clockText() async {
+    @Test("The playback clock shows the time of day inside the window")
+    func clockText() async throws {
         let model = makeModel()
         await model.load()
-        #expect(model.clockText(at: 0) == "10:00")
-        #expect(model.clockText(at: 60) == "11:30")
-        #expect(model.clockText(at: 120) == "13:00")
+        let start = try #require(model.result?.schedule.peakMinute)
+        #expect(model.clockText(at: 0) == TimeRange.format(start))
+        #expect(model.clockText(at: 60) == TimeRange.format(start + 5))
+        #expect(model.clockText(at: 120) == TimeRange.format(start + 10))
         #expect(model.progress(at: 60) == 0.5)
         #expect(model.progress(at: 500) == 1)
         #expect(model.windowSeconds(at: 120) == 10_800)
@@ -233,7 +244,6 @@ struct SimulationPlayerSceneTests {
     private func loadedModel() async -> SimulationPlayerViewModel {
         var parameters = TestLayouts.parameters
         parameters.totalVisitors = 400
-        parameters.peakPeriods = [TimeRange(startMinute: 11 * 60, endMinute: 12 * 60)]
         let session = ProjectSession()
         let project = session.createProject(named: "P")
         session.setDraft(ProjectDraft(name: "P", layouts: [TestLayouts.hall(), TestLayouts.hall()]), for: project.id)
