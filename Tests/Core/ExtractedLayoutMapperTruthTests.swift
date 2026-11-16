@@ -28,11 +28,11 @@ struct ExtractedLayoutMapperTruthTests {
         )),
         PlanCase(plan: "plan3", expected: LayoutScore(
             sizeRatio: 1.28, truthBooths: 67, boothsFound: 67, boothLabelsRight: 67, extraBooths: 0,
-            truthDoors: 1, doorsFound: 0, extraDoors: 1, hallOverlap: 0.89
+            truthDoors: 1, doorsFound: 0, extraDoors: 1, hallOverlap: 0.92
         )),
         PlanCase(plan: "plan5", expected: nil),
         PlanCase(plan: "plan6", expected: LayoutScore(
-            sizeRatio: 0.83, truthBooths: 289, boothsFound: 272, boothLabelsRight: 272, extraBooths: 0,
+            sizeRatio: 0.87, truthBooths: 289, boothsFound: 282, boothLabelsRight: 281, extraBooths: 7,
             truthDoors: 2, doorsFound: 2, extraDoors: 32, hallOverlap: 0.72
         ))
     ]
@@ -57,7 +57,7 @@ struct ExtractedLayoutMapperTruthTests {
         return LayoutScore(
             of: frame.inTruthMetres(layout, readFrom: detected, pixelsPerMetre: scale),
             against: truth,
-            sizeRatio: frame.renderedPixelsPerMetre / scale
+            sizeRatio: frame.pixelsPerMetre / scale
         )
     }
 

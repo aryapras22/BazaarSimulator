@@ -114,38 +114,22 @@ extension LayoutScore {
 }
 
 /// Where a truth file's metres sit on its plan image: pixel = (metres - 1) * pixelsPerMetre + origin.
+/// The importer draws a plan image at its own pixel size, so these are also the pixels the reader saw.
 struct MockPlanFrame: Decodable {
-    struct ImageSize: Decodable {
-        let width: Double
-        let height: Double
-    }
-
     let pixelsPerMetre: Double
     let origin: [Double]
-    let image: ImageSize
 
     enum CodingKeys: String, CodingKey {
         case pixelsPerMetre = "px_per_m"
         case origin = "origin_px"
-        case image
-    }
-
-    /// The reader sees the plan drawn with its long side at the import size, not at the size of the image file.
-    private var renderScale: Double {
-        Double(PDFImportService.longSidePixels) / max(image.width, image.height)
-    }
-
-    /// The true scale of the page the reader saw.
-    var renderedPixelsPerMetre: Double {
-        pixelsPerMetre * renderScale
     }
 
     /// The layout moved from its own metres into the truth's, through the pixels of the page it was read from.
     /// The mapper puts the top left of everything it found one margin in from the corner, so that rule is undone here.
     func inTruthMetres(_ layout: Layout, readFrom plan: DetectedPlan, pixelsPerMetre: Double) -> Layout {
         let layoutOrigin = SIMD2(plan.items.map { $0.box[0] }.min() ?? 0, plan.items.map { $0.box[1] }.min() ?? 0)
-        let truthOrigin = SIMD2(origin[0], origin[1]) * renderScale
-        let truthScale = renderedPixelsPerMetre
+        let truthOrigin = SIMD2(origin[0], origin[1])
+        let truthScale = self.pixelsPerMetre
         func truthMetres(_ point: SIMD2<Double>) -> SIMD2<Double> {
             let pixel = (point - ExtractedLayoutMapper.marginM) * pixelsPerMetre + layoutOrigin
             return (pixel - truthOrigin) / truthScale + 1
