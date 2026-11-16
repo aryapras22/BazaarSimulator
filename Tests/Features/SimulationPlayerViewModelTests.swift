@@ -38,27 +38,27 @@ struct SimulationPlayerViewModelTests {
         #expect(model.phase == .needsLayouts)
     }
 
-    @Test("With two layouts it is ready, and shows the busiest window")
+    @Test("With two layouts it is ready, and shows the full event duration")
     func ready() async {
         let model = makeModel()
         await model.load()
         #expect(model.phase == .ready)
-        #expect(model.windowText == "11:00 - 11:10")
+        #expect(model.windowText == "10:00 - 13:00")
         #expect(model.outcome?.name == "Layout 1")
         #expect(model.replay != nil)
         #expect(model.planAspect > 0)
     }
 
-    @Test("The playback clock shows the time of day inside the window")
+    @Test("The playback clock shows the time of day across the full event")
     func clockText() async {
         let model = makeModel()
         await model.load()
-        #expect(model.clockText(at: 0) == "11:00")
-        #expect(model.clockText(at: 60) == "11:05")
-        #expect(model.clockText(at: 120) == "11:10")
+        #expect(model.clockText(at: 0) == "10:00")
+        #expect(model.clockText(at: 60) == "11:30")
+        #expect(model.clockText(at: 120) == "13:00")
         #expect(model.progress(at: 60) == 0.5)
         #expect(model.progress(at: 500) == 1)
-        #expect(model.windowSeconds(at: 120) == 600)
+        #expect(model.windowSeconds(at: 120) == 10_800)
     }
 
     @Test("Visitors are drawn on the plan, and are counted by the people in them")
@@ -87,17 +87,17 @@ struct SimulationPlayerViewModelTests {
         let model = makeModel()
         await model.load()
         let replay = try #require(model.replay)
-        // Frame i sits at playback i * 1.2 seconds.
-        let index = try #require((0..<100).first { frameIndex in
+        let stepPlayback = SimulationPlayerViewModel.playbackSeconds / Double(max(replay.frames.count - 1, 1))
+        let index = try #require((0..<(replay.frames.count - 1)).first { frameIndex in
             let next = replay.frames[frameIndex + 1].visitors
             return replay.frames[frameIndex].visitors.contains { visitor in
                 next.contains { other in other.id == visitor.id && other.position != visitor.position }
             }
         })
-        let start = Double(index) * 1.2
+        let start = Double(index) * stepPlayback
         let before = model.visitors(at: start)
-        let halfway = model.visitors(at: start + 0.6)
-        let after = model.visitors(at: start + 1.2)
+        let halfway = model.visitors(at: start + stepPlayback * 0.5)
+        let after = model.visitors(at: start + stepPlayback)
         let moved = zip(before, halfway).contains { $0.point != $1.point }
         #expect(moved)
         #expect(before.count == replay.frames[index].visitors.count)
@@ -148,11 +148,13 @@ struct SimulationPlayerViewModelTests {
             }
             let area = Double(cells) * mask.cellSizeM * mask.cellSizeM
             guard area > 0 else { continue }
-            for frameIndex in stride(from: 0, to: replay.frames.count, by: 5) {
+            for frameIndex in stride(from: 0, to: replay.frames.count, by: 10) {
                 let people = replay.frames[frameIndex].visitors
                     .filter { inBlock(Double($0.position.x), Double($0.position.y)) }
                     .reduce(0) { $0 + $1.people }
-                let shown = spot.density(at: Double(frameIndex * replay.frameIntervalSeconds) / replay.durationSeconds)
+                let playbackTime = Double(frameIndex * replay.frameIntervalSeconds) / replay.durationSeconds
+                    * SimulationPlayerViewModel.playbackSeconds
+                let shown = model.spotDensity(for: spot, at: playbackTime)
                 total += 1
                 if SeverityGrade.grade(forDensity: Double(people) / area) == SeverityGrade.grade(forDensity: shown) {
                     matching += 1

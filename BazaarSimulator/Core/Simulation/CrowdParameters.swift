@@ -28,7 +28,7 @@ nonisolated enum CrowdParameters {
     /// How often (in simulated seconds) each party re-evaluates its target, detours, and queue state.
     static let thinkInterval = 0.5
     /// Default interval (in simulated seconds) between recorded replay frames.
-    static let defaultFrameIntervalSeconds = 10.0
+    static let defaultFrameIntervalSeconds = 5.0
     /// How often (in simulated seconds) the live heatmap refreshes.
     static let liveDensityUpdateIntervalSeconds = 1.0
     /// Minimum agent count before parallelizing the steering pass across CPU cores.

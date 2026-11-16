@@ -55,7 +55,7 @@ nonisolated struct CrowdMeasurements: Sendable {
 /// each block of floor, how many pass the doors, and where everyone is through the busiest window.
 nonisolated final class CrowdMeasuringRun {
     static let sampleIntervalSeconds = 10
-    static let frameIntervalSeconds = 2
+    static let frameIntervalSeconds = 5
     static let blockCells = 6
     static let tileCells = 3
     /// Doors and floor tiles are checked this often, so a walking visitor cannot skip a cell.
@@ -99,7 +99,7 @@ nonisolated final class CrowdMeasuringRun {
         // A layout with no way in has nothing to simulate.
         if setup.world.gates.isEmpty { return true }
         if crowd.time >= setup.openSeconds + Self.closingGraceSeconds { return true }
-        return crowd.time >= setup.openSeconds && crowd.agents.isEmpty
+        return crowd.time > setup.openSeconds && crowd.agents.isEmpty
     }
 
     /// Runs to the end of the event, or until `isCancelled` says to stop.

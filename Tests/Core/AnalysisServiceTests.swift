@@ -54,7 +54,7 @@ struct AnalysisServiceTests {
         #expect(setup.arrivalFactors.count == 180)
         #expect(abs(setup.arrivalFactors[90] - 2 * setup.arrivalFactors[10]) < 1e-9)
         #expect(abs(setup.arrivalFactors.reduce(0, +) / 180 - 1) < 1e-9)
-        #expect(setup.window == 3600...4200)
+        #expect(setup.window == 0...10_800)
         #expect(Set(setup.typeIndexByPersona.values).isSubset(of: [0, 1]), "every persona is shown as a type the catalog has")
     }
 
