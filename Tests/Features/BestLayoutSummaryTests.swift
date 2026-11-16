@@ -41,6 +41,17 @@ struct BestLayoutSummaryTests {
         #expect(result.checks.allSatisfy { $0.winner == .two })
     }
 
+    @Test("A check where both layouts show the same value is not named as a strength")
+    func equalChecksAreTies() {
+        let same = [spot(1, peak: 2.9, stuck: 6), spot(2, peak: 2.4, stuck: 4)]
+        #expect(summary(busy: same, calm: same).sentence == "Both layouts do the same on all three checks.")
+
+        // Same spots stuck and the same grade, and only the time stuck differs.
+        let result = summary(busy: same, calm: [spot(1, peak: 2.9, stuck: 3), spot(2, peak: 2.4, stuck: 2)])
+        #expect(result.best == .two)
+        #expect(result.sentence == "Less time stuck.")
+    }
+
     @Test("Each check shows the best layout's value and how the other layout did")
     func valuesAndCaptions() throws {
         let result = summary(

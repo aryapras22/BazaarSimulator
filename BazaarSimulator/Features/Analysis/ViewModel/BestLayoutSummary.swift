@@ -14,12 +14,19 @@ struct BestLayoutSummary {
         let tradeOff: String
 
         var id: AnalysisTab { tab }
+
+        /// Both layouts show the same value, so the check has no winner worth naming.
+        var isTie: Bool {
+            guard let one = values[.one], let two = values[.two] else { return false }
+            return one.text == two.text && one.unit == two.unit
+        }
     }
 
     let checks: [Check]
     let best: LayoutID
 
-    /// The layout that wins most of the three checks, and on a tie the one that wins Congestion Points.
+    /// The layout that wins most of the three checks, and on a tie the one that wins the first check that is
+    /// not itself a tie.
     init(engine: CompareRulesEngine, outcomes: [LayoutID: LayoutOutcome]) {
         let tabs: [AnalysisTab] = [.congestionPoints, .congestionDuration, .crowdDensity]
         checks = tabs.map { tab in
@@ -36,15 +43,18 @@ struct BestLayoutSummary {
                 tradeOff: Self.tradeOff(for: tab)
             )
         }
-        let winsOne = checks.filter { $0.winner == .one }.count
-        let winsTwo = checks.count - winsOne
-        best = winsOne == winsTwo ? checks[0].winner : (winsTwo > winsOne ? .two : .one)
+        let decided = checks.filter { !$0.isTie }
+        let winsOne = decided.filter { $0.winner == .one }.count
+        let winsTwo = decided.count - winsOne
+        best = winsOne == winsTwo ? (decided.first ?? checks[0]).winner : (winsTwo > winsOne ? .two : .one)
     }
 
     /// "Fewer stuck spots, less time stuck and calmer crowds. The trade-off: ..."
     var sentence: String {
-        let strengths = checks.filter { $0.winner == best }.map(\.strength)
-        let tradeOffs = checks.filter { $0.winner != best }.map(\.tradeOff)
+        let decided = checks.filter { !$0.isTie }
+        guard !decided.isEmpty else { return "Both layouts do the same on all three checks." }
+        let strengths = decided.filter { $0.winner == best }.map(\.strength)
+        let tradeOffs = decided.filter { $0.winner != best }.map(\.tradeOff)
         var text = Self.capitalized(Self.list(strengths)) + "."
         if !tradeOffs.isEmpty {
             text += " The trade-off: \(Self.list(tradeOffs))."
