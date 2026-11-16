@@ -114,9 +114,9 @@ final class ProjectScreenFactory {
             return existing
         }
         let session = services.projectSession
-        /// Layout 1 and Layout 2 on the compare page are the project's first two layouts.
+        /// Layout 1 and Layout 2 on the compare page are the layouts the project compares.
         func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
-            let layouts = session.draft(for: projectID)?.layouts ?? []
+            let layouts = session.comparedLayouts(for: projectID)
             if layout.rawValue - 1 < layouts.count {
                 session.setActiveLayoutID(layouts[layout.rawValue - 1].id, for: projectID)
             }

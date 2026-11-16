@@ -25,6 +25,10 @@ protocol ProjectSessionProtocol: AnyObject {
     func updateLayout(_ layout: Layout, in projectID: UUID)
     func activeLayoutID(for projectID: UUID) -> Layout.ID?
     func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID)
+    /// The layouts the Analysis page shows, in page order: the project's first two until others are picked.
+    func comparedLayouts(for projectID: UUID) -> [Layout]
+    /// Puts a layout at one place on the Analysis page. A layout already at the other place swaps with it.
+    func setComparedLayout(_ id: Layout.ID, at index: Int, for projectID: UUID)
 
     func parameters(for projectID: UUID) -> ModalParameters
     func setParameters(_ parameters: ModalParameters, for projectID: UUID)
@@ -54,6 +58,7 @@ final class ProjectSession: ProjectSessionProtocol {
     private var drafts: [UUID: ProjectDraft] = [:]
     private var eventParametersByProject: [UUID: EventParameters] = [:]
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
+    private var comparedLayoutIDs: [UUID: [Layout.ID]] = [:]
     private var parametersByProject: [UUID: ModalParameters] = [:]
     private var simulationResultsByProject: [UUID: [Layout.ID: RecordedSimulationResult]] = [:]
     private var simulationTasks: [UUID: Task<Void, Never>] = [:]
@@ -125,6 +130,7 @@ final class ProjectSession: ProjectSessionProtocol {
         if activeProjectID == id { activeProjectID = nil }
         drafts[id] = nil
         activeLayoutIDs[id] = nil
+        comparedLayoutIDs[id] = nil
         eventParametersByProject[id] = nil
         parametersByProject[id] = nil
         simulationResultsByProject[id] = nil
@@ -192,6 +198,29 @@ final class ProjectSession: ProjectSessionProtocol {
         var projectMap = simulationResultsByProject[projectID] ?? [:]
         projectMap[layoutID] = result
         simulationResultsByProject[projectID] = projectMap
+    }
+
+    static let comparedLayoutCount = 2
+
+    func comparedLayouts(for projectID: UUID) -> [Layout] {
+        let layouts = drafts[projectID]?.layouts ?? []
+        // A picked layout that was removed from the project gives its place back to the first one not shown.
+        var shown = (comparedLayoutIDs[projectID] ?? []).compactMap { id in layouts.first { $0.id == id } }
+        for layout in layouts where shown.count < Self.comparedLayoutCount && !shown.contains(where: { $0.id == layout.id }) {
+            shown.append(layout)
+        }
+        return Array(shown.prefix(Self.comparedLayoutCount))
+    }
+
+    func setComparedLayout(_ id: Layout.ID, at index: Int, for projectID: UUID) {
+        var shown = comparedLayouts(for: projectID).map(\.id)
+        guard shown.indices.contains(index), layout(id: id, in: projectID) != nil else { return }
+        if let other = shown.firstIndex(of: id) {
+            shown.swapAt(index, other)
+        } else {
+            shown[index] = id
+        }
+        comparedLayoutIDs[projectID] = shown
     }
 
     func isSimulating(_ projectID: UUID) -> Bool {

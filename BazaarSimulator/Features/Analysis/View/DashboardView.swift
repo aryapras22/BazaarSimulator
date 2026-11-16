@@ -95,6 +95,8 @@ struct DashboardContent: View {
                     showsSimulate: true,
                     showsEdit: viewModel.canEdit,
                     showsWorstSpot: viewModel.isSingleLayout,
+                    choices: viewModel.layoutChoices,
+                    onChoose: { viewModel.choose($0, for: layout) },
                     onSimulate: { viewModel.onSimulate(layout) },
                     onEdit: { viewModel.onEdit(layout) }
                 )

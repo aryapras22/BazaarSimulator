@@ -25,6 +25,13 @@ struct DashboardViewModelTests {
         )
     }
 
+    /// Waits for the run the model started on its own.
+    private func untilReady(_ model: DashboardViewModel) async {
+        while model.phase == .loading {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     private var twoLayouts: [Layout] {
         [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]
     }
@@ -144,5 +151,23 @@ struct DashboardViewModelTests {
         model.startSimulation()
         #expect(model.phase == .ready)
         #expect(model.simulationResult?.analyses == previousAnalyses)
+    }
+
+    @Test("Picking another layout for a card analyses the new pair, and picking the other card's layout swaps them")
+    func choosingLayouts() async {
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+        let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[1].id)
+        #expect(model.layoutChoices.map(\.id) == layouts.map(\.id))
+
+        model.choose(layouts[2].id, for: .two)
+        #expect(model.phase == .loading)
+        await untilReady(model)
+        #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[2].id)
+
+        model.choose(layouts[0].id, for: .two)
+        await untilReady(model)
+        #expect(model.floorPlan(for: .one)?.id == layouts[2].id && model.floorPlan(for: .two)?.id == layouts[0].id)
     }
 }

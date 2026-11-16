@@ -15,10 +15,14 @@ struct LayoutComparisonCard: View {
     var showsEdit = true
     /// With one layout the card is the whole page, so it also names the worst spot under the plan.
     var showsWorstSpot = false
+    /// The project's layouts this card can show instead. Empty when there is nothing to pick.
+    var choices: [Layout] = []
+    var onChoose: (Layout.ID) -> Void = { _ in }
     var onSimulate: () -> Void = {}
     var onEdit: () -> Void = {}
 
     @State private var hoveredSpot: Int?
+    @State private var showsChoices = false
     @State private var zoom: CGFloat = 1
 
     var body: some View {
@@ -66,18 +70,29 @@ struct LayoutComparisonCard: View {
 
     private var headerBar: some View {
         HStack(spacing: 13) {
-            Button {} label: {
+            Button { showsChoices = true } label: {
                 HStack(spacing: 9) {
                     Circle()
                         .fill(layout.accent)
                         .frame(width: 10, height: 10)
                     Text(layout.name)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .padding(.leading, 3)
+                    if let planName = floorPlan?.name, !planName.isEmpty {
+                        Text(planName)
+                            .foregroundStyle(.textMuted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    if !choices.isEmpty {
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.leading, 3)
+                    }
                 }
             }
             .buttonStyle(ControlButtonStyle(horizontalPadding: 11))
+            .allowsHitTesting(!choices.isEmpty)
+            .help(choices.isEmpty ? "" : "Show another of the project's layouts here")
+            .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
             .accessibilityLabel("Layout selector, \(layout.name)")
 
             Spacer(minLength: 8)
@@ -102,6 +117,33 @@ struct LayoutComparisonCard: View {
                 .help("Change \(layout.name) in the layout editor")
             }
         }
+    }
+
+    private var choiceList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(choices) { choice in
+                Button {
+                    showsChoices = false
+                    onChoose(choice.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .opacity(choice.id == floorPlan?.id ? 1 : 0)
+                        Text(choice.name.isEmpty ? "Untitled layout" : choice.name)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .frame(minWidth: 220)
     }
 
     private var floorPlanImage: some View {

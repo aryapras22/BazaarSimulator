@@ -82,6 +82,23 @@ final class DashboardViewModel {
 
     var isSingleLayout: Bool { layoutIDs.count == 1 }
 
+    /// The project's layouts a card can show instead of its own. Empty on a saved run, which is a record, and when
+    /// the project has no layout beyond the ones on the page.
+    var layoutChoices: [Layout] {
+        let layouts = session.draft(for: projectID)?.layouts ?? []
+        return canEdit && layouts.count > 1 ? layouts : []
+    }
+
+    /// Shows another of the project's layouts on a card and analyses the new pair.
+    func choose(_ id: Layout.ID, for layout: LayoutID) {
+        guard canEdit, floorPlan(for: layout)?.id != id else { return }
+        session.setComparedLayout(id, at: layout.rawValue - 1, for: projectID)
+        // The cards on the page are for the old pair, so they make way for the loading page.
+        simulationResult = nil
+        phase = .loading
+        startSimulation()
+    }
+
     var title: String {
         guard case .saved(let id) = source, let saved = session.savedAnalysis(id: id, in: projectID) else {
             return projectName
@@ -254,7 +271,7 @@ final class DashboardViewModel {
     }
 
     private var comparedLayouts: [Layout] {
-        Array((session.draft(for: projectID)?.layouts ?? []).prefix(LayoutID.allCases.count))
+        Array(session.comparedLayouts(for: projectID).prefix(LayoutID.allCases.count))
     }
 
     /// The project's latest saved run, when it was made from the layouts and parameters now in the project. Opening

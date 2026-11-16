@@ -1,6 +1,6 @@
 import Foundation
 
-/// Runs (or reads from the cache) the simulation for a project's first two layouts, using the
+/// Runs (or reads from the cache) the simulation for the two layouts a project compares, using the
 /// project's parameters. Anything the project has not set falls back to the simulator's defaults.
 ///
 /// The busiest time is not a parameter. The simulation is run once with a provisional window, which measures the
@@ -25,7 +25,7 @@ enum SimulationLoader {
         catalog: PresetCatalog,
         onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> Result {
-        let layouts = Array((savedAnalysis?.layouts ?? session.draft(for: projectID)?.layouts ?? [])
+        let layouts = Array((savedAnalysis?.layouts ?? session.comparedLayouts(for: projectID))
             .prefix(LayoutID.allCases.count))
         // One layout is analysed on its own. Two are analysed and compared.
         guard !layouts.isEmpty else { return .needsLayouts(count: 0) }
