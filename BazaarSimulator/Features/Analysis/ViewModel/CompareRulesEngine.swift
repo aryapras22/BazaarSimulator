@@ -43,10 +43,10 @@ struct CompareRulesEngine: Sendable {
         let headline = oWin.C == oLose.C
             ? (oWin.C == 0
                 ? "Neither layout has spots where people get stuck, even at the busiest time (\(peakHourText))."
-                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck at the busiest time (\(peakHourText)).")
+                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time (\(peakHourText)).")
             : oWin.C == 0
             ? "\(oWin.name) has no spots where people get stuck, even at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
-            : "\(oWin.name) has only \(oWin.C) \(spotsWord(oWin.C)) where people get stuck at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
+            : "\(oWin.name) has only \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -63,7 +63,7 @@ struct CompareRulesEngine: Sendable {
             return AnalysisContent.Tile(
                 layout: layout,
                 value: "\(c) \(spotsWord(c))",
-                caption: "\(c == 1 ? "Spot" : "Spots") where people get stuck at \(peakHourText)",
+                caption: "\(c == 1 ? "Spot" : "Spots") where people get stuck\(atOnce(c)) at \(peakHourText)",
                 bullets: bullets,
                 unit: ""
             )
@@ -74,7 +74,7 @@ struct CompareRulesEngine: Sendable {
             formatter: Self.formatCountOrAvg,
             lowerIsBetter: true,
             meaningGenerator: { out in
-                out.C == 0 ? "Nobody gets stuck" : "People get stuck in \(out.C) \(self.spotsWord(out.C)) at \(self.peakHourText)"
+                out.C == 0 ? "Nobody gets stuck" : "People get stuck in \(out.C) \(self.spotsWord(out.C))\(self.atOnce(out.C)) at \(self.peakHourText)"
             }
         )
 
@@ -95,10 +95,10 @@ struct CompareRulesEngine: Sendable {
             explanation: "A spot so crowded that people get stuck.",
             unit: "spots",
             singularUnit: "spot",
-            measure: "Spots where people get stuck",
+            measure: "Spots where people get stuck at once",
             facts: [
                 AnalysisContent.Fact(symbol: "person.3.fill", text: "Over 1 person per m² (grade E or F)"),
-                AnalysisContent.Fact(symbol: "mappin.and.ellipse", text: "Checked at each spot all day"),
+                AnalysisContent.Fact(symbol: "mappin.and.ellipse", text: "Counts the spots stuck at the same moment"),
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Fewer is better"),
             ]
         )
@@ -412,6 +412,11 @@ struct CompareRulesEngine: Sendable {
             }
             return AnalysisContent.Series(layout: layout, points: points)
         }
+    }
+
+    /// The count is the most spots stuck at the same moment, which can be fewer than the spots marked on the plan.
+    private func atOnce(_ count: Int) -> String {
+        count > 1 ? " at once" : ""
     }
 
     private func spotsWord(_ count: Int) -> String {

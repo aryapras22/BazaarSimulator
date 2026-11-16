@@ -46,7 +46,7 @@ enum SingleLayoutContent {
             let spots = outcome.C
             return spots == 0
                 ? "Nobody gets stuck, even at the busiest time (\(peakHourText))."
-                : "At the busiest time (\(peakHourText)), people get stuck in \(spots) \(spots == 1 ? "spot" : "spots")."
+                : "At the busiest time (\(peakHourText)), people get stuck in \(spots) \(spots == 1 ? "spot" : "spots at once")."
         case .congestionDuration:
             return outcome.M < 0.25
                 ? "People keep moving, even at the busiest time (\(peakHourText))."
@@ -92,7 +92,7 @@ struct SingleLayoutSummary {
         stats = [
             Stat(
                 title: "Crowded Spots", symbol: "exclamationmark.triangle.fill",
-                text: "\(stuck)", unit: stuck == 1 ? "spot" : "spots", caption: "Detected"
+                text: "\(stuck)", unit: stuck == 1 ? "spot" : "spots", caption: "Stuck at once"
             ),
             Stat(
                 title: "Time Stuck", symbol: "clock.fill",
