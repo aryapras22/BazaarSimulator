@@ -47,6 +47,13 @@ struct HallOutlineTests {
         #expect(floor.extent == SIMD2(40.1, 40.1))
     }
 
+    @Test("A door drawn on the far face of a thick door wall still opens onto a lobby")
+    func doorBeyondThickWall() {
+        let floor = HallOutline.floor(of: plan + [door(at: SIMD2(20, 33))])
+
+        #expect(LayoutGeometry.bounds(of: floor.lobby).minY == 30)
+    }
+
     @Test("A side with no open door gets no lobby")
     func closedDoorMakesNoLobby() {
         let floor = HallOutline.floor(of: plan + [door(at: SIMD2(20, 30), direction: .disabled)])

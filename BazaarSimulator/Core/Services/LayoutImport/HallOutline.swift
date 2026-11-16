@@ -91,15 +91,17 @@ enum HallOutline {
     }
 
     /// The strip between the hall and the outer box, on the side of the hall whose open doors are widest in total.
-    /// Visitors reach the hall through it, so it has to be floor.
+    /// Visitors reach the hall through it, so it has to be floor. A door counts for a side when it stands anywhere in
+    /// that strip, because a door drawn on the far face of a thick wall is metres from the hall edge.
     private static func lobby(beyond hall: Box, within outer: Box, doors: [LayoutObject]) -> [SIMD2<Double>] {
         var widest = 0.0
-        var strip: Box?
+        var lobby: Box?
         for across in [0, 1] {
             let sides = [(hall.low[across], outer.low[across]), (hall.high[across], outer.high[across])]
             for (edge, limit) in sides where abs(edge - limit) > lineToleranceM {
+                let strip = (min(edge, limit) - doorReachM)...(max(edge, limit) + doorReachM)
                 let width = doors
-                    .filter { abs($0.placement.center[across] - edge) <= doorReachM }
+                    .filter { strip.contains($0.placement.center[across]) }
                     .map { max($0.placement.sizeM.x, $0.placement.sizeM.y) }
                     .reduce(0, +)
                 guard width > widest else { continue }
@@ -107,10 +109,10 @@ enum HallOutline {
                 var box = outer
                 box.low[across] = min(edge, limit)
                 box.high[across] = max(edge, limit)
-                strip = box
+                lobby = box
             }
         }
-        return strip?.corners ?? []
+        return lobby?.corners ?? []
     }
 }
 
