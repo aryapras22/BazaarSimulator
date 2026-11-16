@@ -15,7 +15,7 @@ enum SimulationLoader {
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
-        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor]) -> Void)? = nil
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> Result {
         let layouts = Array((session.draft(for: projectID)?.layouts ?? []).prefix(LayoutID.allCases.count))
         guard layouts.count == LayoutID.allCases.count else { return .needsLayouts(count: layouts.count) }

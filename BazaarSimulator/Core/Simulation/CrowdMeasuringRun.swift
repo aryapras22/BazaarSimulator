@@ -104,15 +104,17 @@ nonisolated final class CrowdMeasuringRun {
 
     /// Runs to the end of the event, or until `isCancelled` says to stop.
     func run(
-        onLiveFrame: (@Sendable ([MeasuredVisitor]) -> Void)? = nil,
+        onLiveFrame: (@Sendable ([MeasuredVisitor], Double) -> Void)? = nil,
         isCancelled: () -> Bool
     ) -> CrowdMeasurements {
         let liveStepStride = max(1, 20 * CrowdParameters.stepsPerSecond)
+        let totalSeconds = max(1.0, setup.openSeconds)
         while !isFinished {
             for _ in 0..<256 where !isFinished {
                 step()
                 if let onLiveFrame, stepIndex % liveStepStride == 0 {
-                    onLiveFrame(currentMeasuredVisitors())
+                    let progress = min(1.0, max(0.0, crowd.time / totalSeconds))
+                    onLiveFrame(currentMeasuredVisitors(), progress)
                 }
             }
             if isCancelled() { break }

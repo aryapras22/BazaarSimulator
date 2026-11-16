@@ -84,7 +84,11 @@ struct SimulationPlayerView: View {
                         .id(viewModel.mode)
                         .transition(.opacity)
 
-                    PlaybackBar(clock: $clock, time: time)
+                    PlaybackBar(
+                        clock: $clock,
+                        time: time,
+                        eventDurationSeconds: viewModel.replay?.durationSeconds ?? 39_600
+                    )
                         .frame(width: frame.bar.width, height: frame.bar.height)
                         .position(x: frame.bar.midX, y: frame.bar.midY)
                 }

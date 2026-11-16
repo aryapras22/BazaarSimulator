@@ -9,7 +9,7 @@ protocol AnalysisServiceProtocol: AnyObject {
         visitorTypes: [VisitorType],
         focus: TimeRange,
         legend: Legend,
-        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor]) -> Void)?
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)?
     ) async -> [LayoutAnalysis]
 
     func cancelAll()
@@ -72,7 +72,7 @@ final class AnalysisService: AnalysisServiceProtocol {
         visitorTypes: [VisitorType],
         focus: TimeRange,
         legend: Legend,
-        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor]) -> Void)? = nil
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> [LayoutAnalysis] {
         cancelAll()
         var runs: [(input: SimulationInput, grid: NavigationGrid, task: Task<CrowdMeasurements, Never>?)] = []
@@ -90,7 +90,7 @@ final class AnalysisService: AnalysisServiceProtocol {
             let stream = index == 0 ? onLiveFrame : nil
             runs.append((input, grid, Task.detached(priority: .userInitiated) {
                 CrowdMeasuringRun(setup: setup).run(
-                    onLiveFrame: stream.map { callback in { callback(layoutID, $0) } },
+                    onLiveFrame: stream.map { callback in { callback(layoutID, $0, $1) } },
                     isCancelled: { Task.isCancelled }
                 )
             }))

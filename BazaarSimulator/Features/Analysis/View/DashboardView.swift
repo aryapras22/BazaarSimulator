@@ -62,6 +62,7 @@ struct DashboardContent: View {
                 RunningNotice(
                     text: "Running the simulation…",
                     showsProgress: true,
+                    progress: viewModel.loadingProgress,
                     previewVenue: viewModel.previewVenue,
                     previewFrame: viewModel.previewFrame
                 )
@@ -116,6 +117,7 @@ struct DashboardContent: View {
 private struct RunningNotice: View {
     let text: String
     let showsProgress: Bool
+    var progress: Double = 0.0
     var previewVenue: SimulationVenue?
     var previewFrame: SimulationSceneFrame = SimulationSceneFrame()
 
@@ -135,20 +137,32 @@ private struct RunningNotice: View {
                     .padding(.vertical, 18)
             }
 
-            VStack(spacing: 14) {
+            VStack(spacing: 12) {
                 if showsProgress {
                     ProgressView()
                 }
                 Text(text)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.textPrimary)
+                if showsProgress {
+                    VStack(spacing: 6) {
+                        ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
+                            .progressViewStyle(.linear)
+                            .tint(Palette.accent)
+                            .frame(width: 240)
+                        Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.textSecondary)
+                    }
+                }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 18)
             .background {
                 if showsProgress && previewVenue != nil {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.backgroundMain.opacity(0.78))
+                        .fill(Color.backgroundMain.opacity(0.84))
                         .overlay {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)

@@ -25,6 +25,7 @@ final class DashboardViewModel {
     private(set) var simulationResult: SimulationResult?
     private(set) var previewVenue: SimulationVenue?
     private(set) var previewFrame = SimulationSceneFrame()
+    private(set) var loadingProgress: Double = 0.0
     private var runTask: Task<Void, Never>?
 
     init(
@@ -70,6 +71,7 @@ final class DashboardViewModel {
     func runSimulation() async {
         isRunning = true
         phase = .loading
+        loadingProgress = 0.0
         preparePreviewVenue()
         defer { isRunning = false }
         let previewLayoutID = previewVenue?.id
@@ -78,10 +80,10 @@ final class DashboardViewModel {
             session: session,
             analysisService: analysisService,
             catalog: catalog,
-            onLiveFrame: { [weak self] layoutID, visitors in
+            onLiveFrame: { [weak self] layoutID, visitors, progress in
                 guard layoutID == previewLayoutID else { return }
                 Task { @MainActor [weak self] in
-                    self?.applyLiveVisitors(visitors)
+                    self?.applyLiveVisitors(visitors, progress: progress)
                 }
             }
         ) {
@@ -89,6 +91,7 @@ final class DashboardViewModel {
             simulationResult = nil
             phase = .needsTwoLayouts(count: count)
         case .ready(let result):
+            loadingProgress = 1.0
             simulationResult = result
             phase = .ready
         case .cancelled:
@@ -114,7 +117,8 @@ final class DashboardViewModel {
         previewFrame = SimulationSceneFrame()
     }
 
-    private func applyLiveVisitors(_ visitors: [MeasuredVisitor]) {
+    private func applyLiveVisitors(_ visitors: [MeasuredVisitor], progress: Double) {
+        loadingProgress = max(loadingProgress, progress)
         var frame = SimulationSceneFrame()
         frame.visitors = visitors.map { visitor in
             SimulationSceneFrame.Visitor(
