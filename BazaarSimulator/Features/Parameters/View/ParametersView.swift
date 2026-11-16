@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ParametersView: View {
     @Bindable var viewModel: ParametersViewModel
+    @State private var commitScope = FormCommitScope()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -19,6 +20,7 @@ struct ParametersView: View {
             footerView
                 .padding(.top, Spacing.l)
         }
+        .environment(\.formCommitScope, commitScope)
         .padding(Spacing.xl)
         .frame(minWidth: 860)
         .fixedSize(horizontal: false, vertical: true)
@@ -86,7 +88,10 @@ struct ParametersView: View {
             Spacer()
             Button("Cancel") { viewModel.cancel() }
                 .buttonStyle(.secondary)
-            Button("Apply") { viewModel.apply() }
+            Button("Apply") {
+                commitScope.commitAll()
+                viewModel.apply()
+            }
                 .buttonStyle(.primary)
         }
     }
