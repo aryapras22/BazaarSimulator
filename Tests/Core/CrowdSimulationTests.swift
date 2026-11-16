@@ -341,6 +341,75 @@ extension CrowdSimulationTests {
         #expect((8...32).contains(watching))
     }
 
+    @Test("A stage with free seating near it is watched from a seat instead of walked up to")
+    func stageIsWatchedFromSeating() {
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "Audience",
+            placement: Placement(center: SIMD2(6, 5), sizeM: SIMD2(2, 1)),
+            catalogID: FurnitureModels.seatingBlockID
+        )
+        let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 2)), seating])
+        let party = spawnedParty(in: simulation)
+        party.stopoversLeft = 0
+        party.isGoalDriven = false
+        party.target = .exit
+        party.heading = 0
+
+        simulation.considerDetour(party)
+
+        if case .table(let group) = party.target {
+            #expect(simulation.world.tables[group].isSeating)
+        } else {
+            Issue.record("Party did not head for the seating")
+        }
+        #expect(party.visited.contains(0))
+
+        // With every seat taken, the next party walks up to the stage as before.
+        simulation.tableOccupants = simulation.tableOccupants.map { _ in party }
+        let late = spawnedParty(in: simulation)
+        late.stopoversLeft = 0
+        late.isGoalDriven = false
+        late.target = .exit
+        late.heading = 0
+        simulation.considerDetour(late)
+        if case .booth(0, .stopover) = late.target {} else { Issue.record("Party did not go to the stage") }
+    }
+
+    @Test("Closing ends every stop, sends everyone to the exit and lets nobody else in")
+    func closingSendsEveryoneOut() {
+        let simulation = makeSimulation(objects: [Self.booth(at: SIMD2(6, 6))])
+        let visiting = spawnedParty(in: simulation)
+        visiting.target = .booth(0, .planned)
+        simulation.startVisit(visiting, booth: 0)
+        let walking = spawnedParty(in: simulation)
+        walking.plan = [0]
+        walking.target = .booth(0, .planned)
+
+        simulation.startClosing()
+
+        for party in [visiting, walking] {
+            if case .exit = party.target {} else { Issue.record("Party is not leaving") }
+            #expect(party.state == .walking)
+        }
+        #expect(simulation.browsers[0].isEmpty)
+        let inside = simulation.parties.count
+        for _ in 0..<600 { simulation.step() }
+        #expect(simulation.parties.count <= inside)
+    }
+
+    @Test("A disabled booth is never planned")
+    func disabledBoothIsNotPlanned() {
+        var closed = Self.booth(at: SIMD2(6, 6))
+        closed.isDisabled = true
+        let simulation = makeSimulation(objects: [closed, Self.booth(at: SIMD2(12, 6))])
+
+        for _ in 0..<100 {
+            #expect(!spawnedParty(in: simulation).plan.contains(0))
+        }
+        #expect(simulation.world.booths.count == 2, "it still stands on the floor")
+    }
+
     @Test("A party sits on the chairs of a seating group big enough for it")
     func partySitsOnSeatingBlock() throws {
         let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)

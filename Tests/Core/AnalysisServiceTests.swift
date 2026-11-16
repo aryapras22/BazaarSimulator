@@ -55,7 +55,16 @@ struct AnalysisServiceTests {
         #expect(abs(setup.arrivalFactors[90] - 2 * setup.arrivalFactors[10]) < 1e-9)
         #expect(abs(setup.arrivalFactors.reduce(0, +) / 180 - 1) < 1e-9)
         #expect(setup.window == 0...10_800)
+        #expect(setup.arrivalFactors[149] > 0 && setup.arrivalFactors[150] == 0, "nobody arrives in the last half hour")
         #expect(Set(setup.typeIndexByPersona.values).isSubset(of: [0, 1]), "every persona is shown as a type the catalog has")
+    }
+
+    @Test("The hall is empty when the event closes")
+    func emptyAtClosing() async throws {
+        let analysis = try #require(await analyses(AnalysisService(), layouts: [TestLayouts.hall()]).first)
+        let replay = try #require(analysis.replay)
+        #expect(replay.frames.contains { !$0.visitors.isEmpty })
+        #expect(replay.frames.last?.visitors.isEmpty == true)
     }
 
     @Test("Changing the layout runs the simulation again")

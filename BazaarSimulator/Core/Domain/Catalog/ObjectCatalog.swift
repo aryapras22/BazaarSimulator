@@ -103,7 +103,7 @@ enum ObjectCatalog {
         ),
         CatalogItem(
             id: "block", name: "Block", category: .structure, kind: .block,
-            sizeM: SIMD2(1.0, 1.0), heightM: 1.2, footprint: .rect,
+            sizeM: SIMD2(2.0, 2.0), heightM: 1.2, footprint: .rect,
             resize: .free, placement: .point,
             keywords: ["block", "concrete", "barrier", "cube"], seats: []
         ),
@@ -129,7 +129,7 @@ enum ObjectCatalog {
 }
 
 /// What an attraction is. It picks the 3D model, and is stored as the object's catalog ID the way a table's model is.
-enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
+nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
     case stage
     case photobooth
     case other
@@ -143,7 +143,7 @@ enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
     }
 
     var catalogID: String {
-        "\(ObjectCatalog.entertainmentID)-\(rawValue)"
+        "entertainment-\(rawValue)"
     }
 
     /// The type chosen in the inspector. An object that never had one chosen, such as one read from a plan, carries
