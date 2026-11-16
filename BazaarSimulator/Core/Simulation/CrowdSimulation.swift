@@ -7,7 +7,8 @@ nonisolated final class CrowdSimulation {
     let totalVisitors: Int
     let maxQueueLength: Int
     let maxQueueWaitSeconds: Double
-    let arrivalRatePerSecond: Double
+    /// Parties arriving each second. A measured run changes it through the day to follow the peaks.
+    var arrivalRatePerSecond: Double
     let personaWeights: [(persona: CrowdPersona, weight: Double)]
 
     var stepCount = 0

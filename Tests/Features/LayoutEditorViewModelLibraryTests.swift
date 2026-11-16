@@ -26,7 +26,10 @@ struct LayoutEditorViewModelLibraryTests {
         let boothRows = boothsVM.libraryRows
         #expect(!boothRows.isEmpty)
         #expect(boothRows.filter { $0.category == .project }.count == 1)
-        #expect(boothRows.filter { $0.category == .furniture }.map(\.id) == ["table-rect-4"])
+        #expect(
+            boothRows.filter { $0.category == .furniture }.map(\.id)
+                == ["table-rect-4", FurnitureModels.seatingBlockID]
+        )
         #expect(boothRows.allSatisfy { $0.category.layer == .booths })
 
         let structureVM = Self.makeViewModel(layer: .structure)

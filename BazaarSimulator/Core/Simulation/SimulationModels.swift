@@ -125,7 +125,7 @@ enum VisitorShareBalancer {
 }
 
 /// User-configured event parameters from the Parameter modal.
-struct EventParameters: Codable, Hashable, Sendable {
+struct ModalParameters: Codable, Hashable, Sendable {
     var totalVisitors: Int = 2000
     var startMinutes: Int = 10 * 60
     var endMinutes: Int = 21 * 60
@@ -193,7 +193,7 @@ nonisolated struct SimulationFrame: Codable, Hashable, Sendable {
 }
 
 /// Saved result of running a simulation on a layout, including heatmap data and recorded footage.
-nonisolated struct SimulationResult: Codable, Hashable, Sendable {
+nonisolated struct RecordedSimulationResult: Codable, Hashable, Sendable {
     var layoutID: UUID
     var layoutName: String
     var durationSeconds: Double = 39_600

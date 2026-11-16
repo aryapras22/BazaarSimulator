@@ -6,6 +6,7 @@ final class ProjectScreenFactory {
     private let router: AppRouter
     private var setupViewModels: [UUID: ProjectSetupViewModel] = [:]
     private var layoutEditorViewModels: [UUID: LayoutEditorViewModel] = [:]
+    private var dashboardViewModels: [UUID: DashboardViewModel] = [:]
 
     init(services: AppServices, router: AppRouter) {
         self.services = services
@@ -34,7 +35,8 @@ final class ProjectScreenFactory {
             session: services.projectSession,
             importQueue: services.importQueue,
             onContinue: { [weak router] id in
-                router?.showAnalysis(projectID: id)
+                // Parameters come first. The analysis opens when they are applied.
+                router?.showParameters(projectID: id)
             },
             onEdit: { [weak router] id in
                 router?.showEditor(projectID: id)
@@ -59,27 +61,49 @@ final class ProjectScreenFactory {
         return created
     }
 
-    func makeSimulationViewModel(projectID: UUID) -> SimulationViewModel {
+    func makeDashboardViewModel(projectID: UUID) -> DashboardViewModel {
+        if let existing = dashboardViewModels[projectID] {
+            return existing
+        }
         let session = services.projectSession
-        let layouts = session.draft(for: projectID)?.layouts ?? []
-        let legend = session.draft(for: projectID)?.legend ?? Legend()
-        let activeID = session.activeLayoutID(for: projectID)
-        let layout = (activeID.flatMap { session.layout(id: $0, in: projectID) })
-            ?? layouts.first
-            ?? PreviewLayouts.beyond()
-        let savedResult = session.simulationResult(for: layout.id, in: projectID)
-        let settings = session.parameters(for: projectID).toSimulationSettings()
-        return SimulationViewModel(
-            layout: layout,
-            availableLayouts: layouts,
-            savedResult: savedResult,
-            makeEngine: { SimulationEngine(layout: $0, settings: settings, legend: legend) },
-            onLayoutSelected: { [weak session] selectedID in
-                session?.setActiveLayoutID(selectedID, for: projectID)
-            },
-            resultProvider: { [weak session] layoutID in
-                session?.simulationResult(for: layoutID, in: projectID)
+        /// Layout 1 and Layout 2 on the compare page are the project's first two layouts.
+        func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
+            let layouts = session.draft(for: projectID)?.layouts ?? []
+            if layout.rawValue - 1 < layouts.count {
+                session.setActiveLayoutID(layouts[layout.rawValue - 1].id, for: projectID)
             }
+            show(projectID)
+        }
+        let created = DashboardViewModel(
+            projectID: projectID,
+            session: session,
+            analysisService: services.analysisService,
+            catalog: services.presetCatalog,
+            onBack: { [weak router] in
+                router?.showSetup(projectID: projectID)
+            },
+            onSimulate: { [weak router] layout in
+                router?.requestSimulation(projectID: projectID, layout: layout)
+            },
+            onEdit: { [weak router] layout in
+                open(layout) { router?.showEditor(projectID: $0) }
+            }
+        )
+        dashboardViewModels[projectID] = created
+        return created
+    }
+
+    func makeParametersViewModel(
+        projectID: UUID,
+        onClose: @escaping () -> Void,
+        onApply: (() -> Void)? = nil
+    ) -> ParametersViewModel {
+        ParametersViewModel(
+            projectID: projectID,
+            session: services.projectSession,
+            catalog: services.presetCatalog,
+            onClose: onClose,
+            onApply: onApply
         )
     }
 }

@@ -9,7 +9,11 @@ struct ObjectCatalogTests {
     func uniqueItemIDs() {
         let ids = ObjectCatalog.items.map(\.id)
         let uniqueIDs = Set(ids)
-        #expect(ids.count == ObjectCatalog.structureItems.count + ObjectCatalog.furnitureItems.count)
+        #expect(
+            ids.count == ObjectCatalog.structureItems.count
+                + ObjectCatalog.furnitureItems.count
+                + ObjectCatalog.entertainmentItems.count
+        )
         #expect(uniqueIDs.count == ids.count)
     }
 

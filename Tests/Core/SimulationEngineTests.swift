@@ -99,7 +99,7 @@ struct SimulationEngineTests {
     @Test("Single visitor stays in Fruin Severity A (< 0.08 people/m²) and duration matches parameters")
     func singleVisitorStaysGradeAAndDurationMatches() async {
         let layout = PreviewLayouts.smallMarket()
-        let params = EventParameters(
+        let params = ModalParameters(
             totalVisitors: 1,
             startMinutes: 10 * 60,
             endMinutes: 14 * 60

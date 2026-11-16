@@ -12,6 +12,9 @@ protocol ProjectSessionProtocol: AnyObject {
     func selectProject(id: UUID)
     func renameProject(id: UUID, to name: String)
 
+    func eventParameters(for projectID: UUID) -> EventParameters?
+    func setEventParameters(_ parameters: EventParameters, for projectID: UUID)
+
     func draft(for projectID: UUID) -> ProjectDraft?
     func setDraft(_ draft: ProjectDraft, for projectID: UUID)
 
@@ -20,10 +23,10 @@ protocol ProjectSessionProtocol: AnyObject {
     func activeLayoutID(for projectID: UUID) -> Layout.ID?
     func setActiveLayoutID(_ id: Layout.ID, for projectID: UUID)
 
-    func parameters(for projectID: UUID) -> EventParameters
-    func setParameters(_ parameters: EventParameters, for projectID: UUID)
-    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> SimulationResult?
-    func setSimulationResult(_ result: SimulationResult, for layoutID: Layout.ID, in projectID: UUID)
+    func parameters(for projectID: UUID) -> ModalParameters
+    func setParameters(_ parameters: ModalParameters, for projectID: UUID)
+    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> RecordedSimulationResult?
+    func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
     func isSimulating(_ projectID: UUID) -> Bool
 }
@@ -34,9 +37,10 @@ final class ProjectSession: ProjectSessionProtocol {
     private(set) var projects: [ProjectSummary] = []
     private(set) var activeProjectID: UUID?
     private var drafts: [UUID: ProjectDraft] = [:]
+    private var eventParametersByProject: [UUID: EventParameters] = [:]
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
-    private var parametersByProject: [UUID: EventParameters] = [:]
-    private var simulationResultsByProject: [UUID: [Layout.ID: SimulationResult]] = [:]
+    private var parametersByProject: [UUID: ModalParameters] = [:]
+    private var simulationResultsByProject: [UUID: [Layout.ID: RecordedSimulationResult]] = [:]
     private var simulationTasks: [UUID: Task<Void, Never>] = [:]
     private var simulatingProjects: Set<UUID> = []
 
@@ -59,6 +63,14 @@ final class ProjectSession: ProjectSessionProtocol {
     func renameProject(id: UUID, to name: String) {
         guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
         projects[index].name = name
+    }
+
+    func eventParameters(for projectID: UUID) -> EventParameters? {
+        eventParametersByProject[projectID]
+    }
+
+    func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
+        eventParametersByProject[projectID] = parameters
     }
 
     func draft(for projectID: UUID) -> ProjectDraft? {
@@ -102,19 +114,19 @@ final class ProjectSession: ProjectSessionProtocol {
 
     // MARK: - Parameters & Simulation Results
 
-    func parameters(for projectID: UUID) -> EventParameters {
-        parametersByProject[projectID] ?? EventParameters()
+    func parameters(for projectID: UUID) -> ModalParameters {
+        parametersByProject[projectID] ?? ModalParameters()
     }
 
-    func setParameters(_ parameters: EventParameters, for projectID: UUID) {
+    func setParameters(_ parameters: ModalParameters, for projectID: UUID) {
         parametersByProject[projectID] = parameters
     }
 
-    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> SimulationResult? {
+    func simulationResult(for layoutID: Layout.ID, in projectID: UUID) -> RecordedSimulationResult? {
         simulationResultsByProject[projectID]?[layoutID]
     }
 
-    func setSimulationResult(_ result: SimulationResult, for layoutID: Layout.ID, in projectID: UUID) {
+    func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID) {
         var projectMap = simulationResultsByProject[projectID] ?? [:]
         projectMap[layoutID] = result
         simulationResultsByProject[projectID] = projectMap
