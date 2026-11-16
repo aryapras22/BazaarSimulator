@@ -107,20 +107,41 @@ nonisolated final class CrowdMeasuringRun {
         onLiveFrame: (@Sendable ([MeasuredVisitor], Double) -> Void)? = nil,
         isCancelled: () -> Bool
     ) -> CrowdMeasurements {
-        let liveStepStride = max(1, 20 * CrowdParameters.stepsPerSecond)
+        let liveStepStride = max(1, 2 * CrowdParameters.stepsPerSecond)
         let totalSeconds = max(1.0, setup.openSeconds)
+        var lastLiveWallTime = 0.0
+        if let onLiveFrame {
+            lastLiveWallTime = CFAbsoluteTimeGetCurrent()
+            onLiveFrame(currentMeasuredVisitors(), 0.0)
+        }
         while !isFinished {
             for _ in 0..<256 where !isFinished {
                 step()
                 if let onLiveFrame, stepIndex % liveStepStride == 0 {
-                    let progress = min(1.0, max(0.0, crowd.time / totalSeconds))
-                    onLiveFrame(currentMeasuredVisitors(), progress)
+                    let now = CFAbsoluteTimeGetCurrent()
+                    if now - lastLiveWallTime >= 0.04 {
+                        lastLiveWallTime = now
+                        onLiveFrame(currentMeasuredVisitors(), normalizedProgress(openSeconds: totalSeconds))
+                    }
                 }
             }
             if isCancelled() { break }
         }
+        if let onLiveFrame, !isCancelled() {
+            onLiveFrame(currentMeasuredVisitors(), 0.98)
+        }
         result.enteredPeople = crowd.stats.enteredPeople
         return result
+    }
+
+    private func normalizedProgress(openSeconds: Double) -> Double {
+        let now = max(0.0, crowd.time)
+        if now <= openSeconds {
+            return min(0.92, (now / openSeconds) * 0.92)
+        }
+        let grace = max(1.0, Self.closingGraceSeconds)
+        let graceFraction = min(1.0, (now - openSeconds) / grace)
+        return min(0.98, 0.92 + graceFraction * 0.06)
     }
 
     private func step() {

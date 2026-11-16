@@ -67,4 +67,31 @@ struct AnalysisServiceTests {
         let second = await analyses(service, layouts: [layout])
         #expect(first != second)
     }
+
+    @Test("Live progress stays monotonic below 100 percent until every layout finishes")
+    func liveProgressCoversAllLayouts() async {
+        let service = AnalysisService()
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]
+        final class ProgressBox: @unchecked Sendable {
+            let lock = NSLock()
+            var values: [Double] = []
+        }
+        let box = ProgressBox()
+        let results = await service.analyses(
+            for: layouts,
+            parameters: TestLayouts.parameters,
+            visitorTypes: TestLayouts.visitorTypes,
+            focus: focus,
+            legend: Legend(),
+            onLiveFrame: { _, _, progress in
+                box.lock.lock()
+                box.values.append(progress)
+                box.lock.unlock()
+            }
+        )
+        #expect(results.count == 2)
+        #expect(!box.values.isEmpty)
+        #expect(box.values.allSatisfy { $0 >= 0.0 && $0 < 1.0 })
+        #expect(zip(box.values, box.values.dropFirst()).allSatisfy { $0 <= $1 + 1e-9 })
+    }
 }
