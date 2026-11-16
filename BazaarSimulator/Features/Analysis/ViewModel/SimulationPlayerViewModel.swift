@@ -192,25 +192,25 @@ final class SimulationPlayerViewModel {
     /// People per m² for each heat cell at `playback`, using the Gaussian KDE kernel.
     func heatDensity(at playback: Double) -> [Double] {
         let columns = Self.heatColumns, rows = heatRows
+        let sensitivity = CrowdParameters.replayHeatmapSensitivity
         var counts = Array(repeating: 0.0, count: columns * rows)
         for visitor in visitors(at: playback) {
             let column = min(max(Int(visitor.point.x * CGFloat(columns)), 0), columns - 1)
             let row = min(max(Int(visitor.point.y * CGFloat(rows)), 0), rows - 1)
-            counts[row * columns + column] += Double(visitor.people)
+            counts[row * columns + column] += Double(visitor.people) * sensitivity
         }
         let cellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
-        let radius = min(2, CrowdParameters.heatmapKernelRadius)
-        let twoSigmaSq = 2.0 * CrowdParameters.heatmapKernelSigma * CrowdParameters.heatmapKernelSigma
+        let weights = [[1.0, 2, 1], [2, 5, 2], [1, 2, 1]]
         let coverage = heatCoverage
         var density = Array(repeating: 0.0, count: columns * rows)
         for row in 0..<rows {
             for column in 0..<columns {
                 var people = 0.0, area = 0.0
-                for dy in -radius...radius {
-                    for dx in -radius...radius {
+                for dy in -1...1 {
+                    for dx in -1...1 {
                         let r = row + dy, c = column + dx
                         guard r >= 0, r < rows, c >= 0, c < columns else { continue }
-                        let weight = exp(-Double(dx * dx + dy * dy) / twoSigmaSq)
+                        let weight = weights[dy + 1][dx + 1]
                         people += counts[r * columns + c] * weight
                         area += max(coverage[r * columns + c], 0.4) * cellArea * weight
                     }
@@ -318,12 +318,42 @@ final class SimulationPlayerViewModel {
         }
     }
 
-    /// Computes 1m x 1m Gaussian KDE density cells using `CrowdHeatmap` for the 2D SpriteKit view.
+    /// Computes 1m x 1m Gaussian KDE density cells for the 2D SpriteKit view with heightened sensitivity
+    /// so crowded spots clearly reach orange and red.
     func spriteDensityCells(at playback: Double) -> [DensityCell] {
         guard let layout else { return [] }
-        var heatmap = CrowdHeatmap(sizeM: layout.sizeM)
-        heatmap.update(with: spriteVisitors(at: playback))
-        return heatmap.cells
+        let cols = max(1, Int(ceil(layout.sizeM.x)))
+        let rows = max(1, Int(ceil(layout.sizeM.y)))
+        var grid = [Double](repeating: 0, count: cols * rows)
+        let sensitivity = CrowdParameters.replayHeatmapSensitivity
+        let twoSigmaSq = 2.0 * 1.15 * 1.15
+
+        var kernel: [(dx: Int, dy: Int, weight: Double)] = []
+        for dy in -2...2 {
+            for dx in -2...2 {
+                kernel.append((dx, dy, exp(-Double(dx * dx + dy * dy) / twoSigmaSq)))
+            }
+        }
+        let kernelSum = kernel.reduce(0.0) { $0 + $1.weight }
+
+        for visitor in spriteVisitors(at: playback) {
+            let col = Int(visitor.position.x)
+            let row = Int(visitor.position.y)
+            let people = Double(visitor.peopleCount) * sensitivity
+            for item in kernel {
+                let nCol = col + item.dx
+                let nRow = row + item.dy
+                guard nCol >= 0, nRow >= 0, nCol < cols, nRow < rows else { continue }
+                grid[nRow * cols + nCol] += people * (item.weight / kernelSum)
+            }
+        }
+
+        var cells: [DensityCell] = []
+        for key in grid.indices where grid[key] >= CrowdParameters.heatmapMinActiveDensity {
+            let center = SIMD2(Double(key % cols) + 0.5, Double(key / cols) + 0.5)
+            cells.append(DensityCell(id: key, center: center, peoplePerSquareMetre: grid[key]))
+        }
+        return cells
     }
 
     /// Converts cumulative footfall tiles or congestion spots into `DensityCell`s for the 2D SpriteKit overlay.

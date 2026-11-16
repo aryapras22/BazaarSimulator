@@ -351,11 +351,11 @@ final class Venue2DScene: SKScene {
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
             let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let peakAlpha = CGFloat(min(0.74, max(0.14, cell.peoplePerSquareMetre / 1.15)))
+            let peakAlpha = CGFloat(min(0.84, max(0.18, cell.peoplePerSquareMetre / 0.85)))
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
-                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.52),
+                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.60),
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 0.0)
             ] as CFArray
             let locations: [CGFloat] = [0.0, 0.45, 1.0]
