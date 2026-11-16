@@ -152,8 +152,10 @@ struct GenericInspector: View {
                     Text(type.displayName).tag(type)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .labelsHidden()
+            .controlSize(.large)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
