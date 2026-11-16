@@ -210,7 +210,8 @@ final class DashboardViewModel {
     }
 
     private func preparePreviewVenue(for targetLayoutID: UUID?) {
-        let layouts = comparedLayouts
+        // Every layout of the project is simulated, so the one being previewed may not be on the page.
+        let layouts = comparedLayouts + (session.draft(for: projectID)?.layouts ?? [])
         let targetLayout = (targetLayoutID.flatMap { id in layouts.first { $0.id == id } }) ?? layouts.first
         guard let targetLayout else {
             previewVenue = nil

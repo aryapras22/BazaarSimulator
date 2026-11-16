@@ -33,23 +33,29 @@ enum SimulationLoader {
         let parameters = savedAnalysis?.parameters
             ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         let legend = session.draft(for: projectID)?.legend ?? Legend()
-        func analyses(focus: TimeRange) async -> [LayoutAnalysis] {
+        // The project's other layouts are simulated in the same go. They are not on the page, but showing one on a
+        // card afterwards then reads its run instead of waiting for it.
+        let others = savedAnalysis == nil
+            ? (session.draft(for: projectID)?.layouts ?? []).filter { layout in !layouts.contains { $0.id == layout.id } }
+            : []
+        func analyses(for runLayouts: [Layout], focus: TimeRange) async -> [LayoutAnalysis] {
             await analysisService.analyses(
-                for: layouts, parameters: parameters, visitorTypes: catalog.visitorTypes, focus: focus, legend: legend,
+                for: runLayouts, parameters: parameters, visitorTypes: catalog.visitorTypes, focus: focus, legend: legend,
                 onLiveFrame: onLiveFrame
             )
         }
 
         let provisional = DaySchedule(parameters: parameters)
-        var measured = await analyses(focus: provisional.window)
-        guard !Task.isCancelled, measured.count == layouts.count else { return .cancelled }
+        let everything = await analyses(for: layouts + others, focus: provisional.window)
+        guard !Task.isCancelled, everything.count == layouts.count + others.count else { return .cancelled }
+        var measured = Array(everything.prefix(layouts.count))
 
         let busiest = BusiestWindow.startMinute(
             in: measured, hours: parameters.eventHours, windowMinutes: Int(provisional.windowMinutes)
         )
         let schedule = DaySchedule(parameters: parameters, peakMinute: busiest)
         if schedule.peakMinute != provisional.peakMinute {
-            measured = await analyses(focus: schedule.window)
+            measured = await analyses(for: layouts, focus: schedule.window)
             guard !Task.isCancelled, measured.count == layouts.count else { return .cancelled }
         }
         let analyses = measured
