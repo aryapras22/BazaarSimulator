@@ -101,6 +101,11 @@ extension ExtractedLayoutMapper {
         )
     }
 
+    /// A gate stands in an open passage, so it has no wall for `WallConnections` to seat it on and is added after.
+    static func gateDoors(in items: [DetectedItem], frame: (DetectedItem) -> Placement) -> [LayoutObject] {
+        items.filter { $0.cls == "gate" }.map { swingDoor(from: frame($0)) }
+    }
+
     private static let swingDoorThicknessM = 0.3
     private static let mainDoorShare = 0.5
 

@@ -62,6 +62,7 @@ enum ExtractedLayoutMapper {
         let readWalls = objects.filter { $0.kind == .wall }.map(\.placement)
         objects += joinedDoorRows(swingFrames, walls: readWalls).map(swingDoor(from:))
         objects = WallConnections.apply(to: WallCleanup.apply(to: objects))
+        objects += gateDoors(in: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         objects += furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         objects = closingSideDoors(TableSpacing.apply(to: objects))
         let floor = HallOutline.floor(of: objects)
@@ -172,7 +173,7 @@ enum ExtractedLayoutMapper {
             )
         case "blocked":
             return LayoutObject(kind: .closedArea, label: "Blocked", placement: placement, reviewState: .detected)
-        case "door", "object", "pillar", "entrance", "exit":
+        case "door", "gate", "object", "pillar", "entrance", "exit":
             return nil
         default:
             return legendObject(for: item, legend: legend, placement: placement, unlabeled: &unlabeled)

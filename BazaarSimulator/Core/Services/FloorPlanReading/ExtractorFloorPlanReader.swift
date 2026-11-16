@@ -93,7 +93,12 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
             on: page
         )
         onStage(0.75, "Reading booth numbers...")
-        let items = await PlanPrintedText.numberingBooths(named, on: page)
+        let numbered = await PlanPrintedText.numberingBooths(named, on: page)
+        let items = await PlanPrintedText.addingPrintedGates(
+            numbered,
+            classNames: reading.legend.map(\.label),
+            on: page
+        )
         onStage(0.90, "Reading scale...")
         return DetectedPlan(
             items: items,
