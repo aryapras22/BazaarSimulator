@@ -102,6 +102,21 @@ extension ExtractedLayoutMapper {
     }
 
     private static let swingDoorThicknessM = 0.3
+    private static let mainDoorShare = 0.5
+
+    /// A plan draws every door it has: service rooms, toilets, fire exits. Every open door lets visitors in and
+    /// out of the simulation, and the doors an event uses are the widest ones, so a door under half as wide as
+    /// the widest arrives closed. It stays in the layout for the user to open.
+    static func closingSideDoors(_ objects: [LayoutObject]) -> [LayoutObject] {
+        func width(_ door: LayoutObject) -> Double { max(door.placement.sizeM.x, door.placement.sizeM.y) }
+        let widest = objects.filter { $0.kind == .door }.map(width).max() ?? 0
+        return objects.map { object in
+            guard object.kind == .door, width(object) < widest * mainDoorShare else { return object }
+            var door = object
+            door.doorFlow = DoorFlow(direction: .disabled)
+            return door
+        }
+    }
     private static let rowOverlap = 0.8
 
     /// Swing symbols side by side are one row of doors that was read in pieces where a leaf was missed. Two symbols

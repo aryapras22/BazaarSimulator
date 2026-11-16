@@ -10,6 +10,7 @@ struct LayoutScore: Equatable, Sendable {
     var boothsFound: Int
     var boothLabelsRight: Int
     var extraBooths: Int
+    /// Doors are the open ones, which are the doors visitors of the simulation walk through.
     var truthDoors: Int
     var doorsFound: Int
     var extraDoors: Int
@@ -32,7 +33,7 @@ extension LayoutScore {
             return overlap >= Self.minBoothOverlap ? overlap : nil
         }
 
-        let doors = layout.objects.filter { $0.kind == .door }
+        let doors = layout.objects.filter { $0.kind == .door && $0.doorFlow?.direction != .disabled }
         let truthDoors = truth.objects.filter { $0.kind == .door }
         let doorPairs = Self.pairs(truthDoors.count, doors.count) { truthIndex, index in
             let truthDoor = truthDoors[truthIndex].placement
