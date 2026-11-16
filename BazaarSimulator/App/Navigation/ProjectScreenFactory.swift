@@ -23,8 +23,34 @@ final class ProjectScreenFactory {
             onOpenAnalysis: { [weak router] projectID, analysisID in
                 router?.showSavedAnalysis(projectID: projectID, analysisID: analysisID)
             },
-            onOpenLatestAnalysis: { [weak router] id in router?.showAnalysis(projectID: id) }
+            onOpenLatestAnalysis: { [weak router] id in router?.showAnalysis(projectID: id) },
+            onDeleteProject: { [weak self] id in self?.deleteProject(id: id) }
         )
+    }
+
+    /// Removes a project with everything it holds: its files in the import queue, its saved screens, its results,
+    /// and its saved analyses. If it was open, the app moves on to the next project, or to the empty workspace.
+    private func deleteProject(id: UUID) {
+        let session = services.projectSession
+        let wasOpen = router.destination.projectID == id
+        let position = session.projects.firstIndex { $0.id == id } ?? 0
+
+        services.importQueue.removeAll(projectID: id)
+        setupViewModels[id] = nil
+        layoutEditorViewModels[id] = nil
+        dashboardViewModels[id] = nil
+        savedDashboardViewModels = savedDashboardViewModels.filter { $0.value.projectID != id }
+        if router.parametersProjectID == id { router.dismissParameters() }
+        session.deleteProject(id: id)
+
+        guard wasOpen else { return }
+        let remaining = session.projects
+        if let next = remaining.indices.contains(position) ? remaining[position] : remaining.last {
+            session.selectProject(id: next.id)
+            router.showSetup(projectID: next.id)
+        } else {
+            router.showEmpty()
+        }
     }
 
     func makeSetupViewModel(projectID: UUID) -> ProjectSetupViewModel {
@@ -55,7 +81,7 @@ final class ProjectScreenFactory {
             projectID: projectID,
             session: services.projectSession,
             onBack: { [weak router] in
-                router?.showAnalysis(projectID: projectID)
+                router?.closeEditor(projectID: projectID)
             }
         )
         layoutEditorViewModels[projectID] = created

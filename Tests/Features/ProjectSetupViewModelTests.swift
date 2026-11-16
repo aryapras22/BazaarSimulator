@@ -208,7 +208,7 @@ struct ProjectSetupViewModelTests {
             state: .reading(progress: 0.5)
         ))
 
-        #expect(viewModel.statusText == "Waiting for Layout 2 to finish reading...")
+        #expect(viewModel.statusText == "Waiting for all layouts to finish reading...")
     }
 
     @Test("Continue needs a name, at least one plan, and every file done")
@@ -392,5 +392,65 @@ extension ProjectSetupViewModelTests {
         let updatedLayout = try #require(session.draft(for: project.id)?.layouts.first)
         let updatedBooth = try #require(updatedLayout.objects.first { $0.id == boothID })
         #expect(updatedBooth.placement.center == newCenter)
+    }
+}
+
+@Suite("UploadPageStatesTests")
+@MainActor
+struct UploadPageStatesTests {
+    private func model() -> (ProjectSetupViewModel, ScriptedImportQueue, ProjectSummary) {
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let session = ProjectSession()
+        let project = session.createProject(named: "Basha Vol. 1")
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id, session: session, importQueue: queue, onContinue: { _ in }
+        )
+        return (viewModel, queue, project)
+    }
+
+    @Test("A file that is not a PDF is named so the page can say it is unsupported")
+    func unsupportedFileIsNamed() {
+        let (viewModel, _, _) = model()
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/Plan_Legend.dwg")])
+        #expect(viewModel.unsupportedFileName == "Plan_Legend.dwg")
+
+        viewModel.clearUnsupportedFile()
+        #expect(viewModel.unsupportedFileName == nil)
+    }
+
+    @Test("Legend required shows only when plans are listed and there is no legend")
+    func legendRequired() {
+        let (viewModel, queue, project) = model()
+        #expect(!viewModel.showsLegendRequired)
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        queue.insert(ImportFile(
+            projectID: project.id, url: URL(fileURLWithPath: "/tmp/plan.pdf"), kind: .floorPlan,
+            state: .done(booths: 66, doors: 3), fileSize: 1000
+        ))
+        #expect(!viewModel.showsLegendRequired)
+
+        viewModel.deleteAllLegends()
+        #expect(viewModel.showsLegendRequired)
+        #expect(!viewModel.isContinueEnabled)
+    }
+
+    @Test("A plan that is still being read cannot be previewed, and one that was read can")
+    func previewNeedsAReadPlan() {
+        let (viewModel, queue, project) = model()
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        let reading = ImportFile(
+            projectID: project.id, url: URL(fileURLWithPath: "/tmp/a.pdf"), kind: .floorPlan,
+            state: .reading(progress: 0.5), fileSize: 1000
+        )
+        queue.insert(reading)
+
+        #expect(viewModel.previewLayout(fileID: reading.id) == nil)
+    }
+
+    @Test("The categories offered are Foods, Goods and Others")
+    func categories() {
+        #expect(BoothType.allCases.map(\.displayName) == ["Foods", "Goods", "Others"])
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Observation
 
 @Observable
@@ -60,6 +61,14 @@ final class DashboardViewModel {
         self.onEdit = onEdit
         // A saved run is already complete, so its page shows it from the start and never waits to be told to load.
         if case .saved(let id) = source { showSaved(id) }
+        // A page for the latest run starts from the saved run made from the same layouts and parameters, if there
+        // is one, so a page built anew never opens on the loading page when the analysis is already known.
+        if source == .latest, let saved = unchangedSavedAnalysis(),
+           let result = SimulationResult(saved: saved, visitorTypes: catalog.visitorTypes) {
+            simulationResult = result
+            shownInputs = currentInputs
+            phase = .ready
+        }
     }
 
     var projectName: String {
@@ -103,10 +112,13 @@ final class DashboardViewModel {
     /// Starts a run in the background. A run already under way is cancelled first, unless it is for the same
     /// layouts and parameters, and a page that already shows them stays as it is.
     func startSimulation() {
+        Logger(subsystem: "BazaarSimulator", category: "analysis")
+            .info("startSimulation: result \(self.simulationResult != nil), shown \(self.shownInputs != nil), running \(self.isRunning)")
         if source == .latest {
             if isRunning, runningInputs == currentInputs { return }
             if !isRunning, simulationResult != nil, shownInputs == currentInputs { return }
         }
+        logWhyRunning()
         runTask?.cancel()
         let runID = UUID()
         activeRunID = runID
@@ -120,6 +132,22 @@ final class DashboardViewModel {
         runTask?.cancel()
         runTask = nil
         activeRunID = nil
+    }
+
+    /// Writes to the log why a run starts although a result is already on the page, so an unexpected run can be
+    /// traced: filter the console for the "analysis" category.
+    private func logWhyRunning() {
+        let log = Logger(subsystem: "BazaarSimulator", category: "analysis")
+        guard source == .latest, let shown = shownInputs else {
+            log.info("run: first run on this page")
+            return
+        }
+        let now = currentInputs
+        if shown.parameters != now.parameters { log.info("run: parameters changed") }
+        if shown.layouts != now.layouts {
+            let changed = zip(shown.layouts, now.layouts).enumerated().filter { $0.element.0 != $0.element.1 }.map(\.offset)
+            log.info("run: layouts changed (count \(shown.layouts.count)->\(now.layouts.count), differing \(changed))")
+        }
     }
 
     func runSimulation() async {
@@ -137,7 +165,9 @@ final class DashboardViewModel {
 
         runCount += 1
         let run = runCount
-        phase = .loading
+        // A page that already shows an analysis keeps showing it while the next one is made, instead of dropping
+        // back to the loading page, so coming back to it never looks like it starts over.
+        if simulationResult == nil { phase = .loading }
         isRunning = true
         runningInputs = inputs
         session.setAnalysisRunning(true, for: projectID)

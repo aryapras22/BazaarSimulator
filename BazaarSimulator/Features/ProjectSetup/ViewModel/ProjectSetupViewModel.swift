@@ -4,7 +4,7 @@ import Observation
 @Observable
 @MainActor
 final class ProjectSetupViewModel {
-    private static let maxFloorPlans = 6
+    static let maxFloorPlans = 6
     
     let projectID: UUID
     let session: any ProjectSessionProtocol
@@ -20,6 +20,8 @@ final class ProjectSetupViewModel {
     private var removedLegendEntryIDs: Set<UUID> = []
     private var legendEntryTypes: [UUID: BoothType] = [:]
     private(set) var bannerMessage: String?
+    /// The name of a file that was refused for not being a PDF. The page names it in a notice until it is answered.
+    private(set) var unsupportedFileName: String?
     
     var isStatusError: Bool {
         bannerMessage != nil
@@ -81,6 +83,20 @@ final class ProjectSetupViewModel {
         importQueue.legend(for: projectID) != nil
     }
     
+    /// Floor plans are listed but no legend is, for example after Clear All. The page asks for one.
+    var showsLegendRequired: Bool {
+        !floorPlanFiles.isEmpty && legendFiles.isEmpty && legendEntries.isEmpty
+    }
+
+    /// The layout read from a floor plan, for the Preview dialog. Nil until that plan has been read.
+    func previewLayout(fileID: UUID) -> Layout? {
+        importQueue.extractedLayout(for: fileID)?.layout
+    }
+
+    func clearUnsupportedFile() {
+        unsupportedFileName = nil
+    }
+
     var isFloorPlanZoneEnabled: Bool {
         hasLegend && floorPlanFiles.count < Self.maxFloorPlans
     }
@@ -126,12 +142,12 @@ final class ProjectSetupViewModel {
             return "Reading the legend..."
         }
         
-        if let firstReadingIndex = floorPlanFiles.firstIndex(where: {
+        if floorPlanFiles.contains(where: {
             if case .reading = $0.state { return true }
             if case .waiting = $0.state { return true }
             return false
         }) {
-            return "Waiting for Layout \(firstReadingIndex + 1) to finish reading..."
+            return "Waiting for all layouts to finish reading..."
         }
         
         let allDone = !floorPlanFiles.isEmpty && floorPlanFiles.allSatisfy {
@@ -279,6 +295,7 @@ final class ProjectSetupViewModel {
     private func validatePDFs(urls: [URL]) -> Bool {
         for url in urls where url.pathExtension.lowercased() != "pdf" {
             bannerMessage = "Only PDF files are accepted"
+            unsupportedFileName = url.lastPathComponent
             return false
         }
         return true

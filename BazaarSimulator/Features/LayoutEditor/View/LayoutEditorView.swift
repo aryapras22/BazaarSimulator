@@ -10,42 +10,42 @@ struct LayoutEditorView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 0) {
-            ToolRail(
-                layer: viewModel.activeLayer,
-                activeTool: viewModel.tool,
-                isSidePanelOpen: isSidePanelVisible && viewModel.inspectorPanelTab == .library,
-                onSelect: { railItem in
-                    handleToolRailSelection(railItem)
+        VStack(spacing: 0) {
+            EditorHeaderBar(viewModel: viewModel)
+                // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
+                .padding(.leading, 150)
+                .padding(.trailing, Spacing.l)
+                .padding(.top, Spacing.m)
+                .padding(.bottom, Spacing.s)
+
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 0) {
+                    viewportArea
+                        .padding(.trailing, InspectorPanelMetrics.width + InspectorPanelMetrics.margin * 2 + 52)
                 }
-            )
 
-            if isSidePanelVisible {
-                LayoutEditorSidePanel(
-                    viewModel: viewModel,
-                    onClose: {
-                        withAnimation(panelAnimation) {
-                            isSidePanelVisible = false
-                        }
-                    }
-                )
-                .transition(.move(edge: .leading).combined(with: .opacity))
+                HStack(alignment: .top, spacing: Spacing.m) {
+                    EditorToolButtons(
+                        layer: viewModel.activeLayer,
+                        isActive: { viewModel.isActive($0) },
+                        isAvailable: { viewModel.tool(for: $0) != nil },
+                        onSelect: { viewModel.toggle($0) }
+                    )
+                    .padding(.top, Spacing.s)
+
+                    LayoutInspectorColumn(
+                        viewModel: viewModel,
+                        onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
+                    )
+                }
+                .padding(InspectorPanelMetrics.margin)
             }
-
-            viewportArea
-
-            LayoutInspectorColumn(
-                viewModel: viewModel,
-                onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
-            )
         }
         .frame(minWidth: 800, minHeight: 560)
-        .background(Palette.background)
+        .background(Palette.background.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .top)
         .navigationTitle(viewModel.projectName)
         .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
-        .toolbar {
-            editorToolbar
-        }
         .focusedSceneValue(\.editorCommandActions, commandActions)
         .onKeyPress(keys: [.delete, .deleteForward]) { _ in
             // Placed on the whole editor so Delete works after a click in the side panels; a text field being edited keeps it.

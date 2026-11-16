@@ -1,0 +1,58 @@
+import Foundation
+import simd
+import Testing
+@testable import BazaarSimulator
+
+@Suite
+@MainActor
+struct EditorRestyleTests {
+    @Test("Renaming a booth stores the new label and can be undone")
+    func renameBooth() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+        context.viewModel.selectObject(booth.id)
+        context.viewModel.renameSelected(to: "Corner Cafe")
+
+        let renamed = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
+        #expect(renamed.label == "Corner Cafe")
+        context.viewModel.undo()
+        let restored = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
+        #expect(restored.label == booth.label)
+    }
+
+    @Test("Saving changes closes the inspector, keeping the edit")
+    func saveClosesInspector() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let booth = try #require(context.layout.objects.first { $0.kind == .booth })
+        context.viewModel.selectObject(booth.id)
+        context.viewModel.editInspectorDraft { $0.widthM = 3.5 }
+        context.viewModel.saveChanges()
+
+        #expect(context.viewModel.selectionID == nil)
+        let edited = try #require(context.viewModel.activeLayout?.objects.first { $0.id == booth.id })
+        #expect(edited.placement.sizeM.x == 3.5)
+    }
+
+    @Test("Each tab lists its own add buttons")
+    func addButtonsPerLayer() {
+        #expect(EditorAddTool.tools(for: .booths) == [.booth, .table, .entertainment])
+        #expect(EditorAddTool.tools(for: .structure) == [.wall, .block, .door, .restrictedArea])
+    }
+
+    @Test("A structure button switches its tool on and a second press turns it off")
+    func toggleTool() {
+        let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
+        context.viewModel.toggle(.restrictedArea)
+        #expect(context.viewModel.tool == .blockedArea)
+        #expect(context.viewModel.isActive(.restrictedArea))
+        context.viewModel.toggle(.restrictedArea)
+        #expect(context.viewModel.tool == .select)
+    }
+
+    @Test("A button of the other tab does nothing")
+    func otherLayerIgnored() {
+        let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
+        context.viewModel.toggle(.table)
+        #expect(context.viewModel.tool == .select)
+    }
+}

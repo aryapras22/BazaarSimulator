@@ -24,7 +24,9 @@ struct ProjectLibraryView: View {
 
             Spacer(minLength: 0)
 
-            SidebarSearchField(text: $viewModel.searchText)
+            if !viewModel.projects.isEmpty {
+                SidebarSearchField(text: $viewModel.searchText)
+            }
         }
         .padding(Spacing.m)
         .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
@@ -43,6 +45,13 @@ struct ProjectLibraryView: View {
                 )
             }
             .buttonStyle(.plain)
+        }
+        .overlay {
+            SidebarContextMenu(items: [
+                SidebarMenuItem(title: "Delete", symbol: "trash", isDestructive: true) {
+                    viewModel.requestDeletion(of: project)
+                }
+            ])
         }
         .overlay(alignment: .leading) {
             // The chevron toggles the folder without opening the project.
@@ -81,9 +90,15 @@ struct ProjectLibraryView: View {
                 .padding(.leading, Spacing.m + 5)
         }
         .onTapGesture { viewModel.selectAnalysis(analysis, in: project) }
-        .contextMenu {
-            Button("Rename") { viewModel.renamingAnalysisID = analysis.id }
-            Button("Delete", role: .destructive) { viewModel.deleteAnalysis(analysis, in: project) }
+        .overlay {
+            SidebarContextMenu(items: [
+                SidebarMenuItem(title: "Rename", symbol: "pencil") {
+                    viewModel.renamingAnalysisID = analysis.id
+                },
+                SidebarMenuItem(title: "Delete", symbol: "trash", isDestructive: true) {
+                    viewModel.requestDeletion(of: analysis, in: project)
+                }
+            ])
         }
     }
 

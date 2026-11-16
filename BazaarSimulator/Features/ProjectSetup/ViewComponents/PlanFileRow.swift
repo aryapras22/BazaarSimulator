@@ -1,192 +1,110 @@
 import SwiftUI
 
+/// One PDF in a list on the upload page. What it shows on the right follows how far reading has got: a progress bar
+/// and a cancel button, the counts and a menu, or a failed scan with retry and delete.
 struct PlanFileRow: View {
     let display: PlanRowDisplay
     var onEdit: (() -> Void)?
+    var onPreview: (() -> Void)?
+    /// Asks to delete the file. The page confirms first, except while the file is still being read, where it cancels.
     let onDelete: () -> Void
     var onRetry: (() -> Void)?
 
     var body: some View {
         HStack(spacing: Spacing.m) {
-            leadingIcon
+            Image(systemName: "doc")
+                .font(.system(size: 16))
+                .foregroundColor(display.isReading ? Palette.accentIcon : Palette.accentIcon.opacity(0.85))
+                .frame(width: 20)
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(display.title)
-                    .font(Typography.body)
-                    .foregroundColor(Palette.textPrimary)
-                    .lineLimit(1)
+            Text(display.title)
+                .font(.system(size: 12))
+                .foregroundColor(Palette.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.middle)
 
-                Text(display.subtitle)
-                    .font(Typography.caption)
-                    .foregroundColor(Palette.textSecondary)
-            }
-
-            Spacer()
+            Spacer(minLength: Spacing.s)
 
             PlanRowStatusView(status: display.status)
 
-            if isInProgress {
-                cancelButton
-            } else {
-                menuButton
-            }
+            trailingControls
         }
-        .padding(.vertical, Spacing.m)
-        .frame(minHeight: 45)
+        .padding(.vertical, 10)
+        .frame(minHeight: 40)
     }
 
-    private var isInProgress: Bool {
+    @ViewBuilder
+    private var trailingControls: some View {
         switch display.status {
-        case .reading, .waiting: true
-        case .done, .failed, .cancelled: false
+        case .reading, .waiting:
+            iconButton("xmark", label: "Cancel", color: Palette.textSecondary, action: onDelete)
+        case .failed:
+            HStack(spacing: Spacing.s) {
+                if let onRetry {
+                    iconButton("arrow.clockwise", label: "Retry", color: Palette.destructive, action: onRetry)
+                }
+                iconButton("trash.fill", label: "Delete", color: Palette.destructive, action: onDelete)
+            }
+        case .done, .cancelled:
+            menuButton
         }
     }
 
-    private var cancelButton: some View {
-        Button(action: onDelete) {
-            Image(systemName: "xmark")
-                .font(Typography.body)
-                .foregroundColor(Palette.textSecondary)
+    private func iconButton(_ symbol: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(color)
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Cancel")
-        .accessibilityLabel("Cancel")
-    }
-
-    @ViewBuilder
-    private var leadingIcon: some View {
-        if let data = display.thumbnailData, let nsImage = NSImage(data: data) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 32, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.s))
-        } else {
-            Image(systemName: "doc.text.fill")
-                .font(.system(size: 24))
-                .foregroundColor(display.isReading ? Palette.accentMuted : Palette.textSecondary)
-                .frame(width: 32, height: 32)
-        }
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     private var menuButton: some View {
         Menu {
-            if case .failed = display.status, let onRetry {
-                Button("Retry", action: onRetry)
-            }
-
             if let onEdit {
-                Button("Edit", action: onEdit)
+                Button(action: onEdit) { Label("Edit", systemImage: "pencil") }
                     .disabled(!display.isDone)
             }
-
-            Button("Delete", role: .destructive, action: onDelete)
+            if let onPreview {
+                Button(action: onPreview) { Label("Preview", systemImage: "eye") }
+                    .disabled(!display.isDone)
+            }
+            Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
         } label: {
             Image(systemName: "ellipsis")
-                .font(Typography.body)
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Palette.textSecondary)
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
+        .accessibilityLabel("More for \(display.title)")
     }
 }
 
-#Preview("Waiting") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "floor_layout_1.pdf",
-            subtitle: "Layout 1 · 2.4 MB",
-            status: .waiting(text: "Waiting...")
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
+#Preview("States") {
+    VStack(spacing: 0) {
+        PlanFileRow(
+            display: PlanRowDisplay(id: UUID(), title: "plan-original.pdf", subtitle: "", status: .done(text: "✓ 66 booths · 3 doors")),
+            onEdit: {}, onPreview: {}, onDelete: {}
+        )
+        PlanFileRow(
+            display: PlanRowDisplay(id: UUID(), title: "plan-food-court.pdf", subtitle: "", status: .reading(progress: 0.65)),
+            onDelete: {}
+        )
+        PlanFileRow(
+            display: PlanRowDisplay(id: UUID(), title: "plan-wide-aisle.pdf", subtitle: "", status: .failed(message: "Couldn't read this plan")),
+            onDelete: {}, onRetry: {}
+        )
+    }
     .padding()
-    .background(Palette.surface)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Reading with Progress") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "floor_layout_2.pdf",
-            subtitle: "Layout 2 · 2.6 MB",
-            status: .reading(progress: 0.65)
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
-    .padding()
-    .background(Palette.surface)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Reading without Progress") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "floor_layout_3.pdf",
-            subtitle: "Layout 3 · 1.8 MB",
-            status: .reading(progress: nil)
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
-    .padding()
-    .background(Palette.surface)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Done") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "floor_layout_4.pdf",
-            subtitle: "Layout 4 · 3.1 MB",
-            status: .done(text: "✓ 66 booths · 3 doors")
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
-    .padding()
-    .background(Palette.surface)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Failed") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "corrupted_plan.pdf",
-            subtitle: "Layout 5 · 500 KB",
-            status: .failed(message: "Couldn't read this plan")
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
-    .padding()
-    .background(Palette.surface)
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Cancelled") {
-    PlanFileRow(
-        display: PlanRowDisplay(
-            id: UUID(),
-            title: "floor_layout_6.pdf",
-            subtitle: "Layout 6 · 2.2 MB",
-            status: .cancelled(text: "Cancelled")
-        ),
-        onEdit: {},
-        onDelete: {}
-    )
-    .padding()
+    .frame(width: 640)
     .background(Palette.surface)
     .preferredColorScheme(.dark)
 }

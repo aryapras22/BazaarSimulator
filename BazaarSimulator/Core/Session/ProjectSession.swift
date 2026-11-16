@@ -21,6 +21,8 @@ protocol ProjectSessionProtocol: AnyObject {
     func project(named name: String) -> ProjectSummary?
     func selectProject(id: UUID)
     func renameProject(id: UUID, to name: String)
+    /// Removes the project with its layouts, parameters, results, and saved analyses.
+    func deleteProject(id: UUID)
 
     func eventParameters(for projectID: UUID) -> EventParameters?
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID)
@@ -178,6 +180,24 @@ final class ProjectSession: ProjectSessionProtocol {
 
     func clearActiveResultTab(for projectID: UUID) {
         activeResultTabIDByProject[projectID] = nil
+    }
+
+    func deleteProject(id: UUID) {
+        guard projects.contains(where: { $0.id == id }) else { return }
+        simulationTasks[id]?.cancel()
+        simulationTasks[id] = nil
+        projects.removeAll { $0.id == id }
+        if activeProjectID == id { activeProjectID = nil }
+        drafts[id] = nil
+        activeLayoutIDs[id] = nil
+        eventParametersByProject[id] = nil
+        parametersByProject[id] = nil
+        simulationResultsByProject[id] = nil
+        simulatingProjects.remove(id)
+        analysingProjects.remove(id)
+        savedAnalysesByProject[id] = nil
+        store?.saveProjects(projects)
+        store?.deleteAnalyses(of: id)
     }
 
     func draft(for projectID: UUID) -> ProjectDraft? {

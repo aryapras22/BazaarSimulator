@@ -33,7 +33,8 @@ struct HotspotOverlay: View {
                         isHovered: shown == spot.number,
                         diameter: min(max(size.width * 0.05, 14), 18)
                     )
-                    .position(center(of: spot, in: size))
+                    // The handlers go on the marker itself, before it is positioned. After `position` they would
+                    // belong to a view as big as the whole plan, so any hover or click on it would count.
                     .onHover { inside in
                         animate {
                             if inside {
@@ -44,13 +45,14 @@ struct HotspotOverlay: View {
                         }
                     }
                     .onTapGesture { animate { pinned = pinned == spot.number ? nil : spot.number } }
-                    .help(pinned == spot.number ? "Click to close" : "Click to keep the details open")
+                    .help(pinned == spot.number ? "Click to close" : "Hover to see the details, click to keep them open")
                     .accessibilityElement()
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("Spot \(spot.number), \(spot.name)")
                     .accessibilityValue(
                         "Grade \(spot.grade.letter), \(spot.grade.title). \(HotspotCallout.summary(for: spot)) \(spot.cause)"
                     )
+                    .position(center(of: spot, in: size))
                 }
 
                 if showsCallout, let spot = outcome.spots.first(where: { $0.number == shown }) {

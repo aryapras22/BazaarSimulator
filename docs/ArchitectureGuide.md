@@ -29,8 +29,8 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 
 | Feature | Description (Hi-Fi screen) |
 | ---| --- |
-| Project library | Sidebar list of projects with a search field at the bottom. Create, open, rename, delete. Each project is an expandable folder, like layers in Figma, and holds the saved analyses of that project. The empty state reads "Add project to get started" |
-| Project setup | Name the project. Drop legend PDFs (one legend serves every layout) and floor plan PDFs (one per layout). Files are read one at a time, with a progress bar per file, a Cancel button, and Continue to Review once every file is read |
+| Project library | Sidebar list of projects. Right-click a project, or one of its saved analyses, for Delete, which asks first ("Delete Project?" removes the project's files, layouts, and saved analyses too). The search field shows only while there are projects. With none, the page reads "Create Your First Project" with an Add Project button. Renaming a project on its upload page renames it in the sidebar. Create, open, delete |
+| Project setup | A name field, then two cards. Legends and Layouts each have a help button that says what a good one is. A legend reads into its colors, each with a category (Foods, Goods, or Others), Clear All, and Add Legends. Layouts list each PDF with its booth and door counts and an Edit, Preview, Delete menu, or Scan Failed with retry and delete. Layouts stay dimmed until a legend is read, and ask for a legend if it is cleared. A file that is not a PDF opens an Unsupported File notice. Deleting a file asks first. Preview shows the plan with zoom. Set Parameters is orange once every file is read |
 | Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, hall outline edge handles that grow or shrink the hall, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
 | Parameters | A sheet that opens when setup continues, and again from the Analysis header, with Cancel and Apply. Total visitors per day, event duration, bazaar type, visitor type mix. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
@@ -174,6 +174,7 @@ BazaarSimulation/
 │   ├── Domain/                          # Project, Layout, Legend, VisitorType, VisitorMix, EventParameters, snapshots, enums
 │   │   └── Catalog/                     # CatalogItem, ShapePrimitive, ObjectCatalog, BoothShape, BoothTemplates
 │   ├── Scene3D/                         # SceneGeometryBuilder, SceneMeshFactory (RealityKit), CameraRig, CameraRay, BoundingBox3D
+│   ├── PlanView/                        # ZoomablePlan, LayoutPlanCanvas: a layout drawn on a zoomable plan, shared by the Analysis and Project setup pages
 │   ├── Persistence/                     # ProjectRecord (SwiftData) and mapper
 │   ├── Repositories/                    # ProjectRepository
 │   ├── Resources/                       # Bundled JSON: visitor type presets, bazaar type presets, risk thresholds, metric texts
@@ -782,7 +783,9 @@ struct Panel<Content: View>: View {
 | `ProgressBar` | Import rows, Preparing Layout screen | `Core/DesignSystem/Components/` |
 | `MetricTile` | Headline values in the recommendation card | `Core/DesignSystem/Components/` |
 | `DropZone` | Legend and floor plan drop areas (both uses are in one feature) | `Features/ProjectSetup/ViewComponents/` |
-| `InspectorPanel` | Booth and door inspectors | `Features/LayoutEditor/ViewComponents/` |
+| `InspectorPanel` | Floating rounded inspector with a renamable title, notes and tip cards, and Save Changes | `Features/LayoutEditor/ViewComponents/` |
+| `EditorHeaderBar` | Editor top bar: back, layout name, Floor Plan / Structure tabs, undo and redo | `Features/LayoutEditor/ViewComponents/` |
+| `EditorToolButtons` | Floating add buttons beside the inspector (booth, table, entertainment; wall, block, door, restricted area), driven by `EditorAddTool` | `Features/LayoutEditor/ViewComponents/` |
 | `CanvasRulers` | Top and left ruler bands over the editor canvas | `Features/LayoutEditor/ViewComponents/` |
 | `CanvasScaleBar` | Measured scale bar at the bottom right of the canvas | `Features/LayoutEditor/ViewComponents/` |
 | `GroupInspector` | Batch inspector for booth groups and multi-selections | `Features/LayoutEditor/ViewComponents/` |

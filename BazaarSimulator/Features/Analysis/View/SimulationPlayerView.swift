@@ -15,6 +15,9 @@ struct SimulationPlayerView: View {
             case .needsLayouts: notice("Add a floor plan to see the simulation.", showsProgress: false)
             }
         }
+        // Room for the window's top controls, the same in a window and in full screen where they are hidden.
+        .padding(.top, 28)
+        .ignoresSafeArea(.container, edges: .top)
         .background(Color.backgroundMain.ignoresSafeArea())
         .task { await viewModel.load() }
     }

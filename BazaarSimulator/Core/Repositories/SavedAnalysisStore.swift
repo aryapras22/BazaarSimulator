@@ -8,6 +8,8 @@ protocol SavedAnalysisStoring: Sendable {
     func loadAnalyses(for projectID: UUID) -> [SavedAnalysis]
     func save(_ analysis: SavedAnalysis, in projectID: UUID)
     func delete(analysisID: UUID, in projectID: UUID)
+    /// Removes every saved analysis of the project. The project list is saved separately.
+    func deleteAnalyses(of projectID: UUID)
 }
 
 /// One JSON file per saved analysis, in a folder per project:
@@ -65,6 +67,11 @@ final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
     func delete(analysisID: UUID, in projectID: UUID) {
         let file = folder(for: projectID).appendingPathComponent("\(analysisID.uuidString).json")
         queue.sync { try? FileManager.default.removeItem(at: file) }
+    }
+
+    func deleteAnalyses(of projectID: UUID) {
+        let folder = folder(for: projectID)
+        queue.sync { try? FileManager.default.removeItem(at: folder) }
     }
 
     // MARK: - Files
