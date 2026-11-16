@@ -343,19 +343,21 @@ final class Venue2DScene: SKScene {
             return nil
         }
 
-        let blobRadiusPx = CGFloat(1.65 * pixelsPerMetre)
+        let blobRadiusPx = CGFloat(1.35 * pixelsPerMetre)
+        let sortedCells = cells.sorted { $0.peoplePerSquareMetre < $1.peoplePerSquareMetre }
 
-        for cell in cells {
+        for cell in sortedCells {
             let center = CGPoint(
                 x: CGFloat(cell.center.x * pixelsPerMetre),
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
             let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let peakAlpha = CGFloat(min(0.84, max(0.18, cell.peoplePerSquareMetre / 0.85)))
+            let normalized = min(max((cell.peoplePerSquareMetre - 0.02) / 1.15, 0.0), 1.0)
+            let peakAlpha = CGFloat(0.05 + 0.85 * pow(normalized, 0.85))
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
-                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.60),
+                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.58),
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 0.0)
             ] as CFArray
             let locations: [CGFloat] = [0.0, 0.45, 1.0]
@@ -390,18 +392,18 @@ final class Venue2DScene: SKScene {
     }
 
     private func heatmapRGB(for density: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
-        if density > 1.80 {
-            return (0.85, 0.08, 0.22)
-        } else if density >= 0.72 {
-            return (1.0, 0.24, 0.20)
-        } else if density >= 0.45 {
-            return (1.0, 0.55, 0.12)
-        } else if density >= 0.27 {
+        if density >= 1.55 {
+            return (0.86, 0.06, 0.20)
+        } else if density >= 1.05 {
+            return (1.0, 0.20, 0.14)
+        } else if density >= 0.78 {
+            return (1.0, 0.52, 0.10)
+        } else if density >= 0.54 {
             return (0.98, 0.84, 0.18)
-        } else if density >= 0.08 {
-            return (0.22, 0.86, 0.45)
+        } else if density >= 0.18 {
+            return (0.22, 0.84, 0.44)
         } else {
-            return (0.20, 0.78, 0.85)
+            return (0.20, 0.76, 0.85)
         }
     }
 

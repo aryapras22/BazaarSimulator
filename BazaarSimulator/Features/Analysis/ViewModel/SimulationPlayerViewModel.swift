@@ -199,8 +199,9 @@ final class SimulationPlayerViewModel {
             let row = min(max(Int(visitor.point.y * CGFloat(rows)), 0), rows - 1)
             counts[row * columns + column] += Double(visitor.people) * sensitivity
         }
-        let cellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
-        let weights = [[1.0, 2, 1], [2, 5, 2], [1, 2, 1]]
+        let rawCellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
+        let cellArea = min(max(rawCellArea, 0.35), 1.5)
+        let weights = [[0.5, 1.5, 0.5], [1.5, 5.0, 1.5], [0.5, 1.5, 0.5]]
         let coverage = heatCoverage
         var density = Array(repeating: 0.0, count: columns * rows)
         for row in 0..<rows {
@@ -212,7 +213,7 @@ final class SimulationPlayerViewModel {
                         guard r >= 0, r < rows, c >= 0, c < columns else { continue }
                         let weight = weights[dy + 1][dx + 1]
                         people += counts[r * columns + c] * weight
-                        area += max(coverage[r * columns + c], 0.4) * cellArea * weight
+                        area += max(coverage[r * columns + c], 0.35) * cellArea * weight
                     }
                 }
                 density[row * columns + column] = area > 0 ? people / area : 0
@@ -326,7 +327,7 @@ final class SimulationPlayerViewModel {
         let rows = max(1, Int(ceil(layout.sizeM.y)))
         var grid = [Double](repeating: 0, count: cols * rows)
         let sensitivity = CrowdParameters.replayHeatmapSensitivity
-        let twoSigmaSq = 2.0 * 1.15 * 1.15
+        let twoSigmaSq = 2.0 * 0.90 * 0.90
 
         var kernel: [(dx: Int, dy: Int, weight: Double)] = []
         for dy in -2...2 {
@@ -337,8 +338,8 @@ final class SimulationPlayerViewModel {
         let kernelSum = kernel.reduce(0.0) { $0 + $1.weight }
 
         for visitor in spriteVisitors(at: playback) {
-            let col = Int(visitor.position.x)
-            let row = Int(visitor.position.y)
+            let col = min(max(Int(floor(visitor.position.x)), 0), cols - 1)
+            let row = min(max(Int(floor(visitor.position.y)), 0), rows - 1)
             let people = Double(visitor.peopleCount) * sensitivity
             for item in kernel {
                 let nCol = col + item.dx

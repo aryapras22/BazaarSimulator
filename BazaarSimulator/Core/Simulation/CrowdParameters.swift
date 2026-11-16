@@ -212,7 +212,7 @@ nonisolated enum CrowdParameters {
     static let heatmapSmoothingNew = 0.28
     static let heatmapMinActiveDensity = 0.004
     /// Sensitivity multiplier for the replay crowd-density heatmap so crowded spots clearly reach orange/red.
-    static let replayHeatmapSensitivity = 2.6
+    static let replayHeatmapSensitivity = 3.2
 
     // MARK: - 8. Visitor Personas
 
