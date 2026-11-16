@@ -71,12 +71,9 @@ struct LayoutInspectorColumn: View {
                 )
             }
 
-            Button("Delete \(selected.kind.displayName.lowercased())", role: .destructive) {
+            DeleteSelectionButton(title: "Delete \(selected.kind.displayName.lowercased())") {
                 viewModel.deleteSelected()
             }
-            .buttonStyle(.plain)
-            .font(Typography.caption)
-            .foregroundStyle(Palette.destructive)
 
             SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
         }
@@ -116,12 +113,9 @@ struct LayoutInspectorColumn: View {
             }
         } footer: {
             let noun = isBoothGroup ? "booths" : "objects"
-            Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) \(noun)", role: .destructive) {
+            DeleteSelectionButton(title: "Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) \(noun)") {
                 viewModel.requestDeleteGroup()
             }
-            .buttonStyle(.plain)
-            .font(Typography.caption)
-            .foregroundStyle(Palette.destructive)
 
             SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
         }

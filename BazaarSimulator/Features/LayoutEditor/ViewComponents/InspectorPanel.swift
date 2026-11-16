@@ -199,12 +199,40 @@ struct SaveChangesButton: View {
     }
 }
 
+/// Removes the selection. It has the shape of Save Changes, in the red of a destructive action.
+struct DeleteSelectionButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(role: .destructive, action: action) {
+            Text(title)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(DeleteSelectionButtonStyle())
+        .help("\(title) (⌫)")
+    }
+}
+
+private struct DeleteSelectionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(.white)
+            .padding(.horizontal, Spacing.l)
+            .padding(.vertical, Spacing.s)
+            .background(Palette.destructive.opacity(configuration.isPressed ? 0.8 : 1.0))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+    }
+}
+
 #Preview {
     InspectorPanel(title: "Booth B-7", editableName: "B-7") {
         Text("Panel content")
             .foregroundStyle(Palette.textSecondary)
     } footer: {
         InspectorTip(message: "Door NE is already “Exit”. Make NW “Entrance”?", actionTitle: "Use “Entrance”")
+        DeleteSelectionButton(title: "Delete booth", action: {})
         SaveChangesButton(isEnabled: true, action: {})
     }
     .frame(height: 500)
