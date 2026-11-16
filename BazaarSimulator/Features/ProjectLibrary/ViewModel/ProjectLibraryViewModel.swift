@@ -8,10 +8,16 @@ final class ProjectLibraryViewModel {
 
     private let session: any ProjectSessionProtocol
     private let onOpenProject: (UUID) -> Void
+    private let onOpenResult: (SimulationResultTab) -> Void
 
-    init(session: any ProjectSessionProtocol, onOpenProject: @escaping (UUID) -> Void) {
+    init(
+        session: any ProjectSessionProtocol,
+        onOpenProject: @escaping (UUID) -> Void,
+        onOpenResult: @escaping (SimulationResultTab) -> Void = { _ in }
+    ) {
         self.session = session
         self.onOpenProject = onOpenProject
+        self.onOpenResult = onOpenResult
     }
 
     var projects: [ProjectSummary] {
@@ -20,6 +26,16 @@ final class ProjectLibraryViewModel {
 
     var selectedProjectID: UUID? {
         session.activeProjectID
+    }
+
+    var resultTabs: [SimulationResultTab] {
+        guard let selectedProjectID else { return [] }
+        return session.resultTabs(for: selectedProjectID)
+    }
+
+    var selectedResultTabID: UUID? {
+        guard let selectedProjectID else { return nil }
+        return session.activeResultTabID(for: selectedProjectID)
     }
 
     var filteredProjects: [ProjectSummary] {
@@ -36,7 +52,14 @@ final class ProjectLibraryViewModel {
 
     func selectProject(_ project: ProjectSummary) {
         session.selectProject(id: project.id)
+        session.clearActiveResultTab(for: project.id)
         onOpenProject(project.id)
+    }
+
+    func selectResultTab(_ tab: SimulationResultTab) {
+        session.selectProject(id: tab.projectID)
+        session.selectResultTab(id: tab.id, for: tab.projectID)
+        onOpenResult(tab)
     }
 
     private func nextFreeProjectName() -> String {

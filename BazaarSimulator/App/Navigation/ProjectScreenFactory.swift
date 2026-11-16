@@ -16,12 +16,14 @@ final class ProjectScreenFactory {
     func makeLibraryViewModel() -> ProjectLibraryViewModel {
         ProjectLibraryViewModel(
             session: services.projectSession,
-            onOpenProject: { [weak router, weak session = services.projectSession] id in
-                if let draft = session?.draft(for: id), !draft.layouts.isEmpty {
-                    router?.showAnalysis(projectID: id)
-                } else {
-                    router?.showSetup(projectID: id)
-                }
+            onOpenProject: { [weak self, weak router] id in
+                self?.services.analysisService.cancelAll()
+                router?.showSetup(projectID: id)
+            },
+            onOpenResult: { [weak self, weak router] tab in
+                self?.services.analysisService.cancelAll()
+                router?.showAnalysis(projectID: tab.projectID)
+                self?.dashboardViewModels[tab.projectID]?.startSimulation()
             }
         )
     }
@@ -79,7 +81,8 @@ final class ProjectScreenFactory {
             session: session,
             analysisService: services.analysisService,
             catalog: services.presetCatalog,
-            onBack: { [weak router] in
+            onBack: { [weak router, weak session = services.projectSession] in
+                session?.clearActiveResultTab(for: projectID)
                 router?.showSetup(projectID: projectID)
             },
             onSimulate: { [weak router] layout in

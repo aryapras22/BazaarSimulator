@@ -157,6 +157,7 @@ final class ParametersViewModel {
             result.peakPeriods.sort { $0.startMinute < $1.startMinute }
         }
         session.setEventParameters(result, for: projectID)
+        session.addResultTab(for: projectID, parameters: result)
         onClose()
         onApply?()
     }

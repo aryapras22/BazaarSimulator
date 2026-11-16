@@ -1,6 +1,15 @@
 import Foundation
 import Observation
 
+/// A saved simulation result entry stacked in the sidebar for a specific project.
+struct SimulationResultTab: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let projectID: UUID
+    let title: String
+    let subtitle: String
+    let parameters: EventParameters
+}
+
 @MainActor
 protocol ProjectSessionProtocol: AnyObject {
     var projects: [ProjectSummary] { get }
@@ -14,6 +23,13 @@ protocol ProjectSessionProtocol: AnyObject {
 
     func eventParameters(for projectID: UUID) -> EventParameters?
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID)
+
+    func resultTabs(for projectID: UUID) -> [SimulationResultTab]
+    func activeResultTabID(for projectID: UUID) -> UUID?
+    @discardableResult
+    func addResultTab(for projectID: UUID, parameters: EventParameters) -> SimulationResultTab
+    func selectResultTab(id: UUID, for projectID: UUID)
+    func clearActiveResultTab(for projectID: UUID)
 
     func draft(for projectID: UUID) -> ProjectDraft?
     func setDraft(_ draft: ProjectDraft, for projectID: UUID)
@@ -31,6 +47,17 @@ protocol ProjectSessionProtocol: AnyObject {
     func isSimulating(_ projectID: UUID) -> Bool
 }
 
+extension ProjectSessionProtocol {
+    func resultTabs(for projectID: UUID) -> [SimulationResultTab] { [] }
+    func activeResultTabID(for projectID: UUID) -> UUID? { nil }
+    @discardableResult
+    func addResultTab(for projectID: UUID, parameters: EventParameters) -> SimulationResultTab {
+        SimulationResultTab(id: UUID(), projectID: projectID, title: "Result 1", subtitle: "", parameters: parameters)
+    }
+    func selectResultTab(id: UUID, for projectID: UUID) {}
+    func clearActiveResultTab(for projectID: UUID) {}
+}
+
 @Observable
 @MainActor
 final class ProjectSession: ProjectSessionProtocol {
@@ -38,6 +65,8 @@ final class ProjectSession: ProjectSessionProtocol {
     private(set) var activeProjectID: UUID?
     private var drafts: [UUID: ProjectDraft] = [:]
     private var eventParametersByProject: [UUID: EventParameters] = [:]
+    private var resultTabsByProject: [UUID: [SimulationResultTab]] = [:]
+    private var activeResultTabIDByProject: [UUID: UUID] = [:]
     private var activeLayoutIDs: [UUID: Layout.ID] = [:]
     private var parametersByProject: [UUID: ModalParameters] = [:]
     private var simulationResultsByProject: [UUID: [Layout.ID: RecordedSimulationResult]] = [:]
@@ -81,6 +110,42 @@ final class ProjectSession: ProjectSessionProtocol {
             strollerPercent: Double(parameters.mix.share(for: "stroller")?.percent ?? 33),
             purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 0)
         )
+    }
+
+    func resultTabs(for projectID: UUID) -> [SimulationResultTab] {
+        resultTabsByProject[projectID] ?? []
+    }
+
+    func activeResultTabID(for projectID: UUID) -> UUID? {
+        activeResultTabIDByProject[projectID]
+    }
+
+    @discardableResult
+    func addResultTab(for projectID: UUID, parameters: EventParameters) -> SimulationResultTab {
+        var existing = resultTabsByProject[projectID] ?? []
+        let nextNumber = existing.count + 1
+        let hoursText = "\(TimeRange.format(parameters.eventHours.startMinute))–\(TimeRange.format(parameters.eventHours.endMinute))"
+        let tab = SimulationResultTab(
+            id: UUID(),
+            projectID: projectID,
+            title: "Result \(nextNumber)",
+            subtitle: "\(parameters.totalVisitors) visitors · \(hoursText)",
+            parameters: parameters
+        )
+        existing.append(tab)
+        resultTabsByProject[projectID] = existing
+        activeResultTabIDByProject[projectID] = tab.id
+        return tab
+    }
+
+    func selectResultTab(id: UUID, for projectID: UUID) {
+        guard let tab = resultTabsByProject[projectID]?.first(where: { $0.id == id }) else { return }
+        activeResultTabIDByProject[projectID] = tab.id
+        setEventParameters(tab.parameters, for: projectID)
+    }
+
+    func clearActiveResultTab(for projectID: UUID) {
+        activeResultTabIDByProject[projectID] = nil
     }
 
     func draft(for projectID: UUID) -> ProjectDraft? {
