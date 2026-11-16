@@ -12,6 +12,9 @@ enum PlanPrintedText {
     ]
     private static let orientations: [CGImagePropertyOrientation] = [.up, .down, .left, .right]
     private static let maxSizedBoxes = 8
+    private static let sampledBooths = 16
+    /// How far around a booth its side label is looked for, in booth sides.
+    private static let sideLabelReach = 0.6
     private static let paperWhite = 250
 
     /// A legend class drawn as an outline has a paper white swatch, so the extractor gives it every empty outlined
@@ -72,7 +75,7 @@ enum PlanPrintedText {
     }
 
     /// Pixels per metre from boxes that print their size, such as "6 x 12 m" on a stage, else from classes whose
-    /// legend name prints one.
+    /// legend name prints one, else from the side printed beside the booths.
     static func pixelsPerMetre(from items: [DetectedItem], on page: CGImage) async -> Double? {
         let unsized = items.filter { item in
             !item.isBooth && !structuralClasses.contains(item.cls.lowercased())
@@ -84,8 +87,29 @@ enum PlanPrintedText {
             let words = await words(in: item.box, on: page) { size(in: $0) != nil }
             if let printed = size(in: words) { printedBoxes.append((item.box, printed)) }
         }
-        return PrintedScale.pixelsPerMetre(from: printedBoxes)
-            ?? PrintedScale.pixelsPerMetre(from: boxesSizedByClassName(items))
+        if let scale = PrintedScale.pixelsPerMetre(from: printedBoxes)
+            ?? PrintedScale.pixelsPerMetre(from: boxesSizedByClassName(items)) {
+            return scale
+        }
+        return await pixelsPerMetreFromBoothSides(items, on: page)
+    }
+
+    /// Some plans print no box size but print a side such as "3 m" beside each booth. The side printed most often
+    /// around a sample of booths is taken as the side of the median booth. The labels are too small to read on the
+    /// whole page, so each sampled booth is read on its own.
+    private static func pixelsPerMetreFromBoothSides(_ items: [DetectedItem], on page: CGImage) async -> Double? {
+        let booths = items.filter(\.isBooth)
+        let sides = booths.map { ($0.box[2] + $0.box[3]) / 2 }.sorted()
+        guard !sides.isEmpty else { return nil }
+        let medianSide = sides[sides.count / 2]
+        let reach = medianSide * sideLabelReach
+        var printed: [Double] = []
+        for index in stride(from: 0, to: booths.count, by: max(1, booths.count / sampledBooths)) {
+            let box = booths[index].box
+            let around = [box[0] - reach, box[1] - reach, box[2] + 2 * reach, box[3] + 2 * reach]
+            printed += await words(in: around, on: page) { _ in true }.compactMap(PrintedScale.length(in:))
+        }
+        return PrintedScale.mostPrinted(printed).map { medianSide / $0 }
     }
 
     /// A legend class such as "Booth, goods (3 x 2 m)" prints the size of every box of the class.
