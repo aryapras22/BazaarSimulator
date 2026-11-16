@@ -38,25 +38,16 @@ struct PlaybackClock {
 }
 
 struct PlaybackBar: View {
-    static let width: CGFloat = 355
+    static let width: CGFloat = 265
     static let height: CGFloat = 58.5
 
     @Binding var clock: PlaybackClock
     let time: Double
-    /// The time of day at this point of the playback.
-    let clockText: String
-    /// Simulated elapsed seconds and total event duration seconds (when playing a multi-hour event).
-    var elapsedSeconds: Double?
-    var durationSeconds: Double?
 
     var body: some View {
         let finished = time >= clock.duration
         let isPlaying = clock.isRunning && !finished
         let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-        let shownElapsed = elapsedSeconds ?? time
-        let shownDuration = durationSeconds ?? clock.duration
-        let elapsedLabel = Self.formatEventTime(shownElapsed, totalDuration: shownDuration)
-        let durationLabel = Self.formatEventTime(shownDuration, totalDuration: shownDuration)
 
         HStack(spacing: 0) {
             Button {
@@ -75,31 +66,13 @@ struct PlaybackBar: View {
             .help(isPlaying ? "Pause (Space)" : "Play (Space)")
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-            HStack(spacing: 4.5) {
-                Image(systemName: "clock")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(clockText)
-                    .font(.system(size: 14, weight: .bold))
-                    .monospacedDigit()
-            }
-            .foregroundStyle(.black)
-            .padding(.leading, 21)
-            .help("Time of day")
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Time of day \(clockText)")
-
-            Rectangle()
-                .fill(Color.white.opacity(0.35))
-                .frame(width: 1, height: 19.5)
-                .padding(.leading, 16.5)
-
-            Text("\(elapsedLabel) / \(durationLabel)")
+            Text("\(Self.format(time)) / \(Self.format(clock.duration))")
                 .font(.system(size: 13.5))
                 .monospacedDigit()
                 .foregroundStyle(.white)
-                .padding(.leading, 16)
-                .help("Event elapsed time")
-                .accessibilityLabel("Played \(elapsedLabel) of \(durationLabel)")
+                .padding(.leading, 18)
+                .help("Playback time")
+                .accessibilityLabel("Played \(Self.format(time)) of \(Self.format(clock.duration))")
 
             Spacer(minLength: 8)
 
@@ -146,16 +119,6 @@ struct PlaybackBar: View {
     static func format(_ seconds: Double) -> String {
         let whole = Int(seconds)
         return String(format: "%02d:%02d", whole / 60, whole % 60)
-    }
-
-    /// Formats simulated event time as `HH:MM` (hours and minutes) when the event is an hour or longer,
-    /// or `MM:SS` for short clips.
-    static func formatEventTime(_ seconds: Double, totalDuration: Double) -> String {
-        if totalDuration >= 3600 {
-            let totalMinutes = Int((seconds / 60).rounded())
-            return String(format: "%02d:%02d", totalMinutes / 60, totalMinutes % 60)
-        }
-        return format(seconds)
     }
 
     static func speedLabel(_ speed: Double) -> String {

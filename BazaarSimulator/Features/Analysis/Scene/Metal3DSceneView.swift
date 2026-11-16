@@ -41,20 +41,30 @@ struct Metal3DSceneView: NSViewRepresentable {
         view.setNeedsDisplay(view.bounds)
     }
 
-    /// A Metal view that turns mouse and trackpad input into camera moves.
+    /// A Metal view that turns mouse and trackpad input into camera moves:
+    /// - Left-click drag: Orbit (rotate yaw and tilt pitch)
+    /// - Right-click drag, middle-click drag, Shift/Option-drag, or 2-finger trackpad scroll: Pan across the floor
+    /// - Pinch to zoom, mouse scroll wheel, or Option/Command + 2-finger scroll: Zoom in/out
+    /// - 2-finger trackpad twist: Rotate yaw
     final class OrbitView: MTKView {
         var onOrbit: (Float, Float) -> Void = { _, _ in }
         var onPan: (Float, Float) -> Void = { _, _ in }
         var onZoom: (Float) -> Void = { _ in }
 
         override var acceptsFirstResponder: Bool { true }
+        override var mouseDownCanMoveWindow: Bool { false }
+
+        override func mouseDown(with event: NSEvent) {
+            window?.makeFirstResponder(self)
+        }
 
         override func mouseDragged(with event: NSEvent) {
-            let delta = (Float(event.deltaX), Float(event.deltaY))
+            let dx = Float(event.deltaX)
+            let dy = Float(event.deltaY)
             if event.modifierFlags.contains(.shift) || event.modifierFlags.contains(.option) {
-                onPan(delta.0, delta.1)
+                onPan(dx, dy)
             } else {
-                onOrbit(delta.0, delta.1)
+                onOrbit(dx, dy)
             }
         }
 
@@ -62,12 +72,28 @@ struct Metal3DSceneView: NSViewRepresentable {
             onPan(Float(event.deltaX), Float(event.deltaY))
         }
 
+        override func otherMouseDragged(with event: NSEvent) {
+            onPan(Float(event.deltaX), Float(event.deltaY))
+        }
+
         override func scrollWheel(with event: NSEvent) {
-            onZoom(Float(event.scrollingDeltaY))
+            if event.hasPreciseScrollingDeltas {
+                if event.modifierFlags.contains(.option) || event.modifierFlags.contains(.command) {
+                    onZoom(Float(event.scrollingDeltaY) * 0.35)
+                } else {
+                    onPan(Float(event.scrollingDeltaX) * 0.65, Float(event.scrollingDeltaY) * 0.65)
+                }
+            } else {
+                onZoom(Float(event.scrollingDeltaY) * 2.5)
+            }
         }
 
         override func magnify(with event: NSEvent) {
-            onZoom(Float(event.magnification) * 100)
+            onZoom(Float(event.magnification) * 85)
+        }
+
+        override func rotate(with event: NSEvent) {
+            onOrbit(Float(event.rotation) * 2.2, 0)
         }
     }
 
