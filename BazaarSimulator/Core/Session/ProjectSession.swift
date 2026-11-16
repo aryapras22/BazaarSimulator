@@ -149,7 +149,7 @@ final class ProjectSession: ProjectSessionProtocol {
             let engines = layouts.map {
                 (id: $0.id, engine: SimulationEngine(layout: $0, settings: settings, legend: legend))
             }
-            await withTaskGroup(of: (Layout.ID, SimulationResult)?.self) { group in
+            await withTaskGroup(of: (Layout.ID, RecordedSimulationResult)?.self) { group in
                 for item in engines {
                     group.addTask {
                         guard !Task.isCancelled else { return nil }

@@ -84,7 +84,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     func runWithRecordedFootage(
         durationMinutes: Int = 0,
         frameIntervalSeconds: Double = CrowdParameters.defaultFrameIntervalSeconds
-    ) async -> SimulationResult {
+    ) async -> RecordedSimulationResult {
         reset()
         let job = CrowdRecordingJob(
             world: world,
@@ -175,7 +175,7 @@ private nonisolated struct CrowdRecordingJob: Sendable {
         let summaryCells = heatmap.finalSummaryCells()
         metrics.peakDensity = heatmap.summaryPeakDensity
 
-        return SimulationResult(
+        return RecordedSimulationResult(
             layoutID: layoutID,
             layoutName: layoutName,
             durationSeconds: Double(durationMinutes * 60),
