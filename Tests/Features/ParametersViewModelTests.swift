@@ -64,13 +64,11 @@ struct ParametersViewModelTests {
         var closed = false
         let (model, session, id) = makeModel { closed = true }
         model.setPercent(70, for: "a")
-        model.groupSize = 8
         model.apply()
 
         let stored = session.eventParameters(for: id)
         #expect(closed)
         #expect(stored?.mix.share(for: "a")?.percent == 70)
-        #expect(stored?.groupSize == 8)
     }
 
     @Test("Cancel closes without storing anything")
@@ -87,12 +85,10 @@ struct ParametersViewModelTests {
     func reopenRestores() {
         let (model, session, id) = makeModel()
         model.setPercent(70, for: "a")
-        model.groupSize = 8
         model.apply()
 
         let reopened = ParametersViewModel(projectID: id, session: session, catalog: catalog, onClose: {})
         #expect(reopened.draft.mix.share(for: "a")?.percent == 70)
-        #expect(reopened.groupSize == 8)
     }
 
     @Test("FormCommitScope flushes pending visitor count edits before apply")

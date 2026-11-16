@@ -68,4 +68,16 @@ struct ImportRowFormatterTests {
         let row = ImportRowFormatter.formatRow(file: file, layoutIndex: 1)
         #expect(row.thumbnailData == nil)
     }
+
+    @Test("Reading status carries the pipeline step label")
+    func readingStatusCarriesStepLabel() {
+        let file = ImportFile(
+            projectID: UUID(),
+            url: URL(fileURLWithPath: "/tmp/plan.pdf"),
+            kind: .floorPlan,
+            state: .reading(progress: 0.5, step: "Detecting booths...")
+        )
+        let row = ImportRowFormatter.formatRow(file: file, layoutIndex: 1)
+        #expect(row.status == .reading(progress: 0.5, step: "Detecting booths..."))
+    }
 }

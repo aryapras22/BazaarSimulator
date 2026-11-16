@@ -8,8 +8,7 @@ struct DayScheduleTests {
             totalVisitors: 5000,
             eventHours: hours,
             bazaarTypeID: "one",
-            mix: VisitorMix(equalSplitOf: ["a", "b"]),
-            groupSize: 5
+            mix: VisitorMix(equalSplitOf: ["a", "b"])
         )
     }
 

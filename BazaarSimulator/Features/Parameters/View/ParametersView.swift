@@ -16,8 +16,6 @@ struct ParametersView: View {
                     eventDurationRow
                     divider
                     bazaarAndVisitorRows
-                    divider
-                    groupSizeRow
                 }
             }
 
@@ -97,7 +95,6 @@ struct ParametersView: View {
         }
     }
 }
-
 
 #Preview("Parameters") {
     let session = ProjectSession()

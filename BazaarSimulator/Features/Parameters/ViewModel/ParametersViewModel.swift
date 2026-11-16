@@ -5,7 +5,6 @@ import Observation
 @Observable
 @MainActor
 final class ParametersViewModel {
-    static let groupSizeOptions = Array(1...10)
     static let maxVisitors = 1_000_000
 
     let projectID: UUID
@@ -67,7 +66,7 @@ final class ParametersViewModel {
         return endText
     }
 
-    // MARK: Bazaar type, visitor mix, group size
+    // MARK: Bazaar type and visitor mix
 
     var bazaarTypeID: String {
         get { draft.bazaarTypeID }
@@ -90,11 +89,6 @@ final class ParametersViewModel {
 
     func toggleLock(for id: String) {
         draft.mix.toggleLock(for: id)
-    }
-
-    var groupSize: Int {
-        get { draft.groupSize }
-        set { draft.groupSize = min(max(newValue, 1), Self.groupSizeOptions.last ?? 1) }
     }
 
     // MARK: Cancel and apply

@@ -45,8 +45,9 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         name: String,
         onEvent: @escaping @MainActor @Sendable (PlanReadingEvent) -> Void
     ) async throws -> ExtractedLayout {
-        let detected = try await detectPlan(page, legendPage: legendPage) { progress in
-            Task { @MainActor in onEvent(.progress(progress)) }
+        onEvent(.progress(0.08, step: "Scanning plan..."))
+        let detected = try await detectPlan(page, legendPage: legendPage) { progress, step in
+            onEvent(.progress(progress, step: step))
         }
         let itemSummary = Self.itemSummary(of: detected)
         onEvent(.note("Plan read: \(detected.items.count) items (\(itemSummary))"))
@@ -57,6 +58,7 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
         let scaleBasis = printedScale == nil ? "booth size" : "printed sizes"
         let scaleText = scale.formatted(.number.precision(.fractionLength(1)))
         onEvent(.note("Scale: \(scaleText) px per metre from \(scaleBasis)"))
+        onEvent(.progress(0.96, step: "Building layout..."))
         let layout = ExtractedLayoutMapper.layout(
             from: detected,
             legend: legend,
@@ -74,24 +76,37 @@ struct ExtractorFloorPlanReader: FloorPlanReading {
     func detectPlan(
         _ page: CGImage,
         legendPage: CGImage,
-        onProgress: @escaping @Sendable (Double) -> Void = { _ in }
+        onStage: @escaping @MainActor @Sendable (Double, String) -> Void = { _, _ in }
     ) async throws -> DetectedPlan {
         let reading = try await PlanExtractor.plan(
             page,
             legend: legendPage,
-            symbols: symbolStore.symbols,
-            onProgress: onProgress
-        )
+            symbols: symbolStore.symbols
+        ) { progress in
+            let stage = Self.extractorStage(for: progress)
+            Task { @MainActor in onStage(stage.progress, stage.step) }
+        }
+        onStage(0.65, "Reading zone labels...")
         let named = await PlanPrintedText.keepingNamedPaperWhiteBoxes(
             reading.items.map(Self.detectedItem),
             classNames: reading.legend.map(\.label),
             on: page
         )
+        onStage(0.75, "Reading booth numbers...")
         let items = await PlanPrintedText.numberingBooths(named, on: page)
+        onStage(0.90, "Reading scale...")
         return DetectedPlan(
             items: items,
             printedPixelsPerMetre: await PlanPrintedText.pixelsPerMetre(from: items, on: page)
         )
+    }
+
+    private nonisolated static func extractorStage(for progress: Double) -> (progress: Double, step: String) {
+        if progress < 0.15 { return (0.15, "Detecting booths...") }
+        if progress < 0.50 { return (0.35, "Detecting walls & doors...") }
+        if progress < 0.80 { return (0.50, "Reading booth IDs...") }
+        if progress < 0.95 { return (0.60, "Reviewing detections...") }
+        return (0.64, "Reviewing detections...")
     }
 
     private static func itemSummary(of plan: DetectedPlan) -> String {

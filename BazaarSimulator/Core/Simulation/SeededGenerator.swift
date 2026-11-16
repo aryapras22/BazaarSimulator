@@ -20,4 +20,10 @@ struct SeededGenerator: RandomNumberGenerator {
     mutating func unit() -> Double {
         Double(next() >> 11) / Double(1 << 53)
     }
+
+    /// A standard normal value with mean 0 and standard deviation 1 (Box-Muller).
+    mutating func gaussian() -> Double {
+        let radius = (-2 * log(max(0.000_001, 1.0 - unit()))).squareRoot()
+        return radius * cos(2 * Double.pi * unit())
+    }
 }

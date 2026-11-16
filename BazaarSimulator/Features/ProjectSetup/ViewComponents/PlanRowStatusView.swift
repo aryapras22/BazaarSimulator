@@ -9,11 +9,18 @@ struct PlanRowStatusView: View {
             Text(text)
                 .font(.system(size: 10.5))
                 .foregroundColor(Palette.accentText)
-        case .reading(let progress):
+        case .reading(let progress, let step):
             HStack(spacing: Spacing.s) {
-                Text("Reading...")
+                Text(step)
                     .font(.system(size: 10))
                     .foregroundColor(Palette.textSecondary)
+                    .lineLimit(1)
+
+                if let progress {
+                    Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                        .font(.system(size: 10).monospacedDigit())
+                        .foregroundColor(Palette.textTertiary)
+                }
 
                 ProgressBar(value: progress)
                     .frame(width: 80, height: 4)

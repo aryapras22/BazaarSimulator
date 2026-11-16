@@ -142,11 +142,18 @@ final class ProjectSetupViewModel {
             return "Reading the legend..."
         }
         
-        if floorPlanFiles.contains(where: {
+        if let index = floorPlanFiles.firstIndex(where: {
             if case .reading = $0.state { return true }
             if case .waiting = $0.state { return true }
             return false
         }) {
+            if case .reading(let progress, let step?) = floorPlanFiles[index].state {
+                if let progress {
+                    let pct = Int((min(max(progress, 0), 1) * 100).rounded())
+                    return "Layout \(index + 1): \(step) (\(pct)%)"
+                }
+                return "Layout \(index + 1): \(step)"
+            }
             return "Waiting for all layouts to finish reading..."
         }
         

@@ -211,6 +211,35 @@ struct ProjectSetupViewModelTests {
         #expect(viewModel.statusText == "Waiting for all layouts to finish reading...")
     }
 
+    @Test("The status text includes the pipeline stage and percentage when reading a layout")
+    @MainActor
+    func statusTextIncludesPipelineStage() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: false)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        queue.insert(ImportFile(
+            projectID: project.id,
+            url: URL(fileURLWithPath: "/tmp/legend.pdf"),
+            kind: .legend,
+            state: .done(booths: 0, doors: 0)
+        ))
+        queue.insert(ImportFile(
+            projectID: project.id,
+            url: URL(fileURLWithPath: "/tmp/plan1.pdf"),
+            kind: .floorPlan,
+            state: .reading(progress: 0.35, step: "Detecting booths...")
+        ))
+
+        #expect(viewModel.statusText == "Layout 1: Detecting booths... (35%)")
+    }
+
     @Test("Continue needs a name, at least one plan, and every file done")
     @MainActor
     func continueConditions() {

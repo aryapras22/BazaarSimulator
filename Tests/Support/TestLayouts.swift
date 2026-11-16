@@ -8,8 +8,7 @@ enum TestLayouts {
         totalVisitors: 200,
         eventHours: TimeRange(startMinute: 10 * 60, endMinute: 13 * 60),
         bazaarTypeID: "test",
-        mix: VisitorMix(equalSplitOf: ["a", "b"]),
-        groupSize: 3
+        mix: VisitorMix(equalSplitOf: ["a", "b"])
     )
 
     static let visitorTypes = [

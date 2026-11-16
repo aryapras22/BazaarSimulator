@@ -3,7 +3,7 @@ import Foundation
 struct PlanRowDisplay: Equatable, Sendable, Identifiable {
     enum Status: Equatable, Sendable {
         case done(text: String)
-        case reading(progress: Double?)
+        case reading(progress: Double?, step: String = "Reading...")
         case waiting(text: String)
         case failed(message: String)
         case cancelled(text: String)
@@ -98,8 +98,8 @@ enum ImportRowFormatter {
         switch state {
         case .waiting:
             return .waiting(text: "Waiting...")
-        case .reading(let progress):
-            return .reading(progress: progress)
+        case .reading(let progress, let step):
+            return .reading(progress: progress, step: step ?? "Reading...")
         case .done(let booths, let doors):
             return .done(text: doneText(booths, doors))
         case .failed(let message):

@@ -17,18 +17,33 @@ struct SpawnSchedulerTests {
         )
     }
 
-    @Test("Every requested person arrives, in groups no bigger than the group size")
+    @Test("Every requested person arrives, in groups between 1 and 5")
     func totalAndGroupSize() {
         let result = arrivals()
         #expect(result.reduce(0) { $0 + $1.people } == 600)
-        #expect(result.allSatisfy { (1...3).contains($0.people) })
+        #expect(result.allSatisfy { (1...5).contains($0.people) })
     }
 
-    @Test("A group size of 1 sends people one by one")
-    func singleGroups() {
-        var parameters = TestLayouts.parameters
-        parameters.groupSize = 1
-        #expect(arrivals(parameters).count == 600)
+    @Test("Group sizes follow a normal distribution from 1 to 5 centered at 3")
+    func groupSizeNormalDistribution() {
+        var generator = SeededGenerator(seed: 42)
+        var counts: [Int: Int] = [:]
+        let draws = 3000
+        for _ in 0..<draws {
+            let size = SpawnScheduler.drawGroupSize(generator: &generator)
+            #expect((1...5).contains(size))
+            counts[size, default: 0] += 1
+        }
+        for size in 1...5 {
+            #expect((counts[size] ?? 0) > 0)
+        }
+        #expect((counts[3] ?? 0) > (counts[2] ?? 0))
+        #expect((counts[3] ?? 0) > (counts[4] ?? 0))
+        #expect((counts[2] ?? 0) > (counts[1] ?? 0))
+        #expect((counts[4] ?? 0) > (counts[5] ?? 0))
+        let totalPeople = counts.reduce(0) { $0 + $1.key * $1.value }
+        let mean = Double(totalPeople) / Double(draws)
+        #expect(abs(mean - 3.0) < 0.15)
     }
 
     @Test("Arrivals fall inside the event and come in order")
