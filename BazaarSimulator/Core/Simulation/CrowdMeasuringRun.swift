@@ -55,7 +55,7 @@ nonisolated struct CrowdMeasurements: Sendable {
 /// each block of floor, how many pass the doors, and where everyone is through the busiest window.
 nonisolated final class CrowdMeasuringRun {
     static let sampleIntervalSeconds = 10
-    static let frameIntervalSeconds = 2
+    static let frameIntervalSeconds = 10
     static let blockCells = 6
     static let tileCells = 3
     /// Doors and floor tiles are checked this often, so a walking visitor cannot skip a cell.
@@ -66,17 +66,21 @@ nonisolated final class CrowdMeasuringRun {
     private let setup: CrowdMeasuringSetup
     private let crowd: CrowdSimulation
     private let baseArrivalRate: Double
+    private let hasCountedDoors: Bool
     private var stepIndex = 0
     private var result = CrowdMeasurements()
     private var tileFootfall: [UInt16]
     private var lastTile: [Int: Int] = [:]
+    private var nextTileScratch: [Int: Int] = [:]
     private var inDoor: Set<Int> = []
+    private var nextDoorScratch: Set<Int> = []
     private var countedPeople = 0
 
     init(setup: CrowdMeasuringSetup) {
         self.setup = setup
         crowd = CrowdSimulation(world: setup.world, settings: setup.settings)
         baseArrivalRate = crowd.arrivalRatePerSecond
+        hasCountedDoors = setup.countsDoor.contains(true)
 
         result.blockColumns = (setup.columns + Self.blockCells - 1) / Self.blockCells
         result.blockCount = result.blockColumns * ((setup.rows + Self.blockCells - 1) / Self.blockCells)
@@ -95,17 +99,49 @@ nonisolated final class CrowdMeasuringRun {
         // A layout with no way in has nothing to simulate.
         if setup.world.gates.isEmpty { return true }
         if crowd.time >= setup.openSeconds + Self.closingGraceSeconds { return true }
-        return crowd.time >= setup.openSeconds && crowd.agents.isEmpty
+        return crowd.time > setup.openSeconds && crowd.agents.isEmpty
     }
 
     /// Runs to the end of the event, or until `isCancelled` says to stop.
-    func run(isCancelled: () -> Bool) -> CrowdMeasurements {
+    func run(
+        onLiveFrame: (@Sendable ([MeasuredVisitor], Double) -> Void)? = nil,
+        isCancelled: () -> Bool
+    ) -> CrowdMeasurements {
+        let liveStepStride = max(1, 2 * CrowdParameters.stepsPerSecond)
+        let totalSeconds = max(1.0, setup.openSeconds)
+        var lastLiveWallTime = 0.0
+        if let onLiveFrame {
+            lastLiveWallTime = CFAbsoluteTimeGetCurrent()
+            onLiveFrame(currentMeasuredVisitors(), 0.0)
+        }
         while !isFinished {
-            for _ in 0..<256 where !isFinished { step() }
+            for _ in 0..<256 where !isFinished {
+                step()
+                if let onLiveFrame, stepIndex % liveStepStride == 0 {
+                    let now = CFAbsoluteTimeGetCurrent()
+                    if now - lastLiveWallTime >= 0.04 {
+                        lastLiveWallTime = now
+                        onLiveFrame(currentMeasuredVisitors(), normalizedProgress(openSeconds: totalSeconds))
+                    }
+                }
+            }
             if isCancelled() { break }
+        }
+        if let onLiveFrame, !isCancelled() {
+            onLiveFrame(currentMeasuredVisitors(), 0.98)
         }
         result.enteredPeople = crowd.stats.enteredPeople
         return result
+    }
+
+    private func normalizedProgress(openSeconds: Double) -> Double {
+        let now = max(0.0, crowd.time)
+        if now <= openSeconds {
+            return min(0.92, (now / openSeconds) * 0.92)
+        }
+        let grace = max(1.0, Self.closingGraceSeconds)
+        let graceFraction = min(1.0, (now - openSeconds) / grace)
+        return min(0.98, 0.92 + graceFraction * 0.06)
     }
 
     private func step() {
@@ -138,26 +174,39 @@ nonisolated final class CrowdMeasuringRun {
 
     /// Counts people through the doors, and walks into a new tile of floor while the window is open.
     private func track(now: Double, isRecording: Bool) {
-        var tiles: [Int: Int] = [:]
-        var doors: Set<Int> = []
-        tiles.reserveCapacity(crowd.agents.count)
         var passed = 0.0
-        for agent in crowd.agents {
-            guard let cell = cell(at: agent.position) else { continue }
-            let tile = Self.group(of: cell, by: Self.tileCells, columns: setup.columns)
-            if isRecording, lastTile[agent.id] != tile, !agent.isSeated {
-                tileFootfall[tile] = UInt16(min(Int(tileFootfall[tile]) + Int(agent.weight), Int(UInt16.max)))
+        if isRecording || hasCountedDoors {
+            if isRecording {
+                nextTileScratch.removeAll(keepingCapacity: true)
             }
-            tiles[agent.id] = tile
-            let door = Int(setup.doorIndex[cell])
-            if door >= 0, setup.countsDoor[door] {
-                if !inDoor.contains(agent.id) { passed += agent.weight }
-                doors.insert(agent.id)
+            if hasCountedDoors {
+                nextDoorScratch.removeAll(keepingCapacity: true)
+            }
+            for agent in crowd.agents {
+                guard let cell = cell(at: agent.position) else { continue }
+                if isRecording {
+                    let tile = Self.group(of: cell, by: Self.tileCells, columns: setup.columns)
+                    if lastTile[agent.id] != tile, !agent.isSeated {
+                        tileFootfall[tile] = UInt16(min(Int(tileFootfall[tile]) + Int(agent.weight), Int(UInt16.max)))
+                    }
+                    nextTileScratch[agent.id] = tile
+                }
+                if hasCountedDoors {
+                    let door = Int(setup.doorIndex[cell])
+                    if door >= 0, setup.countsDoor[door] {
+                        if !inDoor.contains(agent.id) { passed += agent.weight }
+                        nextDoorScratch.insert(agent.id)
+                    }
+                }
+            }
+            if isRecording {
+                swap(&lastTile, &nextTileScratch)
+            }
+            if hasCountedDoors {
+                swap(&inDoor, &nextDoorScratch)
             }
         }
-        lastTile = tiles
-        inDoor = doors
-        if !setup.countsDoor.contains(true) {
+        if !hasCountedDoors {
             let counted = crowd.stats.enteredPeople + crowd.stats.departedPeople
             passed = Double(counted - countedPeople)
             countedPeople = counted
@@ -177,16 +226,20 @@ nonisolated final class CrowdMeasuringRun {
 
     private func recordFrame() {
         result.frames.append(MeasuredFrame(
-            visitors: crowd.agents.map { agent in
-                MeasuredVisitor(
-                    id: agent.id,
-                    position: SIMD2(Float(agent.position.x), Float(agent.position.y)),
-                    typeIndex: setup.typeIndexByPersona[agent.party.persona.key] ?? 0,
-                    people: Int(agent.weight),
-                    isSeated: agent.isSeated
-                )
-            },
+            visitors: currentMeasuredVisitors(),
             footfall: tileFootfall
         ))
+    }
+
+    private func currentMeasuredVisitors() -> [MeasuredVisitor] {
+        crowd.agents.map { agent in
+            MeasuredVisitor(
+                id: agent.id,
+                position: SIMD2(Float(agent.position.x), Float(agent.position.y)),
+                typeIndex: setup.typeIndexByPersona[agent.party.persona.key] ?? 0,
+                people: Int(agent.weight),
+                isSeated: agent.isSeated
+            )
+        }
     }
 }

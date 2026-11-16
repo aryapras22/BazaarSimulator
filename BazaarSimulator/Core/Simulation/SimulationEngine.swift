@@ -83,7 +83,7 @@ final class SimulationEngine: SimulationEngineProtocol {
     /// Cancelling the calling task stops the run early.
     func runWithRecordedFootage(
         durationMinutes: Int = 0,
-        frameIntervalSeconds: Double = 5.0
+        frameIntervalSeconds: Double = CrowdParameters.defaultFrameIntervalSeconds
     ) async -> RecordedSimulationResult {
         reset()
         let job = CrowdRecordingJob(
@@ -114,7 +114,7 @@ final class SimulationEngine: SimulationEngineProtocol {
         if metrics.elapsedSeconds >= nextDensityUpdate {
             publishCrowdState()
             updateDensityCells()
-            nextDensityUpdate = metrics.elapsedSeconds + 1.0
+            nextDensityUpdate = metrics.elapsedSeconds + CrowdParameters.liveDensityUpdateIntervalSeconds
         }
     }
 
@@ -147,30 +147,25 @@ private nonisolated struct CrowdRecordingJob: Sendable {
         var heatmap = CrowdHeatmap(sizeM: sizeM)
         var metrics = SimulationMetrics()
         var frames: [SimulationFrame] = []
-        // Frames between heatmap refreshes share one array, which keeps an 11-hour recording small.
-        var recordedHeatmap: [DensityCell] = []
 
         let stepsPerSecond = CrowdParameters.stepsPerSecond
         let totalSteps = durationMinutes * 60 * stepsPerSecond
         let stepsPerFrame = max(1, Int(frameIntervalSeconds * Double(stepsPerSecond)))
-        let stepsPerHeatmap = 30 * stepsPerSecond
+        frames.reserveCapacity(totalSteps / stepsPerFrame + 2)
 
         for stepIndex in 1...totalSteps {
             crowd.step()
-            if stepIndex % stepsPerSecond == 0 { heatmap.update(with: crowd.snapshots()) }
 
             if stepIndex == 1 || stepIndex % stepsPerFrame == 0 || stepIndex == totalSteps {
+                heatmap.update(withAgents: crowd.agents)
                 metrics.elapsedSeconds = crowd.time
                 crowd.copyCounts(into: &metrics)
                 metrics.meanDensity = heatmap.meanDensity
                 metrics.peakDensity = heatmap.peakDensity
-                if stepIndex % stepsPerHeatmap < stepsPerFrame || stepIndex == totalSteps {
-                    recordedHeatmap = heatmap.cells
-                }
                 frames.append(SimulationFrame(
                     elapsedSeconds: metrics.elapsedSeconds,
                     visitors: crowd.snapshots(),
-                    densityCells: recordedHeatmap,
+                    densityCells: heatmap.cells,
                     metrics: metrics
                 ))
             }

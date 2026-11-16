@@ -54,7 +54,7 @@ struct AnalysisServiceTests {
         #expect(setup.arrivalFactors.count == 180)
         #expect(abs(setup.arrivalFactors[90] - 2 * setup.arrivalFactors[10]) < 1e-9)
         #expect(abs(setup.arrivalFactors.reduce(0, +) / 180 - 1) < 1e-9)
-        #expect(setup.window == 3600...4200)
+        #expect(setup.window == 0...10_800)
         #expect(Set(setup.typeIndexByPersona.values).isSubset(of: [0, 1]), "every persona is shown as a type the catalog has")
     }
 
@@ -66,5 +66,32 @@ struct AnalysisServiceTests {
         layout.objects.removeAll { $0.kind == .booth }
         let second = await analyses(service, layouts: [layout])
         #expect(first != second)
+    }
+
+    @Test("Live progress stays monotonic below 100 percent until every layout finishes")
+    func liveProgressCoversAllLayouts() async {
+        let service = AnalysisService()
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]
+        final class ProgressBox: @unchecked Sendable {
+            let lock = NSLock()
+            var values: [Double] = []
+        }
+        let box = ProgressBox()
+        let results = await service.analyses(
+            for: layouts,
+            parameters: TestLayouts.parameters,
+            visitorTypes: TestLayouts.visitorTypes,
+            focus: focus,
+            legend: Legend(),
+            onLiveFrame: { _, _, progress in
+                box.lock.lock()
+                box.values.append(progress)
+                box.lock.unlock()
+            }
+        )
+        #expect(results.count == 2)
+        #expect(!box.values.isEmpty)
+        #expect(box.values.allSatisfy { $0 >= 0.0 && $0 < 1.0 })
+        #expect(zip(box.values, box.values.dropFirst()).allSatisfy { $0 <= $1 + 1e-9 })
     }
 }

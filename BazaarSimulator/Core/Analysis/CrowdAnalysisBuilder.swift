@@ -42,16 +42,13 @@ enum CrowdAnalysisBuilder {
                 ?? offset % max(input.visitorTypes.count, 1)
         }
 
-        var window: ClosedRange<Double>?
-        if let focus = input.focus, focus.durationMinutes > 0 {
-            let start = Double(focus.startMinute - hours.startMinute) * 60
-            window = start...(start + Double(focus.durationMinutes) * 60)
-        }
+        let openSeconds = Double(hours.durationMinutes) * 60
+        let window: ClosedRange<Double>? = hours.durationMinutes > 0 ? 0...openSeconds : nil
         let hallDoors = grid.doors.map { $0.flow?.connection == .hallToLobby }
         return CrowdMeasuringSetup(
             world: CrowdWorld(layout: input.layout, legend: input.legend),
             settings: settings,
-            openSeconds: Double(hours.durationMinutes) * 60,
+            openSeconds: openSeconds,
             arrivalFactors: weights.map { $0 / mean },
             origin: grid.origin,
             cellSizeM: NavigationGrid.cellSizeM,
@@ -128,7 +125,7 @@ enum CrowdAnalysisBuilder {
     private static func replay(for input: SimulationInput, grid: NavigationGrid, measured: CrowdMeasurements) -> SimulationReplay? {
         guard !measured.frames.isEmpty else { return nil }
         return SimulationReplay(
-            startMinute: input.focus?.startMinute ?? input.parameters.eventHours.startMinute,
+            startMinute: input.parameters.eventHours.startMinute,
             frameIntervalSeconds: CrowdMeasuringRun.frameIntervalSeconds,
             frames: measured.frames.map { frame in
                 SimulationReplay.Frame(

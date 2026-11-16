@@ -126,4 +126,20 @@ struct ParametersViewModelTests {
         #expect(reopened.isPeakEnabled)
         #expect(reopened.peakSlots.contains { $0.label == "20:00 - 22:00" })
     }
+
+    @Test("FormCommitScope flushes pending visitor count edits before apply")
+    func formCommitScopeFlushesBeforeApply() {
+        let (model, session, id) = makeModel()
+        let scope = FormCommitScope()
+        let fieldID = UUID()
+        var draftText = "12500"
+        scope.register(id: fieldID) {
+            draftText = model.commitTotalVisitors(draftText)
+        }
+        scope.commitAll()
+        model.apply()
+
+        #expect(session.eventParameters(for: id)?.totalVisitors == 12_500)
+        #expect(session.resultTabs(for: id).last?.parameters.totalVisitors == 12_500)
+    }
 }

@@ -6,6 +6,7 @@ nonisolated struct CrowdNeighbor {
     let velocity: SIMD2<Double>
     let combinedRadius: Double
     let weight: Double
+    let isSameParty: Bool
 }
 
 private nonisolated struct CrowdDesire {
@@ -13,12 +14,13 @@ private nonisolated struct CrowdDesire {
     var speed = 0.0
 }
 
-/// Computes one agent's next velocity from read-only copies of the step's state.
+/// Computes one agent's next velocity from read-only copies of the step's state,
+/// combining predictive collision avoidance with the Helbing Social Forces Model.
 nonisolated struct CrowdSteeringPass {
-    static let maxNeighbors = 48
-    private static let headingOffsets = [0, 0.45, -0.45, 0.9, -0.9, 1.4, -1.4]
-    private static let speedFractions = [1.0, 0.5]
-    private static let neighborRadiusSquared = 6.25
+    static let maxNeighbors = CrowdParameters.maxNeighbors
+    private static let headingOffsets = CrowdParameters.steeringHeadingOffsets
+    private static let speedFractions = CrowdParameters.steeringSpeedFractions
+    private static let neighborRadiusSquared = CrowdParameters.neighborRadiusSquared
 
     let bodies: UnsafeBufferPointer<CrowdBody>
     let motions: UnsafeBufferPointer<CrowdPartyMotion>
@@ -38,10 +40,66 @@ nonisolated struct CrowdSteeringPass {
 
         collectNeighbors(ofBodyAt: index, into: &neighbors)
         let steered = steer(body, desire: desire, neighbors: neighbors)
-        var velocity = body.velocity + (steered - body.velocity) * min(1, CrowdParameters.stepSeconds / 0.35)
-        let speedCap = motion.speed * 1.35
-        if simd_length(velocity) > speedCap { velocity = simd_normalize(velocity) * speedCap }
+        let socialForce = totalSocialForce(for: body, motion: motion, desire: desire, neighbors: neighbors)
+
+        // Driving force + Helbing social forces integrated over the step.
+        let relaxation = min(1.0, CrowdParameters.stepSeconds / CrowdParameters.velocityRelaxationTau)
+        var velocity = body.velocity + (steered - body.velocity) * relaxation
+        velocity += socialForce * CrowdParameters.stepSeconds
+
+        let speedCap = motion.speed * CrowdParameters.maxSpeedMultiplier
+        if simd_length(velocity) > speedCap {
+            velocity = simd_normalize(velocity) * speedCap
+        }
         return velocity
+    }
+
+    /// Computes the combined Helbing Social Forces:
+    /// 1) Anisotropic pedestrian-pedestrian personal space repulsion
+    /// 2) Exponential wall/obstacle boundary repulsion
+    /// 3) Party group cohesion attraction toward the party leader
+    private func totalSocialForce(
+        for body: CrowdBody,
+        motion: CrowdPartyMotion,
+        desire: CrowdDesire,
+        neighbors: [CrowdNeighbor]
+    ) -> SIMD2<Double> {
+        let forward = simd_length(body.velocity) > 0.1 ? body.velocity : desire.direction
+        var force = SIMD2<Double>.zero
+
+        // 1. Pedestrian-pedestrian social repulsion force
+        for neighbor in neighbors where !neighbor.isSameParty {
+            let dist = simd_length(neighbor.offset)
+            guard dist < neighbor.combinedRadius + 0.9 else { continue }
+            force += CrowdSimulation.socialRepulsionForce(
+                offsetToNeighbor: neighbor.offset,
+                combinedRadius: neighbor.combinedRadius,
+                forwardDirection: forward
+            )
+        }
+
+        // 2. Wall / booth boundary social repulsion force
+        let wallDist = walls.wallDistance(at: body.position)
+        if wallDist < body.radius + 0.45 {
+            let grad = walls.wallGradient(at: body.position)
+            let gradLen = simd_length(grad)
+            if gradLen > 1e-4 {
+                let wallMag = CrowdParameters.wallSocialForceStrength
+                    * exp((body.radius - wallDist) / CrowdParameters.wallSocialForceRangeM)
+                force += (grad / gradLen) * min(wallMag, 2.5)
+            }
+        }
+
+        // 3. Group cohesion force keeping party followers smoothly attached to their leader
+        if !body.isLeader {
+            let toLeader = bodies[motion.leaderIndex].position - body.position
+            let leaderDist = simd_length(toLeader)
+            if leaderDist > 1.2 && leaderDist < 4.5 {
+                force += (toLeader / leaderDist) * CrowdParameters.groupCohesionForceStrength
+            }
+        }
+
+        return force
     }
 
     /// People per square metre around one person. Seated people do not count.
@@ -122,7 +180,8 @@ nonisolated struct CrowdSteeringPass {
                 offset: offset,
                 velocity: neighbor.isStationary ? .zero : neighbor.velocity * 0.5,
                 combinedRadius: body.radius + neighbor.radius + margin,
-                weight: isSameParty ? 0.4 : 1.4
+                weight: isSameParty ? 0.4 : 1.4,
+                isSameParty: isSameParty
             ))
         }
     }
@@ -171,7 +230,16 @@ nonisolated struct CrowdSteeringPass {
                 relativeVelocity: candidate - neighbor.velocity,
                 radius: neighbor.combinedRadius
             )
-            if collisionTime < 2.5 { cost += neighbor.weight / (collisionTime + 0.25) }
+            if collisionTime < CrowdParameters.timeToCollisionHorizon {
+                cost += neighbor.weight / (collisionTime + 0.25)
+            }
+            // Right-hand passing bias for oncoming pedestrians to form counterflow lanes
+            if !neighbor.isSameParty && simd_dot(wanted, neighbor.velocity) < -0.1 {
+                let cross = neighbor.offset.x * candidate.y - neighbor.offset.y * candidate.x
+                if cross < 0 {
+                    cost -= CrowdParameters.rightSidePassingBias
+                }
+            }
         }
         if wallDistance < 0.8 {
             let ahead = walls.wallDistance(at: body.position + candidate * 0.6)

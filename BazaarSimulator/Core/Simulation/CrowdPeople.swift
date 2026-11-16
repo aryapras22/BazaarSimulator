@@ -110,6 +110,7 @@ nonisolated final class CrowdParty {
     var queuedAt: Double?
     var seat: Int?
     var heldForward: SIMD2<Double>?
+    var grazingSpeedFactor = 1.0
 
     init(id: Int, draw: CrowdPartyDraw, gate: Int, speed: Double, loyalty: Double, time: Double, nextThink: Double) {
         self.id = id
@@ -136,7 +137,7 @@ nonisolated final class CrowdParty {
 
 /// Finds nearby agents without comparing every pair.
 nonisolated struct CrowdSpatialHash {
-    static let binSize = 1.5
+    static let binSize = CrowdParameters.spatialHashBinSize
 
     private let cols: Int
     private let rows: Int
@@ -157,7 +158,9 @@ nonisolated struct CrowdSpatialHash {
     mutating func rebuild(with bodies: [CrowdBody]) {
         for bin in occupiedBins { heads[bin] = -1 }
         occupiedBins.removeAll(keepingCapacity: true)
-        nexts = Array(repeating: -1, count: bodies.count)
+        if nexts.count < bodies.count {
+            nexts = Array(repeating: -1, count: bodies.count)
+        }
 
         for (index, body) in bodies.enumerated() {
             let (col, row) = binCoordinates(of: body.position)

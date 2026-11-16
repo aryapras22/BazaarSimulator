@@ -38,7 +38,9 @@ nonisolated extension CrowdSimulation {
 
     /// How far along the queue this rank stands, measured from the counter.
     func queueSpot(booth: Int, rank: Int) -> Double {
-        queues[booth].prefix(rank).reduce(0.3) { $0 + 0.35 + 0.3 * Double($1.walkers) }
+        queues[booth].prefix(rank).reduce(CrowdParameters.queueCounterOffsetM) {
+            $0 + CrowdParameters.queuePartyGapM + CrowdParameters.queueWalkerSpacingM * Double($1.walkers)
+        }
     }
 
     /// A party joins a queue where the queue ends, not at the counter.
@@ -49,7 +51,9 @@ nonisolated extension CrowdSimulation {
         case .booth(_, .passingThrough): return 1.5
         case .booth(let booth, _):
             let isBusy = !queues[booth].isEmpty || browsers[booth].count >= world.booths[booth].capacity
-            return isBusy ? queueSpot(booth: booth, rank: queues[booth].count) + 0.2 : 0.3
+            return isBusy
+                ? queueSpot(booth: booth, rank: queues[booth].count) + 0.2
+                : CrowdParameters.queueCounterOffsetM
         }
     }
 
@@ -68,8 +72,23 @@ nonisolated extension CrowdSimulation {
             thinkInQueue(party)
             return
         }
+        party.grazingSpeedFactor = computeGrazingSpeedFactor(for: party, position: leader.position)
         considerDetour(party)
         advanceTowardTarget(party)
+    }
+
+    private func computeGrazingSpeedFactor(for party: CrowdParty, position: SIMD2<Double>) -> Double {
+        let radius = CrowdParameters.windowShoppingRadiusM
+        for index in world.highPullBoothIndices where !party.visited.contains(index) {
+            let footprint = world.booths[index].footprint
+            let maxSpan = radius + footprint.boundingRadius
+            guard abs(footprint.center.x - position.x) <= maxSpan,
+                  abs(footprint.center.y - position.y) <= maxSpan else { continue }
+            if footprint.distance(to: position) <= radius {
+                return CrowdParameters.windowShoppingSpeedFactor
+            }
+        }
+        return 1.0
     }
 
     private func thinkInQueue(_ party: CrowdParty) {
@@ -87,7 +106,8 @@ nonisolated extension CrowdSimulation {
             return
         }
         let cost = Double(targetField(of: party).costs[world.cell(at: party.leader.position)])
-        if rank == 0 && browsers[booth].count < world.booths[booth].capacity && cost <= 0.9 {
+        if rank == 0 && browsers[booth].count < world.booths[booth].capacity
+            && cost <= CrowdParameters.queueFrontStartCost {
             startVisit(party, booth: booth)
         }
     }
@@ -132,7 +152,7 @@ nonisolated extension CrowdSimulation {
             arrive(party)
             return
         }
-        if cost < party.lastCost - 0.8 {
+        if cost < party.lastCost - CrowdParameters.progressCostDropThreshold {
             party.lastCost = cost
             party.lastProgress = time
         } else if time - party.lastProgress > CrowdParameters.stuckSeconds {
@@ -190,10 +210,11 @@ nonisolated extension CrowdSimulation {
     private func sitDown(_ party: CrowdParty, table: Int) {
         let leaderPosition = party.leader.position
         // Wait until the whole party has caught up.
-        guard party.members.allSatisfy({ simd_distance($0.position, leaderPosition) <= 3.5 }) else { return }
+        let catchUpRadius = CrowdParameters.seatCatchUpRadiusM
+        guard party.members.allSatisfy({ simd_distance($0.position, leaderPosition) <= catchUpRadius }) else { return }
 
         party.state = .seated
-        party.endTime = time + max(30, party.eatSeconds)
+        party.endTime = time + max(CrowdParameters.minimumSeatedSeconds, party.eatSeconds)
         party.seat = table
         let seats = world.tables[table].seats
         for (index, member) in party.members.enumerated() {
@@ -222,7 +243,10 @@ nonisolated extension CrowdSimulation {
         if world.booths[booth].isFood {
             party.willSit = choiceRandom.nextDouble() < party.persona.sitChance
             party.eatSeconds = party.willSit
-                ? exp(log(CrowdParameters.medianEatSeconds) + 0.4 * choiceRandom.nextGaussian())
+                ? exp(
+                    log(CrowdParameters.medianEatSeconds)
+                        + CrowdParameters.eatDurationLogSigma * choiceRandom.nextGaussian()
+                )
                 : 0
         }
         return choiceRandom.randomDouble(in: party.persona.dwellSeconds)
@@ -345,7 +369,12 @@ nonisolated extension CrowdSimulation {
     /// The distance left to the booth's influence circle, or nil when the booth is out of sight.
     private func visibleReach(of booth: Int, from position: SIMD2<Double>, heading: Double) -> Double? {
         let influence = CrowdParameters.influenceRadius
-        let nearest = world.booths[booth].footprint.nearestPoint(to: position)
+        let footprint = world.booths[booth].footprint
+        let maxSpan = CrowdParameters.viewDepth + influence + footprint.boundingRadius
+        guard abs(footprint.center.x - position.x) <= maxSpan,
+              abs(footprint.center.y - position.y) <= maxSpan else { return nil }
+
+        let nearest = footprint.nearestPoint(to: position)
         let delta = nearest - position
         let distance = simd_length(delta)
         let reach = max(0, distance - influence)

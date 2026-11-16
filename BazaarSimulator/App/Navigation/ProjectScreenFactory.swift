@@ -16,12 +16,11 @@ final class ProjectScreenFactory {
     func makeLibraryViewModel() -> ProjectLibraryViewModel {
         ProjectLibraryViewModel(
             session: services.projectSession,
-            onOpenProject: { [weak router, weak session = services.projectSession] id in
-                if let draft = session?.draft(for: id), !draft.layouts.isEmpty {
-                    router?.showAnalysis(projectID: id)
-                } else {
-                    router?.showSetup(projectID: id)
-                }
+            onOpenProject: { [weak router] id in
+                router?.showSetup(projectID: id)
+            },
+            onOpenResult: { [weak router] tab in
+                router?.showAnalysis(projectID: tab.projectID)
             }
         )
     }
@@ -62,10 +61,15 @@ final class ProjectScreenFactory {
     }
 
     func makeDashboardViewModel(projectID: UUID) -> DashboardViewModel {
-        if let existing = dashboardViewModels[projectID] {
+        let session = services.projectSession
+        let activeTabID = session.activeResultTabID(for: projectID)
+        let cacheKey = activeTabID ?? projectID
+        if let existing = dashboardViewModels[cacheKey] {
             return existing
         }
-        let session = services.projectSession
+        let activeTab = activeTabID.flatMap { tabID in
+            session.resultTabs(for: projectID).first { $0.id == tabID }
+        }
         /// Layout 1 and Layout 2 on the compare page are the project's first two layouts.
         func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
             let layouts = session.draft(for: projectID)?.layouts ?? []
@@ -79,7 +83,9 @@ final class ProjectScreenFactory {
             session: session,
             analysisService: services.analysisService,
             catalog: services.presetCatalog,
-            onBack: { [weak router] in
+            fixedParameters: activeTab?.parameters,
+            onBack: { [weak router, weak session = services.projectSession] in
+                session?.clearActiveResultTab(for: projectID)
                 router?.showSetup(projectID: projectID)
             },
             onSimulate: { [weak router] layout in
@@ -89,7 +95,7 @@ final class ProjectScreenFactory {
                 open(layout) { router?.showEditor(projectID: $0) }
             }
         )
-        dashboardViewModels[projectID] = created
+        dashboardViewModels[cacheKey] = created
         return created
     }
 

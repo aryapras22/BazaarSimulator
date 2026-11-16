@@ -156,8 +156,8 @@ struct ModalParameters: Codable, Hashable, Sendable {
             durationMinutes: totalMins,
             startMinutesFromMidnight: startMinutes,
             simulationSpeed: 5.0,
-            maxQueueLength: 6,
-            maxQueueWaitSeconds: 270.0,
+            maxQueueLength: CrowdParameters.defaultMaxQueueLength,
+            maxQueueWaitSeconds: CrowdParameters.defaultMaxQueueWaitSeconds,
             randomSeed: 7,
             socializerWeight: socializerPercent,
             familyWeight: familyMemberPercent,
@@ -174,8 +174,8 @@ nonisolated struct SimulationSettings: Codable, Hashable, Sendable {
     var durationMinutes: Int = 660
     var startMinutesFromMidnight: Int = 600
     var simulationSpeed: Double = 5.0
-    var maxQueueLength: Int = 6
-    var maxQueueWaitSeconds: Double = 270.0
+    var maxQueueLength: Int = CrowdParameters.defaultMaxQueueLength
+    var maxQueueWaitSeconds: Double = CrowdParameters.defaultMaxQueueWaitSeconds
     var randomSeed: UInt64 = 7
 
     var socializerWeight: Double = 25

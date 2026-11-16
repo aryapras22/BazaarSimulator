@@ -5,10 +5,12 @@ import simd
 nonisolated struct CrowdHeatmap {
     /// Spread keeps one standing person at about 0.073 /m², inside grade A's limit of 0.08.
     private static let kernel: [(offset: SIMD2<Int>, weight: Double)] = {
-        let twoSigmaSq = 2.0 * 1.5 * 1.5
+        let radius = CrowdParameters.heatmapKernelRadius
+        let sigma = CrowdParameters.heatmapKernelSigma
+        let twoSigmaSq = 2.0 * sigma * sigma
         var entries: [(offset: SIMD2<Int>, weight: Double)] = []
-        for dRow in -3...3 {
-            for dCol in -3...3 {
+        for dRow in -radius...radius {
+            for dCol in -radius...radius {
                 entries.append((SIMD2(dCol, dRow), exp(-Double(dCol * dCol + dRow * dRow) / twoSigmaSq)))
             }
         }
@@ -19,6 +21,7 @@ nonisolated struct CrowdHeatmap {
     private let cols: Int
     private let rows: Int
     private var smoothed: [Double]
+    private var scratchInstant: [Double]
     private var occupiedUpdates = 0
 
     private(set) var cells: [DensityCell] = []
@@ -30,15 +33,31 @@ nonisolated struct CrowdHeatmap {
         cols = max(1, Int(ceil(sizeM.x)))
         rows = max(1, Int(ceil(sizeM.y)))
         smoothed = Array(repeating: 0, count: cols * rows)
+        scratchInstant = Array(repeating: 0, count: cols * rows)
     }
 
     mutating func update(with visitors: [SimulatedVisitor]) {
-        let instant = instantDensity(of: visitors)
+        if visitors.isEmpty && cells.isEmpty { return }
+        fillInstantDensity(from: visitors)
+        commitSmoothedDensity()
+    }
+
+    mutating func update(withAgents agents: [CrowdAgent]) {
+        if agents.isEmpty && cells.isEmpty { return }
+        fillInstantDensity(fromAgents: agents)
+        commitSmoothedDensity()
+    }
+
+    private mutating func commitSmoothedDensity() {
         var activeCells: [DensityCell] = []
+        activeCells.reserveCapacity(cells.count)
+        let retain = CrowdParameters.heatmapSmoothingRetain
+        let fresh = CrowdParameters.heatmapSmoothingNew
+        let minActive = CrowdParameters.heatmapMinActiveDensity
 
         for key in smoothed.indices {
-            let value = smoothed[key] * 0.72 + instant[key] * 0.28
-            guard value >= 0.004 else {
+            let value = smoothed[key] * retain + scratchInstant[key] * fresh
+            guard value >= minActive else {
                 smoothed[key] = 0
                 continue
             }
@@ -60,19 +79,28 @@ nonisolated struct CrowdHeatmap {
         peakDensity = max(peakDensity, cells.map(\.peoplePerSquareMetre).max() ?? 0)
     }
 
-    private func instantDensity(of visitors: [SimulatedVisitor]) -> [Double] {
-        var instant = [Double](repeating: 0, count: cols * rows)
+    private mutating func fillInstantDensity(from visitors: [SimulatedVisitor]) {
+        for index in scratchInstant.indices { scratchInstant[index] = 0 }
         for visitor in visitors {
-            let col = Int(visitor.position.x)
-            let row = Int(visitor.position.y)
-            let people = Double(visitor.peopleCount)
-            for entry in Self.kernel {
-                let nCol = col + entry.offset.x
-                let nRow = row + entry.offset.y
-                guard nCol >= 0, nRow >= 0, nCol < cols, nRow < rows else { continue }
-                instant[nRow * cols + nCol] += people * entry.weight
-            }
+            splatKernel(at: visitor.position, people: Double(visitor.peopleCount))
         }
-        return instant
+    }
+
+    private mutating func fillInstantDensity(fromAgents agents: [CrowdAgent]) {
+        for index in scratchInstant.indices { scratchInstant[index] = 0 }
+        for agent in agents {
+            splatKernel(at: agent.position, people: agent.weight)
+        }
+    }
+
+    private mutating func splatKernel(at position: SIMD2<Double>, people: Double) {
+        let col = Int(position.x)
+        let row = Int(position.y)
+        for entry in Self.kernel {
+            let nCol = col + entry.offset.x
+            let nRow = row + entry.offset.y
+            guard nCol >= 0, nRow >= 0, nCol < cols, nRow < rows else { continue }
+            scratchInstant[nRow * cols + nCol] += people * entry.weight
+        }
     }
 }

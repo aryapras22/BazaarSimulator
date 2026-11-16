@@ -16,6 +16,7 @@ struct ProjectLibraryView: View {
                             ProjectRow(
                                 name: project.name,
                                 isSelected: viewModel.selectedProjectID == project.id
+                                    && viewModel.selectedResultTabID == nil
                             )
                         }
                         .buttonStyle(.plain)
@@ -23,7 +24,14 @@ struct ProjectLibraryView: View {
                 }
             }
 
-            Spacer()
+            if viewModel.selectedProjectID != nil, !viewModel.resultTabs.isEmpty {
+                Divider()
+                    .background(Palette.surfaceBorder)
+
+                resultsSection
+            }
+
+            Spacer(minLength: 0)
 
             SidebarSearchField(text: $viewModel.searchText)
         }
@@ -51,6 +59,59 @@ struct ProjectLibraryView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private var resultsSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text("Results")
+                .font(Typography.fieldLabel)
+                .foregroundColor(Palette.textPrimary)
+                .padding(.bottom, 2)
+
+            ScrollView {
+                LazyVStack(spacing: Spacing.xs) {
+                    ForEach(viewModel.resultTabs) { tab in
+                        Button {
+                            viewModel.selectResultTab(tab)
+                        } label: {
+                            ResultTabRow(
+                                title: tab.title,
+                                isSelected: viewModel.selectedResultTabID == tab.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .frame(maxHeight: 190)
+        }
+    }
+}
+
+private struct ResultTabRow: View {
+    let title: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: "chart.bar.xaxis")
+                .foregroundColor(isSelected ? Palette.accentIcon : Palette.textSecondary)
+
+            Text(title)
+                .font(Typography.body)
+                .foregroundColor(Palette.textPrimary)
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(isSelected ? Palette.selection : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.m)
+                .stroke(isSelected ? Palette.selectionBorder : Color.clear, lineWidth: 1)
+        )
     }
 }
 

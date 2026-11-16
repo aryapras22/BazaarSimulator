@@ -4,6 +4,28 @@ import SpriteKit
 import SwiftUI
 import simd
 
+/// Tracks the 2D SpriteKit camera state so SwiftUI overlays (such as Congestion spot markers)
+/// stay locked to their exact floor coordinates while panning and zooming.
+struct SpriteCameraTransform: Equatable {
+    static let pointsPerMetre: CGFloat = 20.0
+
+    var cameraPosition: CGPoint = .zero
+    var cameraScale: CGFloat = 1.0
+    var viewSize: CGSize = .zero
+
+    /// Converts a point in layout metres `(x, y)` into SwiftUI view coordinates (top-left origin).
+    func swiftUIPoint(for pointM: SIMD2<Double>, in layout: Layout, fallbackSize: CGSize) -> CGPoint {
+        let effectiveView = (viewSize.width > 10 && viewSize.height > 10) ? viewSize : fallbackSize
+        let scale = max(0.05, cameraScale)
+        let sceneX = CGFloat(pointM.x) * Self.pointsPerMetre
+        let sceneY = CGFloat(layout.sizeM.y - pointM.y) * Self.pointsPerMetre
+        return CGPoint(
+            x: effectiveView.width / 2 + (sceneX - cameraPosition.x) / scale,
+            y: effectiveView.height / 2 - (sceneY - cameraPosition.y) / scale
+        )
+    }
+}
+
 /// A lightweight 2D SpriteKit view that renders the venue floor plan, smooth radial heatmap, and moving visitors.
 /// Supports dragging to pan/scroll and scrolling or pinching to zoom.
 struct Simulation2DSpriteView: NSViewRepresentable {
@@ -11,6 +33,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
     var visitors: [SimulatedVisitor] = []
     var densityCells: [DensityCell] = []
     var showHeatmap = false
+    var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     func makeNSView(context: Context) -> InteractiveSKView {
         let skView = InteractiveSKView()
@@ -18,6 +41,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
         skView.preferredFramesPerSecond = 60
         let scene = Venue2DScene(size: CGSize(width: 1000, height: 700))
         scene.scaleMode = .resizeFill
+        scene.onCameraChange = onCameraChange
         skView.presentScene(scene)
         skView.venueScene = scene
         context.coordinator.scene = scene
@@ -25,6 +49,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
     }
 
     func updateNSView(_ skView: InteractiveSKView, context: Context) {
+        context.coordinator.scene?.onCameraChange = onCameraChange
         context.coordinator.scene?.updateScene(
             layout: layout,
             visitors: visitors,
@@ -68,10 +93,11 @@ final class InteractiveSKView: SKView {
 
 /// Simple SpriteKit scene that draws the 2D bazaar floor, booths, smooth radial heatmap texture, and visitors.
 final class Venue2DScene: SKScene {
-    private let pointsPerMetre: CGFloat = 20.0
+    private let pointsPerMetre: CGFloat = SpriteCameraTransform.pointsPerMetre
     private var currentLayout: Layout?
     private var hasFittedCamera = false
     private var baseFitScale: CGFloat = 1.0
+    var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     private let cameraNode = SKCameraNode()
     private let floorLayer = SKNode()
@@ -145,12 +171,14 @@ final class Venue2DScene: SKScene {
         let scale = max(worldW / viewW, worldH / viewH)
         baseFitScale = max(0.1, scale)
         cameraNode.setScale(baseFitScale)
+        publishCameraTransform(viewSize: viewSize)
     }
 
     func panCamera(deltaX: CGFloat, deltaY: CGFloat) {
         let currentScale = cameraNode.xScale
         cameraNode.position.x -= deltaX * currentScale
         cameraNode.position.y += deltaY * currentScale
+        publishCameraTransform(viewSize: size)
     }
 
     func zoomCamera(by factor: CGFloat) {
@@ -158,6 +186,18 @@ final class Venue2DScene: SKScene {
         let maxScale = baseFitScale * 3.0
         let newScale = min(maxScale, max(minScale, cameraNode.xScale * factor))
         cameraNode.setScale(newScale)
+        publishCameraTransform(viewSize: size)
+    }
+
+    private func publishCameraTransform(viewSize: CGSize) {
+        let transform = SpriteCameraTransform(
+            cameraPosition: cameraNode.position,
+            cameraScale: cameraNode.xScale,
+            viewSize: viewSize
+        )
+        DispatchQueue.main.async { [weak self] in
+            self?.onCameraChange?(transform)
+        }
     }
 
     private func toScene(_ point: SIMD2<Double>, in layout: Layout) -> CGPoint {
@@ -303,19 +343,21 @@ final class Venue2DScene: SKScene {
             return nil
         }
 
-        let blobRadiusPx = CGFloat(1.65 * pixelsPerMetre)
+        let blobRadiusPx = CGFloat(1.35 * pixelsPerMetre)
+        let sortedCells = cells.sorted { $0.peoplePerSquareMetre < $1.peoplePerSquareMetre }
 
-        for cell in cells {
+        for cell in sortedCells {
             let center = CGPoint(
                 x: CGFloat(cell.center.x * pixelsPerMetre),
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
             let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let peakAlpha = CGFloat(min(0.78, max(0.18, cell.peoplePerSquareMetre / 1.15)))
+            let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
+            let peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
-                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.55),
+                CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha * 0.58),
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 0.0)
             ] as CFArray
             let locations: [CGFloat] = [0.0, 0.45, 1.0]
@@ -350,18 +392,18 @@ final class Venue2DScene: SKScene {
     }
 
     private func heatmapRGB(for density: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
-        if density > 1.80 {
-            return (0.85, 0.08, 0.22)
-        } else if density >= 0.72 {
-            return (1.0, 0.24, 0.20)
-        } else if density >= 0.45 {
-            return (1.0, 0.55, 0.12)
-        } else if density >= 0.27 {
+        if density >= 1.60 {
+            return (0.86, 0.06, 0.20)
+        } else if density >= 1.15 {
+            return (1.0, 0.20, 0.14)
+        } else if density >= 0.82 {
+            return (1.0, 0.52, 0.10)
+        } else if density >= 0.55 {
             return (0.98, 0.84, 0.18)
-        } else if density >= 0.08 {
-            return (0.22, 0.86, 0.45)
+        } else if density >= 0.20 {
+            return (0.22, 0.84, 0.44)
         } else {
-            return (0.20, 0.78, 0.85)
+            return (0.20, 0.76, 0.85)
         }
     }
 

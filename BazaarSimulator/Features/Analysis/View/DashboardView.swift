@@ -27,7 +27,7 @@ struct DashboardView<ParametersSheet: View>: View {
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
-        .task { viewModel.startSimulation() }
+        .task { viewModel.startSimulationIfNeeded() }
     }
 }
 
@@ -58,7 +58,13 @@ struct DashboardContent: View {
 
             switch viewModel.phase {
             case .loading:
-                RunningNotice(text: "Running the simulation…", showsProgress: true)
+                RunningNotice(
+                    text: "Running the simulation…",
+                    showsProgress: true,
+                    progress: viewModel.loadingProgress,
+                    previewVenue: viewModel.previewVenue,
+                    previewFrame: viewModel.previewFrame
+                )
             case .needsTwoLayouts(let count):
                 RunningNotice(
                     text: count == 0
@@ -110,15 +116,58 @@ struct DashboardContent: View {
 private struct RunningNotice: View {
     let text: String
     let showsProgress: Bool
+    var progress: Double = 0.0
+    var previewVenue: SimulationVenue?
+    var previewFrame: SimulationSceneFrame = SimulationSceneFrame()
 
     var body: some View {
-        VStack(spacing: 14) {
-            if showsProgress {
-                ProgressView()
+        ZStack {
+            if showsProgress, let previewVenue {
+                Metal3DSceneView(venue: previewVenue, frame: previewFrame)
+                    .allowsHitTesting(false)
+                    .overlay {
+                        Color.backgroundMain.opacity(0.62)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                    }
+                    .padding(.vertical, 18)
             }
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundStyle(.textSecondary)
+
+            VStack(spacing: 12) {
+                if showsProgress {
+                    ProgressView()
+                }
+                Text(text)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.textPrimary)
+                if showsProgress {
+                    VStack(spacing: 6) {
+                        ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
+                            .progressViewStyle(.linear)
+                            .tint(Palette.accent)
+                            .frame(width: 240)
+                        Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.textSecondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 18)
+            .background {
+                if showsProgress && previewVenue != nil {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.backgroundMain.opacity(0.84))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
@@ -158,10 +207,6 @@ struct DashboardHeader: View {
 
             Button("Parameters", action: onOpenParameters)
                 .buttonStyle(ControlButtonStyle(fill: .headerButtonFill, minWidth: 108))
-
-            Button("Legend") {}
-                .buttonStyle(ControlButtonStyle(fill: .headerButtonFill, minWidth: 108))
-                .padding(.leading, 12)
         }
         .frame(height: DashboardMetrics.headerHeight)
     }

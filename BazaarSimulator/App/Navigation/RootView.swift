@@ -76,10 +76,11 @@ struct RootView: View {
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
         case .analysis(let projectID), .review(let projectID):
+            let activeResultID = services.projectSession.activeResultTabID(for: projectID)
             DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID)) { close in
                 ParametersView(viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close))
             }
-            .id(projectID)
+            .id("\(projectID)-\(activeResultID?.uuidString ?? "default")")
         case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)

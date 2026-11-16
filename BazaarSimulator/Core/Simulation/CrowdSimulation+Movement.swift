@@ -27,8 +27,8 @@ nonisolated struct CrowdPartyMotion {
 }
 
 nonisolated extension CrowdSimulation {
-    private static let chunkSize = 32
-    private static let minimumAgentsForThreads = 64
+    private static let chunkSize = CrowdParameters.parallelChunkSize
+    private static let minimumAgentsForThreads = CrowdParameters.minimumAgentsForThreads
 
     /// Share of walking speed left at this density, from the Weidmann curve. People squeeze past and never stop dead.
     static func crowdFactor(density: Double) -> Double {
@@ -57,42 +57,69 @@ nonisolated extension CrowdSimulation {
         return (-linear - discriminant.squareRoot()) / (2 * quadratic)
     }
 
+    /// Helbing Social Force between two pedestrians, weighted by directional field of view (anisotropy).
+    static func socialRepulsionForce(
+        offsetToNeighbor: SIMD2<Double>,
+        combinedRadius: Double,
+        forwardDirection: SIMD2<Double>
+    ) -> SIMD2<Double> {
+        let dist = simd_length(offsetToNeighbor)
+        guard dist > 1e-5 else { return .zero }
+        let awayUnit = -offsetToNeighbor / dist
+        let penetration = combinedRadius - dist
+        let magnitude = CrowdParameters.socialForceStrength * exp(penetration / CrowdParameters.socialForceRangeM)
+
+        // Anisotropic vision weight: stronger response to pedestrians in front than behind.
+        let forwardLen = simd_length(forwardDirection)
+        let cosTheta = forwardLen > 1e-4 ? simd_dot(forwardDirection / forwardLen, -awayUnit) : 1.0
+        let lambda = CrowdParameters.socialForceAnisotropyLambda
+        let directionalWeight = lambda + (1.0 - lambda) * ((1.0 + cosTheta) * 0.5)
+        return awayUnit * (magnitude * directionalWeight)
+    }
+
     func moveAgents() {
         guard !agents.isEmpty else { return }
-        let prepared = makeBodies()
-        var bodies = prepared.bodies
-        spatialHash.rebuild(with: bodies)
-        let velocities = steeredVelocities(bodies: bodies, motions: prepared.motions)
+        populateScratchBuffers()
+        spatialHash.rebuild(with: bodyScratch)
+        computeSteeredVelocities()
 
-        let previous = bodies.map(\.position)
-        for index in bodies.indices where !bodies[index].isSeated {
-            bodies[index].velocity = velocities[index]
-            bodies[index].position += velocities[index] * CrowdParameters.stepSeconds
+        previousPosScratch.removeAll(keepingCapacity: true)
+        for index in bodyScratch.indices {
+            previousPosScratch.append(bodyScratch[index].position)
+            if !bodyScratch[index].isSeated {
+                bodyScratch[index].velocity = velocityScratch[index]
+                bodyScratch[index].position += velocityScratch[index] * CrowdParameters.stepSeconds
+            }
         }
-        var nearby: [Int] = []
-        for index in bodies.indices where !bodies[index].isSeated {
-            separateOverlaps(ofBodyAt: index, in: &bodies, nearby: &nearby)
-            pushOffWalls(&bodies[index])
-            var body = bodies[index]
-            applyDoorRule(position: &body.position, velocity: &body.velocity, from: previous[index])
-            bodies[index] = body
+        for index in bodyScratch.indices where !bodyScratch[index].isSeated {
+            separateOverlaps(ofBodyAt: index, in: &bodyScratch, nearby: &nearbyScratch)
+            pushOffWalls(&bodyScratch[index])
+            var body = bodyScratch[index]
+            applyDoorRule(position: &body.position, velocity: &body.velocity, from: previousPosScratch[index])
+            bodyScratch[index] = body
         }
         for index in agents.indices {
-            agents[index].position = bodies[index].position
-            agents[index].velocity = bodies[index].velocity
+            agents[index].position = bodyScratch[index].position
+            agents[index].velocity = bodyScratch[index].velocity
         }
     }
 
-    private func makeBodies() -> (bodies: [CrowdBody], motions: [CrowdPartyMotion]) {
-        var bodies = [CrowdBody](repeating: CrowdBody(), count: agents.count)
-        var motions = [CrowdPartyMotion](repeating: CrowdPartyMotion(), count: parties.count)
+    private func populateScratchBuffers() {
+        bodyScratch.removeAll(keepingCapacity: true)
+        if bodyScratch.capacity < agents.count { bodyScratch.reserveCapacity(agents.count) }
+        for _ in 0..<agents.count { bodyScratch.append(CrowdBody()) }
+
+        motionScratch.removeAll(keepingCapacity: true)
+        if motionScratch.capacity < parties.count { motionScratch.reserveCapacity(parties.count) }
+
         for (index, agent) in agents.enumerated() { agent.bodyIndex = index }
 
         for (partyIndex, party) in parties.enumerated() {
             let field = party.state == .seated ? nil : targetField(of: party)
-            motions[partyIndex] = motion(of: party, field: field)
+            let partyMotion = motion(of: party, field: field)
+            motionScratch.append(partyMotion)
             for member in party.members {
-                bodies[member.bodyIndex] = CrowdBody(
+                bodyScratch[member.bodyIndex] = CrowdBody(
                     position: member.position,
                     velocity: member.velocity,
                     routeDirection: field?.direction(atCell: world.cell(at: member.position)) ?? .zero,
@@ -102,12 +129,11 @@ nonisolated extension CrowdSimulation {
                     partyIndex: partyIndex,
                     slotIndex: member.slotIndex,
                     isSeated: member.isSeated,
-                    isStationary: member.isSeated || motions[partyIndex].isStill,
+                    isStationary: member.isSeated || partyMotion.isStill,
                     isLeader: member === party.leader
                 )
             }
         }
-        return (bodies, motions)
     }
 
     private func motion(of party: CrowdParty, field: CrowdFlowField?) -> CrowdPartyMotion {
@@ -129,37 +155,61 @@ nonisolated extension CrowdSimulation {
         switch party.state {
         case .walking:
             var speed = party.speed * world.cornerSpeedFactor(at: leader.position)
-            let farthest = party.members.dropFirst()
-                .filter { !$0.isSeated }
-                .map { simd_distance($0.position, leader.position) }
-                .max() ?? 0
-            if farthest > 3.2 {
-                speed *= 0.55
-            } else if farthest > 2.2 {
-                speed *= 0.85
-            }
+            speed *= groupLagFactor(for: party, leaderPosition: leader.position)
+            speed *= party.grazingSpeedFactor
+            speed *= fatigueFactor(for: party)
             return speed
         case .queueing:
             guard case .booth(let booth, _) = party.target, let field else { return 0 }
             let rank = max(0, queues[booth].firstIndex { $0 === party } ?? 0)
             let cost = Double(field.costs[world.cell(at: leader.position)])
-            return cost > queueSpot(booth: booth, rank: rank) + 0.15 ? min(party.speed, 0.9) : 0
+            let holdThreshold = queueSpot(booth: booth, rank: rank) + CrowdParameters.queueHoldToleranceM
+            return cost > holdThreshold ? min(party.speed, CrowdParameters.queueAdvanceMaxSpeed) : 0
         case .visiting, .seated:
             return 0
         }
     }
 
+    /// Slows the party leader down when group members lag behind in busy corridors.
+    private func groupLagFactor(for party: CrowdParty, leaderPosition: SIMD2<Double>) -> Double {
+        guard party.members.count > 1 else { return 1.0 }
+        var farthest = 0.0
+        for member in party.members.dropFirst() where !member.isSeated {
+            farthest = max(farthest, simd_distance(member.position, leaderPosition))
+        }
+        if farthest > CrowdParameters.leaderFarLagDistanceM {
+            return CrowdParameters.leaderFarLagSpeedFactor
+        } else if farthest > CrowdParameters.leaderNearLagDistanceM {
+            return CrowdParameters.leaderNearLagSpeedFactor
+        }
+        return 1.0
+    }
+
+    /// Fatigue rule: visitors who have spent a long time in the bazaar walk slightly slower.
+    private func fatigueFactor(for party: CrowdParty) -> Double {
+        let stayDuration = time - party.enteredAt
+        guard stayDuration > CrowdParameters.fatigueOnsetSeconds else { return 1.0 }
+        let extraHours = min(1.0, (stayDuration - CrowdParameters.fatigueOnsetSeconds) / 3600.0)
+        return 1.0 - (1.0 - CrowdParameters.fatigueMaxSlowdownFactor) * extraHours
+    }
+
     /// Every velocity depends only on the state at the start of the step, so the agents can be
     /// computed on separate cores in any order and the run stays repeatable.
-    private func steeredVelocities(bodies: [CrowdBody], motions: [CrowdPartyMotion]) -> [SIMD2<Double>] {
-        let count = bodies.count
+    private func computeSteeredVelocities() {
+        let count = bodyScratch.count
+        velocityScratch.removeAll(keepingCapacity: true)
+        if velocityScratch.capacity < count { velocityScratch.reserveCapacity(count) }
+        for _ in 0..<count { velocityScratch.append(.zero) }
+
         let chunks = count < Self.minimumAgentsForThreads ? 1 : (count + Self.chunkSize - 1) / Self.chunkSize
         let chunkSize = chunks == 1 ? count : Self.chunkSize
-        var velocities = [SIMD2<Double>](repeating: .zero, count: count)
+        if neighborScratch.capacity < CrowdSteeringPass.maxNeighbors {
+            neighborScratch.reserveCapacity(CrowdSteeringPass.maxNeighbors)
+        }
 
-        bodies.withUnsafeBufferPointer { bodyBuffer in
-            motions.withUnsafeBufferPointer { motionBuffer in
-                velocities.withUnsafeMutableBufferPointer { output in
+        bodyScratch.withUnsafeBufferPointer { bodyBuffer in
+            motionScratch.withUnsafeBufferPointer { motionBuffer in
+                velocityScratch.withUnsafeMutableBufferPointer { output in
                     let pass = CrowdSteeringPass(
                         bodies: bodyBuffer,
                         motions: motionBuffer,
@@ -167,18 +217,23 @@ nonisolated extension CrowdSimulation {
                         walls: world.walls
                     )
                     guard let target = output.baseAddress else { return }
-                    DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
-                        var neighbors: [CrowdNeighbor] = []
-                        neighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
-                        for index in (chunk * chunkSize)..<min(count, (chunk + 1) * chunkSize)
-                        where !bodyBuffer[index].isSeated {
-                            target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighbors)
+                    if chunks == 1 {
+                        for index in 0..<count where !bodyBuffer[index].isSeated {
+                            target[index] = pass.velocity(ofBodyAt: index, neighbors: &neighborScratch)
+                        }
+                    } else {
+                        DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+                            var localNeighbors: [CrowdNeighbor] = []
+                            localNeighbors.reserveCapacity(CrowdSteeringPass.maxNeighbors)
+                            for index in (chunk * chunkSize)..<min(count, (chunk + 1) * chunkSize)
+                            where !bodyBuffer[index].isSeated {
+                                target[index] = pass.velocity(ofBodyAt: index, neighbors: &localNeighbors)
+                            }
                         }
                     }
                 }
             }
         }
-        return velocities
     }
 
     // MARK: - Constraints
@@ -192,7 +247,7 @@ nonisolated extension CrowdSimulation {
         for other in nearby {
             let offset = bodies[other].position - bodies[index].position
             let distance = simd_length(offset)
-            let minimum = (bodies[index].radius + bodies[other].radius) * 0.97
+            let minimum = (bodies[index].radius + bodies[other].radius) * CrowdParameters.overlapSeparationFactor
 
             if distance <= 1e-4 {
                 bodies[index].position += SIMD2(Double(index % 3 - 1), Double(index % 5 - 2)) * 0.01
@@ -209,12 +264,16 @@ nonisolated extension CrowdSimulation {
 
     private func pushOffWalls(_ body: inout CrowdBody) {
         let distance = world.walls.wallDistance(at: body.position)
-        let wanted = body.radius * 0.85
+        let wanted = body.radius * CrowdParameters.wallClearanceFactor
         guard distance < wanted else { return }
         let gradient = world.walls.wallGradient(at: body.position)
         let length = simd_length(gradient)
-        guard length > 0 else { return }
-        body.position += gradient / length * min(wanted - distance, 0.25)
+        if length > 0 {
+            body.position += gradient / length * min(wanted - distance, CrowdParameters.maxWallPushPerStepM)
+        }
+        if !world.walls.isFree(body.position) {
+            body.position = world.nearestFreePoint(to: body.position)
+        }
     }
 
     /// Stepping into a one-way door from its wrong side is undone.

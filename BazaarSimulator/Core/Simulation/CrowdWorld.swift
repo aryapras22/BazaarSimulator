@@ -91,7 +91,7 @@ nonisolated struct CrowdWallMap {
     }
 
     func hasLineOfSight(from start: SIMD2<Double>, to end: SIMD2<Double>) -> Bool {
-        let samples = Int(ceil(simd_distance(start, end) / 0.4))
+        let samples = Int(ceil(simd_distance(start, end) / CrowdParameters.lineOfSightStepM))
         guard samples >= 2 else { return true }
         return (1..<samples).allSatisfy { isFree(start + (end - start) * (Double($0) / Double(samples))) }
     }
@@ -111,7 +111,7 @@ nonisolated struct CrowdWallMap {
     }
 
     func wallGradient(at point: SIMD2<Double>) -> SIMD2<Double> {
-        let offset = 0.12
+        let offset = CrowdParameters.wallGradientOffsetM
         let stepX = SIMD2(offset, 0.0)
         let stepY = SIMD2(0.0, offset)
         return SIMD2(
@@ -123,9 +123,9 @@ nonisolated struct CrowdWallMap {
 
 /// The floor as the crowd sees it: walkable cells, distance to walls, doors, booths, tables and routes.
 nonisolated final class CrowdWorld: @unchecked Sendable {
-    static let cellSize = 0.25
+    static let cellSize = CrowdParameters.worldCellSize
     /// One step through a gap too narrow to walk costs 750, so anything cheaper is a real route.
-    static let reachableCostLimit: Float = 700
+    static let reachableCostLimit: Float = CrowdParameters.reachableCostLimit
 
     let layout: Layout
     let width: Double
@@ -140,6 +140,7 @@ nonisolated final class CrowdWorld: @unchecked Sendable {
     var cornerWeights: [Float]
     var doorRules: [Int: CrowdDoorRule] = [:]
     var booths: [CrowdBooth] = []
+    var highPullBoothIndices: [Int] = []
     var tables: [CrowdTable] = []
     var gates: [SIMD2<Double>]
     var gateWidths: [Double] = []

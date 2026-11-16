@@ -5,7 +5,6 @@ struct ProjectSetupView: View {
     @Bindable var viewModel: ProjectSetupViewModel
     @State private var importTarget: ImportFileKind?
     @State private var lastImportTarget: ImportFileKind?
-    @State private var showParameterModal = false
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
     var body: some View {
@@ -50,15 +49,6 @@ struct ProjectSetupView: View {
             case .floorPlan:
                 viewModel.addFloorPlanFiles(urls: urls)
             }
-        }
-        .sheet(isPresented: $showParameterModal) {
-            EditParameterView(
-                projectID: viewModel.projectID,
-                session: viewModel.session,
-                onApply: {
-                    viewModel.finishSetup()
-                }
-            )
         }
     }
 
@@ -230,9 +220,7 @@ struct ProjectSetupView: View {
                 .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
 
             Button("Continue") {
-                if viewModel.saveDraftToSession() {
-                    showParameterModal = true
-                }
+                viewModel.continueToReview()
             }
             .buttonStyle(.primary)
             .disabled(!viewModel.isContinueEnabled)

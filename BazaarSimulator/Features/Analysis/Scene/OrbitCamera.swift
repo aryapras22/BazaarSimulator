@@ -82,8 +82,8 @@ struct OrbitCamera: Equatable {
 
     /// Drag by `dx` and `dy` points: left and right turn around, up and down tilt.
     mutating func orbit(dx: Float, dy: Float) {
-        yaw -= dx * 0.008
-        pitch = min(max(pitch + dy * 0.008, Self.minimumPitch), Self.maximumPitch)
+        yaw -= dx * 0.007
+        pitch = min(max(pitch + dy * 0.006, Self.minimumPitch), 1.38)
     }
 
     /// Positive moves in, negative moves out.
@@ -94,8 +94,9 @@ struct OrbitCamera: Equatable {
     /// Slide the view across the floor by `dx` and `dy` points.
     mutating func pan(dx: Float, dy: Float) {
         let axes = screenAxes
-        let scale = distance * 0.0021 * tan(Self.fieldOfView / 2)
+        let scale = distance * 0.0032 * tan(Self.fieldOfView / 2)
         let forward = simd_normalize(SIMD3(-sin(yaw), 0, -cos(yaw)))
-        target += (-axes.right * dx + forward * dy) * scale
+        let pitchCompensation = 1.0 / max(sin(pitch), 0.35)
+        target += (-axes.right * dx + forward * (dy * pitchCompensation)) * scale
     }
 }

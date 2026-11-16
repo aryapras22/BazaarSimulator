@@ -63,14 +63,20 @@ enum SimulationAnalysis {
     /// Generates plain-language organizer advice from the simulation metrics and hotspots.
     static func organizerAdvice(metrics: SimulationMetrics, findings: [HotspotFinding]) -> String {
         if metrics.peakDensity >= 0.72 {
-            return "High local crowding (Grade D or worse) was detected. Consider widening aisles near the red hotspot areas, spacing out popular booths, or enabling additional exit doors."
+            return "High local crowding (Grade D or worse) was detected. "
+                + "Consider widening aisles near the red hotspot areas, spacing out popular booths, "
+                + "or enabling additional exit doors."
         }
         if metrics.queueBalks > 0 {
-            return "Some visitors skipped booths because queues got too long. Spreading popular categories across the hall can help balance visitor flow."
+            return "Some visitors skipped booths because queues got too long. "
+                + "Spreading popular categories across the hall can help balance visitor flow."
         }
         if !findings.isEmpty {
-            return "Moderate crowd build-up was observed in a few aisles. Review the highlighted yellow/orange cells on the heatmap or inspect the 3D simulation footage."
+            return "Moderate crowd build-up was observed in a few aisles. "
+                + "Review the highlighted yellow/orange cells on the heatmap "
+                + "or inspect the 3D simulation footage."
         }
-        return "Visitor flow looks smooth with low crowding across the venue. You can inspect the 3D simulation footage or test higher visitor numbers in Parameters."
+        return "Visitor flow looks smooth with low crowding across the venue. "
+            + "You can inspect the 3D simulation footage or test higher visitor numbers in Parameters."
     }
 }

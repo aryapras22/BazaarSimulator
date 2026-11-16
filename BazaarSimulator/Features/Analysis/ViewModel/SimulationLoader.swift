@@ -14,19 +14,22 @@ enum SimulationLoader {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
-        catalog: PresetCatalog
+        catalog: PresetCatalog,
+        parameters overrideParameters: EventParameters? = nil,
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> Result {
         let layouts = Array((session.draft(for: projectID)?.layouts ?? []).prefix(LayoutID.allCases.count))
         guard layouts.count == LayoutID.allCases.count else { return .needsLayouts(count: layouts.count) }
 
-        let parameters = session.eventParameters(for: projectID) ?? catalog.defaultParameters()
+        let parameters = overrideParameters ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         let schedule = DaySchedule(parameters: parameters)
         let analyses = await analysisService.analyses(
             for: layouts,
             parameters: parameters,
             visitorTypes: catalog.visitorTypes,
             focus: schedule.window,
-            legend: session.draft(for: projectID)?.legend ?? Legend()
+            legend: session.draft(for: projectID)?.legend ?? Legend(),
+            onLiveFrame: onLiveFrame
         )
         guard !Task.isCancelled, analyses.count == layouts.count else { return .cancelled }
 
