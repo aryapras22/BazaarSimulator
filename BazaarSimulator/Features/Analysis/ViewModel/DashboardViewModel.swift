@@ -93,8 +93,6 @@ final class DashboardViewModel {
     func choose(_ id: Layout.ID, for layout: LayoutID) {
         guard canEdit, floorPlan(for: layout)?.id != id else { return }
         session.setComparedLayout(id, at: layout.rawValue - 1, for: projectID)
-        // The cards on the page are for the old pair, so they make way for the loading page.
-        simulationResult = nil
         phase = .loading
         startSimulation()
     }
@@ -168,13 +166,12 @@ final class DashboardViewModel {
 
         runCount += 1
         let run = runCount
-        // A page that already shows an analysis keeps showing it while the next one is made, instead of dropping
-        // back to the loading page, so coming back to it never looks like it starts over.
-        if simulationResult == nil {
-            phase = .loading
-            loadingProgress = 0.0
-            preparePreviewVenue(for: nil)
-        }
+        // Reaching here means the layouts or parameters changed, so the result on the page is for other inputs.
+        // The loading page replaces it until the new one is ready.
+        simulationResult = nil
+        phase = .loading
+        loadingProgress = 0.0
+        preparePreviewVenue(for: nil)
         isRunning = true
         runningInputs = inputs
         session.setAnalysisRunning(true, for: projectID)

@@ -62,7 +62,7 @@ struct DashboardViewModelTests {
         #expect(model.bestLayout == nil)
         let summary = try #require(model.singleSummary)
         #expect(summary.stats.map(\.title) == ["Crowded Spots", "Time Stuck", "Crowd Level"])
-        #expect(summary.stats.map(\.caption) == ["Detected", "Total Duration", "Overall Condition"])
+        #expect(summary.stats.map(\.caption) == ["Stuck at once", "Total Duration", "Overall Condition"])
         #expect(summary.stats[2].text == (model.outcome(for: .one).worstSpot.grade.title))
     }
 
