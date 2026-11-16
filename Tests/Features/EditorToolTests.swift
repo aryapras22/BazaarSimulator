@@ -140,6 +140,36 @@ struct EditorToolTests {
         #expect(context.toggledIDs.contains(fixture.booth.id))
     }
 
+    @Test("SelectTool click on a restricted area selects it, and a drag from inside it is a marquee")
+    func selectToolClickRestrictedArea() {
+        var layout = makeLayout().layout
+        let area = LayoutObject(
+            kind: .closedArea,
+            label: "Void",
+            placement: Placement(center: SIMD2<Double>(5, 15), sizeM: SIMD2<Double>(4, 4))
+        )
+        layout.objects.append(area)
+        let context = TestToolContext(layout: layout, activeLayer: .structure)
+        let tool = SelectTool()
+        let inside = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(5, 15), viewPoint: CGPoint(x: 100, y: 100), hitObjectID: area.id
+        )
+
+        tool.handlePress(inside, context: context)
+        tool.handleRelease(inside, context: context)
+        #expect(context.selectionID == area.id)
+
+        context.selectionID = nil
+        tool.handlePress(inside, context: context)
+        let dragged = CanvasPointerEvent(
+            worldPoint: SIMD2<Double>(6, 16), viewPoint: CGPoint(x: 140, y: 140), hitObjectID: area.id
+        )
+        tool.handleMove(dragged, context: context)
+        tool.handleRelease(dragged, context: context)
+        #expect(context.selectionID == nil)
+        #expect(context.selectedBoothsHistory.count == 1)
+    }
+
     @Test("SelectTool drag past threshold moves object snapped to grid")
     func selectToolDragObject() {
         let fixture = makeLayout()
