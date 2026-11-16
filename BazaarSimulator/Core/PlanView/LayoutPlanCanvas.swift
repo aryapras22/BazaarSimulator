@@ -50,7 +50,7 @@ struct LayoutPlanCanvas: View, Equatable {
 
         static func fill(for object: LayoutObject) -> Color {
             switch object.kind {
-            case .booth: Color(hex: 0xE4DBC8)
+            case .booth: object.isDisabled ? Color(hex: 0xD3D6DB) : Color(hex: 0xE4DBC8)
             case .table: Color(hex: 0xC3C9D2)
             case .entertainment: Color(hex: 0x9AA2AF)
             case .wall, .block: Color(hex: 0x5E6775)

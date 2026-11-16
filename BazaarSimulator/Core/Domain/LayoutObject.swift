@@ -17,6 +17,8 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
     var catalogID: String?
     var heightM: Double?
     var attractiveness: Double
+    /// A booth that stands in the hall but is closed. It still takes up floor, and no visitor goes to it.
+    var isDisabled: Bool
 
     init(
         id: UUID = UUID(),
@@ -29,7 +31,8 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         reviewState: ReviewState = .confirmed,
         catalogID: String? = nil,
         heightM: Double? = nil,
-        attractiveness: Double = 1
+        attractiveness: Double = 1,
+        isDisabled: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -42,6 +45,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.catalogID = catalogID
         self.heightM = heightM
         self.attractiveness = attractiveness
+        self.isDisabled = isDisabled
     }
 }
 
@@ -53,7 +57,7 @@ extension LayoutObject {
 }
 
 extension LayoutObject {
-    /// Layouts saved before attractiveness existed have no value for it, so they read as the default.
+    /// Layouts saved before attractiveness or disabling existed have no value for them, so they read as the default.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -67,5 +71,6 @@ extension LayoutObject {
         catalogID = try container.decodeIfPresent(String.self, forKey: .catalogID)
         heightM = try container.decodeIfPresent(Double.self, forKey: .heightM)
         attractiveness = try container.decodeIfPresent(Double.self, forKey: .attractiveness) ?? 1
+        isDisabled = try container.decodeIfPresent(Bool.self, forKey: .isDisabled) ?? false
     }
 }
