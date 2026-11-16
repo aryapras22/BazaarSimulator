@@ -10,6 +10,7 @@ struct InspectorFields: Sendable {
     var showsShape: Bool
     var showsOpenSides: Bool
     var showsAttractiveness: Bool
+    var showsEntertainmentType: Bool
 
     static func forObject(_ object: LayoutObject) -> InspectorFields {
         switch object.kind {
@@ -31,7 +32,8 @@ struct InspectorFields: Sendable {
                 showsRotation: true,
                 showsHeight: true,
                 showsOpenSides: true,
-                showsAttractiveness: true
+                showsAttractiveness: true,
+                showsEntertainmentType: true
             )
         case .booth, .door, .table, .seating:
             return InspectorFields()
@@ -47,7 +49,8 @@ struct InspectorFields: Sendable {
         showsHeight: Bool = false,
         showsShape: Bool = false,
         showsOpenSides: Bool = false,
-        showsAttractiveness: Bool = false
+        showsAttractiveness: Bool = false,
+        showsEntertainmentType: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -58,6 +61,7 @@ struct InspectorFields: Sendable {
         self.showsShape = showsShape
         self.showsOpenSides = showsOpenSides
         self.showsAttractiveness = showsAttractiveness
+        self.showsEntertainmentType = showsEntertainmentType
     }
 }
 
@@ -89,6 +93,10 @@ struct GenericInspector: View {
                     TextField("Label", text: $draft.label)
                         .textFieldStyle(FieldOnSurfaceStyle())
                 }
+            }
+
+            if fields.showsEntertainmentType {
+                entertainmentTypePicker
             }
 
             if fields.showsShape {
@@ -126,6 +134,26 @@ struct GenericInspector: View {
                     }
                 }
             }
+        }
+    }
+
+    private var entertainmentTypePicker: some View {
+        let type = Binding<EntertainmentType>(
+            get: { EntertainmentType.resolve(catalogID: draft.catalogID, label: draft.label) },
+            set: { draft.catalogID = $0.catalogID }
+        )
+        return VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Type")
+                .font(Typography.inspectorLabel)
+                .foregroundStyle(Palette.textPrimary)
+
+            Picker("Type", selection: type) {
+                ForEach(EntertainmentType.allCases, id: \.self) { type in
+                    Text(type.displayName).tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
     }
 
