@@ -28,6 +28,7 @@ struct DashboardView<ParametersSheet: View>: View {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
         .task { viewModel.startSimulation() }
+        .onDisappear { viewModel.cancelSimulation() }
     }
 }
 
@@ -58,7 +59,12 @@ struct DashboardContent: View {
 
             switch viewModel.phase {
             case .loading:
-                RunningNotice(text: "Running the simulation…", showsProgress: true)
+                RunningNotice(
+                    text: "Running the simulation…",
+                    showsProgress: true,
+                    previewVenue: viewModel.previewVenue,
+                    previewFrame: viewModel.previewFrame
+                )
             case .needsTwoLayouts(let count):
                 RunningNotice(
                     text: count == 0
@@ -110,15 +116,45 @@ struct DashboardContent: View {
 private struct RunningNotice: View {
     let text: String
     let showsProgress: Bool
+    var previewVenue: SimulationVenue?
+    var previewFrame: SimulationSceneFrame = SimulationSceneFrame()
 
     var body: some View {
-        VStack(spacing: 14) {
-            if showsProgress {
-                ProgressView()
+        ZStack {
+            if showsProgress, let previewVenue {
+                Metal3DSceneView(venue: previewVenue, frame: previewFrame)
+                    .allowsHitTesting(false)
+                    .overlay {
+                        Color.backgroundMain.opacity(0.62)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                    }
+                    .padding(.vertical, 18)
             }
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundStyle(.textSecondary)
+
+            VStack(spacing: 14) {
+                if showsProgress {
+                    ProgressView()
+                }
+                Text(text)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.textPrimary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            .background {
+                if showsProgress && previewVenue != nil {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.backgroundMain.opacity(0.78))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        }
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)

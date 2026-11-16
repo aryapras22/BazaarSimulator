@@ -55,7 +55,7 @@ nonisolated struct CrowdMeasurements: Sendable {
 /// each block of floor, how many pass the doors, and where everyone is through the busiest window.
 nonisolated final class CrowdMeasuringRun {
     static let sampleIntervalSeconds = 10
-    static let frameIntervalSeconds = 5
+    static let frameIntervalSeconds = 10
     static let blockCells = 6
     static let tileCells = 3
     /// Doors and floor tiles are checked this often, so a walking visitor cannot skip a cell.
@@ -103,9 +103,18 @@ nonisolated final class CrowdMeasuringRun {
     }
 
     /// Runs to the end of the event, or until `isCancelled` says to stop.
-    func run(isCancelled: () -> Bool) -> CrowdMeasurements {
+    func run(
+        onLiveFrame: (@Sendable ([MeasuredVisitor]) -> Void)? = nil,
+        isCancelled: () -> Bool
+    ) -> CrowdMeasurements {
+        let liveStepStride = max(1, 20 * CrowdParameters.stepsPerSecond)
         while !isFinished {
-            for _ in 0..<256 where !isFinished { step() }
+            for _ in 0..<256 where !isFinished {
+                step()
+                if let onLiveFrame, stepIndex % liveStepStride == 0 {
+                    onLiveFrame(currentMeasuredVisitors())
+                }
+            }
             if isCancelled() { break }
         }
         result.enteredPeople = crowd.stats.enteredPeople
@@ -194,16 +203,20 @@ nonisolated final class CrowdMeasuringRun {
 
     private func recordFrame() {
         result.frames.append(MeasuredFrame(
-            visitors: crowd.agents.map { agent in
-                MeasuredVisitor(
-                    id: agent.id,
-                    position: SIMD2(Float(agent.position.x), Float(agent.position.y)),
-                    typeIndex: setup.typeIndexByPersona[agent.party.persona.key] ?? 0,
-                    people: Int(agent.weight),
-                    isSeated: agent.isSeated
-                )
-            },
+            visitors: currentMeasuredVisitors(),
             footfall: tileFootfall
         ))
+    }
+
+    private func currentMeasuredVisitors() -> [MeasuredVisitor] {
+        crowd.agents.map { agent in
+            MeasuredVisitor(
+                id: agent.id,
+                position: SIMD2(Float(agent.position.x), Float(agent.position.y)),
+                typeIndex: setup.typeIndexByPersona[agent.party.persona.key] ?? 0,
+                people: Int(agent.weight),
+                isSeated: agent.isSeated
+            )
+        }
     }
 }

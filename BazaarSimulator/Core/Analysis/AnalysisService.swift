@@ -8,8 +8,11 @@ protocol AnalysisServiceProtocol: AnyObject {
         parameters: EventParameters,
         visitorTypes: [VisitorType],
         focus: TimeRange,
-        legend: Legend
+        legend: Legend,
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor]) -> Void)?
     ) async -> [LayoutAnalysis]
+
+    func cancelAll()
 }
 
 extension AnalysisServiceProtocol {
@@ -19,8 +22,34 @@ extension AnalysisServiceProtocol {
         visitorTypes: [VisitorType],
         focus: TimeRange
     ) async -> [LayoutAnalysis] {
-        await analyses(for: layouts, parameters: parameters, visitorTypes: visitorTypes, focus: focus, legend: Legend())
+        await analyses(
+            for: layouts,
+            parameters: parameters,
+            visitorTypes: visitorTypes,
+            focus: focus,
+            legend: Legend(),
+            onLiveFrame: nil
+        )
     }
+
+    func analyses(
+        for layouts: [Layout],
+        parameters: EventParameters,
+        visitorTypes: [VisitorType],
+        focus: TimeRange,
+        legend: Legend
+    ) async -> [LayoutAnalysis] {
+        await analyses(
+            for: layouts,
+            parameters: parameters,
+            visitorTypes: visitorTypes,
+            focus: focus,
+            legend: legend,
+            onLiveFrame: nil
+        )
+    }
+
+    func cancelAll() {}
 }
 
 /// Runs the crowd simulation for each layout and remembers the results. Changing the layout, the
@@ -30,17 +59,24 @@ extension AnalysisServiceProtocol {
 @MainActor
 final class AnalysisService: AnalysisServiceProtocol {
     private var cache: [SimulationInput: LayoutAnalysis] = [:]
+    private var activeTasks: [Task<CrowdMeasurements, Never>] = []
+
+    func cancelAll() {
+        activeTasks.forEach { $0.cancel() }
+        activeTasks.removeAll()
+    }
 
     func analyses(
         for layouts: [Layout],
         parameters: EventParameters,
         visitorTypes: [VisitorType],
         focus: TimeRange,
-        legend: Legend
+        legend: Legend,
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor]) -> Void)? = nil
     ) async -> [LayoutAnalysis] {
-        // Layouts that are not remembered all run at once, each on its own thread.
+        cancelAll()
         var runs: [(input: SimulationInput, grid: NavigationGrid, task: Task<CrowdMeasurements, Never>?)] = []
-        for layout in layouts {
+        for (index, layout) in layouts.enumerated() {
             let input = SimulationInput(
                 layout: layout, parameters: parameters, visitorTypes: visitorTypes, legend: legend, focus: focus
             )
@@ -50,11 +86,17 @@ final class AnalysisService: AnalysisServiceProtocol {
                 continue
             }
             let setup = CrowdAnalysisBuilder.setup(for: input, grid: grid)
+            let layoutID = layout.id
+            let stream = index == 0 ? onLiveFrame : nil
             runs.append((input, grid, Task.detached(priority: .userInitiated) {
-                CrowdMeasuringRun(setup: setup).run { Task.isCancelled }
+                CrowdMeasuringRun(setup: setup).run(
+                    onLiveFrame: stream.map { callback in { callback(layoutID, $0) } },
+                    isCancelled: { Task.isCancelled }
+                )
             }))
         }
         let tasks = runs.compactMap(\.task)
+        activeTasks = tasks
 
         var results: [LayoutAnalysis] = []
         for run in runs {
