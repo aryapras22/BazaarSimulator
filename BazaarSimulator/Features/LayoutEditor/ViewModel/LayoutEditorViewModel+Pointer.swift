@@ -35,7 +35,7 @@ extension LayoutEditorViewModel {
             let category = legend.entries.first { $0.id == object.categoryID }?.name ?? "Unassigned"
             return "Booth \(BoothLabelFormatter.display(object.label)) · \(category) · \(dimensions)"
         case .door:
-            let direction = object.doorFlow?.direction.displayName ?? DoorDirection.entrance.displayName
+            let direction = (object.doorFlow?.direction ?? .both).displayName
             let title = DoorLabelFormatter.displayTitle(for: object, in: layout)
             return "\(title) · \(direction) · \(DimensionInput.text(for: size.x)) m"
         default:

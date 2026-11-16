@@ -6,13 +6,21 @@ enum DoorRenderer {
     private static let maxLeafLengthM = 1.5
     private static let arcSegmentCount = 16
 
+    static func labelText(for door: LayoutObject) -> String {
+        let trimmed = door.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmed.isEmpty ? "Door" : trimmed
+        let direction = (door.doorFlow?.direction ?? .both).displayName
+        return "\(title) · \(direction)"
+    }
+
     static func draw(
         _ state: ObjectDrawState,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
         let door = state.object
-        let isDisabled = door.doorFlow?.direction == .disabled
+        let direction = door.doorFlow?.direction ?? .both
+        let isDisabled = direction == .disabled
         let fillColor = thresholdFill(for: state, isDisabled: isDisabled)
         let strokeColor = thresholdStroke(for: state, isDisabled: isDisabled)
 
@@ -37,9 +45,16 @@ enum DoorRenderer {
 
         if isDisabled {
             drawDisabledCross(corners: corners, color: strokeColor, in: &context, transform: transform)
+        } else {
+            drawDirectionArrows(
+                direction: direction,
+                placement: door.placement,
+                in: &context,
+                transform: transform
+            )
         }
 
-        if transform.scale >= 10.0 {
+        if state.isSelected || state.isHovered || transform.scale >= 6.0 {
             drawLabel(
                 for: door,
                 isSelected: state.isSelected,
@@ -176,8 +191,7 @@ enum DoorRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let trimmed = door.label.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = trimmed.isEmpty ? "Door" : trimmed
+        let title = labelText(for: door)
         let centerView = transform.toView(door.placement.center)
         let centerPoint = CGPoint(x: centerView.x, y: centerView.y)
         let labelColor = isSelected ? Color.white : strokeColor
@@ -185,7 +199,7 @@ enum DoorRenderer {
             .font(Typography.canvasLabel(scaledBy: transform.scale))
             .foregroundStyle(labelColor)
         let resolved = context.resolve(text)
-        let textSize = resolved.measure(in: CGSize(width: 200, height: 40))
+        let textSize = resolved.measure(in: CGSize(width: 260, height: 40))
         let pillRect = CGRect(
             x: centerPoint.x - textSize.width / 2 - 4,
             y: centerPoint.y - textSize.height / 2 - 1,
@@ -205,7 +219,7 @@ enum DoorRenderer {
         transform: CanvasTransform
     ) {
         guard direction != .disabled else { return }
-        let arrowHalfLengthM = 0.65
+        let arrowHalfLengthM = max(0.65, 14.0 / transform.scale)
         let inwardPoint = LayoutGeometry.toWorld(local: SIMD2<Double>(0, -arrowHalfLengthM), in: placement)
         let outwardPoint = LayoutGeometry.toWorld(local: SIMD2<Double>(0, arrowHalfLengthM), in: placement)
         let inwardView = transform.toView(inwardPoint)

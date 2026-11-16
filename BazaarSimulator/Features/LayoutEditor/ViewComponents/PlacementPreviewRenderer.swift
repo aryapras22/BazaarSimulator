@@ -84,7 +84,7 @@ enum PlacementPreviewRenderer {
                 kind: .door,
                 label: "Door",
                 placement: placement,
-                doorFlow: DoorFlow(direction: .entrance, connection: .hallToLobby)
+                doorFlow: DoorFlow(direction: .both, connection: .hallToLobby)
             )
             let state = ObjectDrawState(
                 object: previewDoor,

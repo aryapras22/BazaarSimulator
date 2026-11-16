@@ -11,7 +11,7 @@ enum DoorDirection: String, Codable, CaseIterable, Hashable, Sendable {
         case .entrance: return "Entrance"
         case .exit: return "Exit"
         case .both: return "Both"
-        case .disabled: return "Disable"
+        case .disabled: return "Disabled"
         }
     }
 
