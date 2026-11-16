@@ -1,8 +1,7 @@
 import Foundation
 import simd
 
-/// Turns visitor positions into smoothed density cells, in real people per square metre,
-/// gently toned down for large total visitor counts.
+/// Turns visitor positions into smoothed density cells, in real people per square metre.
 nonisolated struct CrowdHeatmap {
     /// Spread keeps one standing person at about 0.073 /m², inside grade A's limit of 0.08.
     private static let kernel: [(offset: SIMD2<Int>, weight: Double)] = {
@@ -21,28 +20,20 @@ nonisolated struct CrowdHeatmap {
 
     private let cols: Int
     private let rows: Int
-    private let visitorScale: Double
     private var smoothed: [Double]
-    private var cumulative: [Double]
-    private var cellActiveUpdates: [Int]
-    private var cellPeak: [Double]
     private var scratchInstant: [Double]
     private var occupiedUpdates = 0
 
     private(set) var cells: [DensityCell] = []
+    private(set) var peakCellsByID: [Int: DensityCell] = [:]
     private(set) var meanDensity = 0.0
     private(set) var peakDensity = 0.0
 
-    init(sizeM: SIMD2<Double>, totalVisitors: Int = CrowdParameters.heatmapReferenceVisitors) {
+    init(sizeM: SIMD2<Double>) {
         cols = max(1, Int(ceil(sizeM.x)))
         rows = max(1, Int(ceil(sizeM.y)))
-        visitorScale = CrowdParameters.visitorDensityScale(for: totalVisitors)
-        let cellCount = cols * rows
-        smoothed = Array(repeating: 0, count: cellCount)
-        cumulative = Array(repeating: 0, count: cellCount)
-        cellActiveUpdates = Array(repeating: 0, count: cellCount)
-        cellPeak = Array(repeating: 0, count: cellCount)
-        scratchInstant = Array(repeating: 0, count: cellCount)
+        smoothed = Array(repeating: 0, count: cols * rows)
+        scratchInstant = Array(repeating: 0, count: cols * rows)
     }
 
     mutating func update(with visitors: [SimulatedVisitor]) {
@@ -57,40 +48,12 @@ nonisolated struct CrowdHeatmap {
         commitSmoothedDensity()
     }
 
-    /// Computes the final summary heatmap across the event, staying close to each cell's peak density
-    /// while blending in that cell's active average (while occupied) to tone down brief spikes.
-    func finalSummaryCells() -> [DensityCell] {
-        let meanWeight = CrowdParameters.finalHeatmapMeanWeight
-        let peakWeight = CrowdParameters.finalHeatmapPeakWeight
-        let loosen = CrowdParameters.finalHeatmapLooseningFactor
-        let minActive = CrowdParameters.heatmapMinActiveDensity
-
-        var summary: [DensityCell] = []
-        for key in cumulative.indices where cellPeak[key] >= minActive {
-            let activeCount = Double(max(1, cellActiveUpdates[key]))
-            let activeAvg = cumulative[key] / activeCount
-            let blended = (activeAvg * meanWeight + cellPeak[key] * peakWeight) * loosen
-            let finalValue = max(minActive, blended)
-            let center = SIMD2(Double(key % cols) + 0.5, Double(key / cols) + 0.5)
-            summary.append(DensityCell(id: key, center: center, peoplePerSquareMetre: finalValue))
-        }
-        return summary
-    }
-
-    /// Peak density of the final summary heatmap.
-    var summaryPeakDensity: Double {
-        let summaryMax = finalSummaryCells().map(\.peoplePerSquareMetre).max() ?? 0
-        return max(summaryMax, peakDensity * CrowdParameters.finalHeatmapLooseningFactor)
-    }
-
     private mutating func commitSmoothedDensity() {
         var activeCells: [DensityCell] = []
         activeCells.reserveCapacity(cells.count)
         let retain = CrowdParameters.heatmapSmoothingRetain
         let fresh = CrowdParameters.heatmapSmoothingNew
         let minActive = CrowdParameters.heatmapMinActiveDensity
-        var currentMax = 0.0
-        var currentSum = 0.0
 
         for key in smoothed.indices {
             let value = smoothed[key] * retain + scratchInstant[key] * fresh
@@ -99,36 +62,34 @@ nonisolated struct CrowdHeatmap {
                 continue
             }
             smoothed[key] = value
-            cumulative[key] += value
-            cellActiveUpdates[key] += 1
-            if value > cellPeak[key] { cellPeak[key] = value }
-            if value > currentMax { currentMax = value }
-            currentSum += value
-
             let center = SIMD2(Double(key % cols) + 0.5, Double(key / cols) + 0.5)
-            activeCells.append(DensityCell(id: key, center: center, peoplePerSquareMetre: value))
+            let cell = DensityCell(id: key, center: center, peoplePerSquareMetre: value)
+            activeCells.append(cell)
+            if (peakCellsByID[key]?.peoplePerSquareMetre ?? 0) < value {
+                peakCellsByID[key] = cell
+            }
         }
 
         cells = activeCells
         if !cells.isEmpty {
-            let currentMean = currentSum / Double(cells.count)
+            let currentMean = cells.reduce(0.0) { $0 + $1.peoplePerSquareMetre } / Double(cells.count)
             occupiedUpdates += 1
             meanDensity += (currentMean - meanDensity) / Double(occupiedUpdates)
         }
-        if currentMax > peakDensity { peakDensity = currentMax }
+        peakDensity = max(peakDensity, cells.map(\.peoplePerSquareMetre).max() ?? 0)
     }
 
     private mutating func fillInstantDensity(from visitors: [SimulatedVisitor]) {
         for index in scratchInstant.indices { scratchInstant[index] = 0 }
         for visitor in visitors {
-            splatKernel(at: visitor.position, people: Double(visitor.peopleCount) * visitorScale)
+            splatKernel(at: visitor.position, people: Double(visitor.peopleCount))
         }
     }
 
     private mutating func fillInstantDensity(fromAgents agents: [CrowdAgent]) {
         for index in scratchInstant.indices { scratchInstant[index] = 0 }
         for agent in agents {
-            splatKernel(at: agent.position, people: agent.weight * visitorScale)
+            splatKernel(at: agent.position, people: agent.weight)
         }
     }
 

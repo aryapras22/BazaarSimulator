@@ -75,9 +75,8 @@ enum CrowdAnalysisBuilder {
             windowLow = min(max((focus.startMinute - eventStart) * samplesPerMinute, 0), max(sampleCount - 1, 0))
             windowHigh = min(windowLow + focus.durationMinutes * samplesPerMinute, max(sampleCount - 1, 0))
         }
-        let visitorScale = CrowdParameters.visitorDensityScale(for: max(input.parameters.totalVisitors, 0))
         func density(_ block: Int, _ sample: Int) -> Double {
-            Double(measured.blockSamples[sample * blockCount + block]) * visitorScale / measured.blockArea[block]
+            Double(measured.blockSamples[sample * blockCount + block]) / measured.blockArea[block]
         }
         var candidates: [SpotSelector.Candidate] = []
         var windowPeaks = Array(repeating: 0.0, count: blockCount)

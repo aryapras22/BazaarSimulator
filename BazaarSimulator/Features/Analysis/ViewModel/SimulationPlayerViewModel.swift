@@ -189,16 +189,14 @@ final class SimulationPlayerViewModel {
         return path
     }
 
-    /// People per m² for each heat cell at `playback`, using the Gaussian KDE kernel and visitor-count scaling.
+    /// People per m² for each heat cell at `playback`, using the Gaussian KDE kernel.
     func heatDensity(at playback: Double) -> [Double] {
         let columns = Self.heatColumns, rows = heatRows
-        let totalVisitors = result?.analyses[layoutID]?.totalPeople ?? CrowdParameters.heatmapReferenceVisitors
-        let visitorScale = CrowdParameters.visitorDensityScale(for: totalVisitors)
         var counts = Array(repeating: 0.0, count: columns * rows)
         for visitor in visitors(at: playback) {
             let column = min(max(Int(visitor.point.x * CGFloat(columns)), 0), columns - 1)
             let row = min(max(Int(visitor.point.y * CGFloat(rows)), 0), rows - 1)
-            counts[row * columns + column] += Double(visitor.people) * visitorScale
+            counts[row * columns + column] += Double(visitor.people)
         }
         let cellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
         let radius = min(2, CrowdParameters.heatmapKernelRadius)
@@ -323,8 +321,7 @@ final class SimulationPlayerViewModel {
     /// Computes 1m x 1m Gaussian KDE density cells using `CrowdHeatmap` for the 2D SpriteKit view.
     func spriteDensityCells(at playback: Double) -> [DensityCell] {
         guard let layout else { return [] }
-        let totalVisitors = result?.analyses[layoutID]?.totalPeople ?? CrowdParameters.heatmapReferenceVisitors
-        var heatmap = CrowdHeatmap(sizeM: layout.sizeM, totalVisitors: totalVisitors)
+        var heatmap = CrowdHeatmap(sizeM: layout.sizeM)
         heatmap.update(with: spriteVisitors(at: playback))
         return heatmap.cells
     }

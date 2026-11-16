@@ -144,7 +144,7 @@ private nonisolated struct CrowdRecordingJob: Sendable {
 
     func run() -> RecordedSimulationResult {
         let crowd = CrowdSimulation(world: world, settings: settings)
-        var heatmap = CrowdHeatmap(sizeM: sizeM, totalVisitors: settings.totalVisitors)
+        var heatmap = CrowdHeatmap(sizeM: sizeM)
         var metrics = SimulationMetrics()
         var frames: [SimulationFrame] = []
 
@@ -172,16 +172,13 @@ private nonisolated struct CrowdRecordingJob: Sendable {
             if stepIndex % 256 == 0 && Task.isCancelled { break }
         }
 
-        let summaryCells = heatmap.finalSummaryCells()
-        metrics.peakDensity = heatmap.summaryPeakDensity
-
         return RecordedSimulationResult(
             layoutID: layoutID,
             layoutName: layoutName,
             durationSeconds: Double(durationMinutes * 60),
             startMinutesFromMidnight: settings.startMinutesFromMidnight,
             metrics: metrics,
-            densityCells: summaryCells,
+            densityCells: heatmap.peakCellsByID.values.sorted { $0.id < $1.id },
             frames: frames
         )
     }

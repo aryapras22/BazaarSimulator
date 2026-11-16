@@ -208,29 +208,9 @@ nonisolated enum CrowdParameters {
 
     static let heatmapKernelRadius = 3
     static let heatmapKernelSigma = 1.5
-    static let heatmapSmoothingRetain = 0.65
-    static let heatmapSmoothingNew = 0.35
+    static let heatmapSmoothingRetain = 0.72
+    static let heatmapSmoothingNew = 0.28
     static let heatmapMinActiveDensity = 0.004
-
-    /// Reference visitor count at or below which raw per-person density is unscaled (`1.0`).
-    /// Above this visitor count, per-person heatmap contribution gently tones down so high-visitor
-    /// runs preserve multi-color contrast (green/yellow aisles, orange/red bottlenecks) without saturating.
-    static let heatmapReferenceVisitors = 800
-    static let heatmapVisitorScaleExponent = 0.28
-    static let heatmapMinimumVisitorScale = 0.55
-
-    /// Weights used to compute the final summary heatmap in AnalysisView:
-    /// stays close to each cell's peak density while blending in its active mean (when occupied).
-    static let finalHeatmapMeanWeight = 0.35
-    static let finalHeatmapPeakWeight = 0.65
-    static let finalHeatmapLooseningFactor = 0.85
-
-    /// Returns the visitor-proportional density scale factor for a given `totalVisitors` count.
-    static func visitorDensityScale(for totalVisitors: Int) -> Double {
-        guard totalVisitors > heatmapReferenceVisitors else { return 1.0 }
-        let ratio = Double(totalVisitors) / Double(max(1, heatmapReferenceVisitors))
-        return max(heatmapMinimumVisitorScale, 1.0 / pow(ratio, heatmapVisitorScaleExponent))
-    }
 
     // MARK: - 8. Visitor Personas
 
