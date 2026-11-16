@@ -207,10 +207,6 @@ struct DashboardHeader: View {
 
             Button("Parameters", action: onOpenParameters)
                 .buttonStyle(ControlButtonStyle(fill: .headerButtonFill, minWidth: 108))
-
-            Button("Legend") {}
-                .buttonStyle(ControlButtonStyle(fill: .headerButtonFill, minWidth: 108))
-                .padding(.leading, 12)
         }
         .frame(height: DashboardMetrics.headerHeight)
     }

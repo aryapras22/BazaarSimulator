@@ -30,8 +30,9 @@ struct SimulationPlayerView: View {
                     switch viewModel.viewStyle {
                     case .twoD:
                         SimulationPlanView(viewModel: viewModel, time: time)
-                            .frame(width: frame.plan.width, height: frame.plan.height)
-                            .position(x: frame.plan.midX, y: frame.plan.midY)
+                            .frame(width: frame.stage.width, height: frame.stage.height)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .position(x: frame.stage.midX, y: frame.stage.midY)
                     case .threeD:
                         scene(at: time)
                             .frame(width: frame.stage.width, height: frame.stage.height)
@@ -148,12 +149,14 @@ private struct PlayerFrame {
         let panelRight = Self.panelOrigin.x + Self.panelWidth
 
         let planHeight = max(min(788.5, size.height - 150.5), 240)
-        let planWidth = planHeight * planAspect
-        let planCenter = max(mid + 61.75, panelRight + 16 + planWidth / 2)
-        plan = CGRect(x: planCenter - planWidth / 2, y: 103, width: planWidth, height: planHeight)
-
         let stageLeft = panelRight + 16
-        stage = CGRect(x: stageLeft, y: 103, width: max(size.width - stageLeft - 20, 240), height: planHeight)
+        let stageWidth = max(size.width - stageLeft - 20, 240)
+        stage = CGRect(x: stageLeft, y: 103, width: stageWidth, height: planHeight)
+
+        let fittedWidth = min(planHeight * planAspect, stageWidth)
+        let fittedHeight = fittedWidth / max(planAspect, 0.01)
+        let planCenter = stage.midX
+        plan = CGRect(x: planCenter - fittedWidth / 2, y: 103 + (planHeight - fittedHeight) / 2, width: fittedWidth, height: fittedHeight)
 
         styleSwitch = CGRect(x: size.width - 20 - Self.styleSwitchWidth, y: 16, width: Self.styleSwitchWidth, height: 44.5)
         let tabCenter = mid + 69.5
