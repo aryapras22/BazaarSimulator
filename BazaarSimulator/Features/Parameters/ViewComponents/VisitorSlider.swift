@@ -13,8 +13,8 @@ extension VisitorSliderItem {
     private static let styles: [(color: Color, label: Color)] = [
         (Palette.visitorSeries1, Palette.textPrimary),
         (Palette.visitorSeries2, Palette.textPrimary),
-        (Palette.visitorSeries3, Palette.tipText),
-        (Palette.visitorSeries4, Palette.tipText)
+        (Palette.visitorSeries3, Palette.textPrimary),
+        (Palette.visitorSeries4, Palette.textPrimary)
     ]
 
     /// Colors follow the order of the types and repeat if there are more than four.

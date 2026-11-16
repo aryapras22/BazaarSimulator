@@ -71,6 +71,16 @@ final class ProjectSession: ProjectSessionProtocol {
 
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
         eventParametersByProject[projectID] = parameters
+        parametersByProject[projectID] = ModalParameters(
+            totalVisitors: parameters.totalVisitors,
+            startMinutes: parameters.eventHours.startMinute,
+            endMinutes: parameters.eventHours.endMinute,
+            bazaarType: parameters.bazaarTypeID,
+            socializerPercent: Double(parameters.mix.share(for: "socializer")?.percent ?? 21),
+            familyMemberPercent: Double(parameters.mix.share(for: "family")?.percent ?? 46),
+            strollerPercent: Double(parameters.mix.share(for: "stroller")?.percent ?? 33),
+            purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 0)
+        )
     }
 
     func draft(for projectID: UUID) -> ProjectDraft? {
