@@ -31,6 +31,11 @@ struct CanvasDisplaySnapshot: Sendable {
     var showsAttractiveness: Bool = false
 }
 
+extension KeyEquivalent {
+    /// The Delete key of a Mac keyboard arrives as U+007F, which is neither `.delete` (U+0008) nor `.deleteForward`.
+    static let macDelete = KeyEquivalent("\u{7F}")
+}
+
 struct LayoutCanvasView: View {
     let snapshot: CanvasDisplaySnapshot
     @Binding var transform: CanvasTransform
@@ -175,7 +180,7 @@ struct LayoutCanvasView: View {
             }
             return .ignored
         }
-        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+        .onKeyPress(keys: [.delete, .deleteForward, .macDelete]) { _ in
             if onCanvasKey(.delete) {
                 return .handled
             }

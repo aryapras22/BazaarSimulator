@@ -47,7 +47,7 @@ struct LayoutEditorView: View {
         .navigationTitle(viewModel.projectName)
         .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
         .focusedSceneValue(\.editorCommandActions, commandActions)
-        .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+        .onKeyPress(keys: [.delete, .deleteForward, .macDelete]) { _ in
             // Placed on the whole editor so Delete works after a click in the side panels; a text field being edited keeps it.
             guard !(NSApp.keyWindow?.firstResponder is NSText) else { return .ignored }
             viewModel.deleteCurrentSelection()
