@@ -352,8 +352,8 @@ final class Venue2DScene: SKScene {
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
             let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let normalized = min(max((cell.peoplePerSquareMetre - 0.02) / 1.15, 0.0), 1.0)
-            let peakAlpha = CGFloat(0.05 + 0.85 * pow(normalized, 0.85))
+            let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
+            let peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
@@ -392,15 +392,15 @@ final class Venue2DScene: SKScene {
     }
 
     private func heatmapRGB(for density: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
-        if density >= 1.55 {
+        if density >= 1.60 {
             return (0.86, 0.06, 0.20)
-        } else if density >= 1.05 {
+        } else if density >= 1.15 {
             return (1.0, 0.20, 0.14)
-        } else if density >= 0.78 {
+        } else if density >= 0.82 {
             return (1.0, 0.52, 0.10)
-        } else if density >= 0.54 {
+        } else if density >= 0.55 {
             return (0.98, 0.84, 0.18)
-        } else if density >= 0.18 {
+        } else if density >= 0.20 {
             return (0.22, 0.84, 0.44)
         } else {
             return (0.20, 0.76, 0.85)

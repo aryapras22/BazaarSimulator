@@ -200,7 +200,7 @@ final class SimulationPlayerViewModel {
             counts[row * columns + column] += Double(visitor.people) * sensitivity
         }
         let rawCellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
-        let cellArea = min(max(rawCellArea, 0.35), 1.5)
+        let cellArea = min(max(rawCellArea, 0.85), 1.5)
         let weights = [[0.5, 1.5, 0.5], [1.5, 5.0, 1.5], [0.5, 1.5, 0.5]]
         let coverage = heatCoverage
         var density = Array(repeating: 0.0, count: columns * rows)
@@ -327,7 +327,7 @@ final class SimulationPlayerViewModel {
         let rows = max(1, Int(ceil(layout.sizeM.y)))
         var grid = [Double](repeating: 0, count: cols * rows)
         let sensitivity = CrowdParameters.replayHeatmapSensitivity
-        let twoSigmaSq = 2.0 * 0.90 * 0.90
+        let twoSigmaSq = 2.0 * 1.05 * 1.05
 
         var kernel: [(dx: Int, dy: Int, weight: Double)] = []
         for dy in -2...2 {
