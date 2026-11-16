@@ -41,12 +41,18 @@ struct DaySchedule: Sendable, Equatable {
         TimeRange(startMinute: peakMinute, endMinute: peakMinute + Int(windowMinutes))
     }
 
-    /// Every 2 hours from the start, plus the end when it is a full hour past the last one,
+    /// The last hour the day is sampled at. Nobody is let in after it and the hall is emptied before closing, so a
+    /// sample taken later would read an empty hall and pull every lowest value to zero.
+    var lastSampleHour: Double {
+        endHour - min(CrowdParameters.lastEntrySeconds / 3600, (endHour - startHour) / 4)
+    }
+
+    /// Every 2 hours from the start, plus the last entry when it is a full hour past the last one,
     /// plus the busiest hour so the day values at that hour can equal the window values.
     var sampleHours: [Double] {
-        var hours = Array(stride(from: startHour, through: endHour, by: 2))
-        if let last = hours.last, endHour - last >= 1 {
-            hours.append(endHour)
+        var hours = Array(stride(from: startHour, through: lastSampleHour, by: 2))
+        if let last = hours.last, lastSampleHour - last >= 1 {
+            hours.append(lastSampleHour)
         }
         if !hours.contains(peakHour) {
             hours.append(peakHour)

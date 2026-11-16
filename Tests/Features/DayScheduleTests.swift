@@ -22,9 +22,9 @@ struct DayScheduleTests {
     @Test("Event hours set the sample hours, every 2 hours, with the end added when a full hour past")
     func sampleHoursFollowEventHours() {
         let schedule = DaySchedule(parameters: parameters(), peakMinute: 14 * 60)
-        #expect(schedule.sampleHours == [10, 12, 14, 16, 18, 20, 21])
+        #expect(schedule.sampleHours == [10, 12, 14, 16, 18, 20])
         let short = parameters(hours: TimeRange(startMinute: 10 * 60, endMinute: 18 * 60))
-        #expect(DaySchedule(parameters: short, peakMinute: 14 * 60).sampleHours == [10, 12, 14, 16, 18])
+        #expect(DaySchedule(parameters: short, peakMinute: 14 * 60).sampleHours == [10, 12, 14, 16, 17.5])
     }
 
     @Test("The busiest time the simulation found is the schedule's, and it is a sample hour")
@@ -37,7 +37,7 @@ struct DayScheduleTests {
     @Test("A busiest time that starts off the 2 hour grid is still a sample hour")
     func offGridPeak() {
         let schedule = DaySchedule(parameters: parameters(), peakMinute: 15 * 60)
-        #expect(schedule.sampleHours == [10, 12, 14, 15, 16, 18, 20, 21])
+        #expect(schedule.sampleHours == [10, 12, 14, 15, 16, 18, 20])
     }
 
     @Test("A busiest time outside the event is moved inside it")
@@ -53,7 +53,7 @@ struct DayScheduleTests {
     @Test("Hours with no length fall back to the simulator's event hours")
     func invalidHours() {
         let broken = parameters(hours: TimeRange(startMinute: 600, endMinute: 600))
-        #expect(DaySchedule(parameters: broken, peakMinute: 14 * 60).sampleHours == [10, 12, 14, 16, 18])
+        #expect(DaySchedule(parameters: broken, peakMinute: 14 * 60).sampleHours == [10, 12, 14, 16, 17.5])
     }
 
     @Test("The window is the busiest time plus the window length")

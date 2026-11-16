@@ -40,7 +40,11 @@ struct CompareRulesEngine: Sendable {
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
 
-        let headline = oWin.C == 0
+        let headline = oWin.C == oLose.C
+            ? (oWin.C == 0
+                ? "Neither layout has spots where people get stuck, even at the busiest time (\(peakHourText))."
+                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck at the busiest time (\(peakHourText)).")
+            : oWin.C == 0
             ? "\(oWin.name) has no spots where people get stuck, even at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
             : "\(oWin.name) has only \(oWin.C) \(spotsWord(oWin.C)) where people get stuck at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
 
@@ -116,7 +120,12 @@ struct CompareRulesEngine: Sendable {
             ? "all \(Self.formatHalfMinutes(windowMinutes)) minutes"
             : "for \(Self.formatHalfMinutes(oLose.M)) of \(Self.formatHalfMinutes(windowMinutes)) minutes"
 
-        let headline = oWin.M < 0.25
+        let sameTime = Self.formatHalfMinutes(oWin.M) == Self.formatHalfMinutes(oLose.M)
+        let headline = sameTime
+            ? (oLose.M < 0.25
+                ? "Nobody gets stuck in either layout at \(peakHourText)."
+                : "At \(peakHourText), people are stuck about \(Self.formatHalfMinutes(oWin.M)) minutes in both layouts.")
+            : oWin.M < 0.25
             ? "Nobody gets stuck in \(oWin.name) at \(peakHourText). In \(oLose.name), people are stuck \(loseTime)."
             : "At \(peakHourText), people are stuck \(Self.formatHalfMinutes(oLose.M - oWin.M)) minutes less in \(oWin.name) than in \(oLose.name)."
 
@@ -189,7 +198,9 @@ struct CompareRulesEngine: Sendable {
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
 
-        let headline = "\(oWin.name) leaves about \(Self.formatDecimal1(oWin.space)) m² for each person at its busiest spot. \(oLose.name) leaves only \(Self.formatDecimal1(oLose.space)) m²."
+        let headline = Self.formatDecimal1(oWin.space) == Self.formatDecimal1(oLose.space)
+            ? "Both layouts leave about \(Self.formatDecimal1(oWin.space)) m² for each person at their busiest spot."
+            : "\(oWin.name) leaves about \(Self.formatDecimal1(oWin.space)) m² for each person at its busiest spot. \(oLose.name) leaves only \(Self.formatDecimal1(oLose.space)) m²."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -254,7 +265,9 @@ struct CompareRulesEngine: Sendable {
         let oLose = outcome(for: lose)
 
         let headline: String
-        if oWin.isSteady && !oLose.isSteady {
+        if Self.formatCountOrAvg(oWin.flowMin) == Self.formatCountOrAvg(oLose.flowMin) {
+            headline = "Both layouts drop to \(Self.formatCountOrAvg(oWin.flowMin)) people a minute at their slowest."
+        } else if oWin.isSteady && !oLose.isSteady {
             headline = "\(oWin.name) keeps at least \(Self.formatCountOrAvg(oWin.flowMin)) people walking past every minute. \(oLose.name) sometimes drops to \(Self.formatCountOrAvg(oLose.flowMin))."
         } else {
             headline = "\(oWin.name) never drops below \(Self.formatCountOrAvg(oWin.flowMin)) people a minute. \(oLose.name) drops to \(Self.formatCountOrAvg(oLose.flowMin))."
