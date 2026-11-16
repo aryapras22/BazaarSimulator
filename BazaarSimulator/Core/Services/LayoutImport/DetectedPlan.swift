@@ -25,4 +25,10 @@ struct DetectedItem: Sendable, Equatable, Codable {
     var legendRgb: [Int] = []
     var chairs: Int?
     var symbolClass: String?
+
+    /// The extractor reads an ID only on a booth tile, so an ID marks a booth whatever its legend class is called.
+    /// Plans that colour booths by country or zone have no class with "booth" in its name.
+    var isBooth: Bool {
+        id != nil || cls.lowercased().contains("booth")
+    }
 }

@@ -11,7 +11,7 @@ import Testing
 struct ExtractedLayoutMapperTruthTests {
     struct PlanCase: Sendable, CustomTestStringConvertible {
         let plan: String
-        /// Nil when the plan gives no scale, which is where the reader gives up on it.
+        /// Nil when the plan gives no scale, which is where the reader gives up on it. No sample plan does today.
         let expected: LayoutScore?
 
         var testDescription: String { plan }
@@ -23,16 +23,19 @@ struct ExtractedLayoutMapperTruthTests {
             truthDoors: 4, doorsFound: 4, extraDoors: 5, hallOverlap: 0.76
         )),
         PlanCase(plan: "plan2", expected: LayoutScore(
-            sizeRatio: 1.07, truthBooths: 209, boothsFound: 200, boothLabelsRight: 200, extraBooths: 0,
+            sizeRatio: 1.07, truthBooths: 209, boothsFound: 209, boothLabelsRight: 209, extraBooths: 0,
             truthDoors: 4, doorsFound: 4, extraDoors: 0, hallOverlap: 0.78
         )),
         PlanCase(plan: "plan3", expected: LayoutScore(
             sizeRatio: 1.28, truthBooths: 67, boothsFound: 67, boothLabelsRight: 67, extraBooths: 0,
             truthDoors: 1, doorsFound: 0, extraDoors: 1, hallOverlap: 0.92
         )),
-        PlanCase(plan: "plan5", expected: nil),
+        PlanCase(plan: "plan5", expected: LayoutScore(
+            sizeRatio: 0.87, truthBooths: 306, boothsFound: 272, boothLabelsRight: 262, extraBooths: 0,
+            truthDoors: 4, doorsFound: 0, extraDoors: 7, hallOverlap: 0.56
+        )),
         PlanCase(plan: "plan6", expected: LayoutScore(
-            sizeRatio: 0.87, truthBooths: 289, boothsFound: 282, boothLabelsRight: 281, extraBooths: 7,
+            sizeRatio: 0.87, truthBooths: 289, boothsFound: 282, boothLabelsRight: 281, extraBooths: 8,
             truthDoors: 2, doorsFound: 2, extraDoors: 32, hallOverlap: 0.72
         ))
     ]

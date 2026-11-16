@@ -24,7 +24,7 @@ enum PlanPrintedText {
     ) async -> [DetectedItem] {
         var result: [DetectedItem] = []
         for var item in items {
-            guard isPaperWhite(item), !item.cls.lowercased().contains("booth") else {
+            guard isPaperWhite(item), !item.isBooth else {
                 result.append(item)
                 continue
             }
@@ -75,8 +75,7 @@ enum PlanPrintedText {
     /// legend name prints one.
     static func pixelsPerMetre(from items: [DetectedItem], on page: CGImage) async -> Double? {
         let unsized = items.filter { item in
-            let name = item.cls.lowercased()
-            return !name.contains("booth") && !structuralClasses.contains(name)
+            !item.isBooth && !structuralClasses.contains(item.cls.lowercased())
         }
         let candidates = unsized.sorted { area(of: $0) > area(of: $1) }.prefix(maxSizedBoxes)
         var printedBoxes: [(box: [Double], printed: PrintedSize)] = []

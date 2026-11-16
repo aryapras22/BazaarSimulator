@@ -18,7 +18,7 @@ enum ExtractedLayoutMapper {
 
     static func assumedPixelsPerMetre(for plan: DetectedPlan) -> Double? {
         let sides = plan.items
-            .filter(isBooth)
+            .filter(\.isBooth)
             .map { ($0.box[2] + $0.box[3]) / 2 }
             .sorted()
         guard !sides.isEmpty else { return nil }
@@ -83,10 +83,6 @@ enum ExtractedLayoutMapper {
             layout.objects[index].openSides = OpenSideInference.defaultSide(for: layout.objects[index], in: layout)
         }
         return layout
-    }
-
-    private static func isBooth(_ item: DetectedItem) -> Bool {
-        item.cls.lowercased().contains("booth")
     }
 
     /// The legend entry with the item's colour, else the one with its name.
@@ -195,7 +191,7 @@ enum ExtractedLayoutMapper {
         if ObjectCatalog.namesEntertainment(item.cls) {
             return ObjectCatalog.detectedEntertainment(label: item.cls, placement: placement)
         }
-        guard isBooth(item) else {
+        guard item.isBooth else {
             return LayoutObject(
                 kind: .block,
                 label: item.cls,
