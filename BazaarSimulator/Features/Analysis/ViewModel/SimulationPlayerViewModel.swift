@@ -85,8 +85,26 @@ final class SimulationPlayerViewModel {
     }
 
     var windowText: String {
+        if let replay, replay.durationSeconds > 0 {
+            let endMinute = replay.startMinute + Int((replay.durationSeconds / 60).rounded())
+            return "\(TimeRange.format(replay.startMinute)) - \(TimeRange.format(endMinute))"
+        }
         guard let window = result?.schedule.window else { return "" }
         return "\(TimeRange.format(window.startMinute)) - \(TimeRange.format(window.endMinute))"
+    }
+
+    /// Density of a numbered spot at `playback` seconds into the full-day replay.
+    func spotDensity(for spot: SpotOutcome, at playback: Double) -> Double {
+        if let analysis = result?.analyses[layoutID],
+           let measured = analysis.spots.first(where: { $0.number == spot.number }),
+           !measured.densitySamples.isEmpty {
+            let step = windowSeconds(at: playback) / Double(max(analysis.sampleIntervalSeconds, 1))
+            let low = min(max(Int(step.rounded(.down)), 0), measured.densitySamples.count - 1)
+            let high = min(low + 1, measured.densitySamples.count - 1)
+            let fraction = step - Double(low)
+            return Double(measured.densitySamples[low]) * (1 - fraction) + Double(measured.densitySamples[high]) * fraction
+        }
+        return spot.density(at: progress(at: playback))
     }
 
     var heatRows: Int {
@@ -238,7 +256,7 @@ final class SimulationPlayerViewModel {
         switch mode {
         case .congestion:
             frame.spots = (outcome?.spots ?? []).map { spot in
-                let density = spot.density(at: progress(at: playback))
+                let density = spotDensity(for: spot, at: playback)
                 let place = meters(spot.location)
                 return SimulationSceneFrame.Spot(
                     number: spot.number, x: place.x, z: place.z,
@@ -283,5 +301,69 @@ final class SimulationPlayerViewModel {
     func footfallSummary(at playback: Double) -> (total: Int, busiest: Int) {
         let counts = footfall(at: playback)
         return (counts.reduce(0) { $0 + Int($1) }, Int(counts.max() ?? 0))
+    }
+
+    /// Converts interpolated `DrawnVisitor`s into world-metre `SimulatedVisitor`s for `Simulation2DSpriteView`.
+    func spriteVisitors(at playback: Double) -> [SimulatedVisitor] {
+        let plan = plan
+        let states: [VisitorState] = [.walking, .seated, .queueing, .browsing]
+        return visitors(at: playback).map { drawn in
+            SimulatedVisitor(
+                id: drawn.id,
+                position: SIMD2(
+                    plan.origin.x + Double(drawn.point.x) * plan.size.x,
+                    plan.origin.y + Double(drawn.point.y) * plan.size.y
+                ),
+                state: states[max(0, drawn.typeIndex) % states.count],
+                peopleCount: UInt8(clamping: max(1, drawn.people))
+            )
+        }
+    }
+
+    /// Computes 1m x 1m Gaussian KDE density cells using `CrowdHeatmap` for the 2D SpriteKit view.
+    func spriteDensityCells(at playback: Double) -> [DensityCell] {
+        guard let layout else { return [] }
+        let totalVisitors = result?.analyses[layoutID]?.totalPeople ?? CrowdParameters.heatmapReferenceVisitors
+        var heatmap = CrowdHeatmap(sizeM: layout.sizeM, totalVisitors: totalVisitors)
+        heatmap.update(with: spriteVisitors(at: playback))
+        return heatmap.cells
+    }
+
+    /// Converts cumulative footfall tiles or congestion spots into `DensityCell`s for the 2D SpriteKit overlay.
+    func spriteOverlayCells(at playback: Double) -> [DensityCell] {
+        switch mode {
+        case .density:
+            return spriteDensityCells(at: playback)
+        case .footfall:
+            guard let replay else { return [] }
+            let counts = footfall(at: playback)
+            let busiest = Double(max(counts.max() ?? 1, 1))
+            let tileM = replay.footfallTileM
+            let cols = max(replay.footfallColumns, 1)
+            let origin = plan.origin
+            var cells: [DensityCell] = []
+            for index in counts.indices where counts[index] > 0 {
+                let col = index % cols
+                let row = index / cols
+                let center = SIMD2(
+                    origin.x + (Double(col) + 0.5) * tileM,
+                    origin.y + (Double(row) + 0.5) * tileM
+                )
+                let share = Double(counts[index]) / busiest
+                cells.append(DensityCell(id: index, center: center, peoplePerSquareMetre: share * 1.9))
+            }
+            return cells
+        case .congestion:
+            guard let spots = outcome?.spots else { return [] }
+            let plan = plan
+            return spots.map { spot in
+                let center = SIMD2(
+                    plan.origin.x + Double(spot.location.x) * plan.size.x,
+                    plan.origin.y + Double(spot.location.y) * plan.size.y
+                )
+                let density = max(0.35, spotDensity(for: spot, at: playback))
+                return DensityCell(id: spot.number, center: center, peoplePerSquareMetre: density)
+            }
+        }
     }
 }
