@@ -27,8 +27,7 @@ struct DashboardView<ParametersSheet: View>: View {
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
-        .task { viewModel.startSimulation() }
-        .onDisappear { viewModel.cancelSimulation() }
+        .task { viewModel.startSimulationIfNeeded() }
     }
 }
 

@@ -87,11 +87,24 @@ struct DashboardViewModelTests {
         #expect(busyDensity > quietDensity)
     }
 
-    @Test("Closing the Parameters sheet dismisses it")
-    func closingParameters() {
+    @Test("Closing the Parameters sheet dismisses it without resetting a ready result")
+    func closingParameters() async {
         let model = makeModel(layouts: twoLayouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        #expect(model.phase == .ready)
         model.isParametersPresented = true
         model.closeParameters()
         #expect(!model.isParametersPresented)
+        #expect(model.phase == .ready)
+    }
+
+    @Test("startSimulationIfNeeded preserves ready state when inputs are unchanged")
+    func startSimulationIfNeededPreservesReadyState() async {
+        let model = makeModel(layouts: twoLayouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        let previousAnalyses = model.simulationResult?.analyses
+        model.startSimulationIfNeeded()
+        #expect(model.phase == .ready)
+        #expect(model.simulationResult?.analyses == previousAnalyses)
     }
 }

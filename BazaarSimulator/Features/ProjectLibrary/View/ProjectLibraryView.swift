@@ -76,7 +76,6 @@ struct ProjectLibraryView: View {
                         } label: {
                             ResultTabRow(
                                 title: tab.title,
-                                subtitle: tab.subtitle,
                                 isSelected: viewModel.selectedResultTabID == tab.id
                             )
                         }
@@ -91,7 +90,6 @@ struct ProjectLibraryView: View {
 
 private struct ResultTabRow: View {
     let title: String
-    let subtitle: String
     let isSelected: Bool
 
     var body: some View {
@@ -99,19 +97,10 @@ private struct ResultTabRow: View {
             Image(systemName: "chart.bar.xaxis")
                 .foregroundColor(isSelected ? Palette.accentIcon : Palette.textSecondary)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(Typography.body)
-                    .foregroundColor(Palette.textPrimary)
-                    .lineLimit(1)
-
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(Typography.caption)
-                        .foregroundColor(Palette.textSecondary)
-                        .lineLimit(1)
-                }
-            }
+            Text(title)
+                .font(Typography.body)
+                .foregroundColor(Palette.textPrimary)
+                .lineLimit(1)
 
             Spacer()
         }
