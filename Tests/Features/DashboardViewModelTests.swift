@@ -136,12 +136,12 @@ struct DashboardViewModelTests {
         #expect(model.phase == .ready)
     }
 
-    @Test("startSimulationIfNeeded preserves ready state when inputs are unchanged")
-    func startSimulationIfNeededPreservesReadyState() async {
+    @Test("Starting again keeps the ready result when the inputs are unchanged")
+    func startingAgainKeepsReadyResult() async {
         let model = makeModel(layouts: twoLayouts, parameters: TestLayouts.parameters)
         await model.runSimulation()
         let previousAnalyses = model.simulationResult?.analyses
-        model.startSimulationIfNeeded()
+        model.startSimulation()
         #expect(model.phase == .ready)
         #expect(model.simulationResult?.analyses == previousAnalyses)
     }

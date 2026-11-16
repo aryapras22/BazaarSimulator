@@ -113,45 +113,4 @@ struct ProjectScreenFactoryTests {
         let view = ProjectSetupView(viewModel: setupVM)
         _ = view.body
     }
-
-    @Test("Result tabs keep separate saved DashboardViewModel states across project switches")
-    func resultTabsPreserveSeparateDashboardStates() async {
-        let services = AppServices()
-        let router = AppRouter()
-        let factory = ProjectScreenFactory(services: services, router: router)
-        let project1 = services.projectSession.createProject(named: "P1")
-        let project2 = services.projectSession.createProject(named: "P2")
-        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 5)]
-        services.projectSession.setDraft(ProjectDraft(name: "P1", layouts: layouts), for: project1.id)
-
-        let tab1 = services.projectSession.addResultTab(for: project1.id, parameters: TestLayouts.parameters)
-        let vm1 = factory.makeDashboardViewModel(projectID: project1.id)
-        await vm1.runSimulation()
-        #expect(vm1.phase == .ready)
-        #expect(vm1.loadingProgress == 1.0)
-
-        var busyParams = TestLayouts.parameters
-        busyParams.totalVisitors = 800
-        let tab2 = services.projectSession.addResultTab(for: project1.id, parameters: busyParams)
-        let vm2 = factory.makeDashboardViewModel(projectID: project1.id)
-        #expect(vm1 !== vm2)
-        #expect(vm2.phase == .loading)
-        #expect(vm1.phase == .ready)
-
-        // Switching to another project, back to project1, and clicking Result 1 preserves vm1's ready state.
-        let libraryVM = factory.makeLibraryViewModel()
-        libraryVM.selectProject(project2)
-        libraryVM.selectProject(project1)
-        libraryVM.selectResultTab(tab1)
-        let restored1 = factory.makeDashboardViewModel(projectID: project1.id)
-        #expect(restored1 === vm1)
-        restored1.startSimulationIfNeeded()
-        #expect(restored1.phase == .ready)
-        #expect(restored1.loadingProgress == 1.0)
-
-        // Selecting Result 2 returns vm2 without altering vm1.
-        libraryVM.selectResultTab(tab2)
-        #expect(factory.makeDashboardViewModel(projectID: project1.id) === vm2)
-        #expect(vm1.phase == .ready)
-    }
 }

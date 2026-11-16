@@ -104,6 +104,5 @@ struct ParametersViewModelTests {
         model.apply()
 
         #expect(session.eventParameters(for: id)?.totalVisitors == 12_500)
-        #expect(session.resultTabs(for: id).last?.parameters.totalVisitors == 12_500)
     }
 }

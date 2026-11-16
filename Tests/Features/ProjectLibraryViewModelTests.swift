@@ -94,42 +94,4 @@ struct ProjectLibraryViewModelTests {
         #expect(session.activeProjectID == project.id)
         #expect(openedID == project.id)
     }
-
-    @Test("Result tabs stack per project and only show for the selected project")
-    @MainActor
-    func resultTabsStackPerProject() {
-        let session = ProjectSession()
-        var openedTab: SimulationResultTab?
-        let viewModel = ProjectLibraryViewModel(
-            session: session,
-            onOpenProject: { _ in },
-            onOpenResult: { openedTab = $0 }
-        )
-        let first = session.createProject(named: "Bazaar 1")
-        let second = session.createProject(named: "Bazaar 2")
-
-        var params1 = TestLayouts.parameters
-        params1.totalVisitors = 500
-        var params2 = TestLayouts.parameters
-        params2.totalVisitors = 1200
-
-        session.selectProject(id: first.id)
-        let tab1 = session.addResultTab(for: first.id, parameters: params1)
-        let tab2 = session.addResultTab(for: first.id, parameters: params2)
-
-        #expect(viewModel.resultTabs.map(\.title) == ["Result 1", "Result 2"])
-        #expect(viewModel.selectedResultTabID == tab2.id)
-
-        // Switching to second project shows its own empty result list
-        viewModel.selectProject(second)
-        #expect(viewModel.resultTabs.isEmpty)
-
-        // Switching back to first project and selecting Result 1 restores its parameters
-        viewModel.selectProject(first)
-        #expect(viewModel.selectedResultTabID == nil)
-        viewModel.selectResultTab(tab1)
-        #expect(viewModel.selectedResultTabID == tab1.id)
-        #expect(session.eventParameters(for: first.id)?.totalVisitors == 500)
-        #expect(openedTab == tab1)
-    }
 }

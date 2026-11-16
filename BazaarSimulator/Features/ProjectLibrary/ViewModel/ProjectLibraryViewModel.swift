@@ -175,12 +175,6 @@ final class ProjectLibraryViewModel {
         onOpenProject(project.id)
     }
 
-    func selectResultTab(_ tab: SimulationResultTab) {
-        session.selectProject(id: tab.projectID)
-        session.selectResultTab(id: tab.id, for: tab.projectID)
-        onOpenResult(tab)
-    }
-
     private func nextFreeProjectName() -> String {
         let baseName = "Untitled"
         let existingNames = Set(session.projects.map(\.name))

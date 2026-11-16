@@ -90,7 +90,10 @@ struct ParametersView: View {
             Spacer()
             Button("Cancel") { viewModel.cancel() }
                 .buttonStyle(.secondary)
-            Button("Apply") { viewModel.apply() }
+            Button("Apply") {
+                commitScope.commitAll()
+                viewModel.apply()
+            }
                 .buttonStyle(.primary)
         }
     }

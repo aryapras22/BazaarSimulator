@@ -23,7 +23,6 @@ enum SimulationLoader {
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
-        parameters overrideParameters: EventParameters? = nil,
         onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)? = nil
     ) async -> Result {
         let layouts = Array((savedAnalysis?.layouts ?? session.draft(for: projectID)?.layouts ?? [])
@@ -36,7 +35,8 @@ enum SimulationLoader {
         let legend = session.draft(for: projectID)?.legend ?? Legend()
         func analyses(focus: TimeRange) async -> [LayoutAnalysis] {
             await analysisService.analyses(
-                for: layouts, parameters: parameters, visitorTypes: catalog.visitorTypes, focus: focus, legend: legend
+                for: layouts, parameters: parameters, visitorTypes: catalog.visitorTypes, focus: focus, legend: legend,
+                onLiveFrame: onLiveFrame
             )
         }
 

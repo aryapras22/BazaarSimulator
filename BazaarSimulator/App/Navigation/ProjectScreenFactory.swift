@@ -110,15 +110,10 @@ final class ProjectScreenFactory {
     }
 
     func makeDashboardViewModel(projectID: UUID) -> DashboardViewModel {
-        let session = services.projectSession
-        let activeTabID = session.activeResultTabID(for: projectID)
-        let cacheKey = activeTabID ?? projectID
-        if let existing = dashboardViewModels[cacheKey] {
+        if let existing = dashboardViewModels[projectID] {
             return existing
         }
-        let activeTab = activeTabID.flatMap { tabID in
-            session.resultTabs(for: projectID).first { $0.id == tabID }
-        }
+        let session = services.projectSession
         /// Layout 1 and Layout 2 on the compare page are the project's first two layouts.
         func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
             let layouts = session.draft(for: projectID)?.layouts ?? []
@@ -132,9 +127,7 @@ final class ProjectScreenFactory {
             session: session,
             analysisService: services.analysisService,
             catalog: services.presetCatalog,
-            fixedParameters: activeTab?.parameters,
-            onBack: { [weak router, weak session = services.projectSession] in
-                session?.clearActiveResultTab(for: projectID)
+            onBack: { [weak router] in
                 router?.showSetup(projectID: projectID)
             },
             onSimulate: { [weak router] layout in
@@ -144,7 +137,7 @@ final class ProjectScreenFactory {
                 open(layout) { router?.showEditor(projectID: $0) }
             }
         )
-        dashboardViewModels[cacheKey] = created
+        dashboardViewModels[projectID] = created
         return created
     }
 

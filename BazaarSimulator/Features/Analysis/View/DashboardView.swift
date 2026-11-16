@@ -61,7 +61,13 @@ struct DashboardContent: View {
 
             switch viewModel.phase {
             case .loading:
-                RunningNotice(text: "Running the simulation…", showsProgress: true)
+                RunningNotice(
+                    text: "Running the simulation…",
+                    showsProgress: true,
+                    progress: viewModel.loadingProgress,
+                    previewVenue: viewModel.previewVenue,
+                    previewFrame: viewModel.previewFrame
+                )
             case .needsLayouts:
                 RunningNotice(text: "Add a floor plan to analyse it.", showsProgress: false)
             case .ready:

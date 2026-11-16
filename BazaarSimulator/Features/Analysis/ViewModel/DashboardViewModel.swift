@@ -22,7 +22,6 @@ final class DashboardViewModel {
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
-    private let fixedParameters: EventParameters?
     let onBack: () -> Void
     let onSimulate: (LayoutID) -> Void
     let onEdit: (LayoutID) -> Void
@@ -45,7 +44,6 @@ final class DashboardViewModel {
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
-        fixedParameters: EventParameters? = nil,
         onBack: @escaping () -> Void = {},
         onSimulate: @escaping (LayoutID) -> Void = { _ in },
         onEdit: @escaping (LayoutID) -> Void = { _ in }
@@ -55,7 +53,6 @@ final class DashboardViewModel {
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
-        self.fixedParameters = fixedParameters
         self.onBack = onBack
         self.onSimulate = onSimulate
         self.onEdit = onEdit
@@ -120,18 +117,7 @@ final class DashboardViewModel {
         }
         logWhyRunning()
         runTask?.cancel()
-        let runID = UUID()
-        activeRunID = runID
-        lastInputSignature = currentInputSignature()
-        runTask = Task { [weak self] in
-            await self?.executeSimulation(runID: runID)
-        }
-    }
-
-    func cancelSimulation() {
-        runTask?.cancel()
-        runTask = nil
-        activeRunID = nil
+        runTask = Task { await runSimulation() }
     }
 
     /// Writes to the log why a run starts although a result is already on the page, so an unexpected run can be
@@ -167,7 +153,11 @@ final class DashboardViewModel {
         let run = runCount
         // A page that already shows an analysis keeps showing it while the next one is made, instead of dropping
         // back to the loading page, so coming back to it never looks like it starts over.
-        if simulationResult == nil { phase = .loading }
+        if simulationResult == nil {
+            phase = .loading
+            loadingProgress = 0.0
+            preparePreviewVenue(for: nil)
+        }
         isRunning = true
         runningInputs = inputs
         session.setAnalysisRunning(true, for: projectID)
@@ -183,19 +173,18 @@ final class DashboardViewModel {
             session: session,
             analysisService: analysisService,
             catalog: catalog,
-            parameters: fixedParameters,
             onLiveFrame: { [weak self] layoutID, visitors, progress in
                 Task { @MainActor [weak self] in
-                    self?.applyLiveVisitors(visitors, layoutID: layoutID, progress: progress, runID: runID)
+                    self?.applyLiveVisitors(visitors, layoutID: layoutID, progress: progress, run: run)
                 }
             }
         ) {
         case .needsLayouts(let count):
-            guard activeRunID == runID, !Task.isCancelled else { return }
+            guard run == runCount, !Task.isCancelled else { return }
             simulationResult = nil
             phase = .needsLayouts(count: count)
         case .ready(let result):
-            guard activeRunID == runID, !Task.isCancelled else { return }
+            guard run == runCount, !Task.isCancelled else { return }
             loadingProgress = 1.0
             simulationResult = result
             shownInputs = inputs
@@ -204,6 +193,49 @@ final class DashboardViewModel {
         case .cancelled:
             break
         }
+    }
+
+    private func preparePreviewVenue(for targetLayoutID: UUID?) {
+        let layouts = comparedLayouts
+        let targetLayout = (targetLayoutID.flatMap { id in layouts.first { $0.id == id } }) ?? layouts.first
+        guard let targetLayout else {
+            previewVenue = nil
+            return
+        }
+        if previewVenue?.id != targetLayout.id {
+            let grid = NavigationGrid(layout: targetLayout)
+            previewVenue = SimulationVenue(
+                id: targetLayout.id,
+                blocks: VenueGeometry.blocks(for: targetLayout),
+                plan: grid.plan,
+                attractions: VenueGeometry.attractions(in: targetLayout),
+                seats: VenueGeometry.seats(in: targetLayout)
+            )
+            previewFrame = SimulationSceneFrame()
+        } else if targetLayoutID == nil {
+            previewFrame = SimulationSceneFrame()
+        }
+    }
+
+    private func applyLiveVisitors(_ visitors: [MeasuredVisitor], layoutID: UUID, progress: Double, run: Int) {
+        guard phase == .loading, run == runCount else { return }
+        loadingProgress = max(loadingProgress, progress)
+        guard !visitors.isEmpty else { return }
+        if previewVenue?.id != layoutID {
+            preparePreviewVenue(for: layoutID)
+        }
+        var frame = SimulationSceneFrame()
+        frame.visitors = visitors.map { visitor in
+            SimulationSceneFrame.Visitor(
+                id: visitor.id,
+                x: Double(visitor.position.x),
+                z: Double(visitor.position.y),
+                typeIndex: visitor.typeIndex,
+                people: visitor.people,
+                isSeated: visitor.isSeated
+            )
+        }
+        previewFrame = frame
     }
 
     private func showSaved(_ id: SavedAnalysis.ID) {
@@ -251,6 +283,7 @@ final class DashboardViewModel {
     /// Closes the Parameters sheet and runs the simulation again with whatever was applied.
     func closeParameters() {
         isParametersPresented = false
+        startSimulation()
     }
 
     // MARK: Reading the result

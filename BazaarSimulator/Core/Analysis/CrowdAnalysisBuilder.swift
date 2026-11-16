@@ -65,7 +65,10 @@ enum CrowdAnalysisBuilder {
         )
     }
 
-    static func analysis(for input: SimulationInput, grid: NavigationGrid, measured: CrowdMeasurements) -> LayoutAnalysis {
+    /// `replay` is the one already made from this run, for a run kept without its frames.
+    static func analysis(
+        for input: SimulationInput, grid: NavigationGrid, measured: CrowdMeasurements, replay: SimulationReplay? = nil
+    ) -> LayoutAnalysis {
         let blockCount = measured.blockCount
         let sampleCount = measured.blockSamples.count / max(blockCount, 1)
         let eventStart = input.parameters.eventHours.startMinute
@@ -121,7 +124,7 @@ enum CrowdAnalysisBuilder {
             simulatedPeople: measured.enteredPeople,
             totalPeople: max(input.parameters.totalVisitors, 0),
             plan: grid.plan,
-            replay: replay(for: input, grid: grid, measured: measured)
+            replay: replay ?? Self.replay(for: input, grid: grid, measured: measured)
         )
     }
 
