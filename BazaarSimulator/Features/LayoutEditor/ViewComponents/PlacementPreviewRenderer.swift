@@ -79,7 +79,21 @@ enum PlacementPreviewRenderer {
         let outlineColor = candidate.isValid ? Palette.canvasLine : Palette.canvasIssue
         let outlineWidth: CGFloat = candidate.isValid ? 1.5 : 2.0
 
-        if item?.footprint == .circle {
+        if item?.kind == .door {
+            let previewDoor = LayoutObject(
+                kind: .door,
+                label: "Door",
+                placement: placement,
+                doorFlow: DoorFlow(direction: .entrance, connection: .hallToLobby)
+            )
+            let state = ObjectDrawState(
+                object: previewDoor,
+                isSelected: false,
+                isHovered: false,
+                hasWarning: !candidate.isValid
+            )
+            DoorRenderer.draw(state, in: &context, transform: transform)
+        } else if item?.footprint == .circle {
             let centerView = transform.toView(placement.center)
             let radius = CGFloat(placement.sizeM.x / 2.0 * transform.scale)
             let circleRect = CGRect(
