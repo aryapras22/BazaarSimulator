@@ -171,27 +171,30 @@ final class SimulationPlayerViewModel {
         return path
     }
 
-    /// People per m² for each heat cell at `playback`, with its neighbors blended in.
+    /// People per m² for each heat cell at `playback`, using the Gaussian KDE kernel and visitor-count scaling.
     func heatDensity(at playback: Double) -> [Double] {
         let columns = Self.heatColumns, rows = heatRows
+        let totalVisitors = result?.analyses[layoutID]?.totalPeople ?? CrowdParameters.heatmapReferenceVisitors
+        let visitorScale = CrowdParameters.visitorDensityScale(for: totalVisitors)
         var counts = Array(repeating: 0.0, count: columns * rows)
         for visitor in visitors(at: playback) {
             let column = min(max(Int(visitor.point.x * CGFloat(columns)), 0), columns - 1)
             let row = min(max(Int(visitor.point.y * CGFloat(rows)), 0), rows - 1)
-            counts[row * columns + column] += Double(visitor.people)
+            counts[row * columns + column] += Double(visitor.people) * visitorScale
         }
         let cellArea = plan.size.x / Double(columns) * plan.size.y / Double(rows)
-        let weights = [[1.0, 2, 1], [2, 4, 2], [1, 2, 1]]
+        let radius = min(2, CrowdParameters.heatmapKernelRadius)
+        let twoSigmaSq = 2.0 * CrowdParameters.heatmapKernelSigma * CrowdParameters.heatmapKernelSigma
         let coverage = heatCoverage
         var density = Array(repeating: 0.0, count: columns * rows)
         for row in 0..<rows {
             for column in 0..<columns {
                 var people = 0.0, area = 0.0
-                for dy in -1...1 {
-                    for dx in -1...1 {
+                for dy in -radius...radius {
+                    for dx in -radius...radius {
                         let r = row + dy, c = column + dx
                         guard r >= 0, r < rows, c >= 0, c < columns else { continue }
-                        let weight = weights[dy + 1][dx + 1]
+                        let weight = exp(-Double(dx * dx + dy * dy) / twoSigmaSq)
                         people += counts[r * columns + c] * weight
                         area += max(coverage[r * columns + c], 0.4) * cellArea * weight
                     }
