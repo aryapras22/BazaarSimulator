@@ -64,13 +64,13 @@ enum ExtractedLayoutMapper {
         objects = WallConnections.apply(to: WallCleanup.apply(to: objects))
         objects += furniture(from: plan.items) { rect(of: $0, metres: metres, pixelsPerMetre: pixelsPerMetre) }
         objects = closingSideDoors(TableSpacing.apply(to: objects))
-        let hall = hallPolygon(from: objects)
-        let extent = hall.reduce(SIMD2<Double>.zero) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
+        let floor = HallOutline.floor(of: objects)
         var layout = Layout(
             id: id,
             name: name,
-            sizeM: extent + SIMD2<Double>(repeating: marginM),
-            hall: hall,
+            sizeM: floor.extent + SIMD2<Double>(repeating: marginM),
+            hall: floor.hall,
+            lobby: floor.lobby,
             objects: objects,
             markers: markers,
             source: LayoutSource(
@@ -208,16 +208,5 @@ enum ExtractedLayoutMapper {
             categoryID: category(for: item, in: legend)?.id,
             reviewState: .detected
         )
-    }
-
-    /// The bounding box of the walls, or of everything when no wall was found.
-    private static func hallPolygon(from objects: [LayoutObject]) -> [SIMD2<Double>] {
-        let structure = objects.filter { $0.kind == .wall }
-        let basis = structure.isEmpty ? objects : structure
-        guard !basis.isEmpty else { return [] }
-        let corners = basis.flatMap { LayoutGeometry.corners(of: $0.placement) }
-        let low = corners.reduce(corners[0]) { SIMD2(min($0.x, $1.x), min($0.y, $1.y)) }
-        let high = corners.reduce(corners[0]) { SIMD2(max($0.x, $1.x), max($0.y, $1.y)) }
-        return [low, SIMD2(high.x, low.y), high, SIMD2(low.x, high.y)]
     }
 }

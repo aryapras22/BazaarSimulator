@@ -20,11 +20,11 @@ struct ExtractedLayoutMapperTruthTests {
     static let cases = [
         PlanCase(plan: "plan1", expected: LayoutScore(
             sizeRatio: 1.0, truthBooths: 154, boothsFound: 154, boothLabelsRight: 154, extraBooths: 1,
-            truthDoors: 4, doorsFound: 4, extraDoors: 2, hallOverlap: 0.76
+            truthDoors: 4, doorsFound: 4, extraDoors: 2, hallOverlap: 0.98
         )),
         PlanCase(plan: "plan2", expected: LayoutScore(
             sizeRatio: 1.07, truthBooths: 209, boothsFound: 209, boothLabelsRight: 209, extraBooths: 0,
-            truthDoors: 4, doorsFound: 4, extraDoors: 0, hallOverlap: 0.78
+            truthDoors: 4, doorsFound: 4, extraDoors: 0, hallOverlap: 0.99
         )),
         PlanCase(plan: "plan3", expected: LayoutScore(
             sizeRatio: 1.02, truthBooths: 67, boothsFound: 67, boothLabelsRight: 67, extraBooths: 0,
@@ -36,7 +36,7 @@ struct ExtractedLayoutMapperTruthTests {
         )),
         PlanCase(plan: "plan6", expected: LayoutScore(
             sizeRatio: 1.04, truthBooths: 289, boothsFound: 282, boothLabelsRight: 281, extraBooths: 8,
-            truthDoors: 2, doorsFound: 2, extraDoors: 0, hallOverlap: 0.72
+            truthDoors: 2, doorsFound: 2, extraDoors: 0, hallOverlap: 1.0
         ))
     ]
 
