@@ -27,7 +27,7 @@ struct SimulationInfoPanel: View {
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .frame(height: 20)
-            Text("Busiest window \(windowText)")
+            Text("Event hours \(windowText)")
                 .font(.system(size: 11.5))
                 .foregroundStyle(.textMuted)
                 .frame(height: 16)

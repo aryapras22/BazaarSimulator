@@ -46,7 +46,7 @@ struct SimulationPlayerView: View {
                         mode: viewModel.mode,
                         progress: viewModel.progress(at: time),
                         spots: viewModel.outcome?.spots ?? [],
-                        windowMinutes: viewModel.outcome?.windowMinutes ?? 10,
+                        windowMinutes: (viewModel.replay?.durationSeconds ?? 600) / 60,
                         visitorTypes: viewModel.visitorTypes,
                         highlightedSpot: viewModel.hoveredSpot,
                         footfall: viewModel.mode == .footfall ? viewModel.footfallSummary(at: time) : nil
@@ -84,7 +84,13 @@ struct SimulationPlayerView: View {
                         .id(viewModel.mode)
                         .transition(.opacity)
 
-                    PlaybackBar(clock: $clock, time: time, clockText: viewModel.clockText(at: time))
+                    PlaybackBar(
+                        clock: $clock,
+                        time: time,
+                        clockText: viewModel.clockText(at: time),
+                        elapsedSeconds: viewModel.windowSeconds(at: time),
+                        durationSeconds: viewModel.replay?.durationSeconds ?? clock.duration
+                    )
                         .frame(width: frame.bar.width, height: frame.bar.height)
                         .position(x: frame.bar.midX, y: frame.bar.midY)
                 }

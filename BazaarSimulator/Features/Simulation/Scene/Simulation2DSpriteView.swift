@@ -4,6 +4,28 @@ import SpriteKit
 import SwiftUI
 import simd
 
+/// Tracks the 2D SpriteKit camera state so SwiftUI overlays (such as Congestion spot markers)
+/// stay locked to their exact floor coordinates while panning and zooming.
+struct SpriteCameraTransform: Equatable {
+    static let pointsPerMetre: CGFloat = 20.0
+
+    var cameraPosition: CGPoint = .zero
+    var cameraScale: CGFloat = 1.0
+    var viewSize: CGSize = .zero
+
+    /// Converts a point in layout metres `(x, y)` into SwiftUI view coordinates (top-left origin).
+    func swiftUIPoint(for pointM: SIMD2<Double>, in layout: Layout, fallbackSize: CGSize) -> CGPoint {
+        let effectiveView = (viewSize.width > 10 && viewSize.height > 10) ? viewSize : fallbackSize
+        let scale = max(0.05, cameraScale)
+        let sceneX = CGFloat(pointM.x) * Self.pointsPerMetre
+        let sceneY = CGFloat(layout.sizeM.y - pointM.y) * Self.pointsPerMetre
+        return CGPoint(
+            x: effectiveView.width / 2 + (sceneX - cameraPosition.x) / scale,
+            y: effectiveView.height / 2 - (sceneY - cameraPosition.y) / scale
+        )
+    }
+}
+
 /// A lightweight 2D SpriteKit view that renders the venue floor plan, smooth radial heatmap, and moving visitors.
 /// Supports dragging to pan/scroll and scrolling or pinching to zoom.
 struct Simulation2DSpriteView: NSViewRepresentable {
@@ -11,6 +33,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
     var visitors: [SimulatedVisitor] = []
     var densityCells: [DensityCell] = []
     var showHeatmap = false
+    var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     func makeNSView(context: Context) -> InteractiveSKView {
         let skView = InteractiveSKView()
@@ -18,6 +41,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
         skView.preferredFramesPerSecond = 60
         let scene = Venue2DScene(size: CGSize(width: 1000, height: 700))
         scene.scaleMode = .resizeFill
+        scene.onCameraChange = onCameraChange
         skView.presentScene(scene)
         skView.venueScene = scene
         context.coordinator.scene = scene
@@ -25,6 +49,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
     }
 
     func updateNSView(_ skView: InteractiveSKView, context: Context) {
+        context.coordinator.scene?.onCameraChange = onCameraChange
         context.coordinator.scene?.updateScene(
             layout: layout,
             visitors: visitors,
@@ -68,10 +93,11 @@ final class InteractiveSKView: SKView {
 
 /// Simple SpriteKit scene that draws the 2D bazaar floor, booths, smooth radial heatmap texture, and visitors.
 final class Venue2DScene: SKScene {
-    private let pointsPerMetre: CGFloat = 20.0
+    private let pointsPerMetre: CGFloat = SpriteCameraTransform.pointsPerMetre
     private var currentLayout: Layout?
     private var hasFittedCamera = false
     private var baseFitScale: CGFloat = 1.0
+    var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     private let cameraNode = SKCameraNode()
     private let floorLayer = SKNode()
@@ -145,12 +171,14 @@ final class Venue2DScene: SKScene {
         let scale = max(worldW / viewW, worldH / viewH)
         baseFitScale = max(0.1, scale)
         cameraNode.setScale(baseFitScale)
+        publishCameraTransform(viewSize: viewSize)
     }
 
     func panCamera(deltaX: CGFloat, deltaY: CGFloat) {
         let currentScale = cameraNode.xScale
         cameraNode.position.x -= deltaX * currentScale
         cameraNode.position.y += deltaY * currentScale
+        publishCameraTransform(viewSize: size)
     }
 
     func zoomCamera(by factor: CGFloat) {
@@ -158,6 +186,18 @@ final class Venue2DScene: SKScene {
         let maxScale = baseFitScale * 3.0
         let newScale = min(maxScale, max(minScale, cameraNode.xScale * factor))
         cameraNode.setScale(newScale)
+        publishCameraTransform(viewSize: size)
+    }
+
+    private func publishCameraTransform(viewSize: CGSize) {
+        let transform = SpriteCameraTransform(
+            cameraPosition: cameraNode.position,
+            cameraScale: cameraNode.xScale,
+            viewSize: viewSize
+        )
+        DispatchQueue.main.async { [weak self] in
+            self?.onCameraChange?(transform)
+        }
     }
 
     private func toScene(_ point: SIMD2<Double>, in layout: Layout) -> CGPoint {
