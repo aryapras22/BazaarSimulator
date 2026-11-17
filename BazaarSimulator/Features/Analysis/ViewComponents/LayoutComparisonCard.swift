@@ -8,30 +8,49 @@ struct LayoutComparisonCard: View {
     var plan: PlanFrame = .unit
     var peakHourText: String = "14:00"
     var metrics: DashboardMetrics = .reference
+    /// Height of the floor plan. Left out, the metrics decide.
+    var planHeight: CGFloat?
+    /// Simulate is on every layout, also on a saved run, which plays its own layouts. A saved run has no Edit.
+    var showsSimulate = true
+    var showsEdit = true
+    /// With one layout the card is the whole page, so it also names the worst spot under the plan.
+    var showsWorstSpot = false
+    /// The project's layouts this card can show instead. Empty when there is nothing to pick.
+    var choices: [Layout] = []
+    var onChoose: (Layout.ID) -> Void = { _ in }
     var onSimulate: () -> Void = {}
     var onEdit: () -> Void = {}
 
     @State private var hoveredSpot: Int?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showsChoices = false
+    @State private var zoom: CGFloat = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerBar
                 .padding(.horizontal, LayoutCardInset.horizontal)
 
-            floorPlanImage
-                .frame(height: metrics.planHeight)
-                .frame(maxWidth: .infinity)
-                .padding(.top, metrics.planTopPadding)
-                .zIndex(1)
+            ZoomablePlan(zoom: $zoom) {
+                floorPlanImage
+            }
+            .aspectRatio(planAspect, contentMode: .fit)
+            .frame(height: max(planHeight ?? metrics.planHeight, 0))
+            .frame(maxWidth: .infinity)
+            .padding(.top, metrics.planTopPadding)
+            .zIndex(1)
 
-            footerDetails
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(
-                    height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
-                    alignment: .bottom
-                )
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: hoveredSpot)
+            HStack(alignment: .bottom, spacing: 16) {
+                SeverityScaleView()
+                Spacer(minLength: 0)
+                if showsWorstSpot, !outcome.spots.isEmpty {
+                    WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(
+                height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
+                alignment: .bottom
+            )
                 .padding(.leading, LayoutCardInset.legendLeading)
                 .padding(.trailing, LayoutCardInset.legendTrailing)
                 .padding(.top, 3)
@@ -40,39 +59,91 @@ struct LayoutComparisonCard: View {
         .padding(.bottom, LayoutCardInset.bottom)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
+        // The details box can reach past the card, so the card with an open box draws above its neighbour.
+        .zIndex(hoveredSpot == nil ? 0 : 10)
+    }
+
+    private var planAspect: CGFloat {
+        guard floorPlan != nil, plan.size.y > 0, plan.size.x > 0 else { return FloorPlan.aspectRatio }
+        return CGFloat(plan.size.x / plan.size.y)
     }
 
     private var headerBar: some View {
         HStack(spacing: 13) {
-            Button {} label: {
+            Button { showsChoices = true } label: {
                 HStack(spacing: 9) {
                     Circle()
                         .fill(layout.accent)
                         .frame(width: 10, height: 10)
                     Text(layout.name)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .padding(.leading, 3)
+                    if let planName = floorPlan?.name, !planName.isEmpty {
+                        Text(planName)
+                            .foregroundStyle(.textMuted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    if !choices.isEmpty {
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.leading, 3)
+                    }
                 }
             }
             .buttonStyle(ControlButtonStyle(horizontalPadding: 11))
+            .allowsHitTesting(!choices.isEmpty)
+            .help(choices.isEmpty ? "" : "Show another of the project's layouts here")
+            .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
             .accessibilityLabel("Layout selector, \(layout.name)")
 
             Spacer(minLength: 8)
 
-            Button(action: onSimulate) {
-                Label("Simulate", systemImage: "play.fill")
-                    .labelStyle(ControlLabelStyle())
-            }
-            .buttonStyle(ControlButtonStyle(horizontalPadding: 16))
-            .help("Watch visitors move through \(layout.name)")
+            ZoomControls(zoom: $zoom)
 
-            Button(action: onEdit) {
-                Label("Edit", systemImage: "pencil")
-                    .labelStyle(ControlLabelStyle())
+            if showsSimulate {
+                Button(action: onSimulate) {
+                    Label("Simulate", systemImage: "play.fill")
+                        .labelStyle(ControlLabelStyle())
+                }
+                .buttonStyle(ControlButtonStyle())
+                .help("Watch visitors move through \(layout.name)")
             }
-            .buttonStyle(ControlButtonStyle(horizontalPadding: 16))
+
+            if showsEdit {
+                Button(action: onEdit) {
+                    Label("Edit", systemImage: "pencil")
+                        .labelStyle(ControlLabelStyle())
+                }
+                .buttonStyle(ControlButtonStyle())
+                .help("Change \(layout.name) in the layout editor")
+            }
         }
+    }
+
+    private var choiceList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(choices) { choice in
+                Button {
+                    showsChoices = false
+                    onChoose(choice.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .opacity(choice.id == floorPlan?.id ? 1 : 0)
+                        Text(choice.name.isEmpty ? "Untitled layout" : choice.name)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .frame(minWidth: 220)
     }
 
     private var floorPlanImage: some View {
@@ -80,32 +151,17 @@ struct LayoutComparisonCard: View {
             if let floorPlan {
                 LayoutPlanCanvas(layout: floorPlan, plan: plan)
                     .equatable()
-                    .aspectRatio(CGFloat(plan.size.x / max(plan.size.y, 1)), contentMode: .fit)
             } else {
-                Color.clear.aspectRatio(FloorPlan.aspectRatio, contentMode: .fit)
+                Color.clear
             }
         }
-            .overlay {
-                HotspotOverlay(
-                    layout: layout,
-                    outcome: outcome,
-                    hovered: $hoveredSpot,
-                    showsCallout: false
-                )
-            }
-    }
-
-    @ViewBuilder
-    private var footerDetails: some View {
-        if let spotNumber = hoveredSpot,
-           let spot = outcome.spots.first(where: { $0.number == spotNumber }) {
-            SpotDetailRow(spot: spot, peakHourText: peakHourText)
-        } else {
-            HStack(alignment: .bottom, spacing: 16) {
-                SeverityScaleView()
-                Spacer(minLength: 0)
-                WorstSpotSummary(layout: layout, outcome: outcome, peakHourText: peakHourText)
-            }
+        .overlay {
+            HotspotOverlay(
+                layout: layout,
+                outcome: outcome,
+                hovered: $hoveredSpot,
+                showsCallout: true
+            )
         }
     }
 }
@@ -148,11 +204,11 @@ struct SeverityScaleView: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Severity scale. Low: A to B. Medium: C to D. Severe: E to F.")
+        .accessibilityLabel("Grade scale. A to B: calm. C to D: busy. E to F: people get stuck.")
     }
 
     private var label: some View {
-        Text("\(Text("Low").fontWeight(.semibold).foregroundStyle(.textPrimary)): A - B · \(Text("Medium").fontWeight(.semibold).foregroundStyle(.textPrimary)): C - D · \(Text("Severe").fontWeight(.semibold).foregroundStyle(.textPrimary)): E - F")
+        Text("\(Text("Calm").fontWeight(.semibold).foregroundStyle(.textPrimary)): A - B · \(Text("Busy").fontWeight(.semibold).foregroundStyle(.textPrimary)): C - D · \(Text("Stuck").fontWeight(.semibold).foregroundStyle(.textPrimary)): E - F")
             .font(.system(size: 11))
             .foregroundStyle(.textSecondary)
             .fixedSize()
@@ -174,57 +230,32 @@ struct SeverityScaleView: View {
     }
 }
 
+/// The most crowded spot of a layout, named under its plan: its grade and where it is.
 private struct WorstSpotSummary: View {
-    let layout: LayoutID
     let outcome: LayoutOutcome
     var peakHourText: String = "14:00"
 
     var body: some View {
         let worst = outcome.worstSpot
-        let role = outcome.spotTotal == 1 ? "the only spot we check" : "the most crowded spot"
-        let dText = worst.peakDensity.formatted(.number.precision(.fractionLength(1)))
-
+        let density = worst.peakDensity.formatted(.number.precision(.fractionLength(1)))
         HStack(spacing: 9) {
             Text("Grade \(worst.grade.letter)")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.white)
+                .fixedSize()
                 .padding(.horizontal, 10)
                 .frame(height: SeverityScaleView.barHeight)
                 .background(worst.grade.color, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             Text("\(worst.name) (Spot \(worst.number))")
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
         .frame(height: SeverityScaleView.barHeight)
-        .fixedSize()
-        .help("\(worst.name) (Spot \(worst.number)) is \(role) at \(peakHourText): \(dText) people per m², grade \(worst.grade.letter) (\(worst.grade.title)). Hover the spots on the floor plan for details.")
+        .fixedSize(horizontal: false, vertical: true)
+        .help("\(worst.name) (Spot \(worst.number)) is the most crowded spot at \(peakHourText): \(density) people per m², grade \(worst.grade.letter) (\(worst.grade.title)).")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(role.prefix(1).uppercased() + role.dropFirst()) at \(peakHourText): \(worst.name), grade \(worst.grade.letter), \(worst.grade.title)")
-    }
-}
-
-private struct SpotDetailRow: View {
-    let spot: SpotOutcome
-    var peakHourText: String = "14:00"
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: SeverityScaleView.labelSpacing) {
-            HStack(spacing: 6) {
-                Text("Spot \(spot.number) · \(spot.name)")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.textPrimary)
-                Text("at \(peakHourText)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.textSecondary)
-            }
-            .frame(height: SeverityScaleView.labelHeight)
-            HStack(spacing: 16) {
-                GradePill(grade: spot.grade)
-                SpotStats(spot: spot, valueSize: 14, inline: true)
-            }
-            .frame(height: SeverityScaleView.barHeight)
-        }
-        .transition(.opacity)
-        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Most crowded spot at \(peakHourText): \(worst.name), grade \(worst.grade.letter), \(worst.grade.title)")
     }
 }

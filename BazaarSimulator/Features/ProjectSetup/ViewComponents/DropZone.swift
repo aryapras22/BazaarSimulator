@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Where PDFs are dropped, or picked from the Finder. It sits inside a card with a dashed border, and dims with the
+/// card while it cannot be used yet.
 struct DropZone: View {
     let hint: String
     let onChoose: () -> Void
@@ -10,10 +12,12 @@ struct DropZone: View {
 
     var body: some View {
         VStack(spacing: Spacing.s) {
-            iconView
+            Image(systemName: "square.and.arrow.down")
+                .font(.system(size: 20))
+                .foregroundColor(iconColor)
 
             Text("Drop PDFs here")
-                .font(Typography.body)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(isEnabled ? Palette.textPrimary : Palette.textDisabled)
 
             Button("Choose files...", action: onChoose)
@@ -21,17 +25,19 @@ struct DropZone: View {
                 .disabled(!isEnabled)
 
             Text(hint)
-                .font(Typography.caption)
+                .font(.system(size: 9.5))
                 .foregroundColor(isEnabled ? Palette.textTertiary : Palette.textDisabled)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 190)
-        .background(isEnabled ? Palette.surface : Palette.surfaceDisabled)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.l))
+        .frame(height: 142)
+        .background(isTargeted ? Palette.accent.opacity(0.12) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.m))
         .overlay(
-            RoundedRectangle(cornerRadius: Radius.l)
-                .stroke(borderColor, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Radius.m)
+                .strokeBorder(borderColor, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         )
+        .contentShape(Rectangle())
         .dropDestination(for: URL.self) { urls, _ in
             guard isEnabled, !urls.isEmpty else { return false }
             onDrop(urls)
@@ -41,46 +47,30 @@ struct DropZone: View {
         }
     }
 
-    private var iconView: some View {
-        Image(systemName: "arrow.down.doc")
-            .font(.system(size: 28))
-            .foregroundColor(iconColor)
-    }
-
     private var iconColor: Color {
-        if isTargeted {
-            return Palette.accent
-        }
-        return isEnabled ? Palette.accentIcon : Palette.textDisabled
+        if isTargeted { return Palette.accent }
+        return isEnabled ? Palette.textPrimary : Palette.textDisabled
     }
 
     private var borderColor: Color {
-        if isTargeted {
-            return Palette.accent
-        }
-        return isEnabled ? Palette.surfaceBorder : Palette.surfaceDisabledBorder
+        if isTargeted { return Palette.accent }
+        return isEnabled ? Palette.textSecondary.opacity(0.55) : Palette.surfaceDisabledBorder
     }
 }
 
 #Preview("Enabled") {
-    DropZone(
-        hint: "PDF · one legend for all the layouts",
-        onChoose: {},
-        onDrop: { _ in }
-    )
-    .padding()
-    .background(Palette.background)
-    .preferredColorScheme(.dark)
+    DropZone(hint: "PDF · one legend for all the layouts", onChoose: {}, onDrop: { _ in })
+        .padding()
+        .frame(width: 340)
+        .background(Palette.surface)
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Disabled") {
-    DropZone(
-        hint: "PDF · one file per layout · up to 6",
-        onChoose: {},
-        onDrop: { _ in }
-    )
-    .padding()
-    .background(Palette.background)
-    .preferredColorScheme(.dark)
-    .disabled(true)
+    DropZone(hint: "PDF · one page per layout · up to 6", onChoose: {}, onDrop: { _ in })
+        .padding()
+        .frame(width: 600)
+        .background(Palette.surfaceDisabled)
+        .preferredColorScheme(.dark)
+        .disabled(true)
 }

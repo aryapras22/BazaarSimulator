@@ -361,8 +361,12 @@ extension SelectTool {
             )
             context.selectBooths(touched, additive: event.modifiers.contains(.shift))
         } else if let hitID = event.hitObjectID {
+            // A press on a restricted area starts a marquee, so one can be dragged from inside it. Without a drag it
+            // was a click on the area.
             if event.modifiers.contains(.shift) {
                 context.toggleSelection(hitID)
+            } else {
+                context.selectObject(hitID)
             }
         } else {
             if let locked = LayoutHitTester.lockedObject(

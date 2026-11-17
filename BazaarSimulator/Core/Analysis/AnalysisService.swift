@@ -100,6 +100,9 @@ private final class RunProgressAggregator: @unchecked Sendable {
 @MainActor
 final class AnalysisService: AnalysisServiceProtocol {
     private var cache: [SimulationInput: LayoutAnalysis] = [:]
+    /// A run is the same whatever window is in focus, so it is kept without one. Asking for another window
+    /// reads the spots again from the same run instead of simulating the event a second time.
+    private var measuredRuns: [SimulationInput: (measured: CrowdMeasurements, replay: SimulationReplay?)] = [:]
     private var activeBatches: [UUID: [Task<CrowdMeasurements, Never>]] = [:]
 
     func cancelAll() {
@@ -125,6 +128,11 @@ final class AnalysisService: AnalysisServiceProtocol {
                 layout: layout, parameters: parameters, visitorTypes: visitorTypes, legend: legend, focus: focus
             )
             let grid = NavigationGrid(layout: layout)
+            if cache[input] == nil, let run = measuredRuns[Self.withoutFocus(input)] {
+                cache[input] = CrowdAnalysisBuilder.analysis(
+                    for: input, grid: grid, measured: run.measured, replay: run.replay
+                )
+            }
             if cache[input] != nil {
                 cachedLayoutIDs.insert(layout.id)
                 prepared.append((layout, input, grid, nil))
@@ -172,7 +180,11 @@ final class AnalysisService: AnalysisServiceProtocol {
                     tasks.forEach { $0.cancel() }
                 }
                 if Task.isCancelled { return results }
-                cache[run.input] = CrowdAnalysisBuilder.analysis(for: run.input, grid: run.grid, measured: measured)
+                let analysis = CrowdAnalysisBuilder.analysis(for: run.input, grid: run.grid, measured: measured)
+                cache[run.input] = analysis
+                var kept = measured
+                kept.frames = []
+                measuredRuns[Self.withoutFocus(run.input)] = (kept, analysis.replay)
                 if let onLiveFrame, let previewLayoutID {
                     let overall = tracker.finish(layoutID: run.layoutID)
                     onLiveFrame(previewLayoutID, [], overall)
@@ -181,5 +193,11 @@ final class AnalysisService: AnalysisServiceProtocol {
             if let analysis = cache[run.input] { results.append(analysis) }
         }
         return results
+    }
+
+    private static func withoutFocus(_ input: SimulationInput) -> SimulationInput {
+        var copy = input
+        copy.focus = nil
+        return copy
     }
 }

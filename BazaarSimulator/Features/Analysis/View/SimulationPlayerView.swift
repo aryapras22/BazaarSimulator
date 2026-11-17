@@ -12,9 +12,12 @@ struct SimulationPlayerView: View {
             switch viewModel.phase {
             case .ready: player
             case .loading: notice("Running the simulation…", showsProgress: true)
-            case .needsLayouts: notice("Add two layouts to see the simulation.", showsProgress: false)
+            case .needsLayouts: notice("Add a floor plan to see the simulation.", showsProgress: false)
             }
         }
+        // Room for the window's top controls, the same in a window and in full screen where they are hidden.
+        .padding(.top, 28)
+        .ignoresSafeArea(.container, edges: .top)
         .background(Color.backgroundMain.ignoresSafeArea())
         .task { await viewModel.load() }
     }
@@ -43,14 +46,8 @@ struct SimulationPlayerView: View {
                     SimulationInfoPanel(
                         layoutName: viewModel.layoutID.name,
                         visitorsInside: viewModel.visitorsInside(at: time),
-                        windowText: viewModel.windowText,
                         mode: viewModel.mode,
-                        progress: viewModel.progress(at: time),
-                        spots: viewModel.outcome?.spots ?? [],
-                        windowMinutes: (viewModel.replay?.durationSeconds ?? 600) / 60,
-                        visitorTypes: viewModel.visitorTypes,
-                        highlightedSpot: viewModel.hoveredSpot,
-                        footfall: viewModel.mode == .footfall ? viewModel.footfallSummary(at: time) : nil
+                        visitorTypes: viewModel.visitorTypes
                     )
                     .padding(.leading, PlayerFrame.panelOrigin.x)
                     .padding(.top, PlayerFrame.panelOrigin.y)

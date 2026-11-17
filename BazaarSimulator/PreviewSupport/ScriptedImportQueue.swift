@@ -226,7 +226,7 @@ final class ScriptedImportQueue: ImportQueueing {
     private func readAsync(_ file: ImportFile) async {
         guard let index = files.firstIndex(where: { $0.id == file.id }) else { return }
 
-        files[index].state = .reading(progress: 0.1)
+        files[index].state = .reading(progress: 0.1, step: "Rendering PDF...")
 
         if failingFileNames.contains(file.url.lastPathComponent) {
             try? await Task.sleep(nanoseconds: 100_000_000)
@@ -240,11 +240,16 @@ final class ScriptedImportQueue: ImportQueueing {
             return
         }
 
-        for step in [0.35, 0.70, 0.95] {
+        let stages: [(Double, String)] = [
+            (0.35, "Detecting booths..."),
+            (0.70, "Detecting walls & doors..."),
+            (0.95, "Building layout...")
+        ]
+        for (stepProgress, stepLabel) in stages {
             try? await Task.sleep(nanoseconds: 80_000_000)
             if Task.isCancelled { return }
             if let idx = files.firstIndex(where: { $0.id == file.id }) {
-                files[idx].state = .reading(progress: step)
+                files[idx].state = .reading(progress: stepProgress, step: stepLabel)
             }
         }
 

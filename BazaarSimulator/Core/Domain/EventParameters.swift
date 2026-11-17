@@ -7,5 +7,4 @@ struct EventParameters: Codable, Sendable, Hashable {
     var peakPeriods: [TimeRange] = []
     var bazaarTypeID: String
     var mix: VisitorMix
-    var groupSize: Int
 }

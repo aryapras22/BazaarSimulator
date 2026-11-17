@@ -60,6 +60,15 @@ struct AppRouterTests {
         #expect(router.destination == .analysis(projectID: id))
     }
 
+    @Test("A simulation can be requested for a saved run")
+    func requestSimulationForSavedRun() {
+        let id = UUID(), run = UUID()
+        let router = AppRouter(destination: .savedAnalysis(projectID: id, analysisID: run))
+        router.requestSimulation(projectID: id, layout: .one, analysisID: run)
+        #expect(router.simulationRequest == SimulationRequest(projectID: id, layout: .one, analysisID: run))
+        #expect(router.destination == .savedAnalysis(projectID: id, analysisID: run))
+    }
+
     @Test("Clearing the simulation request empties it")
     func clearSimulationRequest() {
         let id = UUID()

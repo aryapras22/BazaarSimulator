@@ -139,7 +139,7 @@ final class ImportQueue: ImportQueueing {
         // Files from the file picker are sandbox-scoped and unreadable without this; dropped files return false.
         let scoped = file.url.startAccessingSecurityScopedResource()
         defer { if scoped { file.url.stopAccessingSecurityScopedResource() } }
-        setState(.reading(progress: nil), for: file.id)
+        setState(.reading(progress: nil, step: "Rendering PDF..."), for: file.id)
         log("Started reading", for: file)
         do {
             switch file.kind {
@@ -184,6 +184,7 @@ final class ImportQueue: ImportQueueing {
 
     private func readLegend(_ file: ImportFile) async throws -> Legend {
         let page = try renderPage(of: file.url, loggedFor: file)
+        setState(.reading(progress: nil, step: "Reading legend..."), for: file.id)
         log("Reading legend entries", for: file)
         return try await reader.readLegend(page)
     }
@@ -198,6 +199,7 @@ final class ImportQueue: ImportQueueing {
             throw FloorPlanReadingError.noLegend
         }
         let page = try renderPage(of: file.url, loggedFor: file)
+        setState(.reading(progress: 0.03, step: "Matching legend..."), for: file.id)
         let match = LegendMatcher.bestMatchIndex(for: page, among: readLegends.map(\.legend))
         let chosen = readLegends[match ?? 0]
         let legendName = chosen.file.url.lastPathComponent
@@ -205,6 +207,7 @@ final class ImportQueue: ImportQueueing {
         let legendScoped = chosen.file.url.startAccessingSecurityScopedResource()
         defer { if legendScoped { chosen.file.url.stopAccessingSecurityScopedResource() } }
         let legendPage = try renderPage(of: chosen.file.url, loggedFor: file)
+        setState(.reading(progress: 0.06, step: "Reading plan..."), for: file.id)
         log("Reading plan", for: file)
         return try await reader.readPlan(
             page,
@@ -226,17 +229,18 @@ final class ImportQueue: ImportQueueing {
     private func handle(_ event: PlanReadingEvent, for file: ImportFile) {
         guard isCurrent(file.id) else { return }
         switch event {
-        case .progress(let progress):
-            reportProgress(progress, for: file)
+        case .progress(let progress, let step):
+            reportProgress(progress, step: step, for: file)
         case .note(let note):
             log(note, for: file)
         }
     }
 
-    private func reportProgress(_ progress: Double, for file: ImportFile) {
+    private func reportProgress(_ progress: Double, step: String?, for file: ImportFile) {
         guard let index = files.firstIndex(where: { $0.id == file.id }),
-              case .reading(let previous) = files[index].state else { return }
-        files[index].state = .reading(progress: progress)
+              case .reading(let previous, let previousStep) = files[index].state else { return }
+        if let previous, progress < previous { return }
+        files[index].state = .reading(progress: progress, step: step ?? previousStep)
         let quarter = Int(progress * 4)
         if quarter > Int((previous ?? 0) * 4) { log("Extractor at \(quarter * 25)%", for: file) }
     }

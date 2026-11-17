@@ -12,8 +12,11 @@ enum CrowdAnalysisBuilder {
         let hours = parameters.eventHours
         let minutes = max(hours.durationMinutes, 1)
 
-        // The same visitors over the same hours, arriving faster inside the peak periods.
+        // The same visitors over the same hours, arriving faster inside the peak periods. Nobody arrives in the
+        // last stretch before closing, so the hall can empty in time.
+        let lastEntry = minutes - min(Int(CrowdParameters.lastEntrySeconds / 60), minutes / 4)
         let weights = (0..<minutes).map { minute -> Double in
+            guard minute < lastEntry else { return 0 }
             let clock = hours.startMinute + minute
             let isPeak = parameters.peakPeriods.contains { clock >= $0.startMinute && clock < $0.endMinute }
             return isPeak ? SpawnScheduler.peakRateMultiplier : 1
@@ -62,7 +65,10 @@ enum CrowdAnalysisBuilder {
         )
     }
 
-    static func analysis(for input: SimulationInput, grid: NavigationGrid, measured: CrowdMeasurements) -> LayoutAnalysis {
+    /// `replay` is the one already made from this run, for a run kept without its frames.
+    static func analysis(
+        for input: SimulationInput, grid: NavigationGrid, measured: CrowdMeasurements, replay: SimulationReplay? = nil
+    ) -> LayoutAnalysis {
         let blockCount = measured.blockCount
         let sampleCount = measured.blockSamples.count / max(blockCount, 1)
         let eventStart = input.parameters.eventHours.startMinute
@@ -118,7 +124,7 @@ enum CrowdAnalysisBuilder {
             simulatedPeople: measured.enteredPeople,
             totalPeople: max(input.parameters.totalVisitors, 0),
             plan: grid.plan,
-            replay: replay(for: input, grid: grid, measured: measured)
+            replay: replay ?? Self.replay(for: input, grid: grid, measured: measured)
         )
     }
 

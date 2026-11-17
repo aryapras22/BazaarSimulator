@@ -8,17 +8,17 @@ enum SimulationMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .congestion: "Congestion Grades"
-        case .density: "Crowd Density"
-        case .footfall: "Busiest Path"
+        case .congestion: "Stuck Spots"
+        case .density: "Crowd Level"
+        case .footfall: "Walking Routes"
         }
     }
 
     func summary(windowText: String) -> String {
         switch self {
-        case .congestion: "Busiest window \(windowText)"
-        case .density: "People per m² of aisle right now: green is comfortable, yellow crowded, red jammed."
-        case .footfall: "How often each path has been walked since the window opened: green is rarely, red is the most."
+        case .congestion: "Numbered spots are where people get stuck. Click one to see why."
+        case .density: "Colours show how packed each part of the floor gets as people walk in."
+        case .footfall: "Lines show the paths people take. Red lines are walked the most."
         }
     }
 }

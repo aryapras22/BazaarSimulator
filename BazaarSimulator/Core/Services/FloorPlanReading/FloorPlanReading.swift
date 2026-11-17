@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 enum PlanReadingEvent: Sendable {
-    case progress(Double)
+    case progress(Double, step: String? = nil)
     case note(String)
 }
 

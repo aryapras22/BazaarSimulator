@@ -31,9 +31,13 @@ enum BoothRenderer {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
-            fillColor = state.attractiveness == .heat
-                ? AttractivenessScale.color(for: state.booth.attractiveness)
-                : Palette.canvasBoothFill
+            if state.booth.isDisabled {
+                fillColor = Palette.canvasBoothFill.opacity(0.35)
+            } else if state.attractiveness == .heat {
+                fillColor = AttractivenessScale.color(for: state.booth.attractiveness)
+            } else {
+                fillColor = Palette.canvasBoothFill
+            }
             strokeColor = Palette.canvasLine
         }
 

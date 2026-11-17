@@ -108,6 +108,11 @@ nonisolated enum CrowdParameters {
     static let adultPeopleWeight = 1.0
     static let carryingAdultPeopleWeight = 2.0
 
+    /// Nobody is let in this long before closing, and everyone still inside is sent out this long before closing,
+    /// so the hall is empty when the event ends. Set by judgement, not from the crowd behaviour research.
+    static let lastEntrySeconds = 1800.0
+    static let clearingSeconds = 600.0
+
     /// Slowdown near inner hall corners.
     static let cornerSlowdown = 0.25
     static let cornerRadius = 2.5

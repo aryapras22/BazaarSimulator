@@ -7,7 +7,7 @@ enum ImportFileKind: String, Sendable, Codable, Hashable {
 
 enum ImportFileState: Sendable, Hashable {
     case waiting
-    case reading(progress: Double?)
+    case reading(progress: Double?, step: String? = nil)
     case done(booths: Int, doors: Int)
     case failed(message: String)
     case cancelled

@@ -7,28 +7,33 @@ struct PlanRowStatusView: View {
         switch status {
         case .done(let text):
             Text(text)
-                .font(Typography.caption)
+                .font(.system(size: 10.5))
                 .foregroundColor(Palette.accentText)
-        case .reading(let progress):
+        case .reading(let progress, let step):
             HStack(spacing: Spacing.s) {
-                Text("Reading...")
-                    .font(Typography.caption)
+                Text(step)
+                    .font(.system(size: 10))
                     .foregroundColor(Palette.textSecondary)
+                    .lineLimit(1)
+
+                if let progress {
+                    Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                        .font(.system(size: 10).monospacedDigit())
+                        .foregroundColor(Palette.textTertiary)
+                }
 
                 ProgressBar(value: progress)
-                    .frame(width: 64, height: 4)
+                    .frame(width: 80, height: 4)
             }
         case .waiting(let text):
             Text(text)
                 .font(Typography.caption)
                 .foregroundColor(Palette.textSecondary)
         case .failed(let message):
-            Text(message)
-                .font(Typography.caption)
+            // The reason is in the tooltip. The row only says that the scan failed.
+            Text("Scan Failed")
+                .font(.system(size: 10.5))
                 .foregroundColor(Palette.destructive)
-                .lineLimit(3)
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: 240, alignment: .trailing)
                 .help(message)
         case .cancelled(let text):
             Text(text)

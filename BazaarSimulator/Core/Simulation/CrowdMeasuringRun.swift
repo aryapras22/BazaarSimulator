@@ -154,6 +154,9 @@ nonisolated final class CrowdMeasuringRun {
         // Measured before the step, so sample 0 and frame 0 are the moment the event or the window opens.
         let now = crowd.time
         let isRecording = setup.window?.contains(now) ?? false
+        if now >= setup.openSeconds - min(CrowdParameters.clearingSeconds, setup.openSeconds / 4) {
+            crowd.startClosing()
+        }
         if stepIndex % (Self.sampleIntervalSeconds * stepsPerSecond) == 0, now < setup.openSeconds { sampleBlocks() }
         if isRecording, stepIndex % (Self.frameIntervalSeconds * stepsPerSecond) == 0 { recordFrame() }
         if stepIndex % Self.trackEverySteps == 0 { track(now: now, isRecording: isRecording) }

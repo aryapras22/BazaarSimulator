@@ -39,9 +39,12 @@ extension CrowdWorld {
                 id: object.id,
                 isFood: isFood,
                 isEntertainment: object.kind == .entertainment,
+                isStage: object.kind == .entertainment
+                    && EntertainmentType.resolve(catalogID: object.catalogID, label: object.label) == .stage,
                 footprint: CrowdFootprint(object.placement, margin: isFood ? 0 : Self.stockSpill(for: size)),
                 pull: pull,
-                capacity: max(1, Int(max(size.x, size.y) / CrowdParameters.boothLengthPerBrowserM))
+                capacity: max(1, Int(max(size.x, size.y) / CrowdParameters.boothLengthPerBrowserM)),
+                isDisabled: object.isDisabled
             ))
         }
         for object in layout.objects where object.kind == .table {

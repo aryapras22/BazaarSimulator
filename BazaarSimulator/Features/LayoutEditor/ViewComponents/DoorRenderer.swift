@@ -2,25 +2,214 @@ import SwiftUI
 import simd
 
 enum DoorRenderer {
+    private static let doubleDoorThresholdM = 1.5
+    private static let maxLeafLengthM = 1.5
+    private static let arcSegmentCount = 16
+
+    static func labelText(for door: LayoutObject) -> String {
+        let trimmed = door.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmed.isEmpty ? "Door" : trimmed
+        let direction = (door.doorFlow?.direction ?? .both).displayName
+        return "\(title) · \(direction)"
+    }
+
     static func draw(
         _ state: ObjectDrawState,
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
         let door = state.object
+        let direction = door.doorFlow?.direction ?? .both
+        let isDisabled = direction == .disabled
+        let fillColor = thresholdFill(for: state, isDisabled: isDisabled)
+        let strokeColor = thresholdStroke(for: state, isDisabled: isDisabled)
+
+        if !isDisabled {
+            drawSwingArcs(
+                for: door,
+                colors: DoorColors(fill: fillColor, stroke: strokeColor),
+                in: &context,
+                transform: transform
+            )
+        }
+
         let corners = LayoutGeometry.corners(of: door.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
-
-        let isSelected = state.isSelected
-        let fillColor = isSelected ? Palette.canvasSelection : Palette.canvasBoothFill
-        let strokeColor = state.hasWarning ? Palette.canvasIssue : Palette.canvasLine
         context.fill(path, with: .color(fillColor))
-        let lineWidth: CGFloat = isSelected ? 2.0 : 1.2
+        let lineWidth: CGFloat = state.isSelected ? 2.2 : 1.5
         context.stroke(path, with: .color(strokeColor), lineWidth: lineWidth)
 
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
+
+        if isDisabled {
+            drawDisabledCross(corners: corners, color: strokeColor, in: &context, transform: transform)
+        } else {
+            drawDirectionArrows(
+                direction: direction,
+                placement: door.placement,
+                in: &context,
+                transform: transform
+            )
+        }
+
+        if state.isSelected || state.isHovered || transform.scale >= 6.0 {
+            drawLabel(
+                for: door,
+                isSelected: state.isSelected,
+                strokeColor: strokeColor,
+                in: &context,
+                transform: transform
+            )
+        }
+    }
+
+    private struct DoorColors {
+        let fill: Color
+        let stroke: Color
+    }
+
+    private static func thresholdFill(for state: ObjectDrawState, isDisabled: Bool) -> Color {
+        if state.isSelected { return Palette.canvasSelection }
+        if isDisabled { return Palette.canvasBoothFill }
+        return Palette.canvasDoorFill
+    }
+
+    private static func thresholdStroke(for state: ObjectDrawState, isDisabled: Bool) -> Color {
+        if state.hasWarning { return Palette.canvasIssue }
+        if state.isSelected { return Palette.canvasDoorSelected }
+        if isDisabled { return Palette.canvasFlowLine }
+        return Palette.canvasDoorLine
+    }
+
+    private struct DoorSwing {
+        let hingeX: Double
+        let dirX: Double
+        let leafLength: Double
+        let placement: Placement
+    }
+
+    private static func drawSwingArcs(
+        for door: LayoutObject,
+        colors: DoorColors,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let width = door.placement.sizeM.x
+        let halfW = width / 2.0
+        let isDouble = width >= doubleDoorThresholdM
+        let leafLength = min(isDouble ? halfW : width, maxLeafLengthM)
+        guard leafLength > 0.1 else { return }
+
+        let sides: [(hingeX: Double, dirX: Double)] = isDouble
+            ? [(-halfW, 1.0), (halfW, -1.0)]
+            : [(-halfW, 1.0)]
+
+        for side in sides {
+            let swing = DoorSwing(
+                hingeX: side.hingeX,
+                dirX: side.dirX,
+                leafLength: leafLength,
+                placement: door.placement
+            )
+            drawSingleSwing(swing, colors: colors, in: &context, transform: transform)
+        }
+    }
+
+    private static func drawSingleSwing(
+        _ swing: DoorSwing,
+        colors: DoorColors,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let hingeLocal = SIMD2<Double>(swing.hingeX, 0)
+        let openTipLocal = SIMD2<Double>(swing.hingeX, swing.leafLength)
+        let hingeView = transform.toView(LayoutGeometry.toWorld(local: hingeLocal, in: swing.placement))
+        let openTipView = transform.toView(LayoutGeometry.toWorld(local: openTipLocal, in: swing.placement))
+
+        var sector = Path()
+        sector.move(to: CGPoint(x: hingeView.x, y: hingeView.y))
+        var arc = Path()
+        for step in 0...arcSegmentCount {
+            let angle = Double(step) / Double(arcSegmentCount) * (.pi / 2.0)
+            let local = SIMD2<Double>(
+                swing.hingeX + swing.dirX * swing.leafLength * cos(angle),
+                swing.leafLength * sin(angle)
+            )
+            let view = transform.toView(LayoutGeometry.toWorld(local: local, in: swing.placement))
+            let cgPoint = CGPoint(x: view.x, y: view.y)
+            sector.addLine(to: cgPoint)
+            if step == 0 {
+                arc.move(to: cgPoint)
+            } else {
+                arc.addLine(to: cgPoint)
+            }
+        }
+        sector.closeSubpath()
+
+        context.fill(sector, with: .color(colors.fill.opacity(0.28)))
+        context.stroke(
+            arc,
+            with: .color(colors.stroke.opacity(0.7)),
+            style: StrokeStyle(lineWidth: 1.1, dash: [4, 3])
+        )
+
+        var leaf = Path()
+        leaf.move(to: CGPoint(x: hingeView.x, y: hingeView.y))
+        leaf.addLine(to: CGPoint(x: openTipView.x, y: openTipView.y))
+        context.stroke(
+            leaf,
+            with: .color(colors.stroke),
+            style: StrokeStyle(lineWidth: 2.2, lineCap: .round)
+        )
+    }
+
+    private static func drawDisabledCross(
+        corners: [SIMD2<Double>],
+        color: Color,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        guard corners.count == 4 else { return }
+        let points = corners.map {
+            let viewPoint = transform.toView($0)
+            return CGPoint(x: viewPoint.x, y: viewPoint.y)
+        }
+        var cross = Path()
+        cross.move(to: points[0])
+        cross.addLine(to: points[2])
+        cross.move(to: points[1])
+        cross.addLine(to: points[3])
+        context.stroke(cross, with: .color(color), lineWidth: 1.2)
+    }
+
+    private static func drawLabel(
+        for door: LayoutObject,
+        isSelected: Bool,
+        strokeColor: Color,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        let title = labelText(for: door)
+        let centerView = transform.toView(door.placement.center)
+        let centerPoint = CGPoint(x: centerView.x, y: centerView.y)
+        let labelColor = isSelected ? Color.white : strokeColor
+        let text = Text(title)
+            .font(Typography.canvasLabel(scaledBy: transform.scale))
+            .foregroundStyle(labelColor)
+        let resolved = context.resolve(text)
+        let textSize = resolved.measure(in: CGSize(width: 260, height: 40))
+        let pillRect = CGRect(
+            x: centerPoint.x - textSize.width / 2 - 4,
+            y: centerPoint.y - textSize.height / 2 - 1,
+            width: textSize.width + 8,
+            height: textSize.height + 2
+        )
+        let pill = Path(roundedRect: pillRect, cornerRadius: 3)
+        context.fill(pill, with: .color(isSelected ? Palette.canvasSelection : Palette.canvasFloor.opacity(0.92)))
+        context.stroke(pill, with: .color(strokeColor.opacity(0.5)), lineWidth: 0.75)
+        context.draw(resolved, at: centerPoint, anchor: .center)
     }
 
     static func drawDirectionArrows(
@@ -30,7 +219,7 @@ enum DoorRenderer {
         transform: CanvasTransform
     ) {
         guard direction != .disabled else { return }
-        let arrowHalfLengthM = 0.65
+        let arrowHalfLengthM = max(0.65, 14.0 / transform.scale)
         let inwardPoint = LayoutGeometry.toWorld(local: SIMD2<Double>(0, -arrowHalfLengthM), in: placement)
         let outwardPoint = LayoutGeometry.toWorld(local: SIMD2<Double>(0, arrowHalfLengthM), in: placement)
         let inwardView = transform.toView(inwardPoint)

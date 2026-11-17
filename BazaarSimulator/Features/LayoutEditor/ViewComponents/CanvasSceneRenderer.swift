@@ -35,14 +35,6 @@ enum CanvasSceneRenderer {
         transform: CanvasTransform
     ) {
         guard snapshot.showVisitorFlow else { return }
-        for object in snapshot.layout.objects where object.kind == .door {
-            DoorRenderer.drawDirectionArrows(
-                direction: object.doorFlow?.direction ?? .both,
-                placement: object.placement,
-                in: &context,
-                transform: transform
-            )
-        }
         MarkerRenderer.draw(
             markers: snapshot.layout.markers,
             showVisitorFlow: true,

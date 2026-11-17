@@ -11,9 +11,11 @@ struct LayoutInspectorColumn: View {
         } else if viewModel.groupSelection != nil {
             groupInspector
         } else {
-            layoutInfoInspector
+            nothingSelected
         }
     }
+
+    // MARK: One element
 
     private func singleObjectInspector(for selected: LayoutObject) -> some View {
         let draftBinding = Binding<InspectorDraft>(
@@ -21,28 +23,31 @@ struct LayoutInspectorColumn: View {
             set: { viewModel.updateInspectorDraft($0) }
         )
 
-        return InspectorPanel(title: viewModel.inspectorTitle) {
+        return InspectorPanel(
+            title: viewModel.inspectorTitle,
+            editableName: viewModel.inspectorEditableName,
+            onRename: { viewModel.renameSelected(to: $0) }
+        ) {
+            // What is wrong with the selection is told at the bottom of the panel, not inside the fields.
             switch selected.kind {
             case .booth:
                 BoothInspector(
                     draft: draftBinding,
                     categories: viewModel.categoryOptions,
                     sizeRange: viewModel.sizeRangeM,
-                    titleIssues: viewModel.selectedTitleIssues,
-                    openSideIssues: viewModel.selectedOpenSideIssues,
                     groupActions: viewModel.boothGroupActions(for: selected)
                 )
             case .door:
                 DoorInspector(
                     draft: draftBinding,
                     widthRange: viewModel.sizeRangeM,
-                    advice: viewModel.currentDoorAdvice,
-                    onUseAdvice: { viewModel.applyDoorAdvice() }
+                    advice: nil,
+                    onUseAdvice: {}
                 )
             case .table:
-                TableInspector(draft: draftBinding, titleIssues: viewModel.selectedTitleIssues)
+                TableInspector(draft: draftBinding)
             case .seating:
-                SeatingInspector(draft: draftBinding, titleIssues: viewModel.selectedTitleIssues)
+                SeatingInspector(draft: draftBinding)
             case .wall:
                 WallInspector(
                     draft: draftBinding,
@@ -52,20 +57,39 @@ struct LayoutInspectorColumn: View {
                 GenericInspector(
                     draft: draftBinding,
                     fields: .forObject(selected),
-                    sizeRange: viewModel.sizeRangeM,
-                    titleIssues: viewModel.selectedTitleIssues,
-                    openSideIssues: viewModel.selectedOpenSideIssues
+                    sizeRange: viewModel.sizeRangeM
                 )
             }
         } footer: {
-            Button("Delete \(selected.kind.displayName.lowercased())", role: .destructive) {
+            selectionNotes(for: selected)
+
+            if let advice = viewModel.currentDoorAdvice, selected.kind == .door {
+                InspectorTip(
+                    message: advice.message,
+                    actionTitle: advice.actionTitle,
+                    onAction: { viewModel.applyDoorAdvice() }
+                )
+            }
+
+            DeleteSelectionButton(title: "Delete \(selected.kind.displayName.lowercased())") {
                 viewModel.deleteSelected()
             }
-            .buttonStyle(.plain)
-            .font(Typography.body)
-            .foregroundStyle(Palette.destructive)
+
+            SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
         }
     }
+
+    /// The validation messages that name this element, errors first.
+    @ViewBuilder
+    private func selectionNotes(for selected: LayoutObject) -> some View {
+        let related = viewModel.issues.filter { $0.objectIDs.contains(selected.id) }
+        let ordered = related.filter { $0.severity == .error } + related.filter { $0.severity == .warning }
+        if !ordered.isEmpty {
+            InspectorNotes(messages: ordered.map { (text: $0.message, isError: $0.severity == .error) })
+        }
+    }
+
+    // MARK: Several elements
 
     private var groupInspector: some View {
         let draftBinding = Binding<GroupInspectorDraft>(
@@ -89,72 +113,66 @@ struct LayoutInspectorColumn: View {
             }
         } footer: {
             let noun = isBoothGroup ? "booths" : "objects"
-            Button("Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) \(noun)", role: .destructive) {
+            DeleteSelectionButton(title: "Delete \(viewModel.groupSelection?.memberIDs.count ?? 0) \(noun)") {
                 viewModel.requestDeleteGroup()
             }
-            .buttonStyle(.plain)
-            .font(Typography.body)
-            .foregroundStyle(Palette.destructive)
+
+            SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
         }
     }
 
-    private var layoutInfoInspector: some View {
-        InspectorPanel(title: viewModel.activeLayout?.name ?? "Layout") {
-            VStack(alignment: .leading, spacing: Spacing.m) {
-                if let layout = viewModel.activeLayout {
-                    let widthText = DimensionInput.text(for: layout.sizeM.x)
-                    let lengthText = DimensionInput.text(for: layout.sizeM.y)
-                    infoRow(label: "Dimensions", value: "\(widthText) × \(lengthText) m")
-                    infoRow(label: "Area", value: String(format: "%.0f m²", layout.sizeM.x * layout.sizeM.y))
+    // MARK: Nothing selected
 
-                    Divider().overlay(Palette.surfaceBorder)
+    /// The empty panel: a line asking to pick something, and in the bottom half the validation of the whole layout.
+    private var nothingSelected: some View {
+        InspectorSurface {
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
 
-                    infoRow(label: "Booths", value: "\(layout.objects.filter { $0.kind == .booth }.count)")
-                    infoRow(label: "Doors", value: "\(layout.objects.filter { $0.kind == .door }.count)")
-                    infoRow(label: "Total Objects", value: "\(layout.objects.count)")
-
-                    Divider().overlay(Palette.surfaceBorder)
-
-                    validationSection
-                } else {
-                    Text("No active layout")
-                        .font(Typography.body)
-                        .foregroundStyle(Palette.textSecondary)
-                }
-            }
-        } footer: {
-            EmptyView()
-        }
-    }
-
-    private func infoRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(Typography.inspectorLabel)
-                .foregroundStyle(Palette.textSecondary)
-            Spacer()
-            Text(value)
-                .font(Typography.inspectorLabelDetail)
-                .foregroundStyle(Palette.textPrimary)
-        }
-    }
-
-    private var validationSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("Validation")
-                .font(Typography.inspectorLabel)
-                .foregroundStyle(Palette.textSecondary)
-
-            if viewModel.issues.isEmpty {
-                HStack(spacing: Spacing.xs) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Palette.accent)
-                    Text("No issues detected")
-                        .font(Typography.body)
+                VStack(spacing: Spacing.xs) {
+                    Text("Nothing Selected here")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
+                    Text("Select an element to edit.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.textSecondary)
+                    if let layout = viewModel.activeLayout {
+                        Text(layoutSummary(layout))
+                            .font(.system(size: 10))
+                            .foregroundStyle(Palette.textSecondary.opacity(0.8))
+                            .padding(.top, Spacing.xs)
+                    }
                 }
-            } else {
-                ValidationIssueList(issues: viewModel.issues, onFocus: onFocusIssue)
+                .frame(maxWidth: .infinity)
+
+                Spacer(minLength: 0)
+
+                validationSection
+                    .padding(.horizontal, Spacing.l)
+                    .padding(.bottom, Spacing.l)
+            }
+        }
+    }
+
+    private func layoutSummary(_ layout: Layout) -> String {
+        let width = DimensionInput.text(for: layout.sizeM.x)
+        let length = DimensionInput.text(for: layout.sizeM.y)
+        let booths = layout.objects.filter { $0.kind == .booth }.count
+        let doors = layout.objects.filter { $0.kind == .door }.count
+        return "\(width) × \(length) m · \(booths) booths · \(doors) doors"
+    }
+
+    @ViewBuilder
+    private var validationSection: some View {
+        if !viewModel.issues.isEmpty {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text("Validation")
+                    .font(Typography.inspectorLabel)
+                    .foregroundStyle(Palette.textSecondary)
+                ScrollView(.vertical, showsIndicators: false) {
+                    ValidationIssueList(issues: viewModel.issues, onFocus: onFocusIssue)
+                }
+                .frame(maxHeight: 220)
             }
         }
     }

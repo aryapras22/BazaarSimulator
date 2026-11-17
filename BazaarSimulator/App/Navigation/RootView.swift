@@ -32,6 +32,9 @@ struct RootView: View {
         } detail: {
             detailView
         }
+        // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
+        .frame(minWidth: 1280, minHeight: 800)
+        .appDialog(deletionDialog)
         .appBackground()
         .preferredColorScheme(.dark)
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
@@ -60,6 +63,22 @@ struct RootView: View {
         }
     }
 
+    /// The question over the whole window when a project or an analysis was asked to be deleted from the sidebar.
+    private var deletionDialog: Binding<AppDialogContent?> {
+        Binding(
+            get: {
+                libraryViewModel.pendingDeletion.map { pending in
+                    AppDialogContent(
+                        title: pending.title,
+                        message: Text(pending.message),
+                        kind: .confirm(confirmTitle: "Delete", action: { libraryViewModel.confirmDeletion() })
+                    )
+                }
+            },
+            set: { if $0 == nil { libraryViewModel.cancelDeletion() } }
+        )
+    }
+
     private var parametersRequest: Binding<ParametersRequest?> {
         Binding(
             get: { router.parametersProjectID.map(ParametersRequest.init) },
@@ -71,16 +90,23 @@ struct RootView: View {
     private var detailView: some View {
         switch router.destination {
         case .empty:
-            EmptyWorkspaceView()
+            EmptyWorkspaceView(
+                hasProjects: !services.projectSession.projects.isEmpty,
+                onAddProject: { libraryViewModel.createProject() }
+            )
         case .setup(let projectID):
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
         case .analysis(let projectID), .review(let projectID):
-            let activeResultID = services.projectSession.activeResultTabID(for: projectID)
             DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID)) { close in
                 ParametersView(viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close))
             }
-            .id("\(projectID)-\(activeResultID?.uuidString ?? "default")")
+            .id(projectID)
+        case .savedAnalysis(let projectID, let analysisID):
+            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { _ in
+                EmptyView()
+            }
+            .id(analysisID)
         case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)

@@ -7,26 +7,28 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var letter: String { ["A", "B", "C", "D", "E", "F"][rawValue] }
 
-    var lowerDensity: Double { [0, 0.31, 0.43, 0.72, 1.08, 2.17][rawValue] }
+    /// The most people per m² that still count as this grade: A up to 0.08, B up to 0.27, C up to 0.45, D up to 0.72,
+    /// E up to 1.8, and F above that.
+    var upperDensity: Double? { [0.08, 0.27, 0.45, 0.72, 1.8, nil][rawValue] }
 
-    var upperDensity: Double? {
-        self == .f ? nil : SeverityGrade(rawValue: rawValue + 1)?.lowerDensity
-    }
+    /// Where the grade starts, which is where the grade before it ends.
+    var lowerDensity: Double { rawValue == 0 ? 0 : SeverityGrade(rawValue: rawValue - 1)?.upperDensity ?? 0 }
 
+    /// People are stuck from grade E on, which is anything above 0.72 people per m².
     static let heavyThreshold = SeverityGrade.e.lowerDensity
 
     static func grade(forDensity density: Double) -> SeverityGrade {
-        allCases.last { density >= $0.lowerDensity } ?? .a
+        allCases.first { grade in grade.upperDensity.map { density <= $0 } ?? true } ?? .f
     }
 
     var rangeText: String {
         switch self {
-        case .a: "under 0.31"
-        case .b: "0.31–0.43"
-        case .c: "0.43–0.72"
-        case .d: "0.72–1.08"
-        case .e: "1.08–2.17"
-        case .f: "over 2.17"
+        case .a: "up to 0.08"
+        case .b: "0.08–0.27"
+        case .c: "0.27–0.45"
+        case .d: "0.45–0.72"
+        case .e: "0.72–1.8"
+        case .f: "over 1.8"
         }
     }
 

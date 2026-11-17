@@ -10,9 +10,16 @@ struct Arrival: Equatable {
 }
 
 /// Turns the event parameters into arrival times: a rate that is higher inside peak periods,
-/// groups of up to the configured size, and visitor types drawn from the mix.
+/// groups of 1 to 5 people normally distributed around 3, and visitor types drawn from the mix.
 enum SpawnScheduler {
     static let peakRateMultiplier = 2.0
+    static let groupSizeRange = 1...5
+    static let meanGroupSize = 3.0
+
+    static func drawGroupSize(generator: inout SeededGenerator) -> Int {
+        let sample = Int((meanGroupSize + generator.gaussian()).rounded())
+        return min(max(sample, groupSizeRange.lowerBound), groupSizeRange.upperBound)
+    }
 
     static func arrivals(
         parameters: EventParameters,
@@ -34,12 +41,11 @@ enum SpawnScheduler {
         }
         let typeWeights = visitorTypes.map { Double(max(parameters.mix.share(for: $0.id)?.percent ?? 0, 0)) }
         let weightTotal = typeWeights.reduce(0, +)
-        let maxGroup = max(parameters.groupSize, 1)
 
         var arrivals: [Arrival] = []
         var remaining = simulatedPeople
         while remaining > 0 {
-            let people = min(Int(generator.unit() * Double(maxGroup)) + 1, remaining)
+            let people = min(drawGroupSize(generator: &generator), remaining)
             remaining -= people
 
             let target = generator.unit() * running

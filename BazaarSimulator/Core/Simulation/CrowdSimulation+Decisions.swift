@@ -6,6 +6,10 @@ nonisolated extension CrowdSimulation {
 
     func pickTarget(_ party: CrowdParty) {
         party.restartProgress(at: time)
+        if isClosing {
+            party.target = .exit
+            return
+        }
         while let booth = party.plan.first {
             if party.visited.contains(booth) {
                 party.plan.removeFirst()
@@ -115,6 +119,7 @@ nonisolated extension CrowdSimulation {
     /// A buyer can be pulled into a more attractive booth, and a stroller stops now and then at any booth in view.
     /// Entertainment draws both of them without using up the detour, the stopovers or the planned booths.
     func considerDetour(_ party: CrowdParty) {
+        guard !isClosing else { return }
         if party.isGoalDriven {
             let detoursLeft = party.detours < CrowdParameters.maxDetours
             guard case .booth(let planned, .planned) = party.target,
@@ -122,6 +127,7 @@ nonisolated extension CrowdSimulation {
                       for: party, strongerThan: party.loyalty, entertainmentOnly: !detoursLeft
                   ),
                   best != planned else { return }
+            if watchFromSeat(party, stage: best) { return }
             if !world.booths[best].isEntertainment {
                 party.plan.removeAll { $0 == planned }
                 party.detours += 1
@@ -135,11 +141,24 @@ nonisolated extension CrowdSimulation {
         switch party.target {
         case .exit, .booth(_, .planned), .booth(_, .passingThrough):
             if case .booth(best, _) = party.target { return }
+            if watchFromSeat(party, stage: best) { return }
             party.target = .booth(best, .stopover)
             party.restartProgress(at: time)
         default:
             return
         }
+    }
+
+    /// A stage with free seating near it is watched from a seat: the party goes to sit instead of walking up to
+    /// the stage. False when `stage` is not a stage or has no free seats, and the party goes to it as usual.
+    private func watchFromSeat(_ party: CrowdParty, stage: Int) -> Bool {
+        guard world.booths[stage].isStage,
+              let group = nearestFreeTable(to: party, seatingWithin: CrowdParameters.audienceRadiusM, of: stage)
+        else { return false }
+        party.visited.insert(stage)
+        party.eatSeconds = choiceRandom.randomDouble(in: CrowdParameters.watchSeconds)
+        headForSeat(party, table: group)
+        return true
     }
 
     private func advanceTowardTarget(_ party: CrowdParty) {
@@ -292,7 +311,7 @@ nonisolated extension CrowdSimulation {
         party.restartProgress(at: time)
     }
 
-    private func standUp(_ party: CrowdParty) {
+    func standUp(_ party: CrowdParty) {
         if let seat = party.seat { tableOccupants[seat] = nil }
         party.seat = nil
         for member in party.members {

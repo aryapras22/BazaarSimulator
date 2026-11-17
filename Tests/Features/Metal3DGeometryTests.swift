@@ -176,6 +176,19 @@ struct VenueGeometryTests {
         #expect(cup.center.x == 10 && cup.center.y > 0.75, "the trophy stands on it")
     }
 
+    @Test("A chosen entertainment type wins over the label, and no chosen type reads the label")
+    func entertainmentType() {
+        #expect(EntertainmentType.resolve(catalogID: ObjectCatalog.entertainmentID, label: "PHOTO BOX") == .photobooth)
+        #expect(EntertainmentType.resolve(catalogID: ObjectCatalog.entertainmentID, label: "Area Lomba") == .other)
+        #expect(EntertainmentType.resolve(catalogID: nil, label: "Entertainment 1") == .stage)
+        #expect(EntertainmentType.resolve(catalogID: EntertainmentType.photobooth.catalogID, label: "Stage") == .photobooth)
+
+        let cabin = VenueGeometry.blocks(
+            for: object(.entertainment, label: "Stage", catalogID: EntertainmentType.photobooth.catalogID)
+        )
+        #expect(cabin.filter { $0.size.y == 2.1 }.count == 4, "a stage label with the photobooth type is a cabin")
+    }
+
     @Test("Columns are cylinders as wide as their smaller side")
     func cylinders() {
         #expect(VenueGeometry.blocks(for: object(.block, catalogID: ObjectCatalog.columnID))[0].size.y == 3.5)

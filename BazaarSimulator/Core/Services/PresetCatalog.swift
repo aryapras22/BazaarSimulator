@@ -34,8 +34,7 @@ struct PresetCatalog: Sendable {
             totalVisitors: preset.totalVisitors,
             eventHours: TimeRange(startMinute: 10 * 60, endMinute: 21 * 60),
             bazaarTypeID: preset.id,
-            mix: mix(for: preset),
-            groupSize: 5
+            mix: mix(for: preset)
         )
     }
 }

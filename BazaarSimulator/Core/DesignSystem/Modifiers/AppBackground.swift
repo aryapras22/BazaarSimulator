@@ -3,7 +3,25 @@ import SwiftUI
 struct AppBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(Palette.background.ignoresSafeArea())
+            .background(
+                ZStack {
+                    Palette.background
+                    // The blue and orange glow sits behind the whole window, so the translucent sidebar shows it.
+                    RadialGradient(
+                        colors: [Palette.glowBlue.opacity(0.9), Color.clear],
+                        center: .init(x: 0.02, y: 0.78),
+                        startRadius: 20,
+                        endRadius: 420
+                    )
+                    RadialGradient(
+                        colors: [Palette.glowOrange.opacity(0.8), Color.clear],
+                        center: .init(x: 0.08, y: 1.0),
+                        startRadius: 10,
+                        endRadius: 360
+                    )
+                }
+                .ignoresSafeArea()
+            )
     }
 }
 

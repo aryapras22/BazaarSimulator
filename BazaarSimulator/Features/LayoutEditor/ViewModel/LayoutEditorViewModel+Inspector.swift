@@ -24,8 +24,42 @@ extension LayoutEditorViewModel {
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? selected.kind.displayName : trimmed
         case .wall:
-            return selected.kind.displayName
+            return WallLabelFormatter.displayTitle(for: selected, in: layout)
         }
+    }
+
+    /// The name the pencil next to the title edits. A booth is titled "Booth" and its label, so only the label is
+    /// edited. Every other title is the name itself.
+    var inspectorEditableName: String {
+        guard let selected = selectedObject else { return "" }
+        if selected.kind == .booth { return inspectorDraft?.label ?? selected.label }
+        return inspectorTitle
+    }
+
+    /// Renames the selected element. A name equal to the one it would get anyway is stored as no name, so the
+    /// element keeps following its place, such as the compass side of a door.
+    func renameSelected(to name: String) {
+        guard let selected = selectedObject, var draft = inspectorDraft else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let automatic = selected.kind == .booth ? "" : automaticTitle(for: selected)
+        draft.label = trimmed == automatic ? "" : trimmed
+        updateInspectorDraft(draft)
+    }
+
+    private func automaticTitle(for object: LayoutObject) -> String {
+        guard let layout = activeLayout else { return "" }
+        switch object.kind {
+        case .door: return "Door \(DoorLabelFormatter.compassName(for: object, in: layout))"
+        case .wall: return "Wall \(WallLabelFormatter.sideName(for: object, in: layout))"
+        default: return object.kind.displayName
+        }
+    }
+
+    /// Finishes editing the selected element. Its changes are already in the layout and can be undone, so this
+    /// closes the panel on it, after checking that what was entered is valid.
+    func saveChanges() {
+        guard groupSelection != nil || isInspectorDraftValid else { return }
+        selectObject(nil)
     }
 
     var sizeRangeM: ClosedRange<Double> {

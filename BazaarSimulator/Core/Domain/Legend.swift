@@ -13,7 +13,7 @@ enum BoothType: String, Sendable, Hashable, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .fnb: "FNB"
+        case .fnb: "Foods"
         case .goods: "Goods"
         case .others: "Others"
         }

@@ -8,7 +8,7 @@ enum ObjectCatalog {
     /// The furniture the library offers. Imported tables of other models still resolve through `items`.
     static let libraryItems: [CatalogItem] = structureItems
         + furnitureItems.filter { $0.id == "table-rect-4" || $0.id == FurnitureModels.seatingBlockID }
-        + entertainmentItems
+        + entertainmentItems.filter { $0.id == entertainmentID }
 
     static func item(_ id: String) -> CatalogItem? {
         items.first { $0.id == id }
@@ -59,15 +59,19 @@ enum ObjectCatalog {
 
     static let entertainmentID = "entertainment"
 
-    /// One object for every attraction: a stage, photobooth, competition area or display.
-    static let entertainmentItems: [CatalogItem] = [
+    /// One object for every attraction: a stage, photobooth, competition area or display. The library offers the
+    /// plain one. The others are the same object with its type chosen in the inspector.
+    static let entertainmentItems: [CatalogItem] = [entertainmentItem(id: entertainmentID, name: "Entertainment")]
+        + EntertainmentType.allCases.map { entertainmentItem(id: $0.catalogID, name: $0.displayName) }
+
+    private static func entertainmentItem(id: String, name: String) -> CatalogItem {
         CatalogItem(
-            id: entertainmentID, name: "Entertainment", category: .entertainment, kind: .entertainment,
+            id: id, name: name, category: .entertainment, kind: .entertainment,
             sizeM: SIMD2(4, 3), heightM: 0.6, footprint: .rect,
             resize: .free, placement: .point,
             keywords: ["entertainment", "attraction", "stage", "photobooth", "competition", "display"], seats: []
         )
-    ]
+    }
 
     private static let entertainmentWords = ["stage", "photo", "competition", "lomba", "display"]
 
@@ -99,7 +103,7 @@ enum ObjectCatalog {
         ),
         CatalogItem(
             id: "block", name: "Block", category: .structure, kind: .block,
-            sizeM: SIMD2(1.0, 1.0), heightM: 1.2, footprint: .rect,
+            sizeM: SIMD2(2.0, 2.0), heightM: 1.2, footprint: .rect,
             resize: .free, placement: .point,
             keywords: ["block", "concrete", "barrier", "cube"], seats: []
         ),
@@ -122,4 +126,35 @@ enum ObjectCatalog {
             keywords: ["blocked", "restricted", "closed", "void", "hazard"], seats: []
         )
     ]
+}
+
+/// What an attraction is. It picks the 3D model, and is stored as the object's catalog ID the way a table's model is.
+nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
+    case stage
+    case photobooth
+    case other
+
+    var displayName: String {
+        switch self {
+        case .stage: "Stage"
+        case .photobooth: "Photobooth"
+        case .other: "Others"
+        }
+    }
+
+    var catalogID: String {
+        "entertainment-\(rawValue)"
+    }
+
+    /// The type chosen in the inspector. An object that never had one chosen, such as one read from a plan, carries
+    /// the plain entertainment ID, so its type is read from its label.
+    static func resolve(catalogID: String?, label: String) -> EntertainmentType {
+        if let chosen = allCases.first(where: { $0.catalogID == catalogID }) {
+            return chosen
+        }
+        let lowered = label.lowercased()
+        if lowered.contains("photo") { return .photobooth }
+        if ["competition", "lomba", "display"].contains(where: lowered.contains) { return .other }
+        return .stage
+    }
 }

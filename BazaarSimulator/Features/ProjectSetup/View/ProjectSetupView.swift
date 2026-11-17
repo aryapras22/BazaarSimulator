@@ -5,14 +5,13 @@ struct ProjectSetupView: View {
     @Bindable var viewModel: ProjectSetupViewModel
     @State private var importTarget: ImportFileKind?
     @State private var lastImportTarget: ImportFileKind?
+    @State private var dialog: AppDialogContent?
+    @State private var previewedLayout: Layout?
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerView
-                .padding(.bottom, Spacing.xxl)
-
-            projectNameRow
                 .padding(.bottom, Spacing.xl)
 
             ScrollView {
@@ -29,8 +28,12 @@ struct ProjectSetupView: View {
             }
         }
         .padding(Spacing.xl)
+        // The title bar only reserves room in a window, not in full screen. Ignoring it and padding by a fixed
+        // amount keeps the name field at the same height in both.
+        .padding(.top, Spacing.m)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Palette.background)
+        .background(Palette.background.ignoresSafeArea())
+        .ignoresSafeArea(.container, edges: .top)
         .fileImporter(
             isPresented: Binding(
                 get: { importTarget != nil },
@@ -50,39 +53,39 @@ struct ProjectSetupView: View {
                 viewModel.addFloorPlanFiles(urls: urls)
             }
         }
+        .onChange(of: viewModel.unsupportedFileName) { _, name in
+            guard let name else { return }
+            dialog = AppDialogContent(
+                title: "Unsupported File",
+                message: Text("“\(name)” isn’t supported. Please upload a PDF."),
+                kind: .notice(symbol: "doc.badge.exclamationmark", buttonTitle: "Ok")
+            )
+            viewModel.clearUnsupportedFile()
+        }
+        .appDialog($dialog)
+        .layoutPreview($previewedLayout)
     }
+
+    // MARK: Header
 
     private var headerView: some View {
-        VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("Project")
-                .font(Typography.title)
-                .foregroundColor(Palette.textPrimary)
-
-            Text("Imported your venue layout and a legend.")
-                .font(Typography.subtitle)
-                .foregroundColor(Palette.textSecondary)
-        }
-    }
-
-    private var projectNameRow: some View {
-        HStack(spacing: Spacing.m) {
-            Text("Project name")
-                .font(Typography.fieldLabel)
-                .foregroundColor(Palette.textPrimary)
-
+        VStack(alignment: .leading, spacing: Spacing.s) {
             TextField("Project name", text: $viewModel.projectName)
                 .textFieldStyle(.plain)
-                .font(Typography.body)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(Palette.textPrimary)
                 .padding(.horizontal, Spacing.m)
-                .padding(.vertical, Spacing.s)
-                .frame(width: 220)
-                .background(Palette.field)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.s))
+                .frame(width: 250, height: 34)
+                .background(Palette.field, in: RoundedRectangle(cornerRadius: Radius.s))
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.s)
                         .stroke(Palette.fieldBorder, lineWidth: 1)
                 )
+                .accessibilityLabel("Project name")
+
+            Text("Import your venue legend and layout.")
+                .font(Typography.subtitle)
+                .foregroundColor(Palette.textSecondary)
         }
     }
 
@@ -93,55 +96,49 @@ struct ProjectSetupView: View {
         }
     }
 
-    private var legendColumn: some View {
-        VStack(alignment: .leading, spacing: Spacing.l) {
-            Text("LEGENDS")
-                .sectionLabel()
+    // MARK: Legends
 
-            DropZone(
-                hint: "PDF · one legend for all the layouts",
-                onChoose: {
-                    lastImportTarget = .legend
-                    importTarget = .legend
+    private var legendColumn: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            SetupCard(
+                title: "Legends",
+                subtitle: viewModel.legendEntries.isEmpty ? nil : "\(viewModel.legendEntries.count) Elements",
+                bottomPadding: legendHasRows ? Self.listBottomPadding : Spacing.m,
+                help: { legendHelp },
+                trailing: {
+                    if !viewModel.legendEntries.isEmpty {
+                        Button("Clear All", action: viewModel.deleteAllLegends)
+                            .buttonStyle(.secondary)
+                    }
                 },
-                onDrop: viewModel.addLegendFiles
+                content: { legendContent }
             )
 
-            if !viewModel.pendingLegendRows.isEmpty || !viewModel.legendEntries.isEmpty {
-                scannedLegendsCard
+            if viewModel.showsLegendRequired {
+                Label("Legend required. Please upload a legend to continue.", systemImage: "exclamationmark.circle")
+                    .font(.system(size: 11))
+                    .foregroundColor(Palette.destructive)
+                    .padding(.leading, 2)
             }
         }
     }
 
-    private var scannedLegendsCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.l) {
-            let label = viewModel.legendEntries.isEmpty
-                ? "SCANNED LEGENDS"
-                : "SCANNED LEGENDS · \(viewModel.legendEntries.count) Elements"
-            HStack {
-                Text(label)
-                    .sectionLabel()
-
-                Spacer()
-
-                Button("Delete all", action: viewModel.deleteAllLegends)
-                    .buttonStyle(.plain)
-                    .font(Typography.caption)
-                    .foregroundColor(Palette.destructive)
-            }
-
-            VStack(spacing: Spacing.xs) {
+    @ViewBuilder
+    private var legendContent: some View {
+        if viewModel.pendingLegendRows.isEmpty && viewModel.legendEntries.isEmpty {
+            DropZone(
+                hint: "PDF · one legend for all the layouts",
+                onChoose: { choose(.legend) },
+                onDrop: viewModel.addLegendFiles
+            )
+        } else {
+            VStack(spacing: 0) {
                 ForEach(viewModel.pendingLegendRows) { row in
                     PlanFileRow(
                         display: row,
-                        onDelete: { viewModel.deleteLegendFile(id: row.id) },
+                        onDelete: { confirmDeletion(of: row, remove: viewModel.deleteLegendFile) },
                         onRetry: { viewModel.retryLegendFile(id: row.id) }
                     )
-                }
-
-                if !viewModel.pendingLegendRows.isEmpty && !viewModel.legendEntries.isEmpty {
-                    Divider()
-                        .background(Palette.surfaceBorder)
                 }
 
                 ForEach(viewModel.legendEntries) { entry in
@@ -159,72 +156,165 @@ struct ProjectSetupView: View {
                         onRemove: { viewModel.removeLegendEntry(id: entry.id) }
                     )
                 }
+
+                if !viewModel.legendEntries.isEmpty {
+                    addRow(title: "Add Legends") { choose(.legend) }
+                }
             }
-            .padding(Spacing.l)
-            .card()
         }
     }
 
-    private var floorPlanColumn: some View {
-        VStack(alignment: .leading, spacing: Spacing.l) {
-            Text("FLOOR PLANS")
-                .sectionLabel()
+    /// Space under the last row of a list, so a card with files ends the way the design shows it.
+    private static let listBottomPadding: CGFloat = 4
 
+    private var legendHasRows: Bool {
+        !viewModel.pendingLegendRows.isEmpty || !viewModel.legendEntries.isEmpty
+    }
+
+    private var legendHelp: some View {
+        SetupHelpPopover(
+            title: "What is a Legend?",
+            summary: "A reference that explains the symbols and colors used in your floor plan.",
+            itemsTitle: "Example of a good legend"
+        ) {
+            SetupHelpItem(mark: .dot(.red), text: "Booth A (Foods)")
+            SetupHelpItem(mark: .dot(.green), text: "Booth B (Goods)")
+        }
+    }
+
+    // MARK: Layouts
+
+    private var floorPlanColumn: some View {
+        SetupCard(
+            title: "Layouts",
+            subtitle: viewModel.floorPlanFiles.isEmpty ? nil : "\(viewModel.planRows.count) Plans",
+            bottomPadding: viewModel.floorPlanFiles.isEmpty ? Spacing.m : Self.listBottomPadding,
+            help: { layoutHelp },
+            trailing: {
+                if !viewModel.floorPlanFiles.isEmpty && viewModel.isFloorPlanZoneEnabled {
+                    Button {
+                        choose(.floorPlan)
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Palette.textSecondary)
+                            .frame(width: 22, height: 22)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Add layout")
+                    .accessibilityLabel("Add layout")
+                }
+            },
+            content: { floorPlanContent }
+        )
+        .disabled(!viewModel.hasLegend && viewModel.floorPlanFiles.isEmpty)
+    }
+
+    @ViewBuilder
+    private var floorPlanContent: some View {
+        if viewModel.floorPlanFiles.isEmpty {
             DropZone(
-                hint: "PDF · one file per layout · up to 6",
-                onChoose: {
-                    lastImportTarget = .floorPlan
-                    importTarget = .floorPlan
-                },
+                hint: "PDF · one page per layout · up to \(ProjectSetupViewModel.maxFloorPlans)",
+                onChoose: { choose(.floorPlan) },
                 onDrop: viewModel.addFloorPlanFiles
             )
             .disabled(!viewModel.isFloorPlanZoneEnabled)
-
-            if !viewModel.floorPlanFiles.isEmpty {
-                uploadedPlansCard
-            }
-        }
-    }
-
-    private var uploadedPlansCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.l) {
-            Text("UPLOADED · \(viewModel.planRows.count) Plans")
-                .sectionLabel()
-
+        } else {
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.planRows.enumerated()), id: \.element.id) { index, row in
+                ForEach(viewModel.planRows) { row in
                     PlanFileRow(
                         display: row,
                         onEdit: { viewModel.editLayout(fileID: row.id) },
-                        onDelete: { viewModel.deleteFloorPlan(id: row.id) },
+                        onPreview: { previewedLayout = viewModel.previewLayout(fileID: row.id) },
+                        onDelete: { confirmDeletion(of: row, remove: viewModel.deleteFloorPlan) },
                         onRetry: { viewModel.retryFloorPlan(id: row.id) }
                     )
-
-                    if index < viewModel.planRows.count - 1 {
-                        Divider()
-                            .background(Palette.surfaceBorder)
-                    }
                 }
+
+                addRow(title: "Add Layout") { choose(.floorPlan) }
+                    .disabled(!viewModel.isFloorPlanZoneEnabled)
             }
-            .padding(.horizontal, Spacing.l)
-            .card()
         }
     }
+
+    private var layoutHelp: some View {
+        SetupHelpPopover(
+            title: "What is a Layout?",
+            summary: "A 2D layout of your venue that shows the space, booths, and facilities.",
+            itemsTitle: "A good layout is:"
+        ) {
+            SetupHelpItem(mark: .check, text: "A clear, readable layout")
+            SetupHelpItem(mark: .check, text: "Includes booths and key facilities")
+            SetupHelpItem(mark: .check, text: "In PDF format, one page per layout")
+        }
+    }
+
+    // MARK: Pieces
+
+    private func addRow(title: String, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+                .background(Palette.surfaceBorder)
+            Button(action: action) {
+                Label(title, systemImage: "plus")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(Palette.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, Spacing.m)
+    }
+
+    private func choose(_ kind: ImportFileKind) {
+        lastImportTarget = kind
+        importTarget = kind
+    }
+
+    /// A file still being read is cancelled at once. Any other file is deleted only after the user confirms.
+    private func confirmDeletion(of row: PlanRowDisplay, remove: @escaping (UUID) -> Void) {
+        switch row.status {
+        case .reading, .waiting:
+            remove(row.id)
+        case .done, .failed, .cancelled:
+            dialog = AppDialogContent(
+                title: "Delete this file?",
+                message: Text("Are you sure you want to delete ")
+                    + Text(row.title).bold()
+                    + Text(" from this project?"),
+                kind: .confirm(confirmTitle: "Delete", action: { remove(row.id) })
+            )
+        }
+    }
+
+    // MARK: Footer
 
     private var footerView: some View {
         HStack(spacing: Spacing.m) {
             Spacer()
 
-            Text(viewModel.statusText)
-                .font(Typography.caption)
-                .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
+            if let text = footerText {
+                Text(text)
+                    .font(Typography.caption)
+                    .foregroundColor(viewModel.isStatusError ? Palette.destructive : Palette.textSecondary)
+            }
 
-            Button("Continue") {
+            // Saves the draft and opens the Parameters sheet, once, from the app root.
+            Button("Set Parameters") {
                 viewModel.continueToReview()
             }
-            .buttonStyle(.primary)
+            .buttonStyle(.highlight)
             .disabled(!viewModel.isContinueEnabled)
         }
+    }
+
+    /// What is holding Set Parameters back, if anything. Nothing is said once it is ready.
+    private var footerText: String? {
+        let text = viewModel.statusText
+        return text.isEmpty || text == "Ready to continue" ? nil : text
     }
 }
 

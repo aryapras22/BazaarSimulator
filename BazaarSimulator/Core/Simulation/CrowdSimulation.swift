@@ -32,6 +32,8 @@ nonisolated final class CrowdSimulation {
     var nearbyScratch: [Int] = []
     var neighborScratch: [CrowdNeighbor] = []
 
+    /// The event is about to close: everyone inside heads for the exit and nobody else comes in.
+    private(set) var isClosing = false
     private var nextArrival = 0.0
     private var drawnPeople = 0
     private var nextPartyID = 1
@@ -85,6 +87,26 @@ nonisolated final class CrowdSimulation {
         stepCount += 1
     }
 
+    /// Ends every stop and sends each party to the exit. From here on nobody arrives.
+    func startClosing() {
+        guard !isClosing else { return }
+        isClosing = true
+        waitingOutside = waitingOutside.map { _ in [] }
+        for party in parties {
+            if party.state == .seated {
+                standUp(party)
+                continue
+            }
+            if let booth = party.currentBooth { browsers[booth].removeAll { $0 === party } }
+            if case .booth(let booth, _) = party.target { queues[booth].removeAll { $0 === party } }
+            if case .table(let table) = party.target { tableOccupants[table] = nil }
+            party.currentBooth = nil
+            party.queuedAt = nil
+            party.state = .walking
+            pickTarget(party)
+        }
+    }
+
     func snapshots() -> [SimulatedVisitor] {
         agents.map { agent in
             SimulatedVisitor(
@@ -128,6 +150,7 @@ nonisolated final class CrowdSimulation {
     }
 
     private func drawArrivals() {
+        guard !isClosing else { return }
         var drawnThisStep = 0
         while nextArrival <= time && drawnThisStep < 50 {
             drawnThisStep += 1

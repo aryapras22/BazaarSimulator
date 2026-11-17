@@ -35,13 +35,18 @@ nonisolated struct CrowdBooth {
     let isFood: Bool
     /// A stage, photobooth, competition or display: visitors stop there on top of their booth budget.
     let isEntertainment: Bool
+    /// Entertainment that is watched from a seat when there is seating near it.
+    var isStage = false
     let footprint: CrowdFootprint
     let pull: Double
     let capacity: Int
+    /// Closed for the event. It still stands on the floor, and nobody is sent to it.
+    var isDisabled = false
     var gateCosts: [Float] = []
 
+    /// Whether a party that came in through `gate` can be sent here.
     func isReachable(fromGate gate: Int) -> Bool {
-        gateCosts[gate] < CrowdWorld.reachableCostLimit
+        !isDisabled && gateCosts[gate] < CrowdWorld.reachableCostLimit
     }
 }
 

@@ -9,12 +9,14 @@ struct ParametersView: View {
             headerView
                 .padding(.bottom, Spacing.l)
 
-            VStack(alignment: .leading, spacing: 0) {
-                totalVisitorsRow
-                divider
-                eventDurationRow
-                divider
-                bazaarAndVisitorRows
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    totalVisitorsRow
+                    divider
+                    eventDurationRow
+                    divider
+                    bazaarAndVisitorRows
+                }
             }
 
             footerView

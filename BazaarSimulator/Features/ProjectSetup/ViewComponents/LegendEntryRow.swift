@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// One color of the legend: its swatch, its name, the category the booths of that color belong to, and a trash can.
+/// Foods, Goods and Others are all offered.
 struct LegendEntryRow: View {
     let name: String
     let color: Color
@@ -9,43 +11,69 @@ struct LegendEntryRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Circle()
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(color)
-                .frame(width: 8, height: 8)
+                .frame(width: 11, height: 11)
 
             Text(name)
-                .font(Typography.body)
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Palette.textPrimary)
+                .lineLimit(1)
+                .frame(width: 70, alignment: .leading)
 
-            Spacer()
+            categoryMenu
 
-            Picker("Category", selection: typeSelection) {
-                if type == nil {
-                    Text("Category").tag(BoothType?.none)
-                }
-                ForEach(BoothType.allCases, id: \.self) { option in
-                    Text(option.displayName).tag(Optional(option))
-                }
+            Button(action: onRemove) {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Palette.destructive)
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityLabel("Category for \(name)")
-
-            Button("Remove", action: onRemove)
-                .buttonStyle(.removePill)
-                .accessibilityLabel("Remove \(name)")
+            .buttonStyle(.plain)
+            .help("Remove \(name)")
+            .accessibilityLabel("Remove \(name)")
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.vertical, 5)
     }
 
-    private var typeSelection: Binding<BoothType?> {
-        Binding(
-            get: { type },
-            set: { newType in
-                if let newType { onTypeChange(newType) }
+    private var categoryMenu: some View {
+        Menu {
+            ForEach(BoothType.allCases, id: \.self) { option in
+                Button {
+                    onTypeChange(option)
+                } label: {
+                    if option == type {
+                        Label(option.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(option.displayName)
+                    }
+                }
             }
-        )
+        } label: {
+            HStack {
+                Text(type?.displayName ?? "Choose Category")
+                    .font(.system(size: 11))
+                    .foregroundColor(Palette.textPrimary)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Palette.textSecondary)
+            }
+            .padding(.horizontal, Spacing.s)
+            .frame(maxWidth: .infinity)
+            .frame(height: 26)
+            .background(Palette.field, in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
+                    .stroke(Palette.fieldBorder, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .accessibilityLabel("Category for \(name)")
     }
 }
 
@@ -56,6 +84,7 @@ struct LegendEntryRow: View {
         LegendEntryRow(name: "Booth C", color: .yellow, type: nil, onTypeChange: { _ in }, onRemove: {})
     }
     .padding()
+    .frame(width: 320)
     .background(Palette.surface)
     .preferredColorScheme(.dark)
 }
