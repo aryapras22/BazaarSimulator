@@ -8,11 +8,15 @@ import Vision
 /// The words printed in the boxes settle all three.
 enum PlanPrintedText {
     private static let structuralClasses: Set<String> = [
-        "wall", "door", "opening", "object", "pillar", "blocked", "entrance", "exit"
+        "wall", "door", "opening", "gate", "object", "pillar", "blocked", "entrance", "exit"
     ]
     private static let orientations: [CGImagePropertyOrientation] = [.up, .down, .left, .right]
     private static let maxSizedBoxes = 8
+    private static let sampledBooths = 16
+    /// How far around a booth its side label is looked for, in booth sides.
+    private static let sideLabelReach = 0.6
     private static let paperWhite = 250
+    private static let gateWord = "gate"
 
     /// A legend class drawn as an outline has a paper white swatch, so the extractor gives it every empty outlined
     /// region of the plan: rooms, stairs, voids. A box of such a class is kept only when it prints the name of a
@@ -24,7 +28,7 @@ enum PlanPrintedText {
     ) async -> [DetectedItem] {
         var result: [DetectedItem] = []
         for var item in items {
-            guard isPaperWhite(item), !item.cls.lowercased().contains("booth") else {
+            guard isPaperWhite(item), !item.isBooth else {
                 result.append(item)
                 continue
             }
@@ -45,6 +49,31 @@ enum PlanPrintedText {
             result[index].id = boothNumber(in: words)
         }
         return result
+    }
+
+    /// A legend class called gate is drawn as a bar that the extractor returns nothing for. The word GATE printed
+    /// beside the bar marks where it is, so a gate is placed on each such word, as long as the word is.
+    static func addingPrintedGates(
+        _ items: [DetectedItem],
+        classNames: [String],
+        on page: CGImage
+    ) async -> [DetectedItem] {
+        guard classNames.contains(where: { letters(of: $0).contains(gateWord) }) else { return items }
+        var request = RecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false
+        guard let observations = try? await request.perform(on: page) else { return items }
+        let width = Double(page.width)
+        let height = Double(page.height)
+        let gates = observations.filter { letters(of: $0.transcript) == gateWord }.map { observation in
+            // Vision measures from the bottom left in fractions of the page.
+            let box = observation.boundingBox.cgRect
+            return DetectedItem(
+                cls: "gate",
+                box: [box.minX * width, (1 - box.maxY) * height, box.width * width, box.height * height]
+            )
+        }
+        return items + gates
     }
 
     /// The longest class name the words spell out, ignoring case, spaces and line breaks.
@@ -72,11 +101,10 @@ enum PlanPrintedText {
     }
 
     /// Pixels per metre from boxes that print their size, such as "6 x 12 m" on a stage, else from classes whose
-    /// legend name prints one.
+    /// legend name prints one, else from the side printed beside the booths.
     static func pixelsPerMetre(from items: [DetectedItem], on page: CGImage) async -> Double? {
         let unsized = items.filter { item in
-            let name = item.cls.lowercased()
-            return !name.contains("booth") && !structuralClasses.contains(name)
+            !item.isBooth && !structuralClasses.contains(item.cls.lowercased())
         }
         let candidates = unsized.sorted { area(of: $0) > area(of: $1) }.prefix(maxSizedBoxes)
         var printedBoxes: [(box: [Double], printed: PrintedSize)] = []
@@ -85,8 +113,29 @@ enum PlanPrintedText {
             let words = await words(in: item.box, on: page) { size(in: $0) != nil }
             if let printed = size(in: words) { printedBoxes.append((item.box, printed)) }
         }
-        return PrintedScale.pixelsPerMetre(from: printedBoxes)
-            ?? PrintedScale.pixelsPerMetre(from: boxesSizedByClassName(items))
+        if let scale = PrintedScale.pixelsPerMetre(from: printedBoxes)
+            ?? PrintedScale.pixelsPerMetre(from: boxesSizedByClassName(items)) {
+            return scale
+        }
+        return await pixelsPerMetreFromBoothSides(items, on: page)
+    }
+
+    /// Some plans print no box size but print a side such as "3 m" beside each booth. The side printed most often
+    /// around a sample of booths is taken as the side of the median booth. The labels are too small to read on the
+    /// whole page, so each sampled booth is read on its own.
+    private static func pixelsPerMetreFromBoothSides(_ items: [DetectedItem], on page: CGImage) async -> Double? {
+        let booths = items.filter(\.isBooth)
+        let sides = booths.map { ($0.box[2] + $0.box[3]) / 2 }.sorted()
+        guard !sides.isEmpty else { return nil }
+        let medianSide = sides[sides.count / 2]
+        let reach = medianSide * sideLabelReach
+        var printed: [Double] = []
+        for index in stride(from: 0, to: booths.count, by: max(1, booths.count / sampledBooths)) {
+            let box = booths[index].box
+            let around = [box[0] - reach, box[1] - reach, box[2] + 2 * reach, box[3] + 2 * reach]
+            printed += await words(in: around, on: page) { _ in true }.compactMap(PrintedScale.length(in:))
+        }
+        return PrintedScale.mostPrinted(printed).map { medianSide / $0 }
     }
 
     /// A legend class such as "Booth, goods (3 x 2 m)" prints the size of every box of the class.

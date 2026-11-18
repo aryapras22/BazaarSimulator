@@ -110,6 +110,28 @@ struct ImportQueueTests {
         }
     }
 
+    @Test("A page that is one image is drawn at the pixel size of that image")
+    func imagePageKeepsItsPixels() throws {
+        let pixels = try #require(CGContext(
+            data: nil, width: 300, height: 200, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        let image = try #require(pixels.makeImage())
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("scan-\(UUID()).pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var pageBox = CGRect(x: 0, y: 0, width: 150, height: 100)
+        let pdf = try #require(CGContext(url as CFURL, mediaBox: &pageBox, nil))
+        pdf.beginPDFPage(nil)
+        pdf.draw(image, in: pageBox)
+        pdf.endPDFPage()
+        pdf.closePDF()
+
+        let page = try PDFImportService().renderFirstPage(of: url)
+
+        #expect(page.width == 300)
+        #expect(page.height == 200)
+    }
+
     @Test("A failed plan does not stop the next one")
     func failureIsolated() async {
         let queue = ImportQueue(pdf: StubPDF(), reader: StubReader(log: ReadLog(), failingPlan: "bad"))

@@ -152,6 +152,18 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.first?.attractiveness == 5)
     }
 
+    @Test("An item with an ID is a booth even when its legend class is not called a booth")
+    func idMarksBooth() {
+        let plan = DetectedPlan(items: [
+            item("INDONESIA", [0, 0, 50, 50], id: "H43"), item("INDONESIA", [100, 0, 50, 50])
+        ])
+
+        let layout = ExtractedLayoutMapper.layout(from: plan, legend: legend, pixelsPerMetre: 25, name: "Plan")
+
+        #expect(layout.objects.map(\.kind) == [.booth, .block])
+        #expect(layout.objects.first?.label == "H43")
+    }
+
     @Test("Booths without an ID get U1, U2 labels")
     func unlabeledBooths() {
         let plan = DetectedPlan(items: [

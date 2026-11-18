@@ -182,4 +182,35 @@ struct ImportCleanupTests {
         let reach = walls.map { $0.placement.center.x + $0.placement.sizeM.x / 2 }.max() ?? 0
         #expect(abs(reach - (door.placement.center.x - door.placement.sizeM.x / 2)) < 0.05)
     }
+
+    /// The editor's rule for two walls that overlap: they run along the same line, with centrelines closer than half
+    /// the sum of their thicknesses less 0.05 m, and share more than 0.05 m of length.
+    private func overlap(_ first: Placement, _ second: Placement) -> Bool {
+        let direction = SIMD2(cos(first.rotationRadians), sin(first.rotationRadians))
+        let other = SIMD2(cos(second.rotationRadians), sin(second.rotationRadians))
+        guard abs(direction.x * other.y - direction.y * other.x) < sin(5 * .pi / 180) else { return false }
+        let offset = second.center - first.center
+        let across = abs(offset.x * direction.y - offset.y * direction.x)
+        let along = simd_dot(offset, direction)
+        let shared = min(first.sizeM.x / 2, along + second.sizeM.x / 2)
+            - max(-first.sizeM.x / 2, along - second.sizeM.x / 2)
+        return across < (first.sizeM.y + second.sizeM.y) / 2 - 0.05 && shared > 0.05
+    }
+
+    @Test(
+        "No two walls of a sample plan run along the same line over the same length",
+        arguments: ["plan1", "plan2", "plan3", "plan5", "plan6"]
+    )
+    func wallsOnOneLineShareNoLength(_ plan: String) throws {
+        let detected = try TestFixtureLoader.load(DetectedPlan.self, from: "\(plan)-detected")
+        let readScale = detected.printedPixelsPerMetre ?? ExtractedLayoutMapper.assumedPixelsPerMetre(for: detected)
+        let scale = try #require(readScale)
+        let layout = ExtractedLayoutMapper.layout(from: detected, legend: legend, pixelsPerMetre: scale, name: plan)
+        let walls = layout.objects.filter { $0.kind == .wall }.map(\.placement)
+
+        let overlapping = walls.indices.flatMap { first in
+            walls.indices.filter { $0 > first && overlap(walls[first], walls[$0]) }.map { [walls[first], walls[$0]] }
+        }
+        #expect(overlapping.isEmpty)
+    }
 }

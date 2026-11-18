@@ -65,7 +65,7 @@ enum WallConnections {
     static func apply(to objects: [LayoutObject]) -> [LayoutObject] {
         var segments = objects.filter { $0.kind == .wall }.map { Segment($0) }
         let doors = objects.filter { $0.kind == .door && isWideEnough($0) }
-        segments = mergeStacked(dropFrameLines(segments))
+        segments = endAtThickerWalls(mergeStacked(dropFrameLines(segments)))
         segments = dropTicks(segments)
         segments = dropFloating(connectCorners(segments), doors: doors)
         let seated = seatedDoors(in: objects, on: segments)
@@ -200,13 +200,22 @@ enum WallConnections {
         }.map { segments[$0] }
     }
 
-    /// An end that stops short of another wall's line is stretched to it, so the two walls meet.
+    /// An end that stops short of another wall's line is stretched to it, so the two walls meet. An end that a wall on
+    /// the same line carries on from is already joined, and stretching it would lay it over that wall.
     private static func connectCorners(_ segments: [Segment]) -> [Segment] {
         var result = segments
         for index in result.indices {
             for end in [true, false] {
                 let point = end ? result[index].end : result[index].start
                 let outward = end ? result[index].direction : -result[index].direction
+                let isContinued = segments.indices.contains { other in
+                    other != index && isParallel(result[index], segments[other])
+                        && segments[other].distance(to: point) <= touchM
+                        && [segments[other].start, segments[other].end].contains {
+                            simd_dot($0 - point, outward) > touchM
+                        }
+                }
+                guard !isContinued else { continue }
                 var nearest: (reach: Double, target: SIMD2<Double>)?
                 for other in segments.indices where other != index && !isParallel(result[index], segments[other]) {
                     guard let hit = meeting(from: point, outward: outward, wall: segments[other]),
@@ -269,5 +278,34 @@ enum WallConnections {
         let near = walls(across: doorReachM, beyond: width / 2 + doorReachM)
         let candidates = near.isEmpty ? walls(across: doorTouchM, beyond: doorLineReachM) : near
         return candidates.min { $0.locate(centre).across < $1.locate(centre).across }
+    }
+}
+
+extension WallConnections {
+    /// A thinner wall that runs into a thicker one on the same line stops at the thicker wall's end, and goes when the
+    /// thicker wall covers all of it. The two edges of a door jamb are read a little past the wall the jamb interrupts,
+    /// so the thick wall they stack into would otherwise share length with that wall.
+    private static func endAtThickerWalls(_ segments: [Segment]) -> [Segment] {
+        segments.compactMap { thin in
+            var trimmed = thin
+            for host in segments where host.thickness > thin.thickness && isParallel(thin, host) {
+                func isInside(_ point: SIMD2<Double>) -> Bool {
+                    let spot = host.locate(point)
+                    return spot.across < (host.thickness + thin.thickness) / 2 && spot.along > 0
+                        && spot.along < host.length
+                }
+                func hostEnd(towards point: SIMD2<Double>) -> SIMD2<Double> {
+                    let nearer = host.locate(point).along > host.length / 2 ? host.end : host.start
+                    return thin.start + thin.direction * thin.locate(nearer).along
+                }
+                switch (isInside(trimmed.start), isInside(trimmed.end)) {
+                case (true, true): return nil
+                case (true, false): trimmed.start = hostEnd(towards: trimmed.end)
+                case (false, true): trimmed.end = hostEnd(towards: trimmed.start)
+                case (false, false): break
+                }
+            }
+            return trimmed
+        }
     }
 }
