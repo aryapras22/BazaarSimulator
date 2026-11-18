@@ -56,7 +56,7 @@ struct DashboardContent: View {
             DashboardHeader(
                 title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: viewModel.canEdit ? { viewModel.isParametersPresented = true } : nil
+                onOpenParameters: { viewModel.isParametersPresented = true }
             )
 
             switch viewModel.phase {

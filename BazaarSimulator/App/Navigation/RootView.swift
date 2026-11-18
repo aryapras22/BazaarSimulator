@@ -103,8 +103,11 @@ struct RootView: View {
             }
             .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
-            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { _ in
-                EmptyView()
+            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { close in
+                // A saved run cannot change. Applying new parameters opens the project's latest analysis, which runs again.
+                ParametersView(viewModel: factory.makeParametersViewModel(
+                    projectID: projectID, onClose: close, onApply: { router.showAnalysis(projectID: projectID) }
+                ))
             }
             .id(analysisID)
         case .editor(let projectID):
