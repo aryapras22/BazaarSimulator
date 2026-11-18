@@ -27,7 +27,7 @@ final class LayoutEditorViewModel {
         didSet { defaults.set(canvasBackground.rawValue, forKey: Self.canvasBackgroundKey) }
     }
 
-    var activeLayer: EditorLayer = .structure
+    var activeLayer: EditorLayer = .booths
     var hiddenLayers: Set<EditorLayer> = []
     var showVisitorFlow: Bool = false
     var transientHint: String?

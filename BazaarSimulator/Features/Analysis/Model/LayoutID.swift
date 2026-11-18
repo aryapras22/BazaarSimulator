@@ -11,26 +11,26 @@ enum LayoutID: Int, CaseIterable, Identifiable, Codable, Sendable {
         self == .one ? .two : .one
     }
 
-    var accent: Color {
-        switch self {
-        case .one: Color(hex: 0xFF7F33)
-        case .two: Color(hex: 0x007DD5)
-        }
-    }
-
-    var chartColor: Color {
-        switch self {
-        case .one: Color(hex: 0xFF7F33)
-        case .two: Color(hex: 0x56A6FD)
-        }
-    }
-
+    /// The one color for each layout, the one on the top tiles. The charts, bars and summaries use it too, so
+    /// a layout looks the same everywhere.
     var tileFill: Color {
         switch self {
         case .one: Color(hex: 0xFE6A29)
         case .two: Color(hex: 0x007DD5)
         }
     }
+
+    /// The tile of the layout that is not the better choice: its own color, held back toward the card gray, so it
+    /// still reads as that layout.
+    var mutedTileFill: Color {
+        switch self {
+        case .one: Color(hex: 0x8B5645)
+        case .two: Color(hex: 0x255E8A)
+        }
+    }
+
+    var accent: Color { tileFill }
+    var chartColor: Color { tileFill }
 
     var onTileFill: Color {
         switch self {

@@ -52,32 +52,12 @@ struct EditorHeaderBar: View {
         .accessibilityLabel("Back to Analysis")
     }
 
-    @ViewBuilder
+    /// Which layout is being edited is chosen from the upload page, so the title is only a label here.
     private var layoutTitle: some View {
         let index = (viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0) + 1
-        if viewModel.layouts.count > 1 {
-            Menu {
-                ForEach(Array(viewModel.layouts.enumerated()), id: \.element.id) { offset, item in
-                    Button("Layout \(offset + 1) · \(item.name)") { viewModel.selectLayout(item.id) }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("Layout \(index)")
-                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
-                }
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(Palette.textPrimary)
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Switch layout")
-        } else {
-            Text("Layout \(index)")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(Palette.textPrimary)
-        }
+        return Text("Layout \(index)")
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundColor(Palette.textPrimary)
     }
 
     private var layerTabs: some View {

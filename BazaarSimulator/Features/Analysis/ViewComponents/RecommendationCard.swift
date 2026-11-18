@@ -50,7 +50,7 @@ struct RecommendationCard: View {
             .padding(.top, metrics.headlineToTiles)
 
             Button {
-                showsExplanation = true
+                showsExplanation.toggle()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "info.circle")
@@ -63,8 +63,11 @@ struct RecommendationCard: View {
             }
             .buttonStyle(.plain)
             .padding(.top, metrics.tilesToLink)
+            // Shown while the pointer is over the link, not on a click. A click still toggles it, for the keyboard.
+            .onHover { showsExplanation = $0 }
             .popover(isPresented: $showsExplanation, arrowEdge: .top) {
                 ExplanationPopover(title: tab.title, content: content)
+                    .glassPopover()
             }
 
             Spacer(minLength: 0)
@@ -144,7 +147,7 @@ struct OutcomeTileView: View {
         }
         .background {
             RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)
-                .fill(isRecommended ? tile.layout.tileFill : Color.cardSurfaceSecondary)
+                .fill(isRecommended ? tile.layout.tileFill : tile.layout.mutedTileFill)
                 .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
         }
         .accessibilityElement(children: .combine)

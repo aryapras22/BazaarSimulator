@@ -37,7 +37,6 @@ struct LayoutComparisonCard: View {
             .zIndex(1)
 
             HStack(alignment: .bottom, spacing: 16) {
-                SeverityScaleView()
                 Spacer(minLength: 0)
                 if showsWorstSpot, !outcome.spots.isEmpty {
                     WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)

@@ -41,16 +41,33 @@ extension Radius {
     static let control: CGFloat = 8
 }
 
+private struct CardsAreGlassKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Whether the cards draw as glass instead of a solid fill. The Insights modal turns it on.
+    var cardsAreGlass: Bool {
+        get { self[CardsAreGlassKey.self] }
+        set { self[CardsAreGlassKey.self] = newValue }
+    }
+}
+
 struct CardSurface: ViewModifier {
     var cornerRadius: CGFloat = Radius.card
+    @Environment(\.cardsAreGlass) private var cardsAreGlass
 
     func body(content: Content) -> some View {
-        content.background {
-            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            shape
-                .fill(Color.cardSurface)
-                .overlay { shape.strokeBorder(Color.cardBorder, lineWidth: 1) }
-                .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if cardsAreGlass {
+            content.glassEffect(.regular.tint(Color.cardSurface.opacity(0.45)), in: shape)
+        } else {
+            content.background {
+                shape
+                    .fill(Color.cardSurface)
+                    .overlay { shape.strokeBorder(Color.cardBorder, lineWidth: 1) }
+                    .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+            }
         }
     }
 }

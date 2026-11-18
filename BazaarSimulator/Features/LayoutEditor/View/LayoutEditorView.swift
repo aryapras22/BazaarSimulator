@@ -8,42 +8,48 @@ struct LayoutEditorView: View {
     @State private var isSidePanelVisible = true
     @FocusState private var isCanvasFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.pageClearsToolbar) private var pageClearsToolbar
+
+    /// Room kept at the right of the canvas for the tool buttons: their width and a gap on each side.
+    private static let toolButtonsWidth: CGFloat = 64
 
     var body: some View {
-        VStack(spacing: 0) {
-            EditorHeaderBar(viewModel: viewModel)
-                // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
-                .padding(.leading, 150)
-                .padding(.trailing, Spacing.l)
-                .padding(.top, Spacing.m)
-                .padding(.bottom, Spacing.s)
+        // The inspector runs the whole height of the window, so the header, with undo and redo, ends where it starts.
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                EditorHeaderBar(viewModel: viewModel)
+                    // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
+                    .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
+                    // Undo and redo end above the tool buttons, with the same gap to the inspector.
+                    .padding(.trailing, InspectorPanelMetrics.margin + Spacing.l)
+                    .padding(.top, Spacing.m)
+                    .padding(.bottom, Spacing.s)
 
-            ZStack(alignment: .trailing) {
-                HStack(spacing: 0) {
+                ZStack(alignment: .topTrailing) {
                     viewportArea
-                        .padding(.trailing, InspectorPanelMetrics.width + InspectorPanelMetrics.margin * 2 + 52)
-                }
+                        .padding(.trailing, Self.toolButtonsWidth)
 
-                HStack(alignment: .top, spacing: Spacing.m) {
                     EditorToolButtons(
                         layer: viewModel.activeLayer,
                         isActive: { viewModel.isActive($0) },
                         isAvailable: { viewModel.tool(for: $0) != nil },
                         onSelect: { viewModel.toggle($0) }
                     )
-                    .padding(.top, Spacing.s)
-
-                    LayoutInspectorColumn(
-                        viewModel: viewModel,
-                        onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
-                    )
+                    .padding(.top, InspectorPanelMetrics.margin + Spacing.s)
+                    .padding(.trailing, InspectorPanelMetrics.margin)
                 }
-                .padding(InspectorPanelMetrics.margin)
             }
+
+            LayoutInspectorColumn(
+                viewModel: viewModel,
+                onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
+            )
+            .padding(InspectorPanelMetrics.margin)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background.ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .navigationTitle(viewModel.projectName)
         .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
         .focusedSceneValue(\.editorCommandActions, commandActions)

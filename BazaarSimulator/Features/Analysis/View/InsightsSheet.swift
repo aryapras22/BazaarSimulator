@@ -41,7 +41,11 @@ struct InsightsSheet: View {
         .padding(.top, 26)
         .padding(.bottom, 28)
         .frame(width: 1197)
-        .background { DashboardBackground() }
+        // Glass instead of the dashboard backdrop: the sheet's own background is cleared so the glass shows through.
+        .background { Rectangle().fill(.clear).glassEffect(.regular, in: Rectangle()) }
+        .presentationBackground(.clear)
+        // The islands in the modal are glass too.
+        .environment(\.cardsAreGlass, true)
         .preferredColorScheme(.dark)
     }
 }
