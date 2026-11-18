@@ -55,6 +55,7 @@ enum Palette {
     static let canvasDoorSelected = Color(hex: 0xB72008)
     static let canvasIssue = destructive
     static let highlight = Color(hex: 0xF76222)
+    static let actionOrange = Color(hex: 0xFF6A2A)
     static let visitorSeries1 = Color.blue
     static let visitorSeries2 = Color.teal
     static let visitorSeries3 = Color.orange

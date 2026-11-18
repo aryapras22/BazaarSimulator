@@ -47,7 +47,7 @@ nonisolated final class CrowdSimulation {
         let weights = [
             (CrowdParameters.social, max(0, settings.socializerWeight)),
             (CrowdParameters.family, max(0, settings.familyWeight)),
-            (CrowdParameters.stroller, max(0, settings.strollerWeight)),
+            (CrowdParameters.explorer, max(0, settings.explorerWeight)),
             (CrowdParameters.buyer, max(0, settings.buyerWeight))
         ]
         personaWeights = weights.map { (persona: $0.0, weight: $0.1 + 1e-9) }

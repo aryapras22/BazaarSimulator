@@ -131,10 +131,10 @@ struct ModalParameters: Codable, Hashable, Sendable {
     var endMinutes: Int = 21 * 60
     var bazaarType: String = "Family & Kids"
 
-    var socializerPercent: Double = 21
-    var familyMemberPercent: Double = 46
-    var strollerPercent: Double = 33
-    var purposeBuyerPercent: Double = 0
+    var socializerPercent: Double = 20
+    var familyMemberPercent: Double = 50
+    var explorerPercent: Double = 15
+    var purposeBuyerPercent: Double = 15
 
     var durationMinutes: Int {
         if endMinutes > startMinutes {
@@ -161,7 +161,7 @@ struct ModalParameters: Codable, Hashable, Sendable {
             randomSeed: 7,
             socializerWeight: socializerPercent,
             familyWeight: familyMemberPercent,
-            strollerWeight: strollerPercent,
+            explorerWeight: explorerPercent,
             buyerWeight: purposeBuyerPercent
         )
     }
@@ -180,7 +180,7 @@ nonisolated struct SimulationSettings: Codable, Hashable, Sendable {
 
     var socializerWeight: Double = 25
     var familyWeight: Double = 25
-    var strollerWeight: Double = 25
+    var explorerWeight: Double = 25
     var buyerWeight: Double = 25
 }
 

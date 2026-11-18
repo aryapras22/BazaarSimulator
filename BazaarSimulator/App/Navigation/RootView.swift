@@ -28,7 +28,7 @@ struct RootView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             ProjectLibraryView(viewModel: libraryViewModel)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 200, max: 260)
+                .navigationSplitViewColumnWidth(min: 240, ideal: 240, max: 300)
         } detail: {
             detailView
         }

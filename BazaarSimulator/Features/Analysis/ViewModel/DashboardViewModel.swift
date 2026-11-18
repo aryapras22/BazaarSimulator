@@ -135,6 +135,20 @@ final class DashboardViewModel {
         runTask = Task { await runSimulation() }
     }
 
+    /// Cancels the simulation in progress, removes the running row from the sidebar, and leaves the loading screen.
+    func cancelSimulation() {
+        runCount += 1
+        runTask?.cancel()
+        runTask = nil
+        isRunning = false
+        runningInputs = nil
+        previewVenue = nil
+        previewFrame = SimulationSceneFrame()
+        loadingProgress = 0.0
+        session.setAnalysisRunning(false, for: projectID)
+        onBack()
+    }
+
     /// Writes to the log why a run starts although a result is already on the page, so an unexpected run can be
     /// traced: filter the console for the "analysis" category.
     private func logWhyRunning() {

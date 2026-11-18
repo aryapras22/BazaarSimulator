@@ -7,7 +7,8 @@ import Testing
 struct BackFromEditorTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func setUp() -> (DashboardViewModel, LayoutEditorViewModel) {

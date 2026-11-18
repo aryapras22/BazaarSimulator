@@ -3,7 +3,7 @@
     "walkingSpeedMps": 1.0, "plannedStops": 6, "dwellMinutes": 4 },
   { "id": "family", "name": "Family Member", "summary": "Moves slow and in group.",
     "walkingSpeedMps": 0.9, "plannedStops": 5, "dwellMinutes": 3 },
-  { "id": "stroller", "name": "Stroller", "summary": "Moves around leisurely",
+  { "id": "explorer", "name": "Explorer", "summary": "Moves around leisurely",
     "walkingSpeedMps": 1.1, "plannedStops": 4, "dwellMinutes": 2 },
   { "id": "buyer", "name": "Purpose Buyer", "summary": "Quick and straightforward",
     "walkingSpeedMps": 1.5, "plannedStops": 2, "dwellMinutes": 1.5 }

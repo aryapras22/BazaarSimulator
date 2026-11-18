@@ -66,7 +66,8 @@ struct DashboardContent: View {
                     showsProgress: true,
                     progress: viewModel.loadingProgress,
                     previewVenue: viewModel.previewVenue,
-                    previewFrame: viewModel.previewFrame
+                    previewFrame: viewModel.previewFrame,
+                    onCancel: { viewModel.cancelSimulation() }
                 )
             case .needsLayouts:
                 RunningNotice(text: "Add a floor plan to analyse it.", showsProgress: false)
@@ -123,6 +124,7 @@ private struct RunningNotice: View {
     var progress: Double = 0.0
     var previewVenue: SimulationVenue?
     var previewFrame: SimulationSceneFrame = SimulationSceneFrame()
+    var onCancel: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -141,23 +143,32 @@ private struct RunningNotice: View {
             }
 
             VStack(spacing: 12) {
-                if showsProgress {
-                    ProgressView()
-                }
-                Text(text)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.textPrimary)
-                if showsProgress {
-                    VStack(spacing: 6) {
-                        ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
-                            .progressViewStyle(.linear)
-                            .tint(Palette.accent)
-                            .frame(width: 240)
-                        Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundStyle(.textSecondary)
+                VStack(spacing: 12) {
+                    if showsProgress {
+                        ProgressView()
                     }
+                    Text(text)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.textPrimary)
+                    if showsProgress {
+                        VStack(spacing: 6) {
+                            ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
+                                .progressViewStyle(.linear)
+                                .tint(Palette.accent)
+                                .frame(width: 240)
+                            Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                                .font(.system(size: 11.5, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(.textSecondary)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+
+                if let onCancel {
+                    Button("Cancel", action: onCancel)
+                        .buttonStyle(.secondary)
+                        .padding(.top, Spacing.xs)
                 }
             }
             .padding(.horizontal, 28)
@@ -174,7 +185,7 @@ private struct RunningNotice: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 

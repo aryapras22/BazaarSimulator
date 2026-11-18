@@ -7,7 +7,8 @@ import Testing
 struct DashboardViewModelTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func makeModel(layouts: [Layout], parameters: EventParameters? = nil) -> DashboardViewModel {
@@ -169,5 +170,38 @@ struct DashboardViewModelTests {
         model.choose(layouts[0].id, for: .two)
         await untilReady(model)
         #expect(model.floorPlan(for: .one)?.id == layouts[2].id && model.floorPlan(for: .two)?.id == layouts[0].id)
+    }
+
+    @Test("Cancelling during loading stops the simulation, clears running state, saves no run, and navigates back")
+    func cancellingStopsAndClearsSidebarRunning() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: twoLayouts), for: project.id)
+        var params = TestLayouts.parameters
+        params.totalVisitors = 4000
+        session.setEventParameters(params, for: project.id)
+        var didGoBack = false
+        let model = DashboardViewModel(
+            projectID: project.id,
+            session: session,
+            analysisService: AnalysisService(),
+            catalog: catalog,
+            onBack: { didGoBack = true }
+        )
+
+        model.startSimulation()
+        await Task.yield()
+        #expect(model.phase == .loading)
+        #expect(session.isSimulating(project.id))
+
+        model.cancelSimulation()
+        #expect(didGoBack)
+        #expect(!model.isRunning)
+        #expect(!session.isSimulating(project.id))
+        #expect(session.savedAnalyses(for: project.id).isEmpty)
+
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!session.isSimulating(project.id))
+        #expect(session.savedAnalyses(for: project.id).isEmpty)
     }
 }

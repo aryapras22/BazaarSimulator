@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PrimaryButtonStyle: ButtonStyle {
+    var fill: Color = Palette.accent
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
@@ -11,7 +12,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, Spacing.s)
             .background(
                 isEnabled
-                    ? Palette.accent.opacity(configuration.isPressed ? 0.8 : 1.0)
+                    ? fill.opacity(configuration.isPressed ? 0.8 : 1.0)
                     : Palette.primaryDisabled
             )
             .clipShape(RoundedRectangle(cornerRadius: Radius.s))
@@ -20,6 +21,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == PrimaryButtonStyle {
     static var primary: PrimaryButtonStyle { PrimaryButtonStyle() }
+    static func primary(fill: Color) -> PrimaryButtonStyle { PrimaryButtonStyle(fill: fill) }
 }
 
 #Preview("Normal") {

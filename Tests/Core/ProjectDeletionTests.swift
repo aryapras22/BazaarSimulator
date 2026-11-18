@@ -17,7 +17,8 @@ struct ProjectDeletionTests {
         )
         let parameters = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", totalVisitors: 100, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
+            defaultTotalVisitors: 100
         ).defaultParameters()
         session.recordAnalysis(
             layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: projectID
@@ -143,7 +144,8 @@ struct SidebarDeletionTests {
         )
         let parameters = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", totalVisitors: 100, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
+            defaultTotalVisitors: 100
         ).defaultParameters()
         let run = session.recordAnalysis(
             layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: project.id

@@ -25,7 +25,8 @@ struct SavedAnalysisTests {
 
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func parameters(visitors: Int = 500) -> EventParameters {
@@ -146,7 +147,8 @@ struct SavedAnalysisTests {
 struct DashboardSavedRunTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func session() -> (ProjectSession, UUID) {
@@ -255,7 +257,8 @@ struct SingleLayoutSavedRunTests {
         measured.plan = PlanFrame(origin: .zero, size: layout.sizeM)
         let catalog = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
         )
         let saved = SavedAnalysis(
             number: 1, parameters: catalog.defaultParameters(), layouts: [layout], analyses: [measured], peakMinute: 690
@@ -276,7 +279,8 @@ struct SavedRunSimulatorTests {
     func playsTheSavedLayout() async throws {
         let catalog = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
         )
         let session = ProjectSession()
         let project = session.createProject(named: "P")
@@ -316,7 +320,8 @@ struct DashboardStaysOnAnalysisTests {
     func staysOnTheAnalysis() async throws {
         let catalog = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
         )
         let session = ProjectSession()
         let project = session.createProject(named: "P")
@@ -359,7 +364,8 @@ struct SavedRunPageTests {
         measured.plan = PlanFrame(origin: .zero, size: layout.sizeM)
         let catalog = PresetCatalog(
             visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+            bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
         )
         session.recordAnalysis(
             layouts: [layout], analyses: [measured], parameters: catalog.defaultParameters(),

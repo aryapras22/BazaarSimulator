@@ -69,7 +69,7 @@ struct ParametersView: View {
                 DropdownField(
                     options: viewModel.catalog.bazaarTypes.map(\.id),
                     selection: $viewModel.bazaarTypeID,
-                    title: { viewModel.catalog.bazaarType(id: $0)?.name ?? $0 }
+                    title: { viewModel.bazaarTypeTitle(for: $0) }
                 )
                 .frame(width: 234)
             }
@@ -94,7 +94,7 @@ struct ParametersView: View {
                 commitScope.commitAll()
                 viewModel.apply()
             }
-                .buttonStyle(.primary)
+            .buttonStyle(.primary(fill: Palette.actionOrange))
         }
     }
 }
