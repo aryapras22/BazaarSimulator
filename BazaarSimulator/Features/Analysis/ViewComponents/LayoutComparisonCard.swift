@@ -23,16 +23,13 @@ struct LayoutComparisonCard: View {
 
     @State private var hoveredSpot: Int?
     @State private var showsChoices = false
-    @State private var zoom: CGFloat = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerBar
                 .padding(.horizontal, LayoutCardInset.horizontal)
 
-            ZoomablePlan(zoom: $zoom) {
-                floorPlanImage
-            }
+            floorPlanImage
             .aspectRatio(planAspect, contentMode: .fit)
             .frame(height: max(planHeight ?? metrics.planHeight, 0))
             .frame(maxWidth: .infinity)
@@ -96,8 +93,6 @@ struct LayoutComparisonCard: View {
             .accessibilityLabel("Layout selector, \(layout.name)")
 
             Spacer(minLength: 8)
-
-            ZoomControls(zoom: $zoom)
 
             if showsSimulate {
                 Button(action: onSimulate) {
