@@ -158,7 +158,7 @@ enum WallDrawingRenderer {
     ) -> String {
         let measured = DimensionInput.text(for: simd_distance(start, end))
         let length = drawing.typedLength.isEmpty ? measured : drawing.typedLength
-        let previous = drawing.points.count >= 2 ? drawing.points[drawing.points.count - 2] : nil
+        let previous = drawing.points.count >= 2 ? drawing.points[drawing.points.count - 2] : drawing.previousPoint
         let angle = angleDegrees(from: start, to: end, previous: previous).map { " · \($0)°" } ?? ""
         return "\(length) m\(angle)"
     }

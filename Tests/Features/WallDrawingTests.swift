@@ -123,8 +123,8 @@ struct WallDrawingTests {
         #expect(viewModel.activeLayout?.objects.count == initialCount)
     }
 
-    @Test("Escape while drawing removes the last point, then cancels the tool")
-    func escapeStepsBackOnePoint() {
+    @Test("Placed wall saves without Enter, and Escape only exits the wall tool")
+    func escapeExitsWallToolKeepingSavedWall() {
         let session = ProjectSession()
         let project = session.createProject(named: "Test")
         session.setDraft(
@@ -133,16 +133,41 @@ struct WallDrawingTests {
         )
         let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
         viewModel.refreshDerivedState()
+        let initialCount = viewModel.activeLayout?.objects.count ?? 0
+
         viewModel.selectTool(.drawWall(itemID: "wall"))
         viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(10, 10)))
         viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(14, 10)))
 
-        _ = viewModel.handleCanvasKey(.escape)
+        #expect(viewModel.activeLayout?.objects.count == initialCount + 1)
         #expect(viewModel.tool == .drawWall(itemID: "wall"))
 
         _ = viewModel.handleCanvasKey(.escape)
+        #expect(viewModel.tool == .select)
+        #expect(viewModel.dragState.wallDrawing == nil)
+        #expect(viewModel.activeLayout?.objects.count == initialCount + 1)
+    }
+
+    @Test("Escape after a single point drops the preview and exits the wall tool")
+    func escapeAfterSinglePointExitsWallTool() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Test")
+        session.setDraft(
+            ProjectDraft(name: "Test", legend: PreviewLayouts.sampleLegend, layouts: [PreviewLayouts.annyeong()]),
+            for: project.id
+        )
+        let viewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        viewModel.refreshDerivedState()
+        let initialCount = viewModel.activeLayout?.objects.count ?? 0
+
+        viewModel.selectTool(.drawWall(itemID: "wall"))
+        viewModel.handlePointerPress(CanvasPointerEvent(worldPoint: SIMD2<Double>(10, 10)))
+        #expect(viewModel.activeLayout?.objects.count == initialCount)
+
         _ = viewModel.handleCanvasKey(.escape)
         #expect(viewModel.tool == .select)
+        #expect(viewModel.dragState.wallDrawing == nil)
+        #expect(viewModel.activeLayout?.objects.count == initialCount)
     }
 
     @Test("Switching layer mid-wall drops the half-drawn chain")
