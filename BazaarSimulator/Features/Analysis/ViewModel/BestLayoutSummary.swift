@@ -28,7 +28,7 @@ struct BestLayoutSummary {
     /// The layout that wins most of the three checks, and on a tie the one that wins the first check that is
     /// not itself a tie.
     init(engine: CompareRulesEngine, outcomes: [LayoutID: LayoutOutcome]) {
-        let tabs: [AnalysisTab] = [.congestionPoints, .congestionDuration, .crowdDensity]
+        let tabs: [AnalysisTab] = [.congestionPoints, .crowdDensity, .congestionDuration]
         checks = tabs.map { tab in
             let content = engine.content(for: tab)
             return Check(
@@ -74,7 +74,10 @@ struct BestLayoutSummary {
         for tab: AnalysisTab, layout: LayoutID, content: AnalysisContent, outcomes: [LayoutID: LayoutOutcome]
     ) -> (text: String, unit: String) {
         if tab == .crowdDensity {
-            return (outcomes[layout]?.worstSpot.grade.title ?? "", "")
+            return (outcomes[layout]?.worstSpot.grade.crowdLevel ?? "", "")
+        }
+        if let own = content.tiles.first(where: { $0.layout == layout }), !own.unit.isEmpty {
+            return (own.value, own.unit)
         }
         let tile = content.tiles.first { $0.layout == layout }?.value ?? ""
         let parts = tile.split(separator: " ", maxSplits: 1).map(String.init)

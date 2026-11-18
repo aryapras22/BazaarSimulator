@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The full comparison, opened from the Best Layout summary: one tab for each result, each with the winner, the
-/// table, and how it changes during the day.
+/// The full comparison, opened from the Best Layout summary: one tab for each result, each with the winner and how
+/// it changes during the day.
 struct InsightsSheet: View {
     @Bindable var viewModel: DashboardViewModel
     @Environment(\.dismiss) private var dismiss

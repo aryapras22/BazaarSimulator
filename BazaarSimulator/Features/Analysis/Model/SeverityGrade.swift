@@ -43,6 +43,29 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The word for the crowd at a spot, from calm to jammed, as the Crowd Level result shows it.
+    var crowdLevel: String {
+        switch self {
+        case .a, .b: "Calm"
+        case .c: "Moderate"
+        case .d: "Busy"
+        case .e: "Crowded"
+        case .f: "Jammed"
+        }
+    }
+
+    /// What that crowd is like, in a few words.
+    var crowdMeaning: String {
+        switch self {
+        case .a: "People have the aisle to themselves"
+        case .b: "People walk freely"
+        case .c: "People walk easily, with a few others around"
+        case .d: "People walk slower and can't easily pass"
+        case .e: "People shuffle along slowly"
+        case .f: "People bump into each other"
+        }
+    }
+
     var shortMeaning: String {
         switch self {
         case .a: "Almost empty"
@@ -78,12 +101,12 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var color: Color {
         switch self {
-        case .a: Color(hex: 0xCD2002)
-        case .b: Color(hex: 0xB41900)
-        case .c: Color(hex: 0x9B1400)
-        case .d: Color(hex: 0x811100)
-        case .e: Color(hex: 0x5D0900)
-        case .f: Color(hex: 0x450501)
+        case .a: Color(hex: 0x55B049)
+        case .b: Color(hex: 0x788938)
+        case .c: Color(hex: 0x926C2B)
+        case .d: Color(hex: 0xB24A1C)
+        case .e: Color(hex: 0xCE2A0E)
+        case .f: Color(hex: 0xA00700)
         }
     }
 }

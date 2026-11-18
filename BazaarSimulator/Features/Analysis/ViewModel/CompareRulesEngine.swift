@@ -28,7 +28,7 @@ struct CompareRulesEngine: Sendable {
         }
     }
 
-    // MARK: - 1. Congestion Points
+    // MARK: - 1. Stuck Spots
 
     private func buildCongestionPoints() -> AnalysisContent {
         let win = pickWinner(
@@ -42,11 +42,11 @@ struct CompareRulesEngine: Sendable {
 
         let headline = oWin.C == oLose.C
             ? (oWin.C == 0
-                ? "Neither layout has spots where people get stuck, even at the busiest time (\(peakHourText))."
-                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time (\(peakHourText)).")
+                ? "Neither layout has spots where people get stuck, even at the busiest time."
+                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time.")
             : oWin.C == 0
-            ? "\(oWin.name) has no spots where people get stuck, even at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
-            : "\(oWin.name) has only \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time (\(peakHourText)). \(oLose.name) has \(oLose.C)."
+            ? "At the busiest time, nobody gets stuck in \(oWin.name). \(oLose.name) has \(oLose.C)."
+            : "At the busiest time, people get stuck in only \(oWin.C) \(spotsWord(oWin.C)). \(oLose.name) has \(oLose.C)."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -54,16 +54,16 @@ struct CompareRulesEngine: Sendable {
             let worst = out.worstSpot
             let bullets: [String]
             if c == 0 {
-                bullets = ["Busiest: \(worst.name)", "Busy, but nobody gets stuck"]
+                bullets = ["Busiest at Spot \(worst.number)", "Nobody gets stuck"]
             } else if c == 1 {
-                bullets = ["Only at \(worst.name)", "Up to \(worst.peakVisitors) people at once"]
+                bullets = ["Only at Spot \(worst.number)", "Up to \(worst.peakVisitors) people there"]
             } else {
-                bullets = ["Worst: \(worst.name)", "Up to \(worst.peakVisitors) people at once"]
+                bullets = ["Worst at Spot \(worst.number)", "Up to \(worst.peakVisitors) people there"]
             }
             return AnalysisContent.Tile(
                 layout: layout,
                 value: "\(c) \(spotsWord(c))",
-                caption: "\(c == 1 ? "Spot" : "Spots") where people get stuck\(atOnce(c)) at \(peakHourText)",
+                caption: "where people get stuck",
                 bullets: bullets,
                 unit: ""
             )
@@ -80,18 +80,18 @@ struct CompareRulesEngine: Sendable {
 
         let maxSpots = Double(max(outcomes[.one]?.spotTotal ?? 1, outcomes[.two]?.spotTotal ?? 1))
 
-        return AnalysisContent(
+        var content = AnalysisContent(
             recommended: win,
             headline: headline,
             symbol: "exclamationmark.triangle.fill",
             tiles: tiles,
             rows: rows,
-            tableTitle: "Congestion Points by Layout",
-            chartTitle: "Congestion Points Throughout the Day",
+            tableTitle: "Stuck Spots by Layout",
+            chartTitle: "Stuck Spots through the day",
             yAxisMaximum: maxSpots,
             yAxisStride: 1,
-            series: makeSeries { Double($0.jammedSpots) },
-            infoQuestion: "What's Congestion Points?",
+            series: makeInsightSeries { Double($0.jammedSpots) },
+            infoQuestion: "What is a stuck spot?",
             explanation: "A spot so crowded that people get stuck.",
             unit: "spots",
             singularUnit: "spot",
@@ -102,9 +102,11 @@ struct CompareRulesEngine: Sendable {
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Fewer is better"),
             ]
         )
+        content.valueText = { value in "\(Int(value.rounded())) \(Int(value.rounded()) == 1 ? "spot" : "spots")" }
+        return withDay(content) { Double($0.jammedSpots) }
     }
 
-    // MARK: - 2. Congestion Duration
+    // MARK: - 2. Time Stuck
 
     private func buildCongestionDuration() -> AnalysisContent {
         let win = pickWinner(
@@ -116,18 +118,19 @@ struct CompareRulesEngine: Sendable {
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
 
-        let loseTime = oLose.M >= windowMinutes - 0.25
-            ? "all \(Self.formatHalfMinutes(windowMinutes)) minutes"
-            : "for \(Self.formatHalfMinutes(oLose.M)) of \(Self.formatHalfMinutes(windowMinutes)) minutes"
+        let window = Self.formatHalfMinutes(windowMinutes)
+        func stuckFor(_ minutes: Double) -> String {
+            minutes >= windowMinutes - 0.25 ? "the whole \(window) minutes" : "about \(Self.minutesText(minutes))"
+        }
 
         let sameTime = Self.formatHalfMinutes(oWin.M) == Self.formatHalfMinutes(oLose.M)
         let headline = sameTime
             ? (oLose.M < 0.25
-                ? "Nobody gets stuck in either layout at \(peakHourText)."
-                : "At \(peakHourText), people are stuck about \(Self.formatHalfMinutes(oWin.M)) minutes in both layouts.")
+                ? "Nobody gets stuck in either layout in the busiest \(window) minutes."
+                : "In the busiest \(window) minutes, people at the worst spot are stuck \(stuckFor(oWin.M)) in both layouts.")
             : oWin.M < 0.25
-            ? "Nobody gets stuck in \(oWin.name) at \(peakHourText). In \(oLose.name), people are stuck \(loseTime)."
-            : "At \(peakHourText), people are stuck \(Self.formatHalfMinutes(oLose.M - oWin.M)) minutes less in \(oWin.name) than in \(oLose.name)."
+            ? "In the busiest \(window) minutes, nobody gets stuck in \(oWin.name). In \(oLose.name), people at the worst spot are stuck \(stuckFor(oLose.M))."
+            : "In the busiest \(window) minutes, people at the worst spot are stuck for \(stuckFor(oWin.M)). In \(oLose.name), they're stuck \(stuckFor(oLose.M))."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -135,16 +138,14 @@ struct CompareRulesEngine: Sendable {
                 .filter { $0.stuckMin >= 0.25 }
                 .sorted { $0.stuckMin > $1.stuckMin }
                 .prefix(2)
-                .map { "\($0.name): \(Self.formatHalfMinutes($0.stuckMin)) min" }
-            let bullets = qualifying.isEmpty
-                ? ["Nobody gets stuck", "People keep moving"]
-                : Array(qualifying)
+                .map { "Spot \($0.number): \(Self.formatHalfMinutes($0.stuckMin)) min" }
+            let bullets = qualifying.isEmpty ? ["Nobody gets stuck"] : Array(qualifying)
             return AnalysisContent.Tile(
                 layout: layout,
-                value: "\(Self.formatHalfMinutes(out.M)) min",
-                caption: "Time people stay stuck at \(peakHourText)",
+                value: Self.formatHalfMinutes(out.M),
+                caption: "stuck at the worst spot",
                 bullets: bullets,
-                unit: ""
+                unit: "min"
             )
         }
 
@@ -157,33 +158,30 @@ struct CompareRulesEngine: Sendable {
             }
         )
 
-        let maxDuration = Self.axisMax(
-            LayoutID.allCases.flatMap { outcome(for: $0).dayPoints.map(\.heavyMinutes) },
-            step: 2,
-            minimum: 4
-        )
-
-        return AnalysisContent(
+        var content = AnalysisContent(
             recommended: win,
             headline: headline,
             symbol: "clock.fill",
             tiles: tiles,
             rows: rows,
-            tableTitle: "Congestion Duration by Layout",
-            chartTitle: "Congestion Duration Throughout the Day",
-            yAxisMaximum: maxDuration,
-            yAxisStride: 2,
-            series: makeSeries { $0.heavyMinutes },
-            infoQuestion: "What's Congestion Duration?",
-            explanation: "How long people stay stuck at the busiest time.",
+            tableTitle: "Time Stuck by Layout",
+            chartTitle: "Time Stuck through the day",
+            yAxisMaximum: windowMinutes,
+            yAxisStride: windowMinutes / 2,
+            series: makeInsightSeries { $0.heavyMinutes },
+            infoQuestion: "What does time stuck mean?",
+            explanation: "How long people stay stuck at the worst spot in the busiest time.",
             unit: "min",
-            measure: "Minutes people stay stuck, out of \(Self.formatHalfMinutes(windowMinutes))",
+            measure: "Minutes people stay stuck, out of \(window)",
             facts: [
                 AnalysisContent.Fact(symbol: "person.3.fill", text: "Stuck means grade E or F"),
                 AnalysisContent.Fact(symbol: "mappin.and.ellipse", text: "Checked at each spot all day"),
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Shorter is better"),
             ]
         )
+        content.axisLabel = { "\(Self.formatHalfMinutes($0)) min" }
+        content.valueText = { "\(Self.formatHalfMinutes($0)) min" }
+        return withDay(content) { $0.heavyMinutes }
     }
 
     // MARK: - 3. Crowd Density
@@ -197,20 +195,23 @@ struct CompareRulesEngine: Sendable {
         let lose = win.other
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
+        let winLevel = oWin.worstSpot.grade.crowdLevel
+        let loseLevel = oLose.worstSpot.grade.crowdLevel
 
-        let headline = Self.formatDecimal1(oWin.space) == Self.formatDecimal1(oLose.space)
-            ? "Both layouts leave about \(Self.formatDecimal1(oWin.space)) m² for each person at their busiest spot."
-            : "\(oWin.name) leaves about \(Self.formatDecimal1(oWin.space)) m² for each person at its busiest spot. \(oLose.name) leaves only \(Self.formatDecimal1(oLose.space)) m²."
+        let headline = winLevel == loseLevel
+            ? "At its most crowded spot, both layouts are \(winLevel)."
+            : "At its most crowded spot, \(oWin.name) is \(winLevel), while \(oLose.name) is \(loseLevel)."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
             return AnalysisContent.Tile(
                 layout: layout,
-                value: "\(Self.formatDecimal1(out.D)) per m²",
-                caption: "People per m² at the busiest spot",
+                value: out.worstSpot.grade.crowdLevel,
+                caption: "at its most crowded spot",
                 bullets: [
-                    "About \(Self.formatDecimal1(out.space)) m² per person",
-                    out.worstSpot.grade.shortMeaning
+                    out.worstSpot.grade.crowdMeaning,
+                    "Up to \(out.worstSpot.peakVisitors) people there",
+                    "\(Self.formatDecimal1(out.D)) people per m²"
                 ],
                 unit: ""
             )
@@ -223,25 +224,24 @@ struct CompareRulesEngine: Sendable {
             meaningGenerator: { $0.worstSpot.grade.plainMeaning }
         )
 
-        let maxDensity = Self.axisMax(
-            LayoutID.allCases.flatMap { outcome(for: $0).dayPoints.map(\.worstDensity) },
-            step: 0.5,
-            minimum: 1.0
-        )
+        // The value axis is named by crowd level, each name set in the middle of its band of density.
+        let top = max(2.4, Self.axisMax(
+            LayoutID.allCases.flatMap { outcome(for: $0).dayPoints.map(\.worstDensity) }, step: 0.5, minimum: 0
+        ))
 
-        return AnalysisContent(
+        var content = AnalysisContent(
             recommended: win,
             headline: headline,
             symbol: "person.3.fill",
             tiles: tiles,
             rows: rows,
-            tableTitle: "Crowd Density by Layout",
-            chartTitle: "Crowd Density Throughout the Day",
-            yAxisMaximum: maxDensity,
+            tableTitle: "Crowd Level by Layout",
+            chartTitle: "Crowd Level through the day",
+            yAxisMaximum: top,
             yAxisStride: 0.5,
-            series: makeSeries { $0.worstDensity },
-            infoQuestion: "What's Crowd Density?",
-            explanation: "How many people share each m² of aisle at the busiest spot.",
+            series: makeInsightSeries { $0.worstDensity },
+            infoQuestion: "What do the crowd levels mean?",
+            explanation: "How crowded the busiest spot gets, from calm to jammed.",
             unit: "per m²",
             measure: "People per m² at the busiest spot",
             facts: [
@@ -250,6 +250,10 @@ struct CompareRulesEngine: Sendable {
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Lower is better"),
             ]
         )
+        content.axisTicks = [0.135, 0.585, 1.26, 2.1]
+        content.axisLabel = { SeverityGrade.grade(forDensity: $0).crowdLevel }
+        content.valueText = { "\(SeverityGrade.grade(forDensity: $0).crowdLevel) (\(Self.formatDecimal1($0))/m²)" }
+        return withDay(content) { $0.worstDensity }
     }
 
     // MARK: - 4. Flow Rate
@@ -403,6 +407,87 @@ struct CompareRulesEngine: Sendable {
                 meaning: meaningGenerator(out)
             )
         }
+    }
+
+    // MARK: - Through the day
+
+    /// The three moments the Insights chart shows: the start of the day, the busiest time, and the last sample.
+    private var chartHours: [Double] {
+        let hours = outcome(for: .one).dayPoints.map(\.hour).sorted()
+        guard let first = hours.first, let last = hours.last else { return [] }
+        let peak = peakHourValue.flatMap { target in hours.min { abs($0 - target) < abs($1 - target) } }
+        var result = [first]
+        if let peak, peak != first, peak != last { result.append(peak) }
+        if last != first { result.append(last) }
+        return result
+    }
+
+    /// The busiest time as an hour, read from its "HH:mm" text.
+    private var peakHourValue: Double? {
+        let parts = peakHourText.split(separator: ":").compactMap { Double($0) }
+        guard parts.count == 2 else { return nil }
+        return parts[0] + parts[1] / 60
+    }
+
+    private func makeInsightSeries(_ value: (DayPoint) -> Double) -> [AnalysisContent.Series] {
+        let hours = chartHours
+        return [LayoutID.two, .one].map { layout in
+            let points = outcome(for: layout).dayPoints
+                .filter { point in hours.contains { abs($0 - point.hour) < 1e-9 } }
+                .map { AnalysisContent.Series.Point(hour: $0.hour, value: value($0)) }
+            return AnalysisContent.Series(layout: layout, points: points)
+        }
+    }
+
+    /// Adds what the chart needs to read as a day: the words under each hour, and who does better when.
+    private func withDay(_ content: AnalysisContent, value: (DayPoint) -> Double) -> AnalysisContent {
+        var result = content
+        let hours = chartHours
+        result.peakHour = peakHourValue.flatMap { target in hours.min { abs($0 - target) < abs($1 - target) } }
+        for (index, hour) in hours.enumerated() {
+            let time = TimeRange.format(Int((hour * 60).rounded()))
+            let word = hour == result.peakHour ? "Busiest time" : index == 0 ? "Morning" : "Evening"
+            result.hourLabels[hour] = "\(word) (\(time))"
+        }
+        result.comparison = comparisonSentence(value)
+        return result
+    }
+
+    /// "Layout 2 does better all day: in the morning, at the busiest time and in the evening."
+    private func comparisonSentence(_ value: (DayPoint) -> Double) -> String {
+        let hours = chartHours
+        guard !hours.isEmpty else { return "" }
+        let slots = hours.enumerated().map { index, hour -> (phrase: String, winner: LayoutID?) in
+            func point(_ layout: LayoutID) -> Double {
+                outcome(for: layout).dayPoints.first { abs($0.hour - hour) < 1e-9 }.map(value) ?? 0
+            }
+            let first = point(.one), second = point(.two)
+            let phrase = hour == peakHourValue.flatMap { target in hours.min { abs($0 - target) < abs($1 - target) } }
+                ? "at the busiest time" : index == 0 ? "in the morning" : "in the evening"
+            if abs(first - second) < 1e-9 { return (phrase, nil) }
+            return (phrase, first < second ? .one : .two)
+        }
+        func joined(_ phrases: [String]) -> String {
+            phrases.count > 1 ? phrases.dropLast().joined(separator: ", ") + " and " + phrases[phrases.count - 1] : phrases.first ?? ""
+        }
+        let winners = Set(slots.compactMap(\.winner))
+        if winners.isEmpty { return "Both layouts do the same all day." }
+        if slots.allSatisfy({ $0.winner != nil }), winners.count == 1, let only = winners.first {
+            return "\(only.name) does better all day: \(joined(slots.map(\.phrase)))."
+        }
+        var sentences: [String] = []
+        for layout in LayoutID.allCases {
+            let wins = slots.filter { $0.winner == layout }.map(\.phrase)
+            if !wins.isEmpty { sentences.append("\(layout.name) does better \(joined(wins)).") }
+        }
+        let ties = slots.filter { $0.winner == nil }.map(\.phrase)
+        if !ties.isEmpty { sentences.append("They are level \(joined(ties)).") }
+        return sentences.joined(separator: " ")
+    }
+
+    static func minutesText(_ value: Double) -> String {
+        let text = formatHalfMinutes(value)
+        return "\(text) \(text == "1" ? "minute" : "minutes")"
     }
 
     private func makeSeries(_ valueExtractor: (DayPoint) -> Double) -> [AnalysisContent.Series] {

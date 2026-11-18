@@ -1,6 +1,7 @@
 import Charts
 import SwiftUI
 
+/// How the result changes during the day: a line for each layout, with the peak and the lowest of each below.
 struct AnalysisChartCard: View {
     let content: AnalysisContent
 
@@ -12,36 +13,101 @@ struct AnalysisChartCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center) {
-                CardHeading(title: content.chartTitle, measure: content.measure)
-                Spacer(minLength: 16)
-                HStack(spacing: 12) {
-                    ForEach(LayoutID.allCases) { layout in
-                        HStack(spacing: 5) {
-                            Circle().fill(layout.chartColor).frame(width: 7, height: 7)
-                            Text(layout.name)
-                        }
-                    }
-                }
-                .font(.system(size: 11))
-                .foregroundStyle(.white)
-                .fixedSize()
-            }
-            .padding(.horizontal, CardInset.horizontal)
-            .padding(.top, CardInset.top)
+            heading
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
 
             chart
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chartHeight = $0 }
-                .padding(.horizontal, CardInset.horizontal)
-                .padding(.top, 18)
-                .padding(.bottom, CardInset.bottom + 8)
+                .padding(.horizontal, 32)
+                .padding(.top, 20)
+
+            Divider()
+                .overlay(Color.chartGrid)
+                .padding(.horizontal, 32)
+                .padding(.top, 14)
+
+            legend
+                .padding(.horizontal, 32)
+                .padding(.top, 12)
+                .padding(.bottom, 22)
         }
         .cardSurface(cornerRadius: Radius.panel)
+    }
+
+    // MARK: Pieces
+
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Text(content.chartTitle)
+                    .fontWeight(.semibold)
+                Text("· \(content.betterNote)")
+                    .foregroundStyle(.textPrimary)
+            }
+            .font(.system(size: 13))
+            .foregroundStyle(.textPrimary)
+
+            if !content.comparison.isEmpty {
+                Text(content.comparison)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var legend: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(content.series.sorted { $0.layout.rawValue < $1.layout.rawValue }) { series in
+                if let peak = extremes(of: series).peak, let lowest = extremes(of: series).lowest {
+                    HStack(spacing: 0) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "diamond.fill")
+                                .font(.system(size: 9))
+                                .foregroundStyle(series.layout.chartColor)
+                            Text(series.layout.name)
+                                .fontWeight(.semibold)
+                        }
+                        .frame(width: 112, alignment: .leading)
+
+                        stat("Peak", at: peak)
+                            .frame(width: 250, alignment: .leading)
+                        stat("Lowest", at: lowest)
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(.textPrimary)
+                }
+            }
+        }
+    }
+
+    private func stat(_ title: String, at point: AnalysisContent.Series.Point) -> some View {
+        let time = TimeRange.format(Int((point.hour * 60).rounded()))
+        return HStack(spacing: 5) {
+            Text(title).foregroundStyle(.textPrimary.opacity(0.8))
+            Text(content.valueText(point.value)).fontWeight(.semibold)
+            Text("at \(time)").foregroundStyle(.textPrimary.opacity(0.8))
+        }
     }
 
     private var chart: some View {
         Chart {
             ForEach(content.series) { series in
+                ForEach(series.points) { point in
+                    AreaMark(
+                        x: .value("Time", point.hour),
+                        y: .value("Value", point.value),
+                        series: .value("Area", series.layout.name),
+                        stacking: .unstacked
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [series.layout.chartColor.opacity(0.28), series.layout.chartColor.opacity(0.02)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                }
                 ForEach(series.points) { point in
                     LineMark(
                         x: .value("Time", point.hour),
@@ -51,14 +117,14 @@ struct AnalysisChartCard: View {
                     .foregroundStyle(series.layout.chartColor)
                     .lineStyle(StrokeStyle(lineWidth: 2))
                 }
-                ForEach(extremes(of: series)) { point in
+                ForEach(series.points) { point in
                     PointMark(
                         x: .value("Time", point.hour),
                         y: .value("Value", point.value)
                     )
                     .foregroundStyle(series.layout.chartColor)
                     .symbol(.diamond)
-                    .symbolSize(81)
+                    .symbolSize(isExtreme(point, in: series) ? 80 : 24)
                 }
             }
         }
@@ -72,40 +138,60 @@ struct AnalysisChartCard: View {
                     verticalSpacing: 12
                 ) {
                     if let hour = value.as(Double.self) {
-                        Text(Self.timeLabel(hour))
+                        // The word on one line and the time under it, so neighbouring labels never meet.
+                        let parts = Self.label(for: hour, in: content).components(separatedBy: " (")
+                        VStack(spacing: 2) {
+                            Text(parts[0])
+                                .fontWeight(hour == content.peakHour ? .semibold : .regular)
+                            if parts.count > 1 { Text("(" + parts[1]) }
+                        }
+                        .multilineTextAlignment(.center)
+                        .fixedSize()
                     }
                 }
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundStyle(.textPrimary)
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading, values: yAxisValues) { _ in
+            AxisMarks(position: .leading, values: yAxisValues) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
                     .foregroundStyle(Color.chartGrid)
-                AxisValueLabel(horizontalSpacing: 14)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.textPrimary.opacity(0.9))
+                AxisValueLabel(horizontalSpacing: 10) {
+                    if let number = value.as(Double.self) {
+                        Text(content.axisLabel?(number) ?? Self.number(number))
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.textPrimary.opacity(0.9))
             }
         }
         .accessibilityLabel(content.chartTitle)
     }
 
+    // MARK: Axes
+
     private var yAxisValues: [Double] {
-        chartHeight < 150 ? [0, yTop] : Array(stride(from: 0, through: yTop, by: yAxisStride))
+        if let ticks = content.axisTicks { return ticks }
+        return chartHeight < 150 ? [0, yTop] : Array(stride(from: 0, through: yTop, by: yAxisStride))
     }
 
     private var yTop: Double {
         max(content.yAxisMaximum, content.series.flatMap { $0.points.map(\.value) }.max() ?? 0)
     }
 
-    private func extremes(of series: AnalysisContent.Series) -> [AnalysisContent.Series.Point] {
-        guard let peak = series.points.max(by: { $0.value < $1.value }),
-              let lowest = series.points.min(by: { $0.value < $1.value }) else { return [] }
-        return peak.hour == lowest.hour ? [peak] : [lowest, peak]
+    private func extremes(of series: AnalysisContent.Series)
+        -> (peak: AnalysisContent.Series.Point?, lowest: AnalysisContent.Series.Point?) {
+        (series.points.max { $0.value < $1.value }, series.points.min { $0.value < $1.value })
     }
 
-    /// The sample hours of the day: the first and last hour of the series.
+    private func isExtreme(_ point: AnalysisContent.Series.Point, in series: AnalysisContent.Series) -> Bool {
+        let found = extremes(of: series)
+        return point.hour == found.peak?.hour || point.hour == found.lowest?.hour
+    }
+
     private var hours: [Double] {
         content.series.flatMap { $0.points.map(\.hour) }
     }
@@ -115,14 +201,19 @@ struct AnalysisChartCard: View {
     /// Never equal to `firstHour`, so the chart always has a width.
     private var lastHour: Double { max(hours.max() ?? 0, firstHour + 1) }
 
-    /// Labels every 2 hours from the first hour.
+    /// The hours with words under them, or every 2 hours when the content names none.
     private var xAxisValues: [Double] {
-        Array(stride(from: firstHour, through: lastHour, by: 2))
+        content.hourLabels.isEmpty
+            ? Array(stride(from: firstHour, through: lastHour, by: 2))
+            : Array(Set(hours)).sorted()
     }
 
-    /// "HH:00" for a whole hour, "HH:mm" otherwise.
-    private static func timeLabel(_ hour: Double) -> String {
-        TimeRange.format(Int((hour * 60).rounded()))
+    private static func label(for hour: Double, in content: AnalysisContent) -> String {
+        content.hourLabels[hour] ?? TimeRange.format(Int((hour * 60).rounded()))
+    }
+
+    private static func number(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
     private func labelAnchor(for hour: Double?) -> UnitPoint {

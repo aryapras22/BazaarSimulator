@@ -36,8 +36,8 @@ struct BestLayoutSummaryTests {
         )
 
         #expect(result.best == .two)
-        #expect(result.checks.map(\.label) == ["Congestion Points", "Congestion Duration", "Crowd Density"])
-        #expect(result.sentence == "Fewer stuck spots, less time stuck and calmer crowds.")
+        #expect(result.checks.map(\.label) == ["Stuck Spots", "Crowd Level", "Time Stuck"])
+        #expect(result.sentence == "Fewer stuck spots, calmer crowds and less time stuck.")
         #expect(result.checks.allSatisfy { $0.winner == .two })
     }
 

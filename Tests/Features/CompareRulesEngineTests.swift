@@ -61,12 +61,13 @@ struct CompareRulesEngineTests {
         let content = engine.content(for: .congestionPoints)
 
         #expect(content.recommended == .two)
-        #expect(content.headline.contains("Layout 2 has only 1 spot where people get stuck"))
-        #expect(content.headline.contains("Layout 1 has 3"))
+        #expect(content.headline == "At the busiest time, people get stuck in only 1 spot. Layout 1 has 3.")
+        #expect(content.chartTitle == "Stuck Spots through the day")
         #expect(content.symbol == "exclamationmark.triangle.fill")
         #expect(content.tiles.count == 2)
-        #expect(content.tiles[0].bullets[0].contains("Food Corner"))
-        #expect(content.tiles[1].bullets[0].contains("Center Aisle"))
+        #expect(content.tiles[0].bullets[0].hasPrefix("Worst at Spot"))
+        #expect(content.tiles[1].bullets[0].hasPrefix("Only at Spot"))
+        #expect(content.tiles[0].caption == "where people get stuck")
         #expect(content.facts.count == 3)
     }
 
@@ -77,10 +78,12 @@ struct CompareRulesEngineTests {
         let content = engine.content(for: .congestionDuration)
 
         #expect(content.recommended == .two)
-        #expect(content.headline.contains("people are stuck 5 minutes less in Layout 2 than in Layout 1"))
+        #expect(content.headline.hasPrefix("In the busiest 10 minutes, people at the worst spot are stuck for about"))
+        #expect(content.headline.contains("In Layout 1, they're stuck"))
         #expect(content.symbol == "clock.fill")
-        #expect(content.tiles[0].value == "6 min")
-        #expect(content.tiles[1].value == "1 min")
+        #expect(content.tiles[0].value == "6")
+        #expect(content.tiles[0].unit == "min")
+        #expect(content.tiles[1].value == "1")
         #expect(content.rows.count == 2)
     }
 
@@ -91,16 +94,15 @@ struct CompareRulesEngineTests {
         let content = engine.content(for: .crowdDensity)
 
         #expect(content.recommended == .two)
-        let val1 = 2.9.formatted(.number.precision(.fractionLength(1)))
-        let val2 = 1.2.formatted(.number.precision(.fractionLength(1)))
-        let space1 = (1.0 / 2.9).formatted(.number.precision(.fractionLength(1)))
-        let space2 = (1.0 / 1.2).formatted(.number.precision(.fractionLength(1)))
+        let level1 = SeverityGrade.grade(forDensity: 2.9).crowdLevel
+        let level2 = SeverityGrade.grade(forDensity: 1.2).crowdLevel
 
-        #expect(content.headline.contains("Layout 2 leaves about \(space2) m² for each person"))
-        #expect(content.headline.contains("Layout 1 leaves only \(space1) m²"))
+        #expect(content.headline == "At its most crowded spot, Layout 2 is \(level2), while Layout 1 is \(level1).")
         #expect(content.symbol == "person.3.fill")
-        #expect(content.tiles[0].value == "\(val1) per m²")
-        #expect(content.tiles[1].value == "\(val2) per m²")
+        #expect(content.tiles[0].value == level1)
+        #expect(content.tiles[1].value == level2)
+        #expect(content.chartTitle == "Crowd Level through the day")
+        #expect(content.infoQuestion == "What do the crowd levels mean?")
     }
 
     @Test("Flow Rate tab evaluates steady swing and minimum flow")

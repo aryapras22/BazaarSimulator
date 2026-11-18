@@ -59,8 +59,19 @@ struct AnalysisContent: Sendable {
     var measure = ""
     var columns = ["Lowest", "Average", "Peak"]
     var facts: [Fact] = []
-    /// Overrides "Best <tab>" on the recommendation card, for a project with one layout.
+    /// Overrides "Best for <tab>" on the recommendation card, for a project with one layout.
     var cardTitle: String?
+    /// "lower is better", shown after the chart title.
+    var betterNote = "lower is better"
+    /// One sentence about who does better through the day, under the chart title. Empty with one layout.
+    var comparison = ""
+    /// The hour of the busiest time, and the words under each hour of the chart.
+    var peakHour: Double?
+    var hourLabels: [Double: String] = [:]
+    /// Where the chart's value axis is labelled, when it is not every `yAxisStride`, and how a value reads.
+    var axisTicks: [Double]?
+    var axisLabel: (@Sendable (Double) -> String)?
+    var valueText: @Sendable (Double) -> String = { $0.formatted(.number.precision(.fractionLength(0...1))) }
 
     func unit(for value: Double) -> String {
         value == 1 ? singularUnit ?? unit : unit

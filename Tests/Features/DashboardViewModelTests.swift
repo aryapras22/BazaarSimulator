@@ -61,9 +61,9 @@ struct DashboardViewModelTests {
         #expect(model.layoutIDs == [.one])
         #expect(model.bestLayout == nil)
         let summary = try #require(model.singleSummary)
-        #expect(summary.stats.map(\.title) == ["Crowded Spots", "Time Stuck", "Crowd Level"])
+        #expect(summary.stats.map(\.title) == ["Stuck Spots", "Time Stuck", "Crowd Level"])
         #expect(summary.stats.map(\.caption) == ["Stuck at once", "Total Duration", "Overall Condition"])
-        #expect(summary.stats[2].text == (model.outcome(for: .one).worstSpot.grade.title))
+        #expect(summary.stats[2].text == (model.outcome(for: .one).worstSpot.grade.crowdLevel))
     }
 
     @Test("With one layout every tab shows that layout alone, worded for it")
@@ -90,10 +90,12 @@ struct DashboardViewModelTests {
         let result = try #require(model.simulationResult)
         #expect(Set(result.outcomes.keys) == Set(LayoutID.allCases))
         #expect(result.outcomes.values.allSatisfy { !$0.spots.isEmpty })
-        for tab in AnalysisTab.allCases {
+        for tab in AnalysisTab.shown {
             let content = try #require(model.content(for: tab))
             #expect(content.tiles.count == 2)
-            #expect(content.series.allSatisfy { $0.points.count == result.sampleHours.count })
+            // The chart shows the morning, the busiest time and the evening.
+            #expect(content.series.allSatisfy { $0.points.count <= 3 && $0.points.count >= 1 })
+            #expect(content.hourLabels.count == content.series.first?.points.count)
         }
     }
 

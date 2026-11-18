@@ -8,16 +8,15 @@ struct RecommendationCard: View {
     @State private var showsExplanation = false
 
     static let fixedHeight: CGFloat = inset.top + titleHeight + 16 + nameHeight + 14 + headlineHeight + linkHeight + inset.bottom
-    private static let inset = (top: CGFloat(23), leading: CGFloat(29), trailing: CGFloat(34), bottom: CGFloat(18))
+    private static let inset = (top: CGFloat(24), leading: CGFloat(36), trailing: CGFloat(36), bottom: CGFloat(24))
     private static let titleHeight: CGFloat = 16
-    private static let nameHeight: CGFloat = 38
-    private static let headlineHeight: CGFloat = 30
-    private static let linkHeight: CGFloat = 14
-    private static let iconColumnWidth: CGFloat = 110
+    private static let nameHeight: CGFloat = 40
+    private static let headlineHeight: CGFloat = 36
+    private static let linkHeight: CGFloat = 16
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(content.cardTitle ?? "Best \(tab.title)")
+            Text(content.cardTitle ?? "Best for \(tab.title.lowercased())")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.textPrimary)
                 .frame(height: Self.titleHeight)
@@ -28,20 +27,19 @@ struct RecommendationCard: View {
                     .frame(width: 10, height: 10)
                     .shadow(color: content.recommended.accent.opacity(0.8), radius: 4)
                 Text(content.recommended.name)
-                    .font(.system(size: 32, weight: .semibold))
+                    .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.textPrimary)
             }
             .frame(height: Self.nameHeight)
             .padding(.top, 16)
 
             Text(content.headline)
-                .font(.system(size: 12))
+                .font(.system(size: 13))
                 .foregroundStyle(.textPrimary)
                 .lineLimit(2, reservesSpace: true)
-                .frame(maxWidth: RecommendationCard.headlineWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: Self.headlineHeight, alignment: .topLeading)
                 .padding(.top, 14)
-                .padding(.trailing, Self.iconColumnWidth - 30)
 
             HStack(alignment: .top, spacing: 14) {
                 ForEach(content.tiles) { tile in
@@ -76,26 +74,8 @@ struct RecommendationCard: View {
         .padding(.trailing, Self.inset.trailing)
         .padding(.bottom, Self.inset.bottom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .overlay(alignment: .topTrailing) {
-            VStack(spacing: 9) {
-                Image(systemName: content.symbol)
-                    .font(.system(size: 36, weight: .regular))
-                    .frame(height: 36)
-                Text(tab.title)
-                    .font(.system(size: 10))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-            }
-            .foregroundStyle(.textPrimary)
-            .frame(width: Self.iconColumnWidth)
-            .padding(.top, 57)
-            .padding(.trailing, 46)
-            .accessibilityElement(children: .combine)
-        }
         .cardSurface()
     }
-
-    static let headlineWidth: CGFloat = 290
 }
 
 struct OutcomeTileView: View {
@@ -109,14 +89,13 @@ struct OutcomeTileView: View {
             Text(tile.layout.name)
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
-                .frame(height: 15)
 
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(tile.value)
                     .font(.system(size: 28, weight: .semibold))
                 if !tile.unit.isEmpty {
                     Text(tile.unit)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                 }
             }
             .lineLimit(1)
@@ -124,35 +103,41 @@ struct OutcomeTileView: View {
             .padding(.top, 4)
 
             Text(tile.caption)
-                .font(.system(size: 11.5))
-                .lineLimit(2, reservesSpace: true)
-                .frame(maxWidth: 150, alignment: .leading)
-                .padding(.top, 5)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("What this means:")
-                    .fontWeight(.semibold)
-                ForEach(tile.bullets, id: \.self) { bullet in
-                    Text("- \(bullet)")
+            Rectangle()
+                .fill(foreground.opacity(0.2))
+                .frame(height: 1)
+                .padding(.top, 14)
+
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(tile.bullets, id: \.self) { line in
+                    Text(line)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .font(.system(size: 11.5))
-            .padding(.top, 19)
+            .font(.system(size: 12))
+            .padding(.top, 10)
+
+            Spacer(minLength: 0)
         }
         .foregroundStyle(foreground)
-        .padding(.top, 17)
-        .padding(.horizontal, 16)
+        .padding(.top, 18)
+        .padding(.horizontal, 22)
+        .padding(.bottom, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .overlay(alignment: .topTrailing) {
             if isRecommended {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 15))
+                    .font(.system(size: 16))
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(tile.layout.tileFill, .white)
-                    .padding(.top, 15)
-                    .padding(.trailing, 14)
+                    .padding(.top, 16)
+                    .padding(.trailing, 16)
                     .help("Better choice")
                     .accessibilityLabel("Better choice")
             }
