@@ -1,7 +1,7 @@
 import Foundation
 
 /// The buttons floating beside the inspector. Each starts adding one kind of element: the Floor Plan tab adds a
-/// booth, a table, or an entertainment attraction, and the Structure tab draws a wall, places a block or a door, or
+/// booth, a table, or an entertainment attraction, and the Structure tab draws a wall, places an object or a door, or
 /// marks a restricted area.
 enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     case booth
@@ -27,7 +27,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
         case .table: "Add table"
         case .entertainment: "Add entertainment"
         case .wall: "Draw wall"
-        case .block: "Add block"
+        case .block: "Add object"
         case .door: "Add door"
         case .restrictedArea: "Mark restricted area"
         }

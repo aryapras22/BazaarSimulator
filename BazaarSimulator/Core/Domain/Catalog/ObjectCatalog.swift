@@ -102,10 +102,10 @@ enum ObjectCatalog {
             keywords: ["wall", "structure", "perimeter"], seats: []
         ),
         CatalogItem(
-            id: "block", name: "Block", category: .structure, kind: .block,
+            id: "block", name: "Object", category: .structure, kind: .block,
             sizeM: SIMD2(2.0, 2.0), heightM: 1.2, footprint: .rect,
             resize: .free, placement: .point,
-            keywords: ["block", "concrete", "barrier", "cube"], seats: []
+            keywords: ["object", "block", "concrete", "barrier", "cube"], seats: []
         ),
         CatalogItem(
             id: columnID, name: "Column", category: .structure, kind: .block,

@@ -177,15 +177,15 @@ struct GenericInspector: View {
     }
 }
 
-#Preview("Block Inspector") {
+#Preview("Object Inspector") {
     @Previewable @State var draft = InspectorDraft(
         object: LayoutObject(
             kind: .block,
-            label: "Block 1",
+            label: "Object 1",
             placement: Placement(center: .init(10, 10), sizeM: .init(4, 2))
         )
     )
-    InspectorPanel(title: "Block") {
+    InspectorPanel(title: "Object") {
         GenericInspector(
             draft: $draft,
             fields: .forObject(LayoutObject(kind: .block, label: draft.label, placement: Placement(
