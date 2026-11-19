@@ -69,6 +69,29 @@ struct BestLayoutSummaryTests {
         #expect(level.values[.two]?.text.isEmpty == false)
     }
 
+    @Test("A huge gap in time stuck outweighs a one spot lead in stuck spots")
+    func hugeTimeStuckGapDecides() {
+        // Layout 1 has fewer spots stuck at once (1 against 2), but its worst spot is stuck for 9 of 10 minutes,
+        // against 1 minute in layout 2. The densities are in the same grade.
+        let result = summary(
+            busy: [spot(1, peak: 1.0, stuck: 9)],
+            calm: [spot(1, peak: 1.0, stuck: 1), spot(2, peak: 1.0, stuck: 1)]
+        )
+        let time = result.checks.first { $0.tab == .congestionDuration }
+        #expect(time?.isHuge == true)
+        #expect(result.best == .two)
+    }
+
+    @Test("A small gap in time stuck does not outweigh stuck spots")
+    func smallGapDoesNotOverrule() {
+        let result = summary(
+            busy: [spot(1, peak: 1.0, stuck: 5)],
+            calm: [spot(1, peak: 1.0, stuck: 4), spot(2, peak: 1.0, stuck: 4)]
+        )
+        // Layout 1: 1 stuck spot against 2 (margin 0.5, huge) and 1 minute more stuck (margin 0.1).
+        #expect(result.best == .one)
+    }
+
     @Test("Strengths read as one sentence")
     func listing() {
         #expect(BestLayoutSummary.list(["a", "b", "c"]) == "a, b and c")
