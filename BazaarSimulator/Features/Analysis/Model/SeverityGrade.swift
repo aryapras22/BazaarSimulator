@@ -34,11 +34,11 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .a: "Free flow"
-        case .b: "Minor conflicts"
-        case .c: "Restricted"
-        case .d: "Crowded"
-        case .e: "Stop-and-go"
+        case .a: "Empty"
+        case .b: "Calm"
+        case .c: "Moderate"
+        case .d: "Busy"
+        case .e: "Crowded"
         case .f: "Jammed"
         }
     }
@@ -62,7 +62,7 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
         case .c: "People walk easily, with a few others around"
         case .d: "People walk slower and can't easily pass"
         case .e: "People shuffle along slowly"
-        case .f: "People bump into each other"
+        case .f: "People bumped into each other"
         }
     }
 
@@ -90,12 +90,12 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var meaning: String {
         switch self {
-        case .a: "Walk at your own pace and pass anyone."
-        case .b: "Mostly free, with the odd step aside."
-        case .c: "Normal pace, but passing takes care."
-        case .d: "Slower pace; passing is difficult."
-        case .e: "Shuffling steps, moving with the crowd."
-        case .f: "Barely moving, constant body contact."
+        case .a: "Plenty of room to walk."
+        case .b: "Easy to walk, with a few people around."
+        case .c: "Normal pace, but take care when passing."
+        case .d: "People slow down to get past others."
+        case .e: "People shuffle along and get stuck."
+        case .f: "People can barely move."
         }
     }
 

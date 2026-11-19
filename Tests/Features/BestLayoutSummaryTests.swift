@@ -17,7 +17,12 @@ struct BestLayoutSummaryTests {
             layout: layout, name: layout.name, windowMinutes: 10, spots: spots,
             dayPoints: [
                 DayPoint(hour: 10, worstDensity: 0.5, heavyMinutes: 0, jammedSpots: 0, flowRate: 9),
-                DayPoint(hour: 14, worstDensity: spots.map(\.peakDensity).max() ?? 0, heavyMinutes: 1, jammedSpots: 1, flowRate: 12)
+                // The day's values follow the spots, so a layout with worse spots also averages worse over the day.
+                DayPoint(
+                    hour: 14, worstDensity: spots.map(\.peakDensity).max() ?? 0,
+                    heavyMinutes: spots.max { $0.peakDensity < $1.peakDensity }?.stuckMin ?? 0,
+                    jammedSpots: LayoutOutcome.stuckCounts(of: spots).peak, flowRate: 12
+                )
             ]
         )
     }
@@ -71,11 +76,11 @@ struct BestLayoutSummaryTests {
 
     @Test("A huge gap in time stuck outweighs a one spot lead in stuck spots")
     func hugeTimeStuckGapDecides() {
-        // Layout 1 has fewer spots stuck at once (1 against 2), but its worst spot is stuck for 9 of 10 minutes,
-        // against 1 minute in layout 2. The densities are in the same grade.
+        // Layout 1 has fewer spots stuck at once (1 against 2), but its worst spot is stuck for the whole 10 minutes,
+        // against none in layout 2. The densities are in the same grade.
         let result = summary(
-            busy: [spot(1, peak: 1.0, stuck: 9)],
-            calm: [spot(1, peak: 1.0, stuck: 1), spot(2, peak: 1.0, stuck: 1)]
+            busy: [spot(1, peak: 1.0, stuck: 10)],
+            calm: [spot(1, peak: 1.0, stuck: 0), spot(2, peak: 1.0, stuck: 0)]
         )
         let time = result.checks.first { $0.tab == .congestionDuration }
         #expect(time?.isHuge == true)
@@ -88,7 +93,7 @@ struct BestLayoutSummaryTests {
             busy: [spot(1, peak: 1.0, stuck: 5)],
             calm: [spot(1, peak: 1.0, stuck: 4), spot(2, peak: 1.0, stuck: 4)]
         )
-        // Layout 1: 1 stuck spot against 2 (margin 0.5, huge) and 1 minute more stuck (margin 0.1).
+        // Layout 1: 1 stuck spot against 2 (margin 0.5, huge) and 0.5 minutes more stuck on average (margin 0.05).
         #expect(result.best == .one)
     }
 

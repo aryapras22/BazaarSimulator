@@ -36,20 +36,24 @@ struct LayoutComparisonCard: View {
             .padding(.top, metrics.planTopPadding)
             .zIndex(1)
 
-            HStack(alignment: .bottom, spacing: 16) {
-                Spacer(minLength: 0)
-                if showsWorstSpot, !outcome.spots.isEmpty {
-                    WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)
+            // The row under the plan is only there for a single layout, which names its worst spot. With two layouts
+            // the room goes to the plan.
+            if showsWorstSpot {
+                HStack(alignment: .bottom, spacing: 16) {
+                    Spacer(minLength: 0)
+                    if !outcome.spots.isEmpty {
+                        WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(
-                height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
-                alignment: .bottom
-            )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(
+                    height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
+                    alignment: .bottom
+                )
                 .padding(.leading, LayoutCardInset.legendLeading)
                 .padding(.trailing, LayoutCardInset.legendTrailing)
                 .padding(.top, 3)
+            }
         }
         .padding(.top, LayoutCardInset.top)
         .padding(.bottom, LayoutCardInset.bottom)

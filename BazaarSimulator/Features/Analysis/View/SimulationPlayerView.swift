@@ -96,8 +96,8 @@ struct SimulationPlayerView: View {
         }
         .background {
             let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-            DashboardBackground(spacing: 64, fill: Color(hex: 0x142741), line: Color(hex: 0x1A2F4C), lineWidth: 2)
-                .clipShape(shape)
+            // A plain fill: the grid of lines that used to run behind the stage is gone.
+            shape.fill(Color(hex: 0x142741))
                 .overlay { shape.strokeBorder(Color(hex: 0x34465F), lineWidth: 1) }
         }
         .padding(.top, 17)

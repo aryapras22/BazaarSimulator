@@ -61,25 +61,42 @@ struct AnalysisChartCard: View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(content.series.sorted { $0.layout.rawValue < $1.layout.rawValue }) { series in
                 if let peak = extremes(of: series).peak, let lowest = extremes(of: series).lowest {
-                    HStack(spacing: 0) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "diamond.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(series.layout.chartColor)
-                            Text(series.layout.name)
-                                .fontWeight(.semibold)
+                    // One row when it fits. When the card is narrow, the two numbers go on a line of their own under
+                    // the name, so a value such as "Crowded (1.3/m²)" never breaks across two lines.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 0) {
+                            name(of: series)
+                                .frame(width: 112, alignment: .leading)
+                            stat("Peak", at: peak)
+                                .frame(minWidth: 250, alignment: .leading)
+                            stat("Lowest", at: lowest)
                         }
-                        .frame(width: 112, alignment: .leading)
-
-                        stat("Peak", at: peak)
-                            .frame(width: 250, alignment: .leading)
-                        stat("Lowest", at: lowest)
+                        VStack(alignment: .leading, spacing: 4) {
+                            name(of: series)
+                            HStack(spacing: 24) {
+                                stat("Peak", at: peak)
+                                stat("Lowest", at: lowest)
+                            }
+                            .padding(.leading, 20)
+                        }
                     }
                     .font(.system(size: 12))
                     .foregroundStyle(.textPrimary)
                 }
             }
         }
+    }
+
+    private func name(of series: AnalysisContent.Series) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(series.layout.chartColor)
+            Text(series.layout.name)
+                .fontWeight(.semibold)
+        }
+        .lineLimit(1)
+        .fixedSize()
     }
 
     private func stat(_ title: String, at point: AnalysisContent.Series.Point) -> some View {
@@ -89,6 +106,8 @@ struct AnalysisChartCard: View {
             Text(content.valueText(point.value)).fontWeight(.semibold)
             Text("at \(time)").foregroundStyle(.textPrimary.opacity(0.8))
         }
+        .lineLimit(1)
+        .fixedSize()
     }
 
     private var chart: some View {

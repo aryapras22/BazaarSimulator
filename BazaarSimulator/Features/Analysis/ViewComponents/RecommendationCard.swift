@@ -85,6 +85,15 @@ struct OutcomeTileView: View {
     let tile: AnalysisContent.Tile
     let isRecommended: Bool
 
+    /// The lines joined into sentences, each ending with a full stop.
+    static func paragraph(from lines: [String]) -> String {
+        lines.map { line in
+            guard let last = line.last, !".!?".contains(last) else { return line }
+            return line + "."
+        }
+        .joined(separator: " ")
+    }
+
     var body: some View {
         let foreground: Color = isRecommended ? tile.layout.onTileFill : .textPrimary
 
@@ -116,15 +125,12 @@ struct OutcomeTileView: View {
                 .frame(height: 1)
                 .padding(.top, 14)
 
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(tile.bullets, id: \.self) { line in
-                    Text(line)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .font(.system(size: 12))
-            .padding(.top, 10)
+            // The lines read as one paragraph: "People bumped into each other. Up to 25 people there."
+            Text(Self.paragraph(from: tile.bullets))
+                .font(.system(size: 12))
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 10)
 
             Spacer(minLength: 0)
         }
@@ -147,7 +153,7 @@ struct OutcomeTileView: View {
         }
         .background {
             RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)
-                .fill(isRecommended ? tile.layout.tileFill : tile.layout.mutedTileFill)
+                .fill(isRecommended ? tile.layout.tileFill : Color.cardSurfaceSecondary)
                 .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
         }
         .accessibilityElement(children: .combine)

@@ -20,15 +20,6 @@ enum LayoutID: Int, CaseIterable, Identifiable, Codable, Sendable {
         }
     }
 
-    /// The tile of the layout that is not the better choice: its own color, held back toward the card gray, so it
-    /// still reads as that layout.
-    var mutedTileFill: Color {
-        switch self {
-        case .one: Color(hex: 0x8B5645)
-        case .two: Color(hex: 0x255E8A)
-        }
-    }
-
     var accent: Color { tileFill }
     var chartColor: Color { tileFill }
 

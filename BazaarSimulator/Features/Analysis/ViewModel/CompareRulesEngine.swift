@@ -210,8 +210,7 @@ struct CompareRulesEngine: Sendable {
                 caption: "at its most crowded spot",
                 bullets: [
                     out.worstSpot.grade.crowdMeaning,
-                    "Up to \(out.worstSpot.peakVisitors) people there",
-                    "\(Self.formatDecimal1(out.D)) people per m²"
+                    "Up to \(out.worstSpot.peakVisitors) people there"
                 ],
                 unit: ""
             )
@@ -252,7 +251,7 @@ struct CompareRulesEngine: Sendable {
         )
         content.axisTicks = [0.135, 0.585, 1.26, 2.1]
         content.axisLabel = { SeverityGrade.grade(forDensity: $0).crowdLevel }
-        content.valueText = { "\(SeverityGrade.grade(forDensity: $0).crowdLevel) (\(Self.formatDecimal1($0))/m²)" }
+        content.valueText = { "\(Self.formatDecimal1($0)) per m²" }
         return withDay(content) { $0.worstDensity }
     }
 

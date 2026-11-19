@@ -46,24 +46,30 @@ struct BestLayoutSummary {
     /// Each layout's score. The higher one is best.
     let scores: [LayoutID: Double]
 
-    /// Each check gives its winner points: the check's weight times how far apart the layouts are, counted
+    /// Every check compares the layouts on their average over the whole simulation (every sampled window of the
+    /// day), not on the busiest moment alone. Each check gives its winner points: the check's weight times how far apart the layouts are, counted
     /// double when the gap is huge. The layout with more points is best. When the points are level, it is the
     /// layout that wins most of the checks, and then the one that wins the first check that is not a tie.
     init(engine: CompareRulesEngine, outcomes: [LayoutID: LayoutOutcome]) {
         let tabs: [AnalysisTab] = [.congestionPoints, .crowdDensity, .congestionDuration]
         let built: [Check] = tabs.map { tab in
+            // The engine's winner is the one for the busiest moment. It only settles a check whose averages are level.
             let content = engine.content(for: tab)
+            let averages = Dictionary(uniqueKeysWithValues: LayoutID.allCases.map { layout in
+                (layout, Self.average(for: tab, outcome: outcomes[layout]))
+            })
+            let one = averages[.one] ?? 0, two = averages[.two] ?? 0
             return Check(
                 tab: tab,
                 label: tab.title,
                 symbol: Self.symbol(for: tab),
-                winner: content.recommended,
+                winner: abs(one - two) < 1e-9 ? content.recommended : (one < two ? .one : .two),
                 values: Dictionary(uniqueKeysWithValues: LayoutID.allCases.map { layout in
-                    (layout, Self.value(for: tab, layout: layout, content: content, outcomes: outcomes))
+                    (layout, Self.value(for: tab, average: averages[layout] ?? 0))
                 }),
                 strength: Self.strength(for: tab),
                 tradeOff: Self.tradeOff(for: tab),
-                margin: Self.margin(for: tab, outcomes: outcomes, windowMinutes: engine.windowMinutes)
+                margin: Self.margin(for: tab, averages: (one, two), windowMinutes: engine.windowMinutes)
             )
         }
         checks = built
@@ -86,21 +92,37 @@ struct BestLayoutSummary {
         }
     }
 
+    /// A layout's average for one check over the whole simulation: spots stuck at once, the density at the worst
+    /// spot, or minutes stuck at the worst spot, each averaged over the day's sampled windows. When a layout has
+    /// no day samples its busiest-moment value stands in.
+    private static func average(for tab: AnalysisTab, outcome: LayoutOutcome?) -> Double {
+        guard let outcome else { return 0 }
+        let days = outcome.dayPoints
+        func mean(_ pick: (DayPoint) -> Double) -> Double {
+            days.map(pick).reduce(0, +) / Double(days.count)
+        }
+        switch tab {
+        case .congestionPoints: return days.isEmpty ? Double(outcome.C) : mean { Double($0.jammedSpots) }
+        case .congestionDuration: return days.isEmpty ? outcome.M : mean(\.heavyMinutes)
+        default: return days.isEmpty ? outcome.D : mean(\.worstDensity)
+        }
+    }
+
     /// How far apart the layouts are on one check, from 0 to 1.
-    private static func margin(for tab: AnalysisTab, outcomes: [LayoutID: LayoutOutcome], windowMinutes: Double) -> Double {
-        guard let one = outcomes[.one], let two = outcomes[.two] else { return 0 }
+    private static func margin(for tab: AnalysisTab, averages: (Double, Double), windowMinutes: Double) -> Double {
+        let (one, two) = averages
         let value: Double
         switch tab {
         case .congestionPoints:
-            // One spot against none is as far apart as it gets. Three against four is a quarter.
-            value = Double(abs(one.C - two.C)) / Double(max(one.C, two.C, 1))
+            // None against one is as far apart as it gets. 3 against 4 is a quarter.
+            value = abs(one - two) / max(one, two, 1)
         case .congestionDuration:
             // Out of the busiest window, so 2 minutes against 8 in a 10 minute window is 0.6.
-            value = abs(one.M - two.M) / max(windowMinutes, 1)
+            value = abs(one - two) / max(windowMinutes, 1)
         default:
             // Out of the larger density, kept at least as large as grade B's limit so a calm 0.05 against 0.10
             // does not read as a huge difference.
-            value = abs(one.D - two.D) / max(one.D, two.D, 0.27)
+            value = abs(one - two) / max(one, two, 0.27)
         }
         return min(max(value, 0), 1)
     }
@@ -126,18 +148,17 @@ struct BestLayoutSummary {
 
     // MARK: Words
 
-    private static func value(
-        for tab: AnalysisTab, layout: LayoutID, content: AnalysisContent, outcomes: [LayoutID: LayoutOutcome]
-    ) -> (text: String, unit: String) {
-        if tab == .crowdDensity {
-            return (outcomes[layout]?.worstSpot.grade.crowdLevel ?? "", "")
+    /// What the check shows for a layout: its average, set in the check's own unit.
+    private static func value(for tab: AnalysisTab, average: Double) -> (text: String, unit: String) {
+        switch tab {
+        case .congestionPoints:
+            let text = CompareRulesEngine.formatCountOrAvg((average * 10).rounded() / 10)
+            return (text, text == "1" ? "spot" : "spots")
+        case .congestionDuration:
+            return (CompareRulesEngine.formatCountOrAvg((average * 10).rounded() / 10), "min")
+        default:
+            return (SeverityGrade.grade(forDensity: average).crowdLevel, "")
         }
-        if let own = content.tiles.first(where: { $0.layout == layout }), !own.unit.isEmpty {
-            return (own.value, own.unit)
-        }
-        let tile = content.tiles.first { $0.layout == layout }?.value ?? ""
-        let parts = tile.split(separator: " ", maxSplits: 1).map(String.init)
-        return (parts.first ?? tile, parts.count > 1 ? parts[1] : "")
     }
 
     private static func symbol(for tab: AnalysisTab) -> String {
