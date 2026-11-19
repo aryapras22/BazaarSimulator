@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct InspectorFields: Sendable {
-    var showsLabel: Bool
     var showsSingleDimension: Bool
     var primarySizeTitle: String
     var sizeDetailText: String?
@@ -18,17 +17,15 @@ struct InspectorFields: Sendable {
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .block:
             return InspectorFields(
-                showsLabel: !object.isColumn,
                 sizeDetailText: "(length x thickness)",
                 showsRotation: true,
                 showsHeight: true,
                 showsShape: true
             )
         case .closedArea:
-            return InspectorFields(showsLabel: true, showsRotation: true, showsShape: true)
+            return InspectorFields(showsRotation: true, showsShape: true)
         case .entertainment:
             return InspectorFields(
-                showsLabel: true,
                 showsRotation: true,
                 showsHeight: true,
                 showsOpenSides: true,
@@ -41,7 +38,6 @@ struct InspectorFields: Sendable {
     }
 
     init(
-        showsLabel: Bool = false,
         showsSingleDimension: Bool = false,
         primarySizeTitle: String = "Size",
         sizeDetailText: String? = "(width x length)",
@@ -52,7 +48,6 @@ struct InspectorFields: Sendable {
         showsAttractiveness: Bool = false,
         showsCategory: Bool = false
     ) {
-        self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
         self.primarySizeTitle = primarySizeTitle
         self.sizeDetailText = sizeDetailText
@@ -82,17 +77,6 @@ struct GenericInspector: View {
                             .font(Typography.caption)
                             .foregroundStyle(Palette.destructive)
                     }
-                }
-            }
-
-            if fields.showsLabel {
-                VStack(alignment: .leading, spacing: Spacing.s) {
-                    Text("Label")
-                        .font(Typography.inspectorLabel)
-                        .foregroundStyle(Palette.textPrimary)
-
-                    TextField("Label", text: $draft.label)
-                        .textFieldStyle(FieldOnSurfaceStyle())
                 }
             }
 

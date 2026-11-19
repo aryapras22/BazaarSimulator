@@ -55,16 +55,12 @@ struct LayoutEditorViewModelInspectorTests {
     func blockLabelEdit() throws {
         let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
         let block = try #require(context.layout.objects.first { $0.kind == .block })
-        var column = block
-        column.catalogID = ObjectCatalog.columnID
 
         context.viewModel.selectObject(block.id)
         context.viewModel.editInspectorDraft { $0.label = "Ticket desk" }
 
         #expect(context.viewModel.activeLayout?.objects.first { $0.id == block.id }?.label == "Ticket desk")
         #expect(context.viewModel.inspectorTitle == "Ticket desk")
-        #expect(InspectorFields.forObject(block).showsLabel)
-        #expect(!InspectorFields.forObject(column).showsLabel)
     }
 
     @Test("Several edits to one object undo in one step")
