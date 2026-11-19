@@ -9,6 +9,9 @@ struct ProjectSetupView: View {
     @State private var previewedLayout: Layout?
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
+    /// Wide enough that the side margins stay small; only very wide windows center the content.
+    private static let maxContentWidth: CGFloat = 1400
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerView
@@ -31,9 +34,11 @@ struct ProjectSetupView: View {
         // The title bar only reserves room in a window, not in full screen. Ignoring it and padding by a fixed
         // amount keeps the name field at the same height in both.
         .padding(.top, Spacing.m)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Capped, so with the sidebar hidden the content stays centered instead of stretching across the window.
+        .frame(maxWidth: Self.maxContentWidth)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Palette.background.ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .fileImporter(
             isPresented: Binding(
                 get: { importTarget != nil },
@@ -107,8 +112,16 @@ struct ProjectSetupView: View {
                 help: { legendHelp },
                 trailing: {
                     if !viewModel.legendEntries.isEmpty {
-                        Button("Clear All", action: viewModel.deleteAllLegends)
-                            .buttonStyle(.secondary)
+                        Button(action: viewModel.deleteAllLegends) {
+                            Text("Clear All")
+                                .font(.system(size: 11.5))
+                                .foregroundColor(Palette.textPrimary)
+                                .padding(.horizontal, Spacing.m)
+                                .frame(height: 24)
+                                .background(Palette.control, in: RoundedRectangle(cornerRadius: Radius.s))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 },
                 content: { legendContent }
@@ -190,22 +203,6 @@ struct ProjectSetupView: View {
             subtitle: viewModel.floorPlanFiles.isEmpty ? nil : "\(viewModel.planRows.count) Plans",
             bottomPadding: viewModel.floorPlanFiles.isEmpty ? Spacing.m : Self.listBottomPadding,
             help: { layoutHelp },
-            trailing: {
-                if !viewModel.floorPlanFiles.isEmpty && viewModel.isFloorPlanZoneEnabled {
-                    Button {
-                        choose(.floorPlan)
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Palette.textSecondary)
-                            .frame(width: 22, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .help("Add layout")
-                    .accessibilityLabel("Add layout")
-                }
-            },
             content: { floorPlanContent }
         )
         .disabled(!viewModel.hasLegend && viewModel.floorPlanFiles.isEmpty)

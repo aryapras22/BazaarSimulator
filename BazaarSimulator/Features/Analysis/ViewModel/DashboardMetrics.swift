@@ -14,7 +14,7 @@ struct DashboardMetrics {
     static let analysisTitleHeight: CGFloat = 24
     static let tabBarHeight: CGFloat = 35
     static let cardGap: CGFloat = 28
-    static let summaryHeight: CGFloat = 239
+    static let summaryHeight: CGFloat = 190
     /// The Result bar under a single layout has no "why" row, so it is lower.
     static let singleSummaryHeight: CGFloat = 168
 
@@ -55,7 +55,11 @@ struct DashboardMetrics {
         lowerHeight = max(available - tabsPlan, lower)
 
         // On the page itself the plan takes the room the header and the Best Layout summary leave.
-        let pageFixed = lerp(16, 29) + Self.headerHeight + lerp(14, 25) + cardChrome
+        // With two layouts the row under each plan, which only the single layout fills, is left out, so the plans get
+        // its room.
+        let underPlanRow = SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight + 3
+        let pageFixed = lerp(16, 29) + Self.headerHeight + lerp(14, 25)
+            + (layoutCount == 1 ? cardChrome : cardChrome - underPlanRow)
             + lerp(16, 24) + (layoutCount == 1 ? Self.singleSummaryHeight : Self.summaryHeight) + lerp(16, 26)
         planHeight = max(min(size.height - pageFixed, widthLimitedPlan), 200)
         recommendationWidth = contentWidth * 509 / 1143

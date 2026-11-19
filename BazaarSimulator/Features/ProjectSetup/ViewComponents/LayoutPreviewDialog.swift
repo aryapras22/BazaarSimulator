@@ -47,8 +47,8 @@ struct LayoutPreviewDialog: View {
             }
         }
         .padding(Spacing.xl)
-        .frame(width: 760, height: 560)
-        .background(Palette.menu.opacity(0.97), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(Palette.surfaceBorder, lineWidth: 1)
@@ -84,10 +84,13 @@ extension View {
         overlay {
             if let shown = layout.wrappedValue {
                 ZStack {
-                    Color.black.opacity(0.45)
+                    Color.black.opacity(0.3)
                         .ignoresSafeArea()
                         .onTapGesture { layout.wrappedValue = nil }
+                    // Nearly the whole window, the page still showing around it.
                     LayoutPreviewDialog(layout: shown) { layout.wrappedValue = nil }
+                        .padding(Spacing.xl)
+                        .padding(.top, Spacing.xl)
                 }
                 .transition(.opacity)
             }

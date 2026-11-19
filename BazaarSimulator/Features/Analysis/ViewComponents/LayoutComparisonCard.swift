@@ -23,37 +23,37 @@ struct LayoutComparisonCard: View {
 
     @State private var hoveredSpot: Int?
     @State private var showsChoices = false
-    @State private var zoom: CGFloat = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerBar
                 .padding(.horizontal, LayoutCardInset.horizontal)
 
-            ZoomablePlan(zoom: $zoom) {
-                floorPlanImage
-            }
+            floorPlanImage
             .aspectRatio(planAspect, contentMode: .fit)
             .frame(height: max(planHeight ?? metrics.planHeight, 0))
             .frame(maxWidth: .infinity)
             .padding(.top, metrics.planTopPadding)
             .zIndex(1)
 
-            HStack(alignment: .bottom, spacing: 16) {
-                SeverityScaleView()
-                Spacer(minLength: 0)
-                if showsWorstSpot, !outcome.spots.isEmpty {
-                    WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)
+            // The row under the plan is only there for a single layout, which names its worst spot. With two layouts
+            // the room goes to the plan.
+            if showsWorstSpot {
+                HStack(alignment: .bottom, spacing: 16) {
+                    Spacer(minLength: 0)
+                    if !outcome.spots.isEmpty {
+                        WorstSpotSummary(outcome: outcome, peakHourText: peakHourText)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(
-                height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
-                alignment: .bottom
-            )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(
+                    height: SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight,
+                    alignment: .bottom
+                )
                 .padding(.leading, LayoutCardInset.legendLeading)
                 .padding(.trailing, LayoutCardInset.legendTrailing)
                 .padding(.top, 3)
+            }
         }
         .padding(.top, LayoutCardInset.top)
         .padding(.bottom, LayoutCardInset.bottom)
@@ -96,8 +96,6 @@ struct LayoutComparisonCard: View {
             .accessibilityLabel("Layout selector, \(layout.name)")
 
             Spacer(minLength: 8)
-
-            ZoomControls(zoom: $zoom)
 
             if showsSimulate {
                 Button(action: onSimulate) {

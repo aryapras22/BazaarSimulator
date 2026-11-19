@@ -8,42 +8,51 @@ struct LayoutEditorView: View {
     @State private var isSidePanelVisible = true
     @FocusState private var isCanvasFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.pageClearsToolbar) private var pageClearsToolbar
+
+    /// Room the tool buttons take at the right of the canvas: their width and a gap on each side.
+    private static let toolButtonsWidth: CGFloat = 64
+    private static let inspectorWidth = InspectorPanelMetrics.width
+    /// The header row: its top gap, its height and the gap under it.
+    private static let headerRowHeight: CGFloat = Spacing.m + 40 + Spacing.s
+    /// How much of the canvas' right side lies under the tool buttons and the inspector.
+    private static let coveredWidth = inspectorWidth + InspectorPanelMetrics.margin * 2 + toolButtonsWidth
 
     var body: some View {
-        VStack(spacing: 0) {
-            EditorHeaderBar(viewModel: viewModel)
-                // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
-                .padding(.leading, 150)
-                .padding(.trailing, Spacing.l)
-                .padding(.top, Spacing.m)
-                .padding(.bottom, Spacing.s)
+        // The canvas runs the full width, under the tool buttons and the inspector, which float over its right side.
+        // The inspector runs the whole height of the window, so the header, with undo and redo, ends above the tools.
+        ZStack(alignment: .topTrailing) {
+            VStack(spacing: 0) {
+                EditorHeaderBar(viewModel: viewModel)
+                    // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
+                    .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
+                    // Redo ends exactly above the right edge of the tool buttons.
+                    .padding(.trailing, Self.inspectorWidth + InspectorPanelMetrics.margin * 3)
+                    .padding(.top, Spacing.m)
+                    .padding(.bottom, Spacing.s)
 
-            ZStack(alignment: .trailing) {
-                HStack(spacing: 0) {
-                    viewportArea
-                        .padding(.trailing, InspectorPanelMetrics.width + InspectorPanelMetrics.margin * 2 + 52)
-                }
-
-                HStack(alignment: .top, spacing: Spacing.m) {
-                    EditorToolButtons(
-                        layer: viewModel.activeLayer,
-                        isActive: { viewModel.isActive($0) },
-                        isAvailable: { viewModel.tool(for: $0) != nil },
-                        onSelect: { viewModel.toggle($0) }
-                    )
-                    .padding(.top, Spacing.s)
-
-                    LayoutInspectorColumn(
-                        viewModel: viewModel,
-                        onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
-                    )
-                }
-                .padding(InspectorPanelMetrics.margin)
+                viewportArea
             }
+
+            EditorToolButtons(
+                layer: viewModel.activeLayer,
+                isActive: { viewModel.isActive($0) },
+                isAvailable: { viewModel.tool(for: $0) != nil },
+                onSelect: { viewModel.toggle($0) }
+            )
+            .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
+            .padding(.trailing, Self.inspectorWidth + InspectorPanelMetrics.margin * 3)
+
+            LayoutInspectorColumn(
+                viewModel: viewModel,
+                onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
+            )
+            .padding(InspectorPanelMetrics.margin)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background.ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .navigationTitle(viewModel.projectName)
         .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
         .focusedSceneValue(\.editorCommandActions, commandActions)
@@ -134,6 +143,9 @@ extension LayoutEditorView {
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }
             )
+            // The controls at the bottom right line up with the tool buttons above them: the same right edge. The
+            // overlay already keeps Spacing.l from its own edge.
+            .padding(.trailing, Self.inspectorWidth + InspectorPanelMetrics.margin * 3 - Spacing.l)
 
             if !viewModel.flowBannerIssues.isEmpty {
                 VStack(spacing: Spacing.xs) {
@@ -151,28 +163,35 @@ extension LayoutEditorView {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, Spacing.l)
+                .padding(.trailing, Self.coveredWidth)
             }
         }
         .clipped()
+    }
+
+    /// The part of the canvas not under the tool buttons and the inspector. Fitting and zooming work on this, so
+    /// the plan sits in what can be seen.
+    private func visibleSize(_ size: CGSize) -> SIMD2<Double> {
+        SIMD2<Double>(max(Double(size.width - Self.coveredWidth), 1), Double(size.height))
     }
 
     @ViewBuilder
     private func canvasView(proxy: GeometryProxy) -> some View {
         attachCanvasShortcuts(to: makeLayoutCanvasView())
             .onAppear {
-                let size = SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height))
+                let size = visibleSize(proxy.size)
                 canvasViewSize = size
                 viewModel.fitIfNeeded(in: size)
                 viewModel.refreshDerivedState()
                 isCanvasFocused = true
             }
             .onGeometryChange(for: CGSize.self, of: \.size) { newSize in
-                let size = SIMD2<Double>(Double(newSize.width), Double(newSize.height))
+                let size = visibleSize(newSize)
                 canvasViewSize = size
                 viewModel.refitIfUntouched(in: size)
             }
             .onChange(of: viewModel.activeLayoutID) { _, _ in
-                viewModel.fitIfNeeded(in: SIMD2<Double>(Double(proxy.size.width), Double(proxy.size.height)))
+                viewModel.fitIfNeeded(in: visibleSize(proxy.size))
             }
             .onChange(of: viewModel.selectionID) { _, newID in
                 if newID != nil { isCanvasFocused = true }

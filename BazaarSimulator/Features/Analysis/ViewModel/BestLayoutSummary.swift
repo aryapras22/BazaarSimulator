@@ -12,8 +12,13 @@ struct BestLayoutSummary {
         let values: [LayoutID: (text: String, unit: String)]
         let strength: String
         let tradeOff: String
+        /// How far apart the two layouts are on this check, from 0 (the same) to 1 (as far apart as it can be).
+        let margin: Double
 
         var id: AnalysisTab { tab }
+
+        /// The gap is so wide that this check counts for more than usual.
+        var isHuge: Bool { !isTie && margin >= BestLayoutSummary.hugeMargin }
 
         /// Both layouts show the same value, so the check has no winner worth naming.
         var isTie: Bool {
@@ -22,31 +27,104 @@ struct BestLayoutSummary {
         }
     }
 
+    /// How much each check counts for. Crowd level and time stuck count a little more than stuck spots, because
+    /// stuck spots only says how many places jam, not how bad the worst one gets or for how long.
+    static let weights: [AnalysisTab: Double] = [
+        .congestionPoints: 1.0,
+        .crowdDensity: 1.25,
+        .congestionDuration: 1.25,
+    ]
+    /// From this gap on, a check is a huge difference: half of the whole scale between the two layouts.
+    static let hugeMargin = 0.5
+    /// A huge difference counts this many times over.
+    static let hugeBoost = 2.0
+    /// Scores closer than this are a tie, which the older rule then settles.
+    static let tieBand = 0.05
+
     let checks: [Check]
     let best: LayoutID
+    /// Each layout's score. The higher one is best.
+    let scores: [LayoutID: Double]
 
-    /// The layout that wins most of the three checks, and on a tie the one that wins the first check that is
-    /// not itself a tie.
+    /// Every check compares the layouts on their average over the whole simulation (every sampled window of the
+    /// day), not on the busiest moment alone. Each check gives its winner points: the check's weight times how far apart the layouts are, counted
+    /// double when the gap is huge. The layout with more points is best. When the points are level, it is the
+    /// layout that wins most of the checks, and then the one that wins the first check that is not a tie.
     init(engine: CompareRulesEngine, outcomes: [LayoutID: LayoutOutcome]) {
-        let tabs: [AnalysisTab] = [.congestionPoints, .congestionDuration, .crowdDensity]
-        checks = tabs.map { tab in
+        let tabs: [AnalysisTab] = [.congestionPoints, .crowdDensity, .congestionDuration]
+        let built: [Check] = tabs.map { tab in
+            // The engine's winner is the one for the busiest moment. It only settles a check whose averages are level.
             let content = engine.content(for: tab)
+            let averages = Dictionary(uniqueKeysWithValues: LayoutID.allCases.map { layout in
+                (layout, Self.average(for: tab, outcome: outcomes[layout]))
+            })
+            let one = averages[.one] ?? 0, two = averages[.two] ?? 0
             return Check(
                 tab: tab,
                 label: tab.title,
                 symbol: Self.symbol(for: tab),
-                winner: content.recommended,
+                winner: abs(one - two) < 1e-9 ? content.recommended : (one < two ? .one : .two),
                 values: Dictionary(uniqueKeysWithValues: LayoutID.allCases.map { layout in
-                    (layout, Self.value(for: tab, layout: layout, content: content, outcomes: outcomes))
+                    (layout, Self.value(for: tab, average: averages[layout] ?? 0))
                 }),
                 strength: Self.strength(for: tab),
-                tradeOff: Self.tradeOff(for: tab)
+                tradeOff: Self.tradeOff(for: tab),
+                margin: Self.margin(for: tab, averages: (one, two), windowMinutes: engine.windowMinutes)
             )
         }
-        let decided = checks.filter { !$0.isTie }
-        let winsOne = decided.filter { $0.winner == .one }.count
-        let winsTwo = decided.count - winsOne
-        best = winsOne == winsTwo ? (decided.first ?? checks[0]).winner : (winsTwo > winsOne ? .two : .one)
+        checks = built
+
+        var points: [LayoutID: Double] = [.one: 0, .two: 0]
+        for check in built where !check.isTie {
+            let boost = check.isHuge ? Self.hugeBoost : 1
+            points[check.winner, default: 0] += (Self.weights[check.tab] ?? 1) * check.margin * boost
+        }
+        scores = points
+
+        let gap = (points[.one] ?? 0) - (points[.two] ?? 0)
+        if abs(gap) >= Self.tieBand {
+            best = gap > 0 ? .one : .two
+        } else {
+            let decided = built.filter { !$0.isTie }
+            let winsOne = decided.filter { $0.winner == .one }.count
+            let winsTwo = decided.count - winsOne
+            best = winsOne == winsTwo ? (decided.first ?? built[0]).winner : (winsTwo > winsOne ? .two : .one)
+        }
+    }
+
+    /// A layout's average for one check over the whole simulation: spots stuck at once, the density at the worst
+    /// spot, or minutes stuck at the worst spot, each averaged over the day's sampled windows. When a layout has
+    /// no day samples its busiest-moment value stands in.
+    private static func average(for tab: AnalysisTab, outcome: LayoutOutcome?) -> Double {
+        guard let outcome else { return 0 }
+        let days = outcome.dayPoints
+        func mean(_ pick: (DayPoint) -> Double) -> Double {
+            days.map(pick).reduce(0, +) / Double(days.count)
+        }
+        switch tab {
+        case .congestionPoints: return days.isEmpty ? Double(outcome.C) : mean { Double($0.jammedSpots) }
+        case .congestionDuration: return days.isEmpty ? outcome.M : mean(\.heavyMinutes)
+        default: return days.isEmpty ? outcome.D : mean(\.worstDensity)
+        }
+    }
+
+    /// How far apart the layouts are on one check, from 0 to 1.
+    private static func margin(for tab: AnalysisTab, averages: (Double, Double), windowMinutes: Double) -> Double {
+        let (one, two) = averages
+        let value: Double
+        switch tab {
+        case .congestionPoints:
+            // None against one is as far apart as it gets. 3 against 4 is a quarter.
+            value = abs(one - two) / max(one, two, 1)
+        case .congestionDuration:
+            // Out of the busiest window, so 2 minutes against 8 in a 10 minute window is 0.6.
+            value = abs(one - two) / max(windowMinutes, 1)
+        default:
+            // Out of the larger density, kept at least as large as grade B's limit so a calm 0.05 against 0.10
+            // does not read as a huge difference.
+            value = abs(one - two) / max(one, two, 0.27)
+        }
+        return min(max(value, 0), 1)
     }
 
     /// "Fewer stuck spots, less time stuck and calmer crowds. The trade-off: ..."
@@ -70,15 +148,17 @@ struct BestLayoutSummary {
 
     // MARK: Words
 
-    private static func value(
-        for tab: AnalysisTab, layout: LayoutID, content: AnalysisContent, outcomes: [LayoutID: LayoutOutcome]
-    ) -> (text: String, unit: String) {
-        if tab == .crowdDensity {
-            return (outcomes[layout]?.worstSpot.grade.title ?? "", "")
+    /// What the check shows for a layout: its average, set in the check's own unit.
+    private static func value(for tab: AnalysisTab, average: Double) -> (text: String, unit: String) {
+        switch tab {
+        case .congestionPoints:
+            let text = CompareRulesEngine.formatCountOrAvg((average * 10).rounded() / 10)
+            return (text, text == "1" ? "spot" : "spots")
+        case .congestionDuration:
+            return (CompareRulesEngine.formatCountOrAvg((average * 10).rounded() / 10), "min")
+        default:
+            return (SeverityGrade.grade(forDensity: average).crowdLevel, "")
         }
-        let tile = content.tiles.first { $0.layout == layout }?.value ?? ""
-        let parts = tile.split(separator: " ", maxSplits: 1).map(String.init)
-        return (parts.first ?? tile, parts.count > 1 ? parts[1] : "")
     }
 
     private static func symbol(for tab: AnalysisTab) -> String {

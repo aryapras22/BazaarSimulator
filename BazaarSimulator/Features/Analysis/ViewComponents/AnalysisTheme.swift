@@ -41,16 +41,33 @@ extension Radius {
     static let control: CGFloat = 8
 }
 
+private struct CardsAreGlassKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Whether the cards draw as glass instead of a solid fill. The Insights modal turns it on.
+    var cardsAreGlass: Bool {
+        get { self[CardsAreGlassKey.self] }
+        set { self[CardsAreGlassKey.self] = newValue }
+    }
+}
+
 struct CardSurface: ViewModifier {
     var cornerRadius: CGFloat = Radius.card
+    @Environment(\.cardsAreGlass) private var cardsAreGlass
 
     func body(content: Content) -> some View {
-        content.background {
-            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            shape
-                .fill(Color.cardSurface)
-                .overlay { shape.strokeBorder(Color.cardBorder, lineWidth: 1) }
-                .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if cardsAreGlass {
+            content.glassEffect(.regular.tint(Color.cardSurface.opacity(0.45)), in: shape)
+        } else {
+            content.background {
+                shape
+                    .fill(Color.cardSurface)
+                    .overlay { shape.strokeBorder(Color.cardBorder, lineWidth: 1) }
+                    .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
+            }
         }
     }
 }
@@ -174,10 +191,10 @@ extension ShapeStyle where Self == Color {
     static var hotspotSevere: Color { Color(hex: 0xE5483B) }
     static var spotGlow: Color { Color(hex: 0xFF2D2D) }
 
-    static var gradeA: Color { Color(hex: 0xCD2002) }
-    static var gradeB: Color { Color(hex: 0xB41900) }
-    static var gradeC: Color { Color(hex: 0x9B1400) }
-    static var gradeD: Color { Color(hex: 0x811100) }
-    static var gradeE: Color { Color(hex: 0x5D0900) }
-    static var gradeF: Color { Color(hex: 0x450501) }
+    static var gradeA: Color { Color(hex: 0x55B049) }
+    static var gradeB: Color { Color(hex: 0x788938) }
+    static var gradeC: Color { Color(hex: 0x926C2B) }
+    static var gradeD: Color { Color(hex: 0xB24A1C) }
+    static var gradeE: Color { Color(hex: 0xCE2A0E) }
+    static var gradeF: Color { Color(hex: 0xA00700) }
 }

@@ -7,31 +7,20 @@ struct AnalysisSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Analysis")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(height: DashboardMetrics.analysisTitleHeight)
-
             SegmentedTabBar(
-                options: AnalysisTab.allCases,
+                options: AnalysisTab.shown,
                 selection: $tab,
                 title: \.title,
                 weight: \.segmentWeight
             )
             .accessibilityLabel("Analysis metric")
-            .padding(.top, metrics.titleToTabs)
 
             HStack(alignment: .top, spacing: CardSpacing.gap) {
                 RecommendationCard(tab: tab, content: content, metrics: metrics)
                     .frame(width: metrics.recommendationWidth)
 
-                VStack(spacing: CardSpacing.gap) {
-                    MetricsTableCard(content: content)
-                        .frame(height: metrics.tableHeight)
-                    AnalysisChartCard(content: content)
-                        .frame(maxHeight: .infinity)
-                }
-                .frame(maxWidth: .infinity)
+                AnalysisChartCard(content: content)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(height: metrics.lowerHeight)
             .padding(.top, metrics.tabsToLower)

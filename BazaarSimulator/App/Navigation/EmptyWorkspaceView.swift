@@ -29,7 +29,7 @@ struct EmptyWorkspaceView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background.ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
     }
 }
 

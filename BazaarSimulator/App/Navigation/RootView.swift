@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var libraryViewModel: ProjectLibraryViewModel
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @Environment(\.openWindow) private var openWindow
+    @State private var isFullScreen = false
 
     init(services: AppServices? = nil) {
         let effectiveServices = services ?? AppServices()
@@ -29,16 +30,34 @@ struct RootView: View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             ProjectLibraryView(viewModel: libraryViewModel)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 200, max: 260)
+                // The strip over the sidebar has no bar of its own, in a window or in full screen, so the sidebar's own
+                // color runs up to the top edge. Over the page, full screen shows the page's color, set below.
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         } detail: {
             detailView
+                .toolbarBackground(Palette.background, for: .windowToolbar)
+                .toolbarBackgroundVisibility(isFullScreen ? .visible : .hidden, for: .windowToolbar)
         }
         // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
         .frame(minWidth: 1280, minHeight: 800)
         .appDialog(deletionDialog)
         .appBackground()
         .preferredColorScheme(.dark)
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        .windowToolbarFullScreenVisibility(.onHover)
+        // In full screen the toolbar, and the sidebar button in it, stays showing like in a window. The window's own
+        // buttons appear only when the pointer goes to the top left, as in Notes.
+        .windowToolbarFullScreenVisibility(.automatic)
+        // In full screen the page always starts below the toolbar, so nothing collides with it. In a window the page runs
+        // up under the transparent toolbar.
+        .environment(\.pageClearsToolbar, isFullScreen)
+        .onAppear {
+            isFullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { _ in
+            isFullScreen = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { _ in
+            isFullScreen = false
+        }
         .sheet(item: parametersRequest) { request in
             ParametersSheet {
                 factory.makeParametersViewModel(
@@ -103,8 +122,11 @@ struct RootView: View {
             }
             .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
-            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { _ in
-                EmptyView()
+            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { close in
+                // A saved run cannot change. Applying new parameters opens the project's latest analysis, which runs again.
+                ParametersView(viewModel: factory.makeParametersViewModel(
+                    projectID: projectID, onClose: close, onApply: { router.showAnalysis(projectID: projectID) }
+                ))
             }
             .id(analysisID)
         case .editor(let projectID):

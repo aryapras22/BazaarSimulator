@@ -21,9 +21,8 @@ struct DashboardView<ParametersSheet: View>: View {
             )
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .background { DashboardBackground().ignoresSafeArea() }
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
         }
@@ -56,7 +55,7 @@ struct DashboardContent: View {
             DashboardHeader(
                 title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: viewModel.canEdit ? { viewModel.isParametersPresented = true } : nil
+                onOpenParameters: { viewModel.isParametersPresented = true }
             )
 
             switch viewModel.phase {
