@@ -29,7 +29,10 @@ enum ObstacleRenderer {
         if state.isSelected {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
-        } else if object.kind == .wall || object.kind == .block {
+        } else if object.kind == .wall {
+            fillColor = Palette.canvasLine
+            strokeColor = Palette.canvasLine
+        } else if object.kind == .block {
             fillColor = Palette.canvasLine.opacity(0.25)
             strokeColor = Palette.canvasLine
         } else {
