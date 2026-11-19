@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The buttons that add things to the plan, in a column beside the inspector. The Floor Plan tab has booth, table,
-/// and entertainment. The Structure tab has wall, block, door, and restricted area.
+/// The buttons that add things to the plan, in a column beside the inspector. The Floor Plan tab has booth and table.
+/// The Structure tab has wall, block, door, and restricted area.
 struct EditorToolButtons: View {
     let layer: EditorLayer
     let isActive: (EditorAddTool) -> Bool

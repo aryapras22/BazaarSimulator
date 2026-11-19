@@ -39,10 +39,14 @@ struct InspectorDraft: Sendable, Equatable {
         if let catalogID = object.catalogID, let item = ObjectCatalog.item(catalogID) {
             return item.heightM
         }
+        return defaultHeight(for: object.kind)
+    }
+
+    private static func defaultHeight(for kind: LayoutObjectKind) -> Double {
         let heights: [LayoutObjectKind: Double] = [
             .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05
         ]
-        return heights[object.kind] ?? 3.0
+        return heights[kind] ?? 3.0
     }
 
     var categoryChoice: CategoryChoice {
@@ -57,6 +61,7 @@ struct InspectorDraft: Sendable, Equatable {
         case .booth(let id):
             if kind == .entertainment {
                 catalogID = nil
+                heightM = Self.defaultHeight(for: .booth)
             }
             kind = .booth
             categoryID = id
@@ -66,6 +71,9 @@ struct InspectorDraft: Sendable, Equatable {
             categoryID = nil
             catalogID = type.catalogID
             isDisabled = (type == .disabled)
+            if let itemHeight = ObjectCatalog.item(type.catalogID)?.heightM {
+                heightM = itemHeight
+            }
         }
     }
 

@@ -2,8 +2,8 @@ import SwiftUI
 
 struct CategoryPicker: View {
     private static let helpText =
-        "Booth categories come from the plan's legend, "
-        + "and entertainment entries are attractions such as a stage or an information desk."
+        "Booth categories come from the plan's legend, entertainment entries are attractions such as a stage or "
+        + "information desk, and Others holds any other attraction and closed stands."
 
     let categories: [CategoryOption]
     var entertainmentTypes: [EntertainmentType] = EntertainmentType.allCases
@@ -29,23 +29,31 @@ struct CategoryPicker: View {
                 if selection.wrappedValue == nil {
                     Text(title).tag(CategoryChoice?.none)
                 }
-                Section("Booth") {
-                    ForEach(categories) { option in
-                        Text(option.name).tag(CategoryChoice?.some(.booth(option.id)))
-                    }
-                }
-                if !entertainmentTypes.isEmpty {
-                    Section("Entertainment") {
-                        ForEach(entertainmentTypes, id: \.self) { type in
-                            Text(type.displayName).tag(CategoryChoice?.some(.entertainment(type)))
+                if !categories.isEmpty {
+                    Section("Booth") {
+                        ForEach(categories) { option in
+                            Text(option.name).tag(CategoryChoice?.some(.booth(option.id)))
                         }
                     }
                 }
+                entertainmentSection("Entertainment", types: entertainmentTypes.filter { !$0.isInOthersSection })
+                entertainmentSection("Others", types: entertainmentTypes.filter(\.isInOthersSection))
             }
             .pickerStyle(.menu)
             .labelsHidden()
             .controlSize(.large)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func entertainmentSection(_ title: String, types: [EntertainmentType]) -> some View {
+        if !types.isEmpty {
+            Section(title) {
+                ForEach(types, id: \.self) { type in
+                    Text(type.displayName).tag(CategoryChoice?.some(.entertainment(type)))
+                }
+            }
         }
     }
 
@@ -83,6 +91,12 @@ struct CategoryPicker: View {
             categories: options,
             title: "Information Desk",
             currentChoice: .entertainment(.informationDesk),
+            onSelect: { _ in }
+        )
+        CategoryPicker(
+            categories: options,
+            title: EntertainmentType.other.displayName,
+            currentChoice: .entertainment(.other),
             onSelect: { _ in }
         )
         CategoryPicker(

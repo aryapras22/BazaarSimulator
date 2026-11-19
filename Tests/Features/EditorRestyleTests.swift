@@ -35,7 +35,7 @@ struct EditorRestyleTests {
 
     @Test("Each tab lists its own add buttons")
     func addButtonsPerLayer() {
-        #expect(EditorAddTool.tools(for: .booths) == [.booth, .table, .entertainment])
+        #expect(EditorAddTool.tools(for: .booths) == [.booth, .table])
         #expect(EditorAddTool.tools(for: .structure) == [.wall, .block, .door, .restrictedArea])
     }
 

@@ -8,7 +8,6 @@ enum ObjectCatalog {
     /// The furniture the library offers. Imported tables of other models still resolve through `items`.
     static let libraryItems: [CatalogItem] = structureItems
         + furnitureItems.filter { $0.id == "table-rect-4" || $0.id == FurnitureModels.seatingBlockID }
-        + entertainmentItems.filter { $0.id == entertainmentID }
 
     static func item(_ id: String) -> CatalogItem? {
         items.first { $0.id == id }
@@ -148,6 +147,10 @@ nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
 
     var catalogID: String {
         "entertainment-\(rawValue)"
+    }
+
+    var isInOthersSection: Bool {
+        self == .other || self == .disabled
     }
 
     /// The type chosen in the inspector. An object that never had one chosen, such as one read from a plan, carries
