@@ -132,13 +132,17 @@ enum ObjectCatalog {
 nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
     case stage
     case photobooth
+    case informationDesk
     case other
+    case disabled
 
     var displayName: String {
         switch self {
         case .stage: "Stage"
         case .photobooth: "Photobooth"
+        case .informationDesk: "Information Desk"
         case .other: "Others"
+        case .disabled: "Disabled"
         }
     }
 
@@ -153,6 +157,7 @@ nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
             return chosen
         }
         let lowered = label.lowercased()
+        if lowered.contains("info") { return .informationDesk }
         if lowered.contains("photo") { return .photobooth }
         if ["competition", "lomba", "display"].contains(where: lowered.contains) { return .other }
         return .stage

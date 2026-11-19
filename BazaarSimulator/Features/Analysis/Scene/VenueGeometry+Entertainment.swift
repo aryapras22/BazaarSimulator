@@ -27,6 +27,8 @@ extension VenueGeometry {
             let label = object.label.lowercased()
             let isCompetition = label.contains("competition") || label.contains("lomba")
             return display(width: width, depth: depth, isCompetition: isCompetition, frame: frame)
+        case .informationDesk, .disabled:
+            return display(width: width, depth: depth, isCompetition: false, frame: frame)
         case .stage:
             return stage(width: width, depth: depth, height: Float(object.heightM ?? 0.5), frame: frame)
         }

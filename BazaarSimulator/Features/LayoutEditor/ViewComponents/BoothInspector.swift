@@ -22,14 +22,6 @@ struct BoothInspector: View {
 
             categoryPicker
 
-            Toggle(isOn: $draft.isDisabled) {
-                Text("Disabled")
-                    .font(Typography.inspectorLabel)
-                    .foregroundStyle(Palette.textPrimary)
-            }
-            .toggleStyle(.switch)
-            .help("A disabled booth stays on the plan but is closed, so no visitor goes to it")
-
             if let groupActions {
                 groupSection(groupActions)
             }
@@ -65,8 +57,8 @@ struct BoothInspector: View {
         CategoryPicker(
             categories: categories,
             title: categories.first { $0.id == draft.categoryID }?.name ?? "Unassigned",
-            isChecked: { $0.id == draft.categoryID },
-            onSelect: { draft.categoryID = $0 }
+            currentChoice: draft.categoryChoice,
+            onSelect: { draft.choose($0) }
         )
     }
 

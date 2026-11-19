@@ -45,8 +45,33 @@ struct InspectorDraft: Sendable, Equatable {
         return heights[object.kind] ?? 3.0
     }
 
+    var categoryChoice: CategoryChoice {
+        if kind == .entertainment {
+            return .entertainment(EntertainmentType.resolve(catalogID: catalogID, label: label))
+        }
+        return .booth(categoryID)
+    }
+
+    mutating func choose(_ choice: CategoryChoice) {
+        switch choice {
+        case .booth(let id):
+            if kind == .entertainment {
+                catalogID = nil
+            }
+            kind = .booth
+            categoryID = id
+            isDisabled = false
+        case .entertainment(let type):
+            kind = .entertainment
+            categoryID = nil
+            catalogID = type.catalogID
+            isDisabled = (type == .disabled)
+        }
+    }
+
     func applied(to original: LayoutObject) -> LayoutObject {
         var updated = original
+        updated.kind = kind
         updated.label = label
         if kind == .door {
             updated.placement.sizeM = .init(widthM, original.placement.sizeM.y)

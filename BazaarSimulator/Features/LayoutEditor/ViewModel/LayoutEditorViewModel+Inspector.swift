@@ -12,8 +12,9 @@ extension LayoutEditorViewModel {
 
     var inspectorTitle: String {
         guard let selected = selectedObject, let layout = activeLayout else { return "" }
+        let kind = inspectorDraft?.kind ?? selected.kind
         let draftLabel = inspectorDraft?.label ?? selected.label
-        switch selected.kind {
+        switch kind {
         case .booth:
             return "Booth \(BoothLabelFormatter.display(draftLabel))"
         case .door:
@@ -22,7 +23,7 @@ extension LayoutEditorViewModel {
             return "Column"
         case .closedArea, .table, .seating, .block, .entertainment:
             let trimmed = draftLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? selected.kind.displayName : trimmed
+            return trimmed.isEmpty ? kind.displayName : trimmed
         case .wall:
             return WallLabelFormatter.displayTitle(for: selected, in: layout)
         }
@@ -32,7 +33,8 @@ extension LayoutEditorViewModel {
     /// edited. Every other title is the name itself.
     var inspectorEditableName: String {
         guard let selected = selectedObject else { return "" }
-        if selected.kind == .booth { return inspectorDraft?.label ?? selected.label }
+        let kind = inspectorDraft?.kind ?? selected.kind
+        if kind == .booth { return inspectorDraft?.label ?? selected.label }
         return inspectorTitle
     }
 
@@ -41,17 +43,17 @@ extension LayoutEditorViewModel {
     func renameSelected(to name: String) {
         guard let selected = selectedObject, var draft = inspectorDraft else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let automatic = selected.kind == .booth ? "" : automaticTitle(for: selected)
+        let automatic = draft.kind == .booth ? "" : automaticTitle(for: selected, kind: draft.kind)
         draft.label = trimmed == automatic ? "" : trimmed
         updateInspectorDraft(draft)
     }
 
-    private func automaticTitle(for object: LayoutObject) -> String {
+    private func automaticTitle(for object: LayoutObject, kind: LayoutObjectKind) -> String {
         guard let layout = activeLayout else { return "" }
-        switch object.kind {
+        switch kind {
         case .door: return "Door \(DoorLabelFormatter.compassName(for: object, in: layout))"
         case .wall: return "Wall \(WallLabelFormatter.sideName(for: object, in: layout))"
-        default: return object.kind.displayName
+        default: return kind.displayName
         }
     }
 
@@ -64,8 +66,9 @@ extension LayoutEditorViewModel {
 
     var sizeRangeM: ClosedRange<Double> {
         guard let selected = selectedObject else { return 0.5...100.0 }
-        let minVal = selected.kind.minimumDimensionM
-        if selected.kind == .door {
+        let kind = inspectorDraft?.kind ?? selected.kind
+        let minVal = kind.minimumDimensionM
+        if kind == .door {
             return minVal...maxDoorWidthM(for: selected)
         }
         let maxLayoutDim = max(activeLayout?.sizeM.x ?? 100.0, activeLayout?.sizeM.y ?? 100.0)
@@ -75,20 +78,21 @@ extension LayoutEditorViewModel {
     var isInspectorDraftValid: Bool {
         if groupSelection != nil { return isGroupDraftValid }
         guard let draft = inspectorDraft, let selected = selectedObject else { return false }
+        let kind = draft.kind
         let range = sizeRangeM
         guard range.contains(draft.widthM) else { return false }
-        if selected.kind != .door {
+        if kind != .door {
             guard range.contains(draft.lengthM) else { return false }
         }
-        let rotationStep = selected.kind.rotationStepDegrees
-        if selected.kind.isRotatable && draft.rotationDegrees % rotationStep != 0 {
+        let rotationStep = kind.rotationStepDegrees
+        if kind.isRotatable && draft.rotationDegrees % rotationStep != 0 {
             return false
         }
         let heightKinds: Set<LayoutObjectKind> = [.wall, .block, .booth]
-        if heightKinds.contains(selected.kind) && !(0.1...10.0).contains(draft.heightM) {
+        if heightKinds.contains(kind) && !(0.1...10.0).contains(draft.heightM) {
             return false
         }
-        if selected.kind.hasAttractiveness && !AttractivenessField.isValid(draft.attractiveness) {
+        if kind.hasAttractiveness && !AttractivenessField.isValid(draft.attractiveness) {
             return false
         }
         return !issues.contains {

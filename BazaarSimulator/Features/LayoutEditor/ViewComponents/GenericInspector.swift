@@ -10,10 +10,10 @@ struct InspectorFields: Sendable {
     var showsShape: Bool
     var showsOpenSides: Bool
     var showsAttractiveness: Bool
-    var showsEntertainmentType: Bool
+    var showsCategory: Bool
 
-    static func forObject(_ object: LayoutObject) -> InspectorFields {
-        switch object.kind {
+    static func forObject(_ object: LayoutObject, kind: LayoutObjectKind? = nil) -> InspectorFields {
+        switch kind ?? object.kind {
         case .wall:
             return InspectorFields(sizeDetailText: "(length x thickness)", showsRotation: true, showsHeight: true)
         case .block:
@@ -33,7 +33,7 @@ struct InspectorFields: Sendable {
                 showsHeight: true,
                 showsOpenSides: true,
                 showsAttractiveness: true,
-                showsEntertainmentType: true
+                showsCategory: true
             )
         case .booth, .door, .table, .seating:
             return InspectorFields()
@@ -50,7 +50,7 @@ struct InspectorFields: Sendable {
         showsShape: Bool = false,
         showsOpenSides: Bool = false,
         showsAttractiveness: Bool = false,
-        showsEntertainmentType: Bool = false
+        showsCategory: Bool = false
     ) {
         self.showsLabel = showsLabel
         self.showsSingleDimension = showsSingleDimension
@@ -61,13 +61,14 @@ struct InspectorFields: Sendable {
         self.showsShape = showsShape
         self.showsOpenSides = showsOpenSides
         self.showsAttractiveness = showsAttractiveness
-        self.showsEntertainmentType = showsEntertainmentType
+        self.showsCategory = showsCategory
     }
 }
 
 struct GenericInspector: View {
     @Binding var draft: InspectorDraft
     let fields: InspectorFields
+    var categories: [CategoryOption] = []
     let sizeRange: ClosedRange<Double>
     var titleIssues: [String] = []
     var openSideIssues: [String] = []
@@ -95,8 +96,13 @@ struct GenericInspector: View {
                 }
             }
 
-            if fields.showsEntertainmentType {
-                entertainmentTypePicker
+            if fields.showsCategory {
+                CategoryPicker(
+                    categories: categories,
+                    title: EntertainmentType.resolve(catalogID: draft.catalogID, label: draft.label).displayName,
+                    currentChoice: draft.categoryChoice,
+                    onSelect: { draft.choose($0) }
+                )
             }
 
             if fields.showsShape {
@@ -134,28 +140,6 @@ struct GenericInspector: View {
                     }
                 }
             }
-        }
-    }
-
-    private var entertainmentTypePicker: some View {
-        let type = Binding<EntertainmentType>(
-            get: { EntertainmentType.resolve(catalogID: draft.catalogID, label: draft.label) },
-            set: { draft.catalogID = $0.catalogID }
-        )
-        return VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("Type")
-                .font(Typography.inspectorLabel)
-                .foregroundStyle(Palette.textPrimary)
-
-            Picker("Type", selection: type) {
-                ForEach(EntertainmentType.allCases, id: \.self) { type in
-                    Text(type.displayName).tag(type)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .controlSize(.large)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

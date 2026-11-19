@@ -18,6 +18,7 @@ struct LayoutInspectorColumn: View {
     // MARK: One element
 
     private func singleObjectInspector(for selected: LayoutObject) -> some View {
+        let kind = viewModel.inspectorDraft?.kind ?? selected.kind
         let draftBinding = Binding<InspectorDraft>(
             get: { viewModel.inspectorDraft ?? InspectorDraft(object: selected) },
             set: { viewModel.updateInspectorDraft($0) }
@@ -26,57 +27,74 @@ struct LayoutInspectorColumn: View {
         return InspectorPanel(
             title: viewModel.inspectorTitle,
             editableName: viewModel.inspectorEditableName,
-            onRename: { viewModel.renameSelected(to: $0) }
-        ) {
-            // What is wrong with the selection is told at the bottom of the panel, not inside the fields.
-            switch selected.kind {
-            case .booth:
-                BoothInspector(
-                    draft: draftBinding,
-                    categories: viewModel.categoryOptions,
-                    sizeRange: viewModel.sizeRangeM,
-                    groupActions: viewModel.boothGroupActions(for: selected)
-                )
-            case .door:
-                DoorInspector(
-                    draft: draftBinding,
-                    widthRange: viewModel.sizeRangeM,
-                    advice: nil,
-                    onUseAdvice: {}
-                )
-            case .table:
-                TableInspector(draft: draftBinding)
-            case .seating:
-                SeatingInspector(draft: draftBinding)
-            case .wall:
-                WallInspector(
-                    draft: draftBinding,
-                    lengthRange: viewModel.sizeRangeM
-                )
-            default:
-                GenericInspector(
-                    draft: draftBinding,
-                    fields: .forObject(selected),
-                    sizeRange: viewModel.sizeRangeM
-                )
+            onRename: { viewModel.renameSelected(to: $0) },
+            content: {
+                singleObjectFields(for: selected, kind: kind, draft: draftBinding)
+            },
+            footer: {
+                singleObjectFooter(for: selected, kind: kind)
             }
-        } footer: {
-            selectionNotes(for: selected)
+        )
+    }
 
-            if let advice = viewModel.currentDoorAdvice, selected.kind == .door {
-                InspectorTip(
-                    message: advice.message,
-                    actionTitle: advice.actionTitle,
-                    onAction: { viewModel.applyDoorAdvice() }
-                )
-            }
-
-            DeleteSelectionButton(title: "Delete \(selected.kind.displayName.lowercased())") {
-                viewModel.deleteSelected()
-            }
-
-            SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
+    @ViewBuilder
+    private func singleObjectFields(
+        for selected: LayoutObject,
+        kind: LayoutObjectKind,
+        draft: Binding<InspectorDraft>
+    ) -> some View {
+        // What is wrong with the selection is told at the bottom of the panel, not inside the fields.
+        switch kind {
+        case .booth:
+            BoothInspector(
+                draft: draft,
+                categories: viewModel.categoryOptions,
+                sizeRange: viewModel.sizeRangeM,
+                groupActions: viewModel.boothGroupActions(for: selected)
+            )
+        case .door:
+            DoorInspector(
+                draft: draft,
+                widthRange: viewModel.sizeRangeM,
+                advice: nil,
+                onUseAdvice: {}
+            )
+        case .table:
+            TableInspector(draft: draft)
+        case .seating:
+            SeatingInspector(draft: draft)
+        case .wall:
+            WallInspector(
+                draft: draft,
+                lengthRange: viewModel.sizeRangeM
+            )
+        default:
+            GenericInspector(
+                draft: draft,
+                fields: .forObject(selected, kind: kind),
+                categories: viewModel.categoryOptions,
+                sizeRange: viewModel.sizeRangeM
+            )
         }
+    }
+
+    @ViewBuilder
+    private func singleObjectFooter(for selected: LayoutObject, kind: LayoutObjectKind) -> some View {
+        selectionNotes(for: selected)
+
+        if let advice = viewModel.currentDoorAdvice, kind == .door {
+            InspectorTip(
+                message: advice.message,
+                actionTitle: advice.actionTitle,
+                onAction: { viewModel.applyDoorAdvice() }
+            )
+        }
+
+        DeleteSelectionButton(title: "Delete \(kind.displayName.lowercased())") {
+            viewModel.deleteSelected()
+        }
+
+        SaveChangesButton(isEnabled: viewModel.isInspectorDraftValid) { viewModel.saveChanges() }
     }
 
     /// The validation messages that name this element, errors first.
