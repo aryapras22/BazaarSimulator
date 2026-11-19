@@ -12,18 +12,16 @@ struct AttractivenessLegend: View {
             isOn.toggle()
         } label: {
             HStack(spacing: Spacing.s) {
-                Image(systemName: "thermometer.medium")
-                    .font(Typography.caption)
                 Text("Attractiveness")
                     .font(Typography.caption)
                 if isOn {
-                    Text("0")
+                    Text("\(Int(AttractivenessField.range.lowerBound.rounded()))")
                         .font(Typography.caption)
                         .foregroundStyle(Palette.textSecondary)
                     Capsule()
                         .fill(AttractivenessScale.gradient)
                         .frame(width: 72, height: 8)
-                    Text("10")
+                    Text("\(Int(AttractivenessField.range.upperBound.rounded()))")
                         .font(Typography.caption)
                         .foregroundStyle(Palette.textSecondary)
                 }

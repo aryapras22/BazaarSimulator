@@ -19,10 +19,26 @@ struct AttractivenessField: View {
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textPrimary)
 
-            HStack(spacing: Spacing.m) {
-                Slider(value: sliderValue, in: Self.range, step: Self.sliderStep)
-                    .labelsHidden()
-                    .accessibilityLabel("Attractiveness")
+            HStack(alignment: .top, spacing: Spacing.m) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Slider(value: sliderValue, in: Self.range, step: Self.sliderStep)
+                        .labelsHidden()
+                        .tint(.clear)
+                        .accessibilityLabel("Attractiveness")
+                        .background {
+                            Capsule()
+                                .fill(AttractivenessScale.gradient)
+                                .frame(height: 6)
+                        }
+
+                    HStack {
+                        Text("Low")
+                        Spacer()
+                        Text("High")
+                    }
+                    .font(Typography.caption)
+                    .foregroundStyle(Palette.textSecondary)
+                }
 
                 TextField("Attractiveness", text: $text)
                     .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !Self.isValid(value)))
@@ -34,14 +50,6 @@ struct AttractivenessField: View {
                         value = DimensionInput.value(from: newValue) ?? -1
                     }
             }
-
-            HStack {
-                Text("Low")
-                Spacer()
-                Text("High")
-            }
-            .font(Typography.caption)
-            .foregroundStyle(Palette.textSecondary)
         }
         .onAppear {
             text = DimensionInput.text(for: value)
