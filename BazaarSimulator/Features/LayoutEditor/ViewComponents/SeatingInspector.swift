@@ -26,14 +26,6 @@ struct SeatingInspector: View {
             TitleIssues(issues: titleIssues)
 
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Label")
-                    .font(Typography.inspectorLabel)
-                    .foregroundStyle(Palette.textPrimary)
-                TextField("Label", text: $draft.label)
-                    .textFieldStyle(FieldOnSurfaceStyle())
-            }
-
-            VStack(alignment: .leading, spacing: Spacing.s) {
                 Stepper("Rows: \(rows.wrappedValue)", value: rows, in: Self.seatRange)
                 Stepper("Seats per row: \(seatsPerRow.wrappedValue)", value: seatsPerRow, in: Self.seatRange)
                 Text("\(rows.wrappedValue * seatsPerRow.wrappedValue) seats")

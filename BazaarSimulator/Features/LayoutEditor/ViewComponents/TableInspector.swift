@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A table is one of the standard models. Its size and seats come from the model, so only the model, label and
-/// angle are edited.
+/// A table is one of the standard models. Its size and seats come from the model, so only the model and angle
+/// are edited.
 struct TableInspector: View {
     @Binding var draft: InspectorDraft
     var titleIssues: [String] = []
@@ -25,14 +25,6 @@ struct TableInspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
             TitleIssues(issues: titleIssues)
-
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Label")
-                    .font(Typography.inspectorLabel)
-                    .foregroundStyle(Palette.textPrimary)
-                TextField("Label", text: $draft.label)
-                    .textFieldStyle(FieldOnSurfaceStyle())
-            }
 
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Text("Table")
