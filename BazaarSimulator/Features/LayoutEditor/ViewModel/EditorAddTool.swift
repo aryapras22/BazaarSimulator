@@ -32,11 +32,11 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
 
     var systemImage: String {
         switch self {
-        case .booth: "storefront"
-        case .table: "chair"
-        case .wall: "rectangle.split.3x3"
+        case .booth: "storefront.fill"
+        case .table: "chair.fill"
+        case .wall: "rectangle.split.3x3.fill"
         case .block: "square.fill"
-        case .door: "door.left.hand.open"
+        case .door: "door.left.hand.closed"
         case .restrictedArea: "nosign"
         }
     }
