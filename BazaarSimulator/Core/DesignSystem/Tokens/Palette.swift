@@ -35,7 +35,13 @@ enum Palette {
     static let canvasGridLineGrey = Color(hex: 0x3A434F)
     static let canvasBackgroundWhite = Color(hex: 0xFFFFFF)
     static let canvasGridLineWhite = Color(hex: 0xDCE3EC)
-    static let attractiveness = Color(hex: 0xE59A2E)
+    static let attractivenessSteps: [Color] = [
+        Color(hex: 0xFCAD6B),
+        Color(hex: 0xFD8D3B),
+        Color(hex: 0xF2680F),
+        Color(hex: 0xD84704),
+        Color(hex: 0x8C2C04)
+    ]
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
     static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)

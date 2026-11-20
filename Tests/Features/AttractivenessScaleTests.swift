@@ -3,18 +3,27 @@ import Testing
 
 @Suite
 struct AttractivenessScaleTests {
-    @Test("Opacity rises with attractiveness from the minimum to full")
-    func opacityRises() {
-        let values = [1.0, 2, 3, 4, 5].map(AttractivenessScale.opacity(for:))
-        #expect(values.first == AttractivenessScale.minimumOpacity)
-        #expect(values.last == 1)
-        #expect(zip(values, values.dropFirst()).allSatisfy { $0 < $1 })
-        #expect((0.15...0.4).contains(AttractivenessScale.minimumOpacity))
+    @Test("Step maps 1 through 5 to indices 0 through 4")
+    func stepsMapOneToFive() {
+        let steps = [1.0, 2, 3, 4, 5].map(AttractivenessScale.step(for:))
+        #expect(steps == [0, 1, 2, 3, 4])
+    }
+
+    @Test("Fractional values round to the nearest step")
+    func fractionalValuesRound() {
+        #expect(AttractivenessScale.step(for: 2.6) == 2)
     }
 
     @Test("Values outside the range clamp to its ends")
     func valuesClamp() {
-        #expect(AttractivenessScale.opacity(for: 0) == AttractivenessScale.minimumOpacity)
-        #expect(AttractivenessScale.opacity(for: 9) == 1)
+        #expect(AttractivenessScale.step(for: 0) == 0)
+        #expect(AttractivenessScale.step(for: 9) == 4)
+    }
+
+    @Test("Color uses the matching step from the five-shade palette")
+    func colorMatchesStep() {
+        #expect(Palette.attractivenessSteps.count == 5)
+        let colors = [1.0, 2, 3, 4, 5].map(AttractivenessScale.color(for:))
+        #expect(colors == Palette.attractivenessSteps)
     }
 }
