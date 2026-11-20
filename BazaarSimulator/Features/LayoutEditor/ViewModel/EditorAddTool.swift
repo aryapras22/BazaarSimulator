@@ -3,6 +3,11 @@ import Foundation
 /// The buttons floating beside the inspector. Each starts adding one kind of element: the Floor Plan tab adds a
 /// booth or a table, and the Structure tab draws a wall, places an object or a door, or marks a restricted area.
 enum EditorAddTool: CaseIterable, Identifiable, Sendable {
+    enum Icon: Sendable {
+        case system(String)
+        case asset(String)
+    }
+
     case booth
     case table
     case wall
@@ -30,14 +35,14 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var systemImage: String {
+    var icon: Icon {
         switch self {
-        case .booth: "storefront.fill"
-        case .table: "chair.fill"
-        case .wall: "rectangle.split.3x3.fill"
-        case .block: "square.fill"
-        case .door: "door.left.hand.closed"
-        case .restrictedArea: "nosign"
+        case .booth: .asset("BoothIcon")
+        case .table: .system("chair.fill")
+        case .wall: .asset("WallIcon")
+        case .block: .system("square.fill")
+        case .door: .system("door.left.hand.closed")
+        case .restrictedArea: .asset("BarrierIcon")
         }
     }
 

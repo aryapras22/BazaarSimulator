@@ -51,13 +51,27 @@ struct EditorToolButtons: View {
             .accessibilityHidden(true)
     }
 
+    @ViewBuilder
+    private func toolIcon(for item: EditorAddTool) -> some View {
+        switch item.icon {
+        case .system(let name):
+            Image(systemName: name)
+                .font(.system(size: 15, weight: .medium))
+        case .asset(let name):
+            Image(name)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+        }
+    }
+
     private func toolButton(for item: EditorAddTool) -> some View {
         let active = isActive(item)
         return Button {
             onSelect(item)
         } label: {
-            Image(systemName: item.systemImage)
-                .font(.system(size: 15, weight: .medium))
+            toolIcon(for: item)
                 .foregroundColor(Palette.textPrimary.opacity(isAvailable(item) ? 1 : 0.35))
                 .frame(width: 40, height: 40)
                 .background(
