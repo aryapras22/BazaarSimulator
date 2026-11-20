@@ -35,7 +35,20 @@ struct ObjectCatalogTests {
         #expect(ObjectCatalog.defaultItemID(for: .block) == "block")
         #expect(ObjectCatalog.defaultItemID(for: .door) == "door")
         #expect(ObjectCatalog.defaultItemID(for: .closedArea) == "blocked-area")
+        #expect(ObjectCatalog.defaultItemID(for: .seating) == FurnitureModels.seatingBlockID)
         #expect(ObjectCatalog.defaultItemID(for: .booth) == nil)
+    }
+
+    @Test("Audience seating is the seating library item and keeps the seating kind")
+    func audienceSeatingCatalogItem() throws {
+        let item = try #require(ObjectCatalog.item(FurnitureModels.seatingBlockID))
+
+        #expect(item.name == "Audience Seating")
+        #expect(item.kind == .seating)
+        #expect(item.category == .furniture)
+        #expect(ObjectCatalog.libraryItems.contains(item))
+        #expect(LayoutObjectKind.seating.rawValue == "seating")
+        #expect(LayoutObjectKind.seating.displayName == "Seating")
     }
 
     @Test("Every catalog item's primitives stay strictly inside its footprint and height")

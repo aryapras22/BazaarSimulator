@@ -49,7 +49,7 @@ enum ObjectCatalog {
     }
 
     private static let seatingBlockItem = CatalogItem(
-        id: FurnitureModels.seatingBlockID, name: "Seating block", category: .furniture, kind: .seating,
+        id: FurnitureModels.seatingBlockID, name: "Audience Seating", category: .furniture, kind: .seating,
         sizeM: FurnitureModels.seatingBlockSizeM, heightM: FurnitureModels.chairHeightM, footprint: .rect,
         resize: .free, placement: .point,
         keywords: ["seating", "audience", "chairs", "rows", "furniture"],

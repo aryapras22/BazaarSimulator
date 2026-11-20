@@ -71,4 +71,26 @@ struct CategoryChoiceTests {
         #expect(EntertainmentType.resolve(catalogID: nil, label: "INFO DESK") == .informationDesk)
         #expect(EntertainmentType.resolve(catalogID: nil, label: "Stage") == .stage)
     }
+
+    @Test("Choosing a booth or entertainment category does not convert a seating draft")
+    func seatingIgnoresCategoryChoices() {
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "Audience",
+            placement: Placement(
+                center: SIMD2<Double>(5, 5),
+                sizeM: FurnitureModels.seatingBlockSizeM,
+                rotationRadians: .pi / 4
+            ),
+            catalogID: FurnitureModels.seatingBlockID,
+            heightM: FurnitureModels.chairHeightM
+        )
+        var draft = InspectorDraft(object: seating)
+
+        draft.choose(.booth(legendID))
+        #expect(draft.applied(to: seating) == seating)
+
+        draft.choose(.entertainment(.stage))
+        #expect(draft.applied(to: seating) == seating)
+    }
 }

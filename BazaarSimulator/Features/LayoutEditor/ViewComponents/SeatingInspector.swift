@@ -3,7 +3,6 @@ import SwiftUI
 /// A seating block holds one chair per standard seat pitch, so its rows and seats per row set its size.
 struct SeatingInspector: View {
     @Binding var draft: InspectorDraft
-    var categories: [CategoryOption] = []
     var titleIssues: [String] = []
 
     private static let seatRange = 1...60
@@ -26,12 +25,18 @@ struct SeatingInspector: View {
         VStack(alignment: .leading, spacing: Spacing.l) {
             TitleIssues(issues: titleIssues)
 
-            CategoryPicker(
-                categories: categories,
-                title: CategoryChoice.seatingDisplayName,
-                currentChoice: draft.categoryChoice,
-                onSelect: { draft.choose($0) }
-            )
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                Text("Seating")
+                    .font(Typography.inspectorLabel)
+                    .foregroundStyle(Palette.textPrimary)
+                Picker("Seating", selection: .constant(FurnitureModels.seatingBlockID)) {
+                    Text("Audience Seating").tag(FurnitureModels.seatingBlockID)
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Stepper("Rows: \(rows.wrappedValue)", value: rows, in: Self.seatRange)

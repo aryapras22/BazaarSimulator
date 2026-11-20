@@ -53,25 +53,18 @@ struct InspectorDraft: Sendable, Equatable {
         switch kind {
         case .entertainment:
             return .entertainment(EntertainmentType.resolve(catalogID: catalogID, label: label))
-        case .seating:
-            return .seating
         default:
             return .booth(categoryID)
         }
     }
 
     mutating func choose(_ choice: CategoryChoice) {
+        guard kind == .booth || kind == .entertainment else { return }
         switch choice {
         case .booth(let id):
             if kind != .booth {
                 catalogID = nil
                 heightM = Self.defaultHeight(for: .booth)
-            }
-            if kind == .seating {
-                rotationDegrees = Self.snappedRotation(
-                    rotationDegrees,
-                    step: LayoutObjectKind.booth.rotationStepDegrees
-                )
             }
             kind = .booth
             categoryID = id
@@ -80,12 +73,6 @@ struct InspectorDraft: Sendable, Equatable {
             if kind != .entertainment {
                 attractiveness = LayoutObjectKind.entertainment.defaultAttractiveness
             }
-            if kind == .seating {
-                rotationDegrees = Self.snappedRotation(
-                    rotationDegrees,
-                    step: LayoutObjectKind.entertainment.rotationStepDegrees
-                )
-            }
             kind = .entertainment
             categoryID = nil
             catalogID = type.catalogID
@@ -93,27 +80,7 @@ struct InspectorDraft: Sendable, Equatable {
             if let itemHeight = ObjectCatalog.item(type.catalogID)?.heightM {
                 heightM = itemHeight
             }
-        case .seating:
-            kind = .seating
-            catalogID = FurnitureModels.seatingBlockID
-            categoryID = nil
-            openSides = []
-            isDisabled = false
-            heightM = FurnitureModels.chairHeightM
-            widthM = Self.snappedSeatDimension(widthM, fallback: FurnitureModels.seatingBlockSizeM.x)
-            lengthM = Self.snappedSeatDimension(lengthM, fallback: FurnitureModels.seatingBlockSizeM.y)
         }
-    }
-
-    private static func snappedSeatDimension(_ length: Double, fallback: Double) -> Double {
-        guard length.isFinite, length > 0 else { return fallback }
-        return Double(FurnitureModels.seatsAlong(length)) * FurnitureModels.seatPitchM
-    }
-
-    private static func snappedRotation(_ degrees: Int, step: Int) -> Int {
-        let normalized = ((degrees % 360) + 360) % 360
-        guard step > 0 else { return normalized }
-        return (Int((Double(normalized) / Double(step)).rounded()) * step) % 360
     }
 
     func applied(to original: LayoutObject) -> LayoutObject {

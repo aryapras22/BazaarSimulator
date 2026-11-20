@@ -62,7 +62,7 @@ struct LayoutInspectorColumn: View {
         case .table:
             TableInspector(draft: draft)
         case .seating:
-            SeatingInspector(draft: draft, categories: viewModel.categoryOptions)
+            SeatingInspector(draft: draft)
         case .wall:
             WallInspector(
                 draft: draft,
