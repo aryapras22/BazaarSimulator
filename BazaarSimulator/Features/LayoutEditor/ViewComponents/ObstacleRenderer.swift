@@ -16,6 +16,7 @@ enum ObstacleRenderer {
         transform: CanvasTransform
     ) {
         let object = state.object
+        let isDisabled = DisabledObjectIndicator.isDisabled(object)
         let corners: [SIMD2<Double>]
         if object.kind == .wall, state.cornerExtensions.start > 0 || state.cornerExtensions.end > 0 {
             corners = WallCornerExtensions.extendedCorners(for: object, extensions: state.cornerExtensions)
@@ -24,37 +25,73 @@ enum ObstacleRenderer {
         }
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
-        let fillColor: Color
-        let strokeColor: Color
-        if state.isSelected {
-            fillColor = Palette.canvasSelection
-            strokeColor = Palette.canvasLine
-        } else if object.kind == .wall {
-            fillColor = Palette.canvasLine
-            strokeColor = Palette.canvasLine
-        } else if object.kind == .block {
-            fillColor = Palette.canvasLine.opacity(0.25)
-            strokeColor = Palette.canvasLine
-        } else {
-            fillColor = Palette.canvasLineGlow
-            strokeColor = Palette.canvasLine
-        }
+        let fillColor = fill(for: state, isDisabled: isDisabled)
+        let strokeColor = Palette.canvasLine
 
         context.fill(path, with: .color(fillColor))
         let outlineColor = state.hasWarning ? Palette.canvasIssue : strokeColor
         context.stroke(path, with: .color(outlineColor), lineWidth: state.hasWarning ? 2.0 : 1.2)
 
+        if isDisabled {
+            DisabledObjectIndicator.drawOverlay(
+                for: object.placement,
+                isSelected: state.isSelected,
+                in: &context,
+                transform: transform
+            )
+        }
+
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
         }
 
-        if transform.scale >= 10.0, object.kind == .block, !object.isColumn {
-            let centerView = transform.toView(object.placement.center)
-            let labelColor = state.isSelected ? Color.white : strokeColor
-            let text = Text(object.label)
-                .font(Typography.canvasLabel(scaledBy: transform.scale))
-                .foregroundStyle(labelColor)
-            context.draw(text, at: CGPoint(x: centerView.x, y: centerView.y), anchor: .center)
+        drawLabel(
+            for: state,
+            isDisabled: isDisabled,
+            strokeColor: strokeColor,
+            in: &context,
+            transform: transform
+        )
+    }
+
+    private static func fill(for state: ObjectDrawState, isDisabled: Bool) -> Color {
+        if state.isSelected {
+            return Palette.canvasSelection
         }
+        if isDisabled {
+            return DisabledObjectIndicator.mutedFill
+        }
+        if state.object.kind == .wall {
+            return Palette.canvasLine
+        }
+        if state.object.kind == .block {
+            return Palette.canvasLine.opacity(0.25)
+        }
+        return Palette.canvasLineGlow
+    }
+
+    private static func drawLabel(
+        for state: ObjectDrawState,
+        isDisabled: Bool,
+        strokeColor: Color,
+        in context: inout GraphicsContext,
+        transform: CanvasTransform
+    ) {
+        guard transform.scale >= 10.0 else { return }
+        let object = state.object
+        let labelText: String
+        if isDisabled {
+            labelText = DisabledObjectIndicator.displayLabel(for: object)
+        } else if object.kind == .block, !object.isColumn {
+            labelText = object.label
+        } else {
+            return
+        }
+        let centerView = transform.toView(object.placement.center)
+        let labelColor = state.isSelected ? Color.white : strokeColor
+        let text = Text(labelText)
+            .font(Typography.canvasLabel(scaledBy: transform.scale))
+            .foregroundStyle(labelColor)
+        context.draw(text, at: CGPoint(x: centerView.x, y: centerView.y), anchor: .center)
     }
 }

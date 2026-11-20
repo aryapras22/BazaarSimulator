@@ -31,8 +31,8 @@ enum BoothRenderer {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
-            if state.booth.isDisabled {
-                fillColor = Palette.canvasBoothFill.opacity(0.35)
+            if DisabledObjectIndicator.isDisabled(state.booth) {
+                fillColor = DisabledObjectIndicator.mutedFill
             } else if state.attractiveness == .heat {
                 fillColor = AttractivenessScale.color(for: state.booth.attractiveness)
             } else {
@@ -42,6 +42,12 @@ enum BoothRenderer {
         }
 
         context.fill(path, with: .color(fillColor))
+
+        if DisabledObjectIndicator.isDisabled(state.booth) {
+            DisabledObjectIndicator.drawOverlay(
+                for: state.booth.placement, isSelected: state.isSelected, in: &context, transform: transform
+            )
+        }
 
         drawOpenSideStrips(of: state.booth, blockedSides: state.blockedSides, in: &context, transform: transform)
 
