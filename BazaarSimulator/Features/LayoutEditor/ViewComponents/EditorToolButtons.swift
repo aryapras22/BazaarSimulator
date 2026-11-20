@@ -8,6 +8,8 @@ struct EditorToolButtons: View {
     let isAvailable: (EditorAddTool) -> Bool
     let onSelect: (EditorAddTool) -> Void
 
+    @State private var hoveredTool: EditorAddTool?
+
     var body: some View {
         VStack(spacing: Spacing.s) {
             ForEach(EditorAddTool.tools(for: layer)) { item in
@@ -17,6 +19,38 @@ struct EditorToolButtons: View {
     }
 
     private func button(for item: EditorAddTool) -> some View {
+        ZStack {
+            toolButton(for: item)
+        }
+        .onHover { isHovering in
+            if isHovering {
+                hoveredTool = item
+            } else if hoveredTool == item {
+                hoveredTool = nil
+            }
+        }
+        .overlay(alignment: .leading) {
+            if hoveredTool == item {
+                hoverLabel(item.title)
+            }
+        }
+    }
+
+    private func hoverLabel(_ title: String) -> some View {
+        Text(title)
+            .font(Typography.caption)
+            .foregroundColor(Palette.textPrimary)
+            .padding(.horizontal, Spacing.s)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Palette.surface))
+            .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
+            .fixedSize()
+            .alignmentGuide(.leading) { $0[.trailing] + Spacing.s }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func toolButton(for item: EditorAddTool) -> some View {
         let active = isActive(item)
         return Button {
             onSelect(item)
