@@ -79,19 +79,9 @@ enum BoothRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        guard state.attractiveness != .hidden, transform.scale >= 5.0 else { return }
+        guard state.attractiveness == .dot, transform.scale >= 5.0 else { return }
         let placement = state.booth.placement
         let value = state.booth.attractiveness
-        if state.attractiveness == .heat {
-            guard transform.scale >= 16.0 else { return }
-            let cornerLocal = SIMD2<Double>(placement.sizeM.x / 2.0, placement.sizeM.y / 2.0)
-            let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
-            let text = Text(DimensionInput.text(for: value))
-                .font(Typography.canvasLabel(scaledBy: transform.scale))
-                .foregroundStyle(state.isSelected ? Color.white : Palette.canvasLine)
-            context.draw(text, at: CGPoint(x: corner.x - 3, y: corner.y - 2), anchor: .bottomTrailing)
-            return
-        }
         guard abs(value - AttractivenessScale.defaultValue) > 0.001 else { return }
         let cornerLocal = SIMD2<Double>(-placement.sizeM.x / 2.0, -placement.sizeM.y / 2.0)
         let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
