@@ -16,6 +16,7 @@ struct EditorToolButtons: View {
                 button(for: item)
             }
         }
+        .onChange(of: layer) { hoveredTool = nil }
     }
 
     private func button(for item: EditorAddTool) -> some View {
@@ -41,7 +42,7 @@ struct EditorToolButtons: View {
             .font(Typography.caption)
             .foregroundColor(Palette.textPrimary)
             .padding(.horizontal, Spacing.s)
-            .padding(.vertical, 4)
+            .padding(.vertical, Spacing.xs)
             .background(Capsule().fill(Palette.surface))
             .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
             .fixedSize()
