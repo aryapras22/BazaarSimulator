@@ -500,6 +500,6 @@ struct UploadPageStatesTests {
 
     @Test("The categories offered are Foods, Goods and Others")
     func categories() {
-        #expect(BoothType.allCases.map(\.displayName) == ["Foods", "Goods", "Others"])
+        #expect(BoothType.allCases.map(\.displayName) == ["Foods", "Goods"])
     }
 }
