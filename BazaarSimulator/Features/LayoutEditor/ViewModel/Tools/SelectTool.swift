@@ -63,7 +63,7 @@ final class SelectTool: EditorToolHandling {
             return
         }
 
-        if target.kind == .closedArea && context.selectionID != hitID {
+        if target.kind == .closedArea && context.selectionID != hitID && !context.groupMemberIDs.contains(hitID) {
             startMarquee(at: event.worldPoint)
             return
         }
@@ -264,9 +264,15 @@ extension SelectTool {
         activeDragDeltaWorld = snap.delta
 
         var previewPlacements: [UUID: Placement] = [:]
-        if let object = context.layout.objects.first(where: { $0.id == candidateID }),
-           object.kind == .wall,
-           context.activeLayer == .structure {
+        if context.groupMemberIDs.contains(candidateID) {
+            for object in context.layout.objects where context.groupMemberIDs.contains(object.id) {
+                var placement = object.placement
+                placement.center += snap.delta
+                previewPlacements[object.id] = placement
+            }
+        } else if let object = context.layout.objects.first(where: { $0.id == candidateID }),
+                  object.kind == .wall,
+                  context.activeLayer == .structure {
             previewPlacements = wallDragPreview(wall: object, rawDelta: snap.delta, context: context)
         }
 
@@ -315,12 +321,17 @@ extension SelectTool {
             return
         }
         if before.kind == .wall && context.activeLayer == .structure {
-            commitWallDrag(
-                before: before,
-                candidateID: candidateID,
-                delta: activeDragDeltaWorld,
-                context: context
-            )
+            commitWallDrag(before: before, candidateID: candidateID, delta: activeDragDeltaWorld, context: context)
+            return
+        }
+        if context.groupMemberIDs.contains(candidateID) {
+            let edits = context.layout.objects.compactMap { object -> LayoutEdit? in
+                guard context.groupMemberIDs.contains(object.id), object.kind.isMovable else { return nil }
+                var after = object
+                after.placement.center += activeDragDeltaWorld
+                return after == object ? nil : .replace(before: object, after: after)
+            }
+            if !edits.isEmpty { context.applyEdit(.batch(edits), coalesceKey: "drag-\(candidateID)") }
             return
         }
         var after = before
