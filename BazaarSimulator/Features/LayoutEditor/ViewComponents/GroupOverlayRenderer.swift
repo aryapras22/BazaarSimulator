@@ -12,9 +12,6 @@ struct GroupClusterDisplay: Hashable, Sendable {
 enum GroupOverlayRenderer {
     static let minimumScale = 6.0
     private static let outlineInsetM = 0.3
-    private static let chipOffsetPt: CGFloat = 4
-    private static let chipPaddingPt: CGFloat = 4
-    private static let dotDiameterPt: CGFloat = 6
 
     static func draw(
         _ clusters: [GroupClusterDisplay],
@@ -24,9 +21,6 @@ enum GroupOverlayRenderer {
         guard transform.scale >= minimumScale else { return }
         for cluster in clusters where cluster.isSelected || cluster.isHovered {
             drawOutline(of: cluster, in: &context, transform: transform)
-        }
-        for cluster in clusters {
-            drawChip(for: cluster, in: &context, transform: transform)
         }
     }
 
@@ -53,41 +47,6 @@ enum GroupOverlayRenderer {
             with: .color(Palette.highlight.opacity(opacity)),
             style: StrokeStyle(lineWidth: 1.5, dash: [5, 3])
         )
-    }
-
-    private static func drawChip(
-        for cluster: GroupClusterDisplay,
-        in context: inout GraphicsContext,
-        transform: CanvasTransform
-    ) {
-        let label = context.resolve(
-            Text(cluster.label)
-                .font(Typography.caption)
-                .foregroundStyle(Palette.textPrimary)
-        )
-        let textSize = label.measure(in: CGSize(width: 240, height: 40))
-        let dotWidth = cluster.categoryColor == nil ? 0 : dotDiameterPt + chipPaddingPt
-        let chipSize = CGSize(
-            width: textSize.width + dotWidth + chipPaddingPt * 2,
-            height: textSize.height + chipPaddingPt
-        )
-        let corner = transform.toView(SIMD2<Double>(cluster.bounds.minX, cluster.bounds.minY))
-        let origin = CGPoint(x: corner.x - chipOffsetPt, y: corner.y - chipOffsetPt - chipSize.height)
-        let rect = CGRect(origin: origin, size: chipSize)
-        context.fill(Path(roundedRect: rect, cornerRadius: Radius.s), with: .color(Palette.surface))
-
-        var textX = rect.minX + chipPaddingPt
-        if let color = cluster.categoryColor {
-            let dot = CGRect(
-                x: textX,
-                y: rect.midY - dotDiameterPt / 2,
-                width: dotDiameterPt,
-                height: dotDiameterPt
-            )
-            context.fill(Path(ellipseIn: dot), with: .color(color.swiftUIColor))
-            textX += dotDiameterPt + chipPaddingPt
-        }
-        context.draw(label, at: CGPoint(x: textX, y: rect.midY), anchor: .leading)
     }
 }
 
