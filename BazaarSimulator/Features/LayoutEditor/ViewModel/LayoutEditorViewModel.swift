@@ -47,7 +47,8 @@ final class LayoutEditorViewModel {
     var dragState = CanvasDragState()
     @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
-    var showsAttractiveness = false
+    var clipboard: [LayoutObject] = []
+    @ObservationIgnored var clipboardPasteCount = 0
     var hasFittedTransform = false
     @ObservationIgnored var autoFitTransform: CanvasTransform?
     private(set) var issues: [LayoutIssue] = []

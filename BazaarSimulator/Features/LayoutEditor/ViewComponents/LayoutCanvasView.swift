@@ -28,7 +28,6 @@ struct CanvasDisplaySnapshot: Sendable {
     var issues: CanvasIssueSnapshot = CanvasIssueSnapshot()
     var hoverWorld: SIMD2<Double>?
     var background: CanvasBackground = .standard
-    var showsAttractiveness: Bool = false
 }
 
 extension KeyEquivalent {

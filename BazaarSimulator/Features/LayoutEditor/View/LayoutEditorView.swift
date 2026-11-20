@@ -62,6 +62,18 @@ struct LayoutEditorView: View {
             viewModel.deleteCurrentSelection()
             return .handled
         }
+        .background {
+            Button("Redo") {
+                guard !(NSApp.keyWindow?.firstResponder is NSText) else { return }
+                viewModel.redo()
+            }
+            .keyboardShortcut("y", modifiers: .command)
+            .disabled(!viewModel.canRedo)
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
         .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
             Button("Cancel", role: .cancel) { viewModel.pendingGroupDelete = nil }
@@ -92,8 +104,7 @@ extension LayoutEditorView {
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world,
-            background: viewModel.canvasBackground,
-            showsAttractiveness: viewModel.showsAttractiveness
+            background: viewModel.canvasBackground
         )
     }
 
@@ -105,10 +116,14 @@ extension LayoutEditorView {
             canUndo: viewModel.canUndo,
             canRedo: viewModel.canRedo,
             hasSelection: isMovable || viewModel.groupSelection != nil,
+            canCopy: viewModel.canCopy,
+            canPaste: viewModel.canPaste,
             canDuplicate: isMovable,
             canRotate: isRotatable,
             undo: { viewModel.undo() },
             redo: { viewModel.redo() },
+            copySelected: { viewModel.copySelected() },
+            pasteClipboard: { viewModel.pasteClipboard() },
             deleteSelected: { viewModel.deleteCurrentSelection() },
             duplicateSelected: { viewModel.duplicateSelected() },
             rotateSelected: { viewModel.rotateSelected() },
@@ -138,7 +153,6 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 background: $viewModel.canvasBackground,
-                showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
                 onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }

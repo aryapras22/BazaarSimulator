@@ -25,7 +25,7 @@ struct EditorHeaderBar: View {
                 roundButton("arrow.uturn.backward", label: "Undo", help: "Undo (⌘Z)", enabled: viewModel.canUndo) {
                     viewModel.undo()
                 }
-                roundButton("arrow.uturn.forward", label: "Redo", help: "Redo (⇧⌘Z)", enabled: viewModel.canRedo) {
+                roundButton("arrow.uturn.forward", label: "Redo", help: "Redo (⇧⌘Z / ⌘Y)", enabled: viewModel.canRedo) {
                     viewModel.redo()
                 }
             }

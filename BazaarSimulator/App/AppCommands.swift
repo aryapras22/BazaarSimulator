@@ -1,13 +1,18 @@
+import AppKit
 import SwiftUI
 
 struct EditorCommandActions {
     var canUndo: Bool
     var canRedo: Bool
     var hasSelection: Bool
+    var canCopy: Bool
+    var canPaste: Bool
     var canDuplicate: Bool
     var canRotate: Bool
     var undo: () -> Void
     var redo: () -> Void
+    var copySelected: () -> Void
+    var pasteClipboard: () -> Void
     var deleteSelected: () -> Void
     var duplicateSelected: () -> Void
     var rotateSelected: () -> Void
@@ -33,6 +38,10 @@ struct AppCommands: Commands {
     @FocusedValue(\.editorCommandActions) private var actions
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
+    private var isEditingText: Bool {
+        NSApp.keyWindow?.firstResponder is NSText
+    }
+
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
             Button("Undo") {
@@ -46,6 +55,36 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut("z", modifiers: [.command, .shift])
             .disabled(!(actions?.canRedo ?? false))
+        }
+
+        CommandGroup(replacing: .pasteboard) {
+            Button("Cut") {
+                NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("x", modifiers: .command)
+
+            Button("Copy") {
+                if isEditingText {
+                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                } else if actions?.canCopy == true {
+                    actions?.copySelected()
+                }
+            }
+            .keyboardShortcut("c", modifiers: .command)
+
+            Button("Paste") {
+                if isEditingText {
+                    NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                } else if actions?.canPaste == true {
+                    actions?.pasteClipboard()
+                }
+            }
+            .keyboardShortcut("v", modifiers: .command)
+
+            Button("Select All") {
+                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("a", modifiers: .command)
         }
 
         CommandGroup(after: .pasteboard) {
