@@ -26,7 +26,8 @@ struct ParametersView: View {
         .padding(Spacing.xl)
         .frame(minWidth: 860)
         .fixedSize(horizontal: false, vertical: true)
-        .background(Palette.background)
+        .glassEffect(.regular, in: .rect(corners: .concentric(minimum: .fixed(Radius.xl)), isUniform: true))
+        .preferredColorScheme(.dark)
     }
 
     private var divider: some View {
@@ -110,5 +111,7 @@ struct ParametersView: View {
     )
 
     return ParametersView(viewModel: viewModel)
+        .padding(Spacing.xl)
+        .background(Palette.background)
         .preferredColorScheme(.dark)
 }

@@ -113,4 +113,49 @@ struct ProjectScreenFactoryTests {
         let view = ProjectSetupView(viewModel: setupVM)
         _ = view.body
     }
+
+    @Test("Saved analysis Parameters view model seeds from saved run and applies to analysis")
+    func savedAnalysisParametersViewModelPrefillsSavedRunAndApplies() throws {
+        let services = AppServices()
+        let router = AppRouter()
+        let factory = ProjectScreenFactory(services: services, router: router)
+        let session = services.projectSession
+        let project = session.createProject(named: "Bazaar")
+        let layout = TestLayouts.hall()
+        var savedParams = services.presetCatalog.defaultParameters()
+        savedParams.totalVisitors = 250
+        let analysis = LayoutAnalysis(
+            layoutID: layout.id,
+            eventStartMinute: savedParams.eventHours.startMinute,
+            sampleIntervalSeconds: 15,
+            spots: [],
+            flowPerMinute: [1],
+            simulatedPeople: 250,
+            totalPeople: 250
+        )
+        let saved = try #require(session.recordAnalysis(
+            layouts: [layout], analyses: [analysis], parameters: savedParams, peakMinute: 600, in: project.id
+        ))
+
+        var latestParams = savedParams
+        latestParams.totalVisitors = 900
+        session.setEventParameters(latestParams, for: project.id)
+        router.showSavedAnalysis(projectID: project.id, analysisID: saved.id)
+
+        var closed = false
+        let paramsVM = factory.makeParametersViewModel(
+            projectID: project.id,
+            analysisID: saved.id,
+            onClose: { closed = true },
+            onApply: { router.showAnalysis(projectID: project.id) }
+        )
+        #expect(paramsVM.totalVisitorsText == "250")
+
+        paramsVM.commitTotalVisitors("500")
+        paramsVM.apply()
+
+        #expect(closed)
+        #expect(session.eventParameters(for: project.id)?.totalVisitors == 500)
+        #expect(router.destination == .analysis(projectID: project.id))
+    }
 }

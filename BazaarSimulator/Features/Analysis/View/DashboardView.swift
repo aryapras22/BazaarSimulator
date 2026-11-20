@@ -19,13 +19,15 @@ struct DashboardView<ParametersSheet: View>: View {
                 viewModel: viewModel,
                 metrics: DashboardMetrics(size: geometry.size, layoutCount: max(viewModel.layoutIDs.count, 1))
             )
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .clipped()
         }
         .ignoresSafeArea(.container, edges: .top)
         .background { DashboardBackground().ignoresSafeArea() }
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
+                .presentationBackground(.clear)
         }
         .sheet(isPresented: $viewModel.isInsightsPresented) {
             InsightsSheet(viewModel: viewModel)
@@ -56,7 +58,7 @@ struct DashboardContent: View {
             DashboardHeader(
                 title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: viewModel.canEdit ? { viewModel.isParametersPresented = true } : nil
+                onOpenParameters: { viewModel.isParametersPresented = true }
             )
 
             switch viewModel.phase {
@@ -216,9 +218,12 @@ struct DashboardHeader: View {
             Text(title)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.85)
                 .padding(.leading, 19)
 
-            Spacer()
+            Spacer(minLength: 12)
 
             if let onOpenParameters {
                 Button("Parameters", action: onOpenParameters)

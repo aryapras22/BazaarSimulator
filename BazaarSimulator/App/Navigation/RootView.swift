@@ -47,6 +47,7 @@ struct RootView: View {
                     onApply: { router.showAnalysis(projectID: request.projectID) }
                 )
             }
+            .presentationBackground(.clear)
         }
         .onChange(of: router.simulationRequest) { _, request in
             guard let request else { return }
@@ -103,8 +104,17 @@ struct RootView: View {
             }
             .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
-            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { _ in
-                EmptyView()
+            DashboardView(
+                viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)
+            ) { close in
+                ParametersView(
+                    viewModel: factory.makeParametersViewModel(
+                        projectID: projectID,
+                        analysisID: analysisID,
+                        onClose: close,
+                        onApply: { router.showAnalysis(projectID: projectID) }
+                    )
+                )
             }
             .id(analysisID)
         case .editor(let projectID):

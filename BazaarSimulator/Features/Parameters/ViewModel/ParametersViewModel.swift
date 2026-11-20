@@ -19,6 +19,7 @@ final class ParametersViewModel {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         catalog: PresetCatalog,
+        initialParameters: EventParameters? = nil,
         onClose: @escaping () -> Void,
         onApply: (() -> Void)? = nil
     ) {
@@ -28,7 +29,7 @@ final class ParametersViewModel {
         self.onClose = onClose
         self.onApply = onApply
 
-        let stored = session.eventParameters(for: projectID) ?? catalog.defaultParameters()
+        let stored = initialParameters ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         draft = stored
     }
 

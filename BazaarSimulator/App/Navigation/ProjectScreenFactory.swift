@@ -143,13 +143,18 @@ final class ProjectScreenFactory {
 
     func makeParametersViewModel(
         projectID: UUID,
+        analysisID: UUID? = nil,
         onClose: @escaping () -> Void,
         onApply: (() -> Void)? = nil
     ) -> ParametersViewModel {
-        ParametersViewModel(
+        let initial = analysisID.flatMap {
+            services.projectSession.savedAnalysis(id: $0, in: projectID)?.parameters
+        }
+        return ParametersViewModel(
             projectID: projectID,
             session: services.projectSession,
             catalog: services.presetCatalog,
+            initialParameters: initial,
             onClose: onClose,
             onApply: onApply
         )

@@ -7,7 +7,7 @@ struct BestLayoutSummaryView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 22) {
+            HStack(alignment: .center, spacing: 18) {
                 TrophyTile(layout: summary.best)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Best layout")
@@ -16,6 +16,8 @@ struct BestLayoutSummaryView: View {
                     Text(summary.best.name)
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Text(summary.sentence)
                         .font(.system(size: 14))
                         .foregroundStyle(.textSecondary)
@@ -23,9 +25,9 @@ struct BestLayoutSummaryView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 4)
                 }
-                .frame(width: 270, alignment: .leading)
+                .frame(minWidth: 180, idealWidth: 250, maxWidth: 270, alignment: .leading)
             }
-            .padding(.trailing, 26)
+            .padding(.trailing, 20)
             .frame(maxHeight: .infinity)
 
             Rectangle()
@@ -51,11 +53,11 @@ struct BestLayoutSummaryView: View {
                     .frame(height: 1)
 
                 whyRow
-                    .padding(.leading, 24)
+                    .padding(.leading, 18)
                     .padding(.top, 16)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 20)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
         .frame(height: DashboardMetrics.summaryHeight)
@@ -137,9 +139,10 @@ private struct CheckColumn: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.textSecondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .padding(.top, 2)
         }
-        .padding(.leading, 24)
+        .padding(.leading, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(check.label): \(mine.text) \(mine.unit) in \(best.name). \(caption). \(isBetter ? "Better" : "Worse").")
