@@ -22,9 +22,8 @@ struct DashboardView<ParametersSheet: View>: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .clipped()
         }
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .background { DashboardBackground().ignoresSafeArea() }
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .sheet(isPresented: $viewModel.isParametersPresented) {
             SheetHost { parametersSheet(viewModel.closeParameters) }
                 .presentationBackground(.clear)

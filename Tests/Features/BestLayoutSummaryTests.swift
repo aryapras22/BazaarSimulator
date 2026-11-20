@@ -17,7 +17,12 @@ struct BestLayoutSummaryTests {
             layout: layout, name: layout.name, windowMinutes: 10, spots: spots,
             dayPoints: [
                 DayPoint(hour: 10, worstDensity: 0.5, heavyMinutes: 0, jammedSpots: 0, flowRate: 9),
-                DayPoint(hour: 14, worstDensity: spots.map(\.peakDensity).max() ?? 0, heavyMinutes: 1, jammedSpots: 1, flowRate: 12)
+                // The day's values follow the spots, so a layout with worse spots also averages worse over the day.
+                DayPoint(
+                    hour: 14, worstDensity: spots.map(\.peakDensity).max() ?? 0,
+                    heavyMinutes: spots.max { $0.peakDensity < $1.peakDensity }?.stuckMin ?? 0,
+                    jammedSpots: LayoutOutcome.stuckCounts(of: spots).peak, flowRate: 12
+                )
             ]
         )
     }
@@ -36,8 +41,8 @@ struct BestLayoutSummaryTests {
         )
 
         #expect(result.best == .two)
-        #expect(result.checks.map(\.label) == ["Congestion Points", "Congestion Duration", "Crowd Density"])
-        #expect(result.sentence == "Fewer stuck spots, less time stuck and calmer crowds.")
+        #expect(result.checks.map(\.label) == ["Stuck Spots", "Crowd Level", "Time Stuck"])
+        #expect(result.sentence == "Fewer stuck spots, calmer crowds and less time stuck.")
         #expect(result.checks.allSatisfy { $0.winner == .two })
     }
 
@@ -67,6 +72,29 @@ struct BestLayoutSummaryTests {
         let level = try #require(result.checks.first { $0.tab == .crowdDensity })
         #expect(level.values[.two]?.unit == "")
         #expect(level.values[.two]?.text.isEmpty == false)
+    }
+
+    @Test("A huge gap in time stuck outweighs a one spot lead in stuck spots")
+    func hugeTimeStuckGapDecides() {
+        // Layout 1 has fewer spots stuck at once (1 against 2), but its worst spot is stuck for the whole 10 minutes,
+        // against none in layout 2. The densities are in the same grade.
+        let result = summary(
+            busy: [spot(1, peak: 1.0, stuck: 10)],
+            calm: [spot(1, peak: 1.0, stuck: 0), spot(2, peak: 1.0, stuck: 0)]
+        )
+        let time = result.checks.first { $0.tab == .congestionDuration }
+        #expect(time?.isHuge == true)
+        #expect(result.best == .two)
+    }
+
+    @Test("A small gap in time stuck does not outweigh stuck spots")
+    func smallGapDoesNotOverrule() {
+        let result = summary(
+            busy: [spot(1, peak: 1.0, stuck: 5)],
+            calm: [spot(1, peak: 1.0, stuck: 4), spot(2, peak: 1.0, stuck: 4)]
+        )
+        // Layout 1: 1 stuck spot against 2 (margin 0.5, huge) and 0.5 minutes more stuck on average (margin 0.05).
+        #expect(result.best == .one)
     }
 
     @Test("Strengths read as one sentence")

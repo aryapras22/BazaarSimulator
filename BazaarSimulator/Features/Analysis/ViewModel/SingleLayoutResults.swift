@@ -18,7 +18,7 @@ enum SingleLayoutContent {
             outcomes: [.one: outcome, .two: twin], peakHourText: peakHourText, windowMinutes: windowMinutes
         ).content(for: tab)
 
-        return AnalysisContent(
+        var single = AnalysisContent(
             recommended: .one,
             headline: headline(for: tab, outcome: outcome, peakHourText: peakHourText),
             symbol: built.symbol,
@@ -38,6 +38,13 @@ enum SingleLayoutContent {
             facts: built.facts.filter { $0.text != "Fewer is better" && $0.text != "Lower is better" },
             cardTitle: tab.title
         )
+        single.betterNote = built.betterNote
+        single.peakHour = built.peakHour
+        single.hourLabels = built.hourLabels
+        single.axisTicks = built.axisTicks
+        single.axisLabel = built.axisLabel
+        single.valueText = built.valueText
+        return single
     }
 
     static func headline(for tab: AnalysisTab, outcome: LayoutOutcome, peakHourText: String) -> String {
@@ -53,7 +60,7 @@ enum SingleLayoutContent {
                 : "At the busiest time (\(peakHourText)), people stay stuck for about \(minutes(outcome.M)) min."
         case .crowdDensity:
             let space = outcome.space.formatted(.number.precision(.fractionLength(1)))
-            return "At its busiest spot each person has about \(space) m² of aisle: \(outcome.worstSpot.grade.title.lowercased())."
+            return "At its busiest spot each person has about \(space) m² of aisle: \(outcome.worstSpot.grade.crowdLevel.lowercased())."
         case .flowRate:
             let low = outcome.flowMin.formatted(.number.precision(.fractionLength(0)))
             let high = outcome.flowMax.formatted(.number.precision(.fractionLength(0)))
@@ -91,7 +98,7 @@ struct SingleLayoutSummary {
         let stuck = outcome.C
         stats = [
             Stat(
-                title: "Crowded Spots", symbol: "exclamationmark.triangle.fill",
+                title: "Stuck Spots", symbol: "exclamationmark.triangle.fill",
                 text: "\(stuck)", unit: stuck == 1 ? "spot" : "spots", caption: "Stuck at once"
             ),
             Stat(
@@ -100,7 +107,7 @@ struct SingleLayoutSummary {
             ),
             Stat(
                 title: "Crowd Level", symbol: "person.3.fill",
-                text: outcome.worstSpot.grade.title, unit: "", caption: "Overall Condition"
+                text: outcome.worstSpot.grade.crowdLevel, unit: "", caption: "Overall Condition"
             )
         ]
     }

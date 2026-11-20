@@ -34,12 +34,35 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .a: "Free flow"
-        case .b: "Minor conflicts"
-        case .c: "Restricted"
-        case .d: "Crowded"
-        case .e: "Stop-and-go"
+        case .a: "Empty"
+        case .b: "Calm"
+        case .c: "Moderate"
+        case .d: "Busy"
+        case .e: "Crowded"
         case .f: "Jammed"
+        }
+    }
+
+    /// The word for the crowd at a spot, from calm to jammed, as the Crowd Level result shows it.
+    var crowdLevel: String {
+        switch self {
+        case .a, .b: "Calm"
+        case .c: "Moderate"
+        case .d: "Busy"
+        case .e: "Crowded"
+        case .f: "Jammed"
+        }
+    }
+
+    /// What that crowd is like, in a few words.
+    var crowdMeaning: String {
+        switch self {
+        case .a: "People have the aisle to themselves"
+        case .b: "People walk freely"
+        case .c: "People walk easily, with a few others around"
+        case .d: "People walk slower and can't easily pass"
+        case .e: "People shuffle along slowly"
+        case .f: "People bumped into each other"
         }
     }
 
@@ -67,23 +90,23 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var meaning: String {
         switch self {
-        case .a: "Walk at your own pace and pass anyone."
-        case .b: "Mostly free, with the odd step aside."
-        case .c: "Normal pace, but passing takes care."
-        case .d: "Slower pace; passing is difficult."
-        case .e: "Shuffling steps, moving with the crowd."
-        case .f: "Barely moving, constant body contact."
+        case .a: "Plenty of room to walk."
+        case .b: "Easy to walk, with a few people around."
+        case .c: "Normal pace, but take care when passing."
+        case .d: "People slow down to get past others."
+        case .e: "People shuffle along and get stuck."
+        case .f: "People can barely move."
         }
     }
 
     var color: Color {
         switch self {
-        case .a: Color(hex: 0xCD2002)
-        case .b: Color(hex: 0xB41900)
-        case .c: Color(hex: 0x9B1400)
-        case .d: Color(hex: 0x811100)
-        case .e: Color(hex: 0x5D0900)
-        case .f: Color(hex: 0x450501)
+        case .a: Color(hex: 0x55B049)
+        case .b: Color(hex: 0x788938)
+        case .c: Color(hex: 0x926C2B)
+        case .d: Color(hex: 0xB24A1C)
+        case .e: Color(hex: 0xCE2A0E)
+        case .f: Color(hex: 0xA00700)
         }
     }
 }

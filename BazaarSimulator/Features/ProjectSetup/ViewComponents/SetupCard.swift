@@ -33,8 +33,11 @@ struct SetupCard<Help: View, Trailing: View, Content: View>: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("What is this?")
+                        // Shown while the pointer is over the icon, not on a click.
+                        .onHover { showsHelp = $0 }
                         .popover(isPresented: $showsHelp, arrowEdge: .trailing) {
                             help()
+                                .glassPopover()
                         }
                     }
 
