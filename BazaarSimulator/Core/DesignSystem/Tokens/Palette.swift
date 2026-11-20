@@ -79,6 +79,20 @@ enum Palette {
     static let scenePillar = Color(hex: 0xCBD5E1)
     static let scenePlant = Color(hex: 0x22C55E)
     static let sceneSign = Color(hex: 0x3B82F6)
+
+    static let heatLow = Color(hex: 0x70D364)
+    static let heatMedium = Color(hex: 0xEFE810)
+    static let heatOrange = Color(hex: 0xFB7E07)
+    static let heatHigh = Color(hex: 0xF82D04)
+    static let spotGlow = Color(hex: 0xFF2D2D)
+}
+
+extension ShapeStyle where Self == Color {
+    static var heatLow: Color { Palette.heatLow }
+    static var heatMedium: Color { Palette.heatMedium }
+    static var heatOrange: Color { Palette.heatOrange }
+    static var heatHigh: Color { Palette.heatHigh }
+    static var spotGlow: Color { Palette.spotGlow }
 }
 
 extension Color {

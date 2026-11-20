@@ -186,13 +186,7 @@ extension ShapeStyle where Self == Color {
 
     static var visitorOutline: Color { Color(hex: 0x0B1830) }
 
-    static var heatLow: Color { Color(hex: 0x70D364) }
-    static var heatMedium: Color { Color(hex: 0xEFE810) }
-    static var heatOrange: Color { Color(hex: 0xFB7E07) }
-    static var heatHigh: Color { Color(hex: 0xF82D04) }
-
     static var hotspotSevere: Color { Color(hex: 0xE5483B) }
-    static var spotGlow: Color { Color(hex: 0xFF2D2D) }
 
     static var gradeA: Color { Color(hex: 0x55B049) }
     static var gradeB: Color { Color(hex: 0x788938) }
