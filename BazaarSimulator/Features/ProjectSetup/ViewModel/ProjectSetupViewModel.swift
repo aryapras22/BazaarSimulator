@@ -4,8 +4,6 @@ import Observation
 @Observable
 @MainActor
 final class ProjectSetupViewModel {
-    static let maxFloorPlans = 6
-    
     let projectID: UUID
     let session: any ProjectSessionProtocol
     private let importQueue: any ImportQueueing
@@ -71,7 +69,13 @@ final class ProjectSetupViewModel {
     
     var planRows: [PlanRowDisplay] {
         floorPlanFiles.enumerated().map { index, file in
-            ImportRowFormatter.formatRow(file: file, layoutIndex: index + 1)
+            var displayFile = file
+            if case .done = file.state, let layout = session.layout(id: file.id, in: projectID) {
+                let booths = layout.objects.filter { $0.kind == .booth }.count
+                let doors = layout.objects.filter { $0.kind == .door }.count
+                displayFile.state = .done(booths: booths, doors: doors)
+            }
+            return ImportRowFormatter.formatRow(file: displayFile, layoutIndex: index + 1)
         }
     }
     
@@ -88,9 +92,9 @@ final class ProjectSetupViewModel {
         !floorPlanFiles.isEmpty && legendFiles.isEmpty && legendEntries.isEmpty
     }
 
-    /// The layout read from a floor plan, for the Preview dialog. Nil until that plan has been read.
+    /// The current layout for a floor plan, preferring edited session state over the initial import.
     func previewLayout(fileID: UUID) -> Layout? {
-        importQueue.extractedLayout(for: fileID)?.layout
+        session.layout(id: fileID, in: projectID) ?? importQueue.extractedLayout(for: fileID)?.layout
     }
 
     func clearUnsupportedFile() {
@@ -98,7 +102,7 @@ final class ProjectSetupViewModel {
     }
 
     var isFloorPlanZoneEnabled: Bool {
-        hasLegend && floorPlanFiles.count < Self.maxFloorPlans
+        hasLegend
     }
     
     var hasPendingFiles: Bool {
@@ -189,21 +193,8 @@ final class ProjectSetupViewModel {
         
         guard validatePDFs(urls: urls) else { return }
         
-        let capacity = max(0, Self.maxFloorPlans - floorPlanFiles.count)
-        guard capacity > 0 else {
-            bannerMessage = "Only \(Self.maxFloorPlans) floor plans allowed"
-            return
-        }
-        
-        let acceptedURLs = Array(urls.prefix(capacity))
-        if acceptedURLs.count < urls.count {
-            bannerMessage = "Only \(Self.maxFloorPlans) floor plans allowed. " +
-            "Added \(acceptedURLs.count) of \(urls.count)."
-        } else {
-            bannerMessage = nil
-        }
-        
-        importQueue.add(urls: acceptedURLs, kind: .floorPlan, projectID: projectID)
+        bannerMessage = nil
+        importQueue.add(urls: urls, kind: .floorPlan, projectID: projectID)
     }
     
     func removeLegendEntry(id: UUID) {

@@ -80,21 +80,21 @@ struct LayoutPreviewDialog: View {
 
 extension View {
     /// Shows a layout preview over this view, with the rest dimmed.
-    func layoutPreview(_ layout: Binding<Layout?>) -> some View {
+    func layoutPreview(_ layout: Layout?, onDismiss: @escaping () -> Void) -> some View {
         overlay {
-            if let shown = layout.wrappedValue {
+            if let shown = layout {
                 ZStack {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
-                        .onTapGesture { layout.wrappedValue = nil }
+                        .onTapGesture(perform: onDismiss)
                     // Nearly the whole window, the page still showing around it.
-                    LayoutPreviewDialog(layout: shown) { layout.wrappedValue = nil }
+                    LayoutPreviewDialog(layout: shown, dismiss: onDismiss)
                         .padding(Spacing.xl)
                         .padding(.top, Spacing.xl)
                 }
                 .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.15), value: layout.wrappedValue?.id)
+        .animation(.easeOut(duration: 0.15), value: layout?.id)
     }
 }
