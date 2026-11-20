@@ -207,3 +207,183 @@ struct DashboardViewModelTests {
         #expect(session.savedAnalyses(for: project.id).isEmpty)
     }
 }
+
+@MainActor
+private final class GatedAnalysisService: AnalysisServiceProtocol {
+    struct Call {
+        let layouts: [Layout]
+        let parameters: EventParameters
+    }
+
+    private(set) var calls: [Call] = []
+    private var firstCallStarted: CheckedContinuation<Void, Never>?
+    private var firstCallGate: CheckedContinuation<Void, Never>?
+    private var hasPausedFirstCall = false
+    private let pausesFirstCall: Bool
+
+    init(pausesFirstCall: Bool = false) {
+        self.pausesFirstCall = pausesFirstCall
+    }
+
+    func waitForFirstCall() async {
+        if !calls.isEmpty { return }
+        await withCheckedContinuation { continuation in
+            firstCallStarted = continuation
+        }
+    }
+
+    func releaseFirstCall() {
+        firstCallGate?.resume()
+        firstCallGate = nil
+    }
+
+    func analyses(
+        for layouts: [Layout],
+        parameters: EventParameters,
+        visitorTypes: [VisitorType],
+        focus: TimeRange,
+        legend: Legend,
+        onLiveFrame: (@Sendable (UUID, [MeasuredVisitor], Double) -> Void)?
+    ) async -> [LayoutAnalysis] {
+        calls.append(Call(layouts: layouts, parameters: parameters))
+        if pausesFirstCall, !hasPausedFirstCall {
+            hasPausedFirstCall = true
+            firstCallStarted?.resume()
+            firstCallStarted = nil
+            await withCheckedContinuation { continuation in
+                firstCallGate = continuation
+            }
+        }
+        guard !Task.isCancelled else { return [] }
+        return layouts.map { layout in
+            let spot = SpotMeasurement(
+                number: 1, name: "Near B1", position: SIMD2(4, 5),
+                densitySamples: [0.2, 0.5], peopleSamples: [2, 5]
+            )
+            var result = LayoutAnalysis(
+                layoutID: layout.id,
+                eventStartMinute: parameters.eventHours.startMinute,
+                sampleIntervalSeconds: 60,
+                spots: [spot],
+                flowPerMinute: [2, 3],
+                simulatedPeople: layout.objects.count,
+                totalPeople: parameters.totalVisitors
+            )
+            result.plan = PlanFrame(origin: .zero, size: layout.sizeM)
+            return result
+        }
+    }
+
+    func cancelAll() {}
+}
+
+@MainActor
+@Suite("DashboardLoadRaceTests")
+struct DashboardLoadRaceTests {
+    private let catalog = PresetCatalog(
+        visitorTypes: TestLayouts.visitorTypes,
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+    )
+
+    private func untilSettled(_ model: DashboardViewModel) async {
+        for _ in 0..<200 {
+            if model.phase != .loading && !model.isRunning {
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
+    @Test("Editing a layout while a simulation is in flight discards the stale result and re-runs")
+    func layoutEditDuringLoadRerunsInsteadOfCommittingStaleResult() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let original = TestLayouts.hall(booths: 3)
+        var edited = original
+        edited.name = "Edited Hall"
+        edited.objects.append(LayoutObject(
+            kind: .booth,
+            label: "B4",
+            placement: Placement(center: SIMD2(19, 2.5), sizeM: SIMD2(3, 2)),
+            openSides: [.bottom]
+        ))
+        session.setDraft(ProjectDraft(name: "P", layouts: [original]), for: project.id)
+        let service = GatedAnalysisService(pausesFirstCall: true)
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: service, catalog: catalog
+        )
+
+        model.startSimulation()
+        await service.waitForFirstCall()
+        session.updateLayout(edited, in: project.id)
+        service.releaseFirstCall()
+        await untilSettled(model)
+
+        #expect(model.phase == .ready)
+        #expect(model.floorPlan(for: .one) == edited)
+        #expect(model.simulationResult?.analyses[.one]?.simulatedPeople == edited.objects.count)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        #expect(session.savedAnalyses(for: project.id).first?.layouts == [edited])
+    }
+
+    @Test("Changing parameters while a simulation is in flight re-runs instead of saving stale results")
+    func parameterChangeDuringLoadRerunsAndRecordsMatchingParameters() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let layout = TestLayouts.hall(booths: 3)
+        session.setDraft(ProjectDraft(name: "P", layouts: [layout]), for: project.id)
+        var initialParams = catalog.defaultParameters()
+        initialParams.totalVisitors = 200
+        var updatedParams = initialParams
+        updatedParams.totalVisitors = 900
+        session.setEventParameters(initialParams, for: project.id)
+        let service = GatedAnalysisService(pausesFirstCall: true)
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: service, catalog: catalog
+        )
+
+        model.startSimulation()
+        await service.waitForFirstCall()
+        session.setEventParameters(updatedParams, for: project.id)
+        service.releaseFirstCall()
+        await untilSettled(model)
+
+        #expect(model.phase == .ready)
+        #expect(service.calls.last?.parameters == updatedParams)
+        #expect(model.simulationResult?.analyses[.one]?.totalPeople == updatedParams.totalVisitors)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        let saved = session.savedAnalyses(for: project.id).first
+        #expect(saved?.parameters == updatedParams)
+        #expect(saved?.analyses.first?.totalPeople == updatedParams.totalVisitors)
+    }
+
+    @Test("Editing a layout rebuilds previewVenue with a new ID and updated geometry")
+    func editingLayoutRebuildsPreviewVenue() async throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let original = TestLayouts.hall(booths: 3)
+        var edited = original
+        edited.objects.append(LayoutObject(
+            kind: .booth,
+            label: "B4",
+            placement: Placement(center: SIMD2(19, 2.5), sizeM: SIMD2(3, 2)),
+            openSides: [.bottom]
+        ))
+        session.setDraft(ProjectDraft(name: "P", layouts: [original]), for: project.id)
+        let service = GatedAnalysisService()
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: service, catalog: catalog
+        )
+
+        await model.runSimulation()
+        let initialVenue = try #require(model.previewVenue)
+
+        session.updateLayout(edited, in: project.id)
+        await model.runSimulation()
+        let updatedVenue = try #require(model.previewVenue)
+
+        #expect(updatedVenue.id != initialVenue.id)
+        #expect(updatedVenue.blocks == VenueGeometry.blocks(for: edited))
+        #expect(updatedVenue.attractions == VenueGeometry.attractions(in: edited))
+    }
+}
