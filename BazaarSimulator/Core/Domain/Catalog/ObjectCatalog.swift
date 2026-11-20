@@ -150,7 +150,7 @@ nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
     }
 
     var isInOthersSection: Bool {
-        self == .other || self == .disabled
+        self == .informationDesk || self == .other || self == .disabled
     }
 
     /// The type chosen in the inspector. An object that never had one chosen, such as one read from a plan, carries

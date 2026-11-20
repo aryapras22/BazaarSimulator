@@ -21,7 +21,7 @@ struct CategorySectionsTests {
 
     @Test("Others and Disabled sit in their own Others section")
     func othersSection() {
-        #expect(EntertainmentType.allCases.filter(\.isInOthersSection) == [.other, .disabled])
+        #expect(EntertainmentType.allCases.filter(\.isInOthersSection) == [.informationDesk, .other, .disabled])
     }
 
     @Test("A booth turned into a stage takes the stage's height, and back again the booth's")

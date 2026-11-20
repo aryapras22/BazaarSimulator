@@ -44,29 +44,48 @@ struct InspectorDraft: Sendable, Equatable {
 
     private static func defaultHeight(for kind: LayoutObjectKind) -> Double {
         let heights: [LayoutObjectKind: Double] = [
-            .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05
+            .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05, .seating: FurnitureModels.chairHeightM
         ]
         return heights[kind] ?? 3.0
     }
 
     var categoryChoice: CategoryChoice {
-        if kind == .entertainment {
+        switch kind {
+        case .entertainment:
             return .entertainment(EntertainmentType.resolve(catalogID: catalogID, label: label))
+        case .seating:
+            return .seating
+        default:
+            return .booth(categoryID)
         }
-        return .booth(categoryID)
     }
 
     mutating func choose(_ choice: CategoryChoice) {
         switch choice {
         case .booth(let id):
-            if kind == .entertainment {
+            if kind != .booth {
                 catalogID = nil
                 heightM = Self.defaultHeight(for: .booth)
+            }
+            if kind == .seating {
+                rotationDegrees = Self.snappedRotation(
+                    rotationDegrees,
+                    step: LayoutObjectKind.booth.rotationStepDegrees
+                )
             }
             kind = .booth
             categoryID = id
             isDisabled = false
         case .entertainment(let type):
+            if kind != .entertainment {
+                attractiveness = LayoutObjectKind.entertainment.defaultAttractiveness
+            }
+            if kind == .seating {
+                rotationDegrees = Self.snappedRotation(
+                    rotationDegrees,
+                    step: LayoutObjectKind.entertainment.rotationStepDegrees
+                )
+            }
             kind = .entertainment
             categoryID = nil
             catalogID = type.catalogID
@@ -74,7 +93,27 @@ struct InspectorDraft: Sendable, Equatable {
             if let itemHeight = ObjectCatalog.item(type.catalogID)?.heightM {
                 heightM = itemHeight
             }
+        case .seating:
+            kind = .seating
+            catalogID = FurnitureModels.seatingBlockID
+            categoryID = nil
+            openSides = []
+            isDisabled = false
+            heightM = FurnitureModels.chairHeightM
+            widthM = Self.snappedSeatDimension(widthM, fallback: FurnitureModels.seatingBlockSizeM.x)
+            lengthM = Self.snappedSeatDimension(lengthM, fallback: FurnitureModels.seatingBlockSizeM.y)
         }
+    }
+
+    private static func snappedSeatDimension(_ length: Double, fallback: Double) -> Double {
+        guard length.isFinite, length > 0 else { return fallback }
+        return Double(FurnitureModels.seatsAlong(length)) * FurnitureModels.seatPitchM
+    }
+
+    private static func snappedRotation(_ degrees: Int, step: Int) -> Int {
+        let normalized = ((degrees % 360) + 360) % 360
+        guard step > 0 else { return normalized }
+        return (Int((Double(normalized) / Double(step)).rounded()) * step) % 360
     }
 
     func applied(to original: LayoutObject) -> LayoutObject {

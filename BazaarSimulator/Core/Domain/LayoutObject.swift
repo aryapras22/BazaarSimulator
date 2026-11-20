@@ -31,7 +31,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         reviewState: ReviewState = .confirmed,
         catalogID: String? = nil,
         heightM: Double? = nil,
-        attractiveness: Double = 1,
+        attractiveness: Double? = nil,
         isDisabled: Bool = false
     ) {
         self.id = id
@@ -44,7 +44,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.reviewState = reviewState
         self.catalogID = catalogID
         self.heightM = heightM
-        self.attractiveness = attractiveness
+        self.attractiveness = attractiveness ?? kind.defaultAttractiveness
         self.isDisabled = isDisabled
     }
 }

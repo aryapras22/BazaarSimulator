@@ -3,7 +3,8 @@ import SwiftUI
 struct CategoryPicker: View {
     private static let helpText =
         "Booth categories come from the plan's legend, entertainment entries are attractions such as a stage or "
-        + "information desk, and Others holds any other attraction and closed stands."
+        + "photobooth, Audience Seating places rows of chairs, and Others holds information desks, other entries, "
+        + "and closed stands."
 
     let categories: [CategoryOption]
     var entertainmentTypes: [EntertainmentType] = EntertainmentType.allCases
@@ -37,6 +38,11 @@ struct CategoryPicker: View {
                     }
                 }
                 entertainmentSection("Entertainment", types: entertainmentTypes.filter { !$0.isInOthersSection })
+                if showsSeating {
+                    Section("Seating") {
+                        Text(CategoryChoice.seatingDisplayName).tag(CategoryChoice?.some(.seating))
+                    }
+                }
                 entertainmentSection("Others", types: entertainmentTypes.filter(\.isInOthersSection))
             }
             .pickerStyle(.menu)
@@ -66,6 +72,10 @@ struct CategoryPicker: View {
         )
     }
 
+    private var showsSeating: Bool {
+        !entertainmentTypes.isEmpty
+    }
+
     private var resolvedSelection: CategoryChoice? {
         guard let currentChoice else { return nil }
         switch currentChoice {
@@ -73,6 +83,8 @@ struct CategoryPicker: View {
             return categories.contains { $0.id == id } ? currentChoice : nil
         case .entertainment(let type):
             return entertainmentTypes.contains(type) ? currentChoice : nil
+        case .seating:
+            return showsSeating ? currentChoice : nil
         }
     }
 }

@@ -30,7 +30,7 @@ struct CategoryChoiceTests {
         #expect(updated.categoryID == nil)
         #expect(updated.placement == original.placement)
         #expect(updated.openSides == original.openSides)
-        #expect(updated.attractiveness == 3)
+        #expect(updated.attractiveness == 5)
         #expect(!updated.isDisabled)
     }
 

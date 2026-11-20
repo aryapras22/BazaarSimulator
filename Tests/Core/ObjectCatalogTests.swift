@@ -88,4 +88,15 @@ struct ObjectCatalogTests {
         #expect(column.placementShape == .round)
         #expect(table.placementShape == .rect)
     }
+
+    @Test("Information Desk belongs to the Others section alongside Others and Disabled")
+    func informationDeskInOthersSection() {
+        #expect(EntertainmentType.informationDesk.isInOthersSection)
+        #expect(!EntertainmentType.stage.isInOthersSection)
+        #expect(!EntertainmentType.photobooth.isInOthersSection)
+        #expect(
+            EntertainmentType.allCases.filter(\.isInOthersSection)
+                == [.informationDesk, .other, .disabled]
+        )
+    }
 }
