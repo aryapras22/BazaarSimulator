@@ -11,6 +11,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
     var label: String
     var placement: Placement
     var categoryID: LegendEntry.ID?
+    var boothType: BoothType?
     var openSides: OpenSides
     var doorFlow: DoorFlow?
     var reviewState: ReviewState
@@ -26,6 +27,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         label: String,
         placement: Placement,
         categoryID: LegendEntry.ID? = nil,
+        boothType: BoothType? = nil,
         openSides: OpenSides = [],
         doorFlow: DoorFlow? = nil,
         reviewState: ReviewState = .confirmed,
@@ -39,6 +41,7 @@ struct LayoutObject: Codable, Identifiable, Hashable, Sendable {
         self.label = label
         self.placement = placement
         self.categoryID = categoryID
+        self.boothType = boothType
         self.openSides = openSides
         self.doorFlow = doorFlow
         self.reviewState = reviewState
@@ -65,6 +68,7 @@ extension LayoutObject {
         label = try container.decode(String.self, forKey: .label)
         placement = try container.decode(Placement.self, forKey: .placement)
         categoryID = try container.decodeIfPresent(LegendEntry.ID.self, forKey: .categoryID)
+        boothType = try container.decodeIfPresent(BoothType.self, forKey: .boothType)
         openSides = try container.decode(OpenSides.self, forKey: .openSides)
         doorFlow = try container.decodeIfPresent(DoorFlow.self, forKey: .doorFlow)
         reviewState = try container.decode(ReviewState.self, forKey: .reviewState)

@@ -62,14 +62,13 @@ struct GroupInspector: View {
 #Preview("Group inspector: shared and mixed values") {
     @Previewable @State var sharedDraft = GroupInspectorDraft(memberIDs: [])
     @Previewable @State var mixedDraft = GroupInspectorDraft(memberIDs: [])
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map { CategoryOption(id: $0.id, name: $0.name, color: $0.color) }
+    let options = CategoryOption.boothOptions
     HStack(alignment: .top, spacing: Spacing.l) {
         InspectorPanel(title: "Group A · 112 booths") {
             GroupInspector(
                 draft: $sharedDraft,
                 display: GroupInspectorDisplay(
-                    category: .shared(options[1].id),
+                    category: .shared(.fnb),
                     width: .shared(2.5),
                     length: .shared(2.5),
                     rotation: .shared(0),

@@ -92,7 +92,7 @@ final class PlaceTool: EditorToolHandling {
                 kind: .booth,
                 label: label,
                 placement: candidate.placement,
-                categoryID: template.categoryID,
+                boothType: template.boothType,
                 heightM: BoothShape.panelHeightM
             )
             context.applyEdit(.insert(booth, index: context.layout.objects.count))

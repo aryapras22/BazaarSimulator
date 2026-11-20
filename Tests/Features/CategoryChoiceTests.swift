@@ -12,6 +12,7 @@ struct CategoryChoiceTests {
             label: "B1",
             placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
             categoryID: legendID,
+            boothType: .fnb,
             openSides: [.bottom],
             attractiveness: 3
         )
@@ -28,6 +29,7 @@ struct CategoryChoiceTests {
         #expect(updated.kind == .entertainment)
         #expect(updated.catalogID == EntertainmentType.informationDesk.catalogID)
         #expect(updated.categoryID == nil)
+        #expect(updated.boothType == nil)
         #expect(updated.placement == original.placement)
         #expect(updated.openSides == original.openSides)
         #expect(updated.attractiveness == 5)
@@ -46,7 +48,7 @@ struct CategoryChoiceTests {
         #expect(draft.categoryChoice == .entertainment(.disabled))
     }
 
-    @Test("Choosing a legend category turns an attraction back into an open booth")
+    @Test("Choosing a booth type turns an attraction back into an open booth")
     func entertainmentBecomesBooth() {
         let original = LayoutObject(
             kind: .entertainment,
@@ -56,14 +58,14 @@ struct CategoryChoiceTests {
             isDisabled: true
         )
         var draft = InspectorDraft(object: original)
-        draft.choose(.booth(legendID))
+        draft.choose(.booth(.fnb))
         let updated = draft.applied(to: original)
 
         #expect(updated.kind == .booth)
-        #expect(updated.categoryID == legendID)
+        #expect(updated.boothType == .fnb)
         #expect(updated.catalogID == nil)
         #expect(!updated.isDisabled)
-        #expect(draft.categoryChoice == .booth(legendID))
+        #expect(draft.categoryChoice == .booth(.fnb))
     }
 
     @Test("A plan label naming an information desk reads as one")
@@ -87,7 +89,7 @@ struct CategoryChoiceTests {
         )
         var draft = InspectorDraft(object: seating)
 
-        draft.choose(.booth(legendID))
+        draft.choose(.booth(.goods))
         #expect(draft.applied(to: seating) == seating)
 
         draft.choose(.entertainment(.stage))

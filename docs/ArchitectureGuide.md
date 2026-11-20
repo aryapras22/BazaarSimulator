@@ -221,7 +221,8 @@ struct LayoutObject: Codable, Identifiable, Sendable {
     var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating, entertainment
     var label: String                // "B-7", "NW"
     var placement: Placement
-    var categoryID: LegendEntry.ID?  // booths: a legend category
+    var categoryID: LegendEntry.ID?  // booths: matched legend swatch (colour only)
+    var boothType: BoothType?        // booths: Foods or Goods, nil when unassigned
     var openSides: OpenSides = []    // booths: the sides visitors can use
     var doorFlow: DoorFlow?          // doors: direction and connection (Door inspector on Structure layer)
 }
@@ -239,7 +240,7 @@ struct Placement: Codable, Sendable {
 | ---| --- |
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
 | `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
-| `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
+| `Legend` | Entries of name, RGB color, and Foods or Goods type, read from the legend PDFs. Used during import to seed each booth's swatch colour and `boothType`; after import each booth stores its own `boothType` |
 | `EventParameters` | Total visitors per day, event hours, bazaar type, `VisitorMix`. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |
 | `VisitorMix` | A percentage per visitor type. Rescales so the total stays 100. A locked share is left out of rescaling |
@@ -279,7 +280,7 @@ A view model asks for projects. It does not know whether they live in SwiftData 
 ### Floor plan import and reading
 Project setup takes two kinds of PDF: legends (one set serves every layout) and floor plans (one PDF per layout). Four steps, each in its own piece:
 1. `PDFImportService` renders the page to an image and pulls the page text with PDFKit.
-2. A reader backend turns image and text into raw output shaped by the model. `readLegend` gives an `ExtractedLegend`, `readPlan` gives an `ExtractedLayout`. Legends are read first, because reading a plan needs the legend to label booth categories.
+2. A reader backend turns image and text into raw output shaped by the model. `readLegend` gives an `ExtractedLegend`, `readPlan` gives an `ExtractedLayout`. Legends are read first, because reading a plan uses the legend to match booth swatches and set each booth's initial `boothType`.
 3. `ImportQueue` runs the files one at a time, which also keeps one model loaded (rule 8). It publishes a state per file: waiting, reading with progress, done with detected counts (booths and doors), or failed. Cancel stops the queue. Continue to Review is enabled when every file is done.
 4. The Layout editor opens in review mode. The user edits, deletes, and confirms detected objects. A mapper converts each draft to a `Layout` in metres.
 

@@ -100,4 +100,24 @@ struct DraftLayoutMergerTests {
         #expect(merged.first?.objects.first { $0.id == boothA.id }?.categoryID == keptEntry.id)
         #expect(merged.first?.objects.first { $0.id == boothB.id }?.categoryID == nil)
     }
+
+    @Test("Missing boothType is filled from the matched legend entry on merge")
+    func missingBoothTypeIsFilledFromLegend() {
+        let foodEntry = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let booth = LayoutObject(
+            kind: .booth,
+            label: "B1",
+            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(2, 2)),
+            categoryID: foodEntry.id
+        )
+        let layout = Layout(name: "Plan 1", sizeM: SIMD2<Double>(20, 20), objects: [booth])
+
+        let merged = DraftLayoutMerger.merged(
+            imported: [layout],
+            existing: [],
+            legend: Legend(entries: [foodEntry])
+        )
+
+        #expect(merged.first?.objects.first?.boothType == .fnb)
+    }
 }

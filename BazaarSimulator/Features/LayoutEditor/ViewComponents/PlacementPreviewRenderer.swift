@@ -46,12 +46,11 @@ enum PlacementPreviewRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        let categoryColor = legend.entries.first { $0.id == template.categoryID }?.color
         let booth = LayoutObject(
             kind: .booth,
             label: "",
             placement: candidate.placement,
-            categoryID: template.categoryID,
+            boothType: template.boothType,
             openSides: []
         )
         let state = BoothDrawState(
@@ -63,7 +62,7 @@ enum PlacementPreviewRenderer {
             isHoveredGroupMember: false,
             hasObjectWarning: !candidate.isValid,
             blockedSides: [],
-            categoryColor: categoryColor
+            categoryColor: nil
         )
         BoothRenderer.draw(state, in: &context, transform: transform)
     }

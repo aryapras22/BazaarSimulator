@@ -3,9 +3,12 @@ import Observation
 import simd
 
 struct CategoryOption: Identifiable, Hashable, Sendable {
-    var id: UUID?
+    var id: BoothType?
     var name: String
-    var color: LegendColor?
+
+    static let boothOptions: [CategoryOption] =
+        [CategoryOption(id: nil, name: "Unassigned")]
+        + BoothType.allCases.map { CategoryOption(id: $0, name: $0.displayName) }
 }
 
 struct DoorAdviceDisplay: Hashable, Sendable {

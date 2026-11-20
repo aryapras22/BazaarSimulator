@@ -56,7 +56,7 @@ struct BoothInspector: View {
     private var categoryPicker: some View {
         CategoryPicker(
             categories: categories,
-            title: categories.first { $0.id == draft.categoryID }?.name ?? "Unassigned",
+            title: categories.first { $0.id == draft.boothType }?.name ?? "Unassigned",
             currentChoice: draft.categoryChoice,
             onSelect: { draft.choose($0) }
         )
@@ -98,17 +98,14 @@ struct BoothGroupActions {
                 rotationRadians: .pi / 2
             ),
             categoryID: PreviewLayouts.sampleLegend.entries.first?.id,
+            boothType: .fnb,
             openSides: [.right, .bottom]
         )
     )
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map {
-            CategoryOption(id: $0.id, name: $0.name, color: $0.color)
-        }
     InspectorPanel(title: "Booth B-7") {
         BoothInspector(
             draft: $draft,
-            categories: options,
+            categories: CategoryOption.boothOptions,
             sizeRange: 0.5...50.0,
             groupActions: BoothGroupActions(
                 nameTitle: "Select group B · 30",

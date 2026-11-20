@@ -111,7 +111,7 @@ struct LayoutEditorViewModelFurnitureTests {
         )
         var draft = GroupInspectorDraft(memberIDs: [table.id])
         draft.widthM = .set(3)
-        draft.category = .set(UUID())
+        draft.category = .set(.goods)
         #expect(draft.applied(to: table) == table)
     }
 }

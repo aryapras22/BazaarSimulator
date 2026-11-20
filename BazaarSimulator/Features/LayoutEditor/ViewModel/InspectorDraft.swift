@@ -9,7 +9,7 @@ struct InspectorDraft: Sendable, Equatable {
     var heightM: Double
     var rotationDegrees: Int
     var shape: FootprintShape
-    var categoryID: LegendEntry.ID?
+    var boothType: BoothType?
     var openSides: OpenSides
     var doorDirection: DoorDirection
     var doorConnection: DoorConnection
@@ -26,7 +26,7 @@ struct InspectorDraft: Sendable, Equatable {
         self.heightM = object.heightM ?? Self.defaultHeight(for: object)
         self.rotationDegrees = object.placement.rotationDegrees
         self.shape = object.placement.shape
-        self.categoryID = object.categoryID
+        self.boothType = object.boothType
         self.openSides = object.openSides
         self.doorDirection = object.doorFlow?.direction ?? .both
         self.doorConnection = object.doorFlow?.connection ?? .hallToLobby
@@ -54,27 +54,27 @@ struct InspectorDraft: Sendable, Equatable {
         case .entertainment:
             return .entertainment(EntertainmentType.resolve(catalogID: catalogID, label: label))
         default:
-            return .booth(categoryID)
+            return .booth(boothType)
         }
     }
 
     mutating func choose(_ choice: CategoryChoice) {
         guard kind == .booth || kind == .entertainment else { return }
         switch choice {
-        case .booth(let id):
+        case .booth(let type):
             if kind != .booth {
                 catalogID = nil
                 heightM = Self.defaultHeight(for: .booth)
             }
             kind = .booth
-            categoryID = id
+            boothType = type
             isDisabled = false
         case .entertainment(let type):
             if kind != .entertainment {
                 attractiveness = LayoutObjectKind.entertainment.defaultAttractiveness
             }
             kind = .entertainment
-            categoryID = nil
+            boothType = nil
             catalogID = type.catalogID
             isDisabled = (type == .disabled)
             if let itemHeight = ObjectCatalog.item(type.catalogID)?.heightM {
@@ -98,7 +98,10 @@ struct InspectorDraft: Sendable, Equatable {
         if kind.canBeRound {
             updated.placement.shape = shape
         }
-        updated.categoryID = categoryID
+        updated.boothType = boothType
+        if kind == .entertainment {
+            updated.categoryID = nil
+        }
         updated.openSides = openSides
         updated.catalogID = catalogID
         updated.attractiveness = attractiveness

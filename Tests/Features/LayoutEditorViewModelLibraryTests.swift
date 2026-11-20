@@ -124,7 +124,7 @@ struct LayoutEditorViewModelLibraryTests {
         #expect(placedBooth.openSides == [])
 
         if case .template(let template) = templateRow.source {
-            #expect(placedBooth.categoryID == template.categoryID)
+            #expect(placedBooth.boothType == template.boothType)
             #expect(placedBooth.placement.sizeM.x == template.sizeKey.shortM)
             #expect(placedBooth.placement.sizeM.y == template.sizeKey.longM)
         }

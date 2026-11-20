@@ -57,6 +57,7 @@ struct DisabledBoothIndicatorTests {
             label: "B1",
             placement: Self.placement,
             categoryID: UUID(),
+            boothType: .goods,
             openSides: [.bottom],
             isDisabled: false
         )
@@ -67,7 +68,7 @@ struct DisabledBoothIndicatorTests {
         #expect(DisabledObjectIndicator.isDisabled(disabledObject))
 
         var reopenedDraft = InspectorDraft(object: disabledObject)
-        reopenedDraft.choose(.booth(original.categoryID))
+        reopenedDraft.choose(.booth(original.boothType))
         let reopenedBooth = reopenedDraft.applied(to: disabledObject)
 
         #expect(!DisabledObjectIndicator.isDisabled(reopenedBooth))

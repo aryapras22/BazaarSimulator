@@ -176,7 +176,7 @@ extension LayoutEditorViewModel {
             kind: .booth,
             label: label,
             placement: candidate.placement,
-            categoryID: template.categoryID,
+            boothType: template.boothType,
             heightM: BoothShape.panelHeightM
         )
         commitEdit(.insert(booth, index: layout.objects.count))
@@ -240,7 +240,7 @@ extension LayoutEditorViewModel {
             kind: .booth,
             label: label,
             placement: candidate.placement,
-            categoryID: template.categoryID,
+            boothType: template.boothType,
             heightM: BoothShape.panelHeightM
         )
         withSingleRefresh {

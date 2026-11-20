@@ -70,7 +70,7 @@ struct CategoryInspectorTests {
         let original = seatingObject(rotationDegrees: 45)
         var draft = InspectorDraft(object: original)
 
-        draft.choose(.booth(legendID))
+        draft.choose(.booth(.goods))
         let afterBooth = draft.applied(to: original)
 
         #expect(draft.kind == .seating)
@@ -78,6 +78,7 @@ struct CategoryInspectorTests {
         #expect(afterBooth.kind == .seating)
         #expect(afterBooth.catalogID == FurnitureModels.seatingBlockID)
         #expect(afterBooth.categoryID == nil)
+        #expect(afterBooth.boothType == nil)
         #expect(afterBooth.heightM == FurnitureModels.chairHeightM)
         #expect(afterBooth.placement.rotationDegrees == 45)
 

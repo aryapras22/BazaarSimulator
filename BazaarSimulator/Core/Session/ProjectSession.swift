@@ -75,7 +75,7 @@ final class ProjectSession: ProjectSessionProtocol {
         for project in projects {
             let analyses = store.loadAnalyses(for: project.id)
             savedAnalysesByProject[project.id] = analyses
-            if let draft = store.loadDraft(for: project.id) {
+            if let draft = store.loadDraft(for: project.id)?.resolvingBoothTypes() {
                 drafts[project.id] = draft
                 activeLayoutIDs[project.id] = draft.layouts.first?.id
             } else if let latest = analyses.last, !latest.layouts.isEmpty {

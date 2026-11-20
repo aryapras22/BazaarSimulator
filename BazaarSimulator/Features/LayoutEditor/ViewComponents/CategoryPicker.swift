@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CategoryPicker: View {
     private static let helpText =
-        "Booth categories come from the plan's legend, entertainment entries are attractions such as a stage or "
+        "Booths are Foods or Goods, entertainment entries are attractions such as a stage or "
         + "photobooth, and Others holds information desks, other entries, and closed stands."
 
     let categories: [CategoryOption]
@@ -78,13 +78,12 @@ struct CategoryPicker: View {
 }
 
 #Preview("Category picker") {
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map { CategoryOption(id: $0.id, name: $0.name, color: $0.color) }
+    let options = CategoryOption.boothOptions
     VStack(spacing: Spacing.l) {
         CategoryPicker(
             categories: options,
-            title: "Fashion & Beauty",
-            currentChoice: .booth(options[2].id),
+            title: "Goods",
+            currentChoice: .booth(.goods),
             onSelect: { _ in }
         )
         CategoryPicker(

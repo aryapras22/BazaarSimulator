@@ -3,11 +3,7 @@ import simd
 
 extension LayoutEditorViewModel {
     var categoryOptions: [CategoryOption] {
-        var options = [CategoryOption(id: nil, name: "Unassigned", color: nil)]
-        for entry in legend.entries {
-            options.append(CategoryOption(id: entry.id, name: entry.name, color: entry.color))
-        }
-        return options
+        CategoryOption.boothOptions
     }
 
     var inspectorTitle: String {
