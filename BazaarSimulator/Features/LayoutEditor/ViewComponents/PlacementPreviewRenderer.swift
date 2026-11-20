@@ -52,7 +52,7 @@ enum PlacementPreviewRenderer {
             label: "",
             placement: candidate.placement,
             categoryID: template.categoryID,
-            openSides: [.bottom]
+            openSides: []
         )
         let state = BoothDrawState(
             booth: booth,

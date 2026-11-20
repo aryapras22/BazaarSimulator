@@ -101,7 +101,7 @@ enum BoothRenderer {
         context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
-    /// Booths and entertainment both mark their open sides, red where something blocks them.
+    /// Booths and entertainment mark closed sides in orange and blocked open sides in red.
     static func drawOpenSideStrips(
         of object: LayoutObject,
         blockedSides: OpenSides,
@@ -114,7 +114,16 @@ enum BoothRenderer {
         let depth = min(stripThicknessM, min(placement.sizeM.x, placement.sizeM.y) * 0.25)
         let halfDepth = depth / 2.0
 
-        for side in OpenSides.ordered where object.openSides.contains(side) {
+        for side in OpenSides.ordered {
+            let stripColor: Color
+            if !object.openSides.contains(side) {
+                stripColor = Palette.canvasOpenSide
+            } else if blockedSides.contains(side) {
+                stripColor = Palette.canvasIssue
+            } else {
+                continue
+            }
+
             let localCenter: SIMD2<Double>
             let stripSize: SIMD2<Double>
             if side == .top {
@@ -140,8 +149,6 @@ enum BoothRenderer {
                 for: LayoutGeometry.corners(of: stripPlacement),
                 transform: transform
             )
-            let isBlocked = blockedSides.contains(side)
-            let stripColor = isBlocked ? Palette.canvasIssue : Palette.canvasOpenSide
             context.fill(stripPath, with: .color(stripColor))
         }
     }

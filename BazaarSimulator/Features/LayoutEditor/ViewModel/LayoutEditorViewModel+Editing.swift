@@ -152,7 +152,7 @@ extension LayoutEditorViewModel {
             label: nextLabel(for: kind, in: layout),
             placement: placement
         )
-        if kind.hasOpenSides {
+        if kind.hasOpenSides && kind != .booth {
             newObject.openSides = OpenSideInference.defaultSide(for: newObject, in: layout)
         }
         withSingleRefresh {

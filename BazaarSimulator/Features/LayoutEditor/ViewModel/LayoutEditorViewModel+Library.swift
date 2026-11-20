@@ -36,7 +36,7 @@ extension LayoutEditorViewModel {
                     category: .project,
                     footprint: .rect,
                     sizeM: SIMD2(template.sizeKey.shortM, template.sizeKey.longM),
-                    openSides: [.bottom],
+                    openSides: [],
                     seats: [],
                     tint: nil
                 )
@@ -171,7 +171,7 @@ extension LayoutEditorViewModel {
     ) {
         let objectID = UUID()
         let label = nextLabel(for: .booth, in: layout)
-        var booth = LayoutObject(
+        let booth = LayoutObject(
             id: objectID,
             kind: .booth,
             label: label,
@@ -179,7 +179,6 @@ extension LayoutEditorViewModel {
             categoryID: template.categoryID,
             heightM: BoothShape.panelHeightM
         )
-        booth.openSides = OpenSideInference.defaultSide(for: booth, in: layout)
         commitEdit(.insert(booth, index: layout.objects.count))
         applySelection(objectID)
     }
@@ -236,7 +235,7 @@ extension LayoutEditorViewModel {
         guard candidate.isValid else { return }
         let objectID = UUID()
         let label = nextLabel(for: .booth, in: layout)
-        var booth = LayoutObject(
+        let booth = LayoutObject(
             id: objectID,
             kind: .booth,
             label: label,
@@ -244,7 +243,6 @@ extension LayoutEditorViewModel {
             categoryID: template.categoryID,
             heightM: BoothShape.panelHeightM
         )
-        booth.openSides = OpenSideInference.defaultSide(for: booth, in: layout)
         withSingleRefresh {
             commitEdit(.insert(booth, index: layout.objects.count))
             applySelection(objectID)
