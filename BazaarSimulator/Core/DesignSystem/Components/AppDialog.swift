@@ -29,10 +29,11 @@ struct AppDialog: View {
                     .foregroundColor(Palette.destructive)
             }
 
-            VStack(spacing: Spacing.xs) {
+            VStack(alignment: isNotice ? .center : .leading, spacing: Spacing.xs) {
                 Text(content.title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Palette.textPrimary)
+                    .multilineTextAlignment(isNotice ? .center : .leading)
                 content.message
                     .font(.system(size: 13))
                     .foregroundColor(Palette.textSecondary)
