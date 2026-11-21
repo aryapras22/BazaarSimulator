@@ -26,4 +26,10 @@ struct AttractivenessScaleTests {
         let colors = [1.0, 2, 3, 4, 5].map(AttractivenessScale.color(for:))
         #expect(colors == Palette.attractivenessSteps)
     }
+
+    @Test("Steps 4 and 5 classify as dark fills including clamped values")
+    func darkStepsAreFourAndFive() {
+        let results = [0.0, 1, 2, 3, 4, 5, 9].map(AttractivenessScale.isDarkStep(for:))
+        #expect(results == [false, false, false, false, true, true, true])
+    }
 }

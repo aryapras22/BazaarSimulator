@@ -24,6 +24,10 @@ enum AttractivenessScale {
         Palette.attractivenessSteps[step(for: value)]
     }
 
+    static func isDarkStep(for value: Double) -> Bool {
+        step(for: value) >= 3
+    }
+
     static var gradient: LinearGradient {
         LinearGradient(
             colors: Palette.attractivenessSteps,

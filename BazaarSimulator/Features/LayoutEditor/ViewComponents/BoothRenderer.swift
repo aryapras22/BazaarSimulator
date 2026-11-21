@@ -72,7 +72,10 @@ enum BoothRenderer {
 
         if transform.scale >= 10.0 {
             let centerView = transform.toView(state.booth.placement.center)
-            let labelColor = state.isSelected ? Color.white : strokeColor
+            let isDarkFill = !DisabledObjectIndicator.isDisabled(state.booth)
+                && state.attractiveness == .heat
+                && AttractivenessScale.isDarkStep(for: state.booth.attractiveness)
+            let labelColor = (state.isSelected || isDarkFill) ? Palette.canvasLabelOnDark : strokeColor
             let text = Text(state.displayLabel)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)

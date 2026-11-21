@@ -44,6 +44,7 @@ enum Palette {
     ]
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
+    static let canvasLabelOnDark = Color(hex: 0xFFFFFF)
     static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)
     static let canvasGridOnFloorMajor = Color(hex: 0x1F4E86, alpha: 0.18)
     static let canvasHatch = Color(hex: 0x1F4E86, alpha: 0.35)
