@@ -30,9 +30,11 @@ struct EditorToolButtons: View {
                 hoveredTool = nil
             }
         }
-        .overlay(alignment: .leading) {
+        .overlay(alignment: .trailing) {
             if hoveredTool == item {
                 hoverLabel(item.title)
+                    .padding(.trailing, 40 + Spacing.s)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -46,14 +48,17 @@ struct EditorToolButtons: View {
             .background(Capsule().fill(Palette.surface))
             .overlay(Capsule().stroke(Palette.surfaceBorder, lineWidth: 1))
             .fixedSize()
-            .alignmentGuide(.leading) { $0[.trailing] + Spacing.s }
-            .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
 
     @ViewBuilder
     private func toolIcon(for item: EditorAddTool) -> some View {
         switch item.icon {
+        case .system(let name) where item == .table:
+            Image(systemName: name)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
         case .system(let name):
             Image(systemName: name)
                 .font(.system(size: 15, weight: .medium))
