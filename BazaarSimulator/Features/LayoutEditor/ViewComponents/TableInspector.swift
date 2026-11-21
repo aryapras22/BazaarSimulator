@@ -27,10 +27,10 @@ struct TableInspector: View {
             TitleIssues(issues: titleIssues)
 
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Table")
+                Text("Type")
                     .font(Typography.inspectorLabel)
                     .foregroundStyle(Palette.textPrimary)
-                Picker("Table", selection: modelID) {
+                Picker("Type", selection: modelID) {
                     ForEach(FurnitureModels.tables, id: \.id) { table in
                         Text(table.name).tag(table.id)
                     }
