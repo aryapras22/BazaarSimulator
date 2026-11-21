@@ -282,7 +282,7 @@ private final class GatedAnalysisService: AnalysisServiceProtocol {
 struct DashboardLoadRaceTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])]
     )
 
     private func untilSettled(_ model: DashboardViewModel) async {
