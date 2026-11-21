@@ -15,7 +15,7 @@ struct CategorySectionsTests {
 
     @Test("Entertainment is added as a booth, so it has no add button of its own")
     func noEntertainmentButton() {
-        #expect(EditorAddTool.tools(for: .booths) == [.booth, .table])
+        #expect(EditorAddTool.tools(for: .booths) == [.booth, .chair])
         #expect(!ObjectCatalog.libraryItems.contains { $0.kind == .entertainment })
     }
 

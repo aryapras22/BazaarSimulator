@@ -26,10 +26,10 @@ struct SeatingInspector: View {
             TitleIssues(issues: titleIssues)
 
             VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Seating")
+                Text("Type")
                     .font(Typography.inspectorLabel)
                     .foregroundStyle(Palette.textPrimary)
-                Picker("Seating", selection: .constant(FurnitureModels.seatingBlockID)) {
+                Picker("Type", selection: .constant(FurnitureModels.seatingBlockID)) {
                     Text("Audience Seating").tag(FurnitureModels.seatingBlockID)
                 }
                 .pickerStyle(.menu)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The buttons that add things to the plan, in a column beside the inspector. The Floor Plan tab has booth and table.
+/// The buttons that add things to the plan, in a column beside the inspector. The Floor Plan tab has booth and chair.
 /// The Structure tab has wall, block, door, and restricted area.
 struct EditorToolButtons: View {
     let layer: EditorLayer
@@ -54,7 +54,7 @@ struct EditorToolButtons: View {
     @ViewBuilder
     private func toolIcon(for item: EditorAddTool) -> some View {
         switch item.icon {
-        case .system(let name) where item == .table:
+        case .system(let name) where item == .chair:
             Image(systemName: name)
                 .resizable()
                 .scaledToFit()
@@ -99,7 +99,7 @@ struct EditorToolButtons: View {
 }
 
 #Preview("Floor Plan") {
-    EditorToolButtons(layer: .booths, isActive: { $0 == .table }, isAvailable: { _ in true }, onSelect: { _ in })
+    EditorToolButtons(layer: .booths, isActive: { $0 == .chair }, isAvailable: { _ in true }, onSelect: { _ in })
         .padding()
         .background(Palette.background)
         .preferredColorScheme(.dark)

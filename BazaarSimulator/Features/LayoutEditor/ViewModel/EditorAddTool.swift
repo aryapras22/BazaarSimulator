@@ -1,7 +1,7 @@
 import Foundation
 
 /// The buttons floating beside the inspector. Each starts adding one kind of element: the Floor Plan tab adds a
-/// booth or a table, and the Structure tab draws a wall, places an object or a door, or marks a restricted area.
+/// booth or audience seating, and the Structure tab draws a wall, places an object or a door, or marks a restricted area.
 enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     enum Icon: Sendable {
         case system(String)
@@ -9,7 +9,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     }
 
     case booth
-    case table
+    case chair
     case wall
     case block
     case door
@@ -19,7 +19,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
 
     var layer: EditorLayer {
         switch self {
-        case .booth, .table: .booths
+        case .booth, .chair: .booths
         case .wall, .block, .door, .restrictedArea: .structure
         }
     }
@@ -27,7 +27,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .booth: "Add booth"
-        case .table: "Add table"
+        case .chair: "Add chair"
         case .wall: "Draw wall"
         case .block: "Add object"
         case .door: "Add door"
@@ -38,7 +38,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     var icon: Icon {
         switch self {
         case .booth: .asset("BoothIcon")
-        case .table: .system("chair.fill")
+        case .chair: .system("chair.fill")
         case .wall: .asset("WallIcon")
         case .block: .system("square.fill")
         case .door: .system("door.left.hand.closed")
@@ -57,8 +57,8 @@ extension LayoutEditorViewModel {
         switch item {
         case .booth:
             return cachedBoothTemplates.first.map { .place(.template($0)) }
-        case .table:
-            return ObjectCatalog.defaultItemID(for: .table).map { .place(.catalog($0)) }
+        case .chair:
+            return ObjectCatalog.defaultItemID(for: .seating).map { .place(.catalog($0)) }
         case .wall:
             return .drawWall(itemID: selectedWallItemID)
         case .block:
