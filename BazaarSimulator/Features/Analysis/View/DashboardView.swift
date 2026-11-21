@@ -24,10 +24,20 @@ struct DashboardView<ParametersSheet: View>: View {
         }
         .underToolbarInWindow()
         .background { DashboardBackground().ignoresSafeArea() }
-        .sheet(isPresented: $viewModel.isParametersPresented) {
-            SheetHost { parametersSheet(viewModel.closeParameters) }
-                .presentationBackground(.clear)
+        .overlay {
+            if viewModel.isParametersPresented {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.closeParameters() }
+                    SheetHost { parametersSheet(viewModel.closeParameters) }
+                        .padding(Spacing.xl)
+                        .onExitCommand { viewModel.closeParameters() }
+                }
+                .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
         .sheet(isPresented: $viewModel.isInsightsPresented) {
             InsightsSheet(viewModel: viewModel)
         }
@@ -57,7 +67,7 @@ struct DashboardContent: View {
             DashboardHeader(
                 title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: { viewModel.isParametersPresented = true }
+                onOpenParameters: { viewModel.openParameters() }
             )
 
             switch viewModel.phase {

@@ -25,6 +25,7 @@ final class DashboardViewModel {
     let onBack: () -> Void
     let onSimulate: (LayoutID) -> Void
     let onEdit: (LayoutID) -> Void
+    let onOpenParameters: (() -> Void)?
 
     var tab: AnalysisTab = .congestionPoints
     var isParametersPresented: Bool = false
@@ -46,7 +47,8 @@ final class DashboardViewModel {
         catalog: PresetCatalog,
         onBack: @escaping () -> Void = {},
         onSimulate: @escaping (LayoutID) -> Void = { _ in },
-        onEdit: @escaping (LayoutID) -> Void = { _ in }
+        onEdit: @escaping (LayoutID) -> Void = { _ in },
+        onOpenParameters: (() -> Void)? = nil
     ) {
         self.projectID = projectID
         self.source = source
@@ -56,6 +58,7 @@ final class DashboardViewModel {
         self.onBack = onBack
         self.onSimulate = onSimulate
         self.onEdit = onEdit
+        self.onOpenParameters = onOpenParameters
         // A saved run is already complete, so its page shows it from the start and never waits to be told to load.
         if case .saved(let id) = source { showSaved(id) }
         // A page for the latest run starts from the saved run made from the same layouts and parameters, if there
@@ -307,6 +310,14 @@ final class DashboardViewModel {
             layouts: layouts, analyses: analyses, parameters: currentParameters,
             peakMinute: result.schedule.peakMinute, in: projectID
         )
+    }
+
+    func openParameters() {
+        if let onOpenParameters {
+            onOpenParameters()
+        } else {
+            isParametersPresented = true
+        }
     }
 
     /// Closes the Parameters sheet and runs the simulation again with whatever was applied.

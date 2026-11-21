@@ -56,10 +56,10 @@ enum Palette {
     static let canvasIssue = destructive
     static let highlight = Color(hex: 0xF76222)
     static let actionOrange = Color(hex: 0xFF6A2A)
-    static let visitorSeries1 = Color.blue
-    static let visitorSeries2 = Color.teal
-    static let visitorSeries3 = Color.orange
-    static let visitorSeries4 = Color.purple
+    static let visitorSeries1 = Color(hex: 0x0A80E1)
+    static let visitorSeries2 = Color(hex: 0x13B6C7)
+    static let visitorSeries3 = Color(hex: 0xDA8133)
+    static let visitorSeries4 = Color(hex: 0xBD34D4)
     static let visitorSeriesColors = [visitorSeries1, visitorSeries2, visitorSeries3, visitorSeries4]
     static let fieldOnSurface = Color(hex: 0x3F4D64)
     static let fieldOnSurfaceBorder = Color(hex: 0x47556B)

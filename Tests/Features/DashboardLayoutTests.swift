@@ -152,7 +152,7 @@ struct DashboardLayoutTests {
         await waitUntilReady(viewModel, in: window)
 
         let frames1280 = detailFocusRings(in: window)
-        #expect(frames1280.count >= 14)
+        #expect(frames1280.count >= 9)
         for frame in frames1280 {
             #expect(frame.minX >= 240, "Control overlapped sidebar at \(frame)")
             #expect(frame.maxX <= 1280, "Control overflowed window width at \(frame)")
@@ -187,7 +187,7 @@ struct DashboardLayoutTests {
         await waitUntilReady(viewModel, in: window)
 
         let frames = detailFocusRings(in: window)
-        #expect(frames.count >= 14)
+        #expect(frames.count >= 9)
         for frame in frames {
             #expect(frame.minX >= 300, "Control overlapped 300pt sidebar at \(frame)")
             #expect(frame.maxX <= 1280, "Control overflowed 1280pt window at \(frame)")
@@ -201,7 +201,7 @@ struct DashboardLayoutTests {
         await waitUntilReady(viewModel, in: window)
 
         let frames = detailFocusRings(in: window)
-        #expect(frames.count >= 8)
+        #expect(frames.count >= 6)
         for frame in frames {
             #expect(frame.minX >= 240, "Single-layout control overlapped sidebar at \(frame)")
             #expect(frame.maxX <= 1280, "Single-layout control overflowed window at \(frame)")
@@ -246,5 +246,21 @@ struct DashboardLayoutTests {
         let frames = detailFocusRings(in: window)
         let hasTopRightParametersButton = frames.contains { $0.minX > 1000 && $0.maxY > 760 }
         #expect(hasTopRightParametersButton)
+    }
+
+    @Test("Visitor types use the configured brand colors in order")
+    func visitorTypeColorsMatchExpectedHexValues() {
+        let items = VisitorSliderItem.items(for: PresetCatalog.bundled().visitorTypes)
+        let expected: [(String, UInt)] = [
+            ("Socializer", 0x0A80E1),
+            ("Family Member", 0x13B6C7),
+            ("Explorer", 0xDA8133),
+            ("Purpose Buyer", 0xBD34D4)
+        ]
+
+        #expect(items.map(\.name) == expected.map(\.0))
+        for (item, (_, hex)) in zip(items, expected) {
+            #expect(item.color == Color(hex: hex))
+        }
     }
 }

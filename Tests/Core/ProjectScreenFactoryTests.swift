@@ -142,6 +142,16 @@ struct ProjectScreenFactoryTests {
         session.setEventParameters(latestParams, for: project.id)
         router.showSavedAnalysis(projectID: project.id, analysisID: saved.id)
 
+        let savedDashboard = factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: saved.id)
+        savedDashboard.openParameters()
+        #expect(router.parametersProjectID == project.id)
+        #expect(router.parametersAnalysisID == saved.id)
+
+        let latestDashboard = factory.makeDashboardViewModel(projectID: project.id)
+        latestDashboard.openParameters()
+        #expect(router.parametersProjectID == project.id)
+        #expect(router.parametersAnalysisID == nil)
+
         var closed = false
         let paramsVM = factory.makeParametersViewModel(
             projectID: project.id,

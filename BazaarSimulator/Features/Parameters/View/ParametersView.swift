@@ -24,9 +24,16 @@ struct ParametersView: View {
         }
         .environment(\.formCommitScope, commitScope)
         .padding(Spacing.xl)
-        .frame(minWidth: 860)
+        .frame(width: 860)
         .fixedSize(horizontal: false, vertical: true)
-        .glassEffect(.regular, in: .rect(corners: .concentric(minimum: .fixed(Radius.xl)), isUniform: true))
+        // gini doang bruh
+        .glassEffect(.regular, in: .rect(cornerRadius: 15))
+//        .glassEffect(
+//            .clear
+//                .tint(.black.opacity(0.55)),
+////            .regular
+////                .tint(.white.opacity(0.015)),
+//            in: .rect(cornerRadius: 15)
         .preferredColorScheme(.dark)
     }
 
@@ -91,6 +98,7 @@ struct ParametersView: View {
             Spacer()
             Button("Cancel") { viewModel.cancel() }
                 .buttonStyle(.secondary)
+                .keyboardShortcut(.cancelAction)
             Button("Apply") {
                 commitScope.commitAll()
                 viewModel.apply()

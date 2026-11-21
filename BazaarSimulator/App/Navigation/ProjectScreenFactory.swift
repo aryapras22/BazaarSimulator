@@ -103,6 +103,9 @@ final class ProjectScreenFactory {
             onBack: { [weak router] in router?.showSetup(projectID: projectID) },
             onSimulate: { [weak router] layout in
                 router?.requestSimulation(projectID: projectID, layout: layout, analysisID: analysisID)
+            },
+            onOpenParameters: { [weak router] in
+                router?.showParameters(projectID: projectID, analysisID: analysisID)
             }
         )
         savedDashboardViewModels[analysisID] = created
@@ -135,6 +138,9 @@ final class ProjectScreenFactory {
             },
             onEdit: { [weak router] layout in
                 open(layout) { router?.showEditor(projectID: $0) }
+            },
+            onOpenParameters: { [weak router] in
+                router?.showParameters(projectID: projectID)
             }
         )
         dashboardViewModels[projectID] = created
