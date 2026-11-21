@@ -133,13 +133,12 @@ struct LayoutEditorViewModelGroupTests {
         let context = Self.makeContext()
         let viewModel = context.viewModel
         let target = try booth(labelled: "A5", in: context.layout)
-        let lifestyle = try #require(PreviewLayouts.sampleLegend.entries.last)
         viewModel.selectGroup(containing: target.id, bySize: false)
-        viewModel.editGroupDraft { $0.category = .set(lifestyle.id) }
+        viewModel.editGroupDraft { $0.category = .set(.fnb) }
 
         let members = viewModel.selectedGroupMembers
         #expect(members.count == 112)
-        #expect(members.allSatisfy { $0.categoryID == lifestyle.id })
+        #expect(members.allSatisfy { $0.boothType == .fnb })
         viewModel.undo()
         #expect(viewModel.activeLayout == context.layout)
         #expect(!viewModel.canUndo)

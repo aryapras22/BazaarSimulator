@@ -9,13 +9,11 @@ struct LegendColor: Sendable, Hashable, Codable {
 enum BoothType: String, Sendable, Hashable, Codable, CaseIterable {
     case fnb
     case goods
-    case others
 
     var displayName: String {
         switch self {
         case .fnb: "Foods"
         case .goods: "Goods"
-        case .others: "Others"
         }
     }
 }
@@ -27,11 +25,27 @@ struct LegendEntry: Identifiable, Sendable, Hashable, Codable {
     /// Picked by the user after the legend is read. Nil until they choose one.
     var type: BoothType?
 
+    private enum CodingKeys: String, CodingKey {
+        case id, name, color, type
+    }
+
     init(id: UUID = UUID(), name: String, color: LegendColor, type: BoothType? = nil) {
         self.id = id
         self.name = name
         self.color = color
         self.type = type
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        color = try container.decode(LegendColor.self, forKey: .color)
+        if let rawType = try container.decodeIfPresent(String.self, forKey: .type), rawType != "others" {
+            type = try container.decode(BoothType.self, forKey: .type)
+        } else {
+            type = nil
+        }
     }
 }
 

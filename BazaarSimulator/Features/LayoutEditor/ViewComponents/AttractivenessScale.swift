@@ -14,17 +14,23 @@ enum AttractivenessScale {
         return min(max((value - range.lowerBound) / (range.upperBound - range.lowerBound), 0), 1)
     }
 
+    static func step(for value: Double) -> Int {
+        let range = AttractivenessField.range
+        let clamped = min(max(value.rounded(), range.lowerBound), range.upperBound)
+        return Int(clamped - range.lowerBound)
+    }
+
     static func color(for value: Double) -> Color {
-        let fraction = fraction(of: value)
-        if fraction < 0.5 {
-            return Palette.attractivenessLow.mix(with: Palette.attractivenessMid, by: fraction * 2)
-        }
-        return Palette.attractivenessMid.mix(with: Palette.attractivenessHigh, by: (fraction - 0.5) * 2)
+        Palette.attractivenessSteps[step(for: value)]
+    }
+
+    static func isDarkStep(for value: Double) -> Bool {
+        step(for: value) >= 3
     }
 
     static var gradient: LinearGradient {
         LinearGradient(
-            colors: [Palette.attractivenessLow, Palette.attractivenessMid, Palette.attractivenessHigh],
+            colors: Palette.attractivenessSteps,
             startPoint: .leading,
             endPoint: .trailing
         )

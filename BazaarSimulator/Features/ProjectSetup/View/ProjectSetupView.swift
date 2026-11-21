@@ -6,7 +6,7 @@ struct ProjectSetupView: View {
     @State private var importTarget: ImportFileKind?
     @State private var lastImportTarget: ImportFileKind?
     @State private var dialog: AppDialogContent?
-    @State private var previewedLayout: Layout?
+    @State private var previewedFileID: UUID?
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
     /// Wide enough that the side margins stay small; only very wide windows center the content.
@@ -68,7 +68,9 @@ struct ProjectSetupView: View {
             viewModel.clearUnsupportedFile()
         }
         .appDialog($dialog)
-        .layoutPreview($previewedLayout)
+        .layoutPreview(previewedFileID.flatMap(viewModel.previewLayout)) {
+            previewedFileID = nil
+        }
     }
 
     // MARK: Header
@@ -212,7 +214,7 @@ struct ProjectSetupView: View {
     private var floorPlanContent: some View {
         if viewModel.floorPlanFiles.isEmpty {
             DropZone(
-                hint: "PDF · one page per layout · up to \(ProjectSetupViewModel.maxFloorPlans)",
+                hint: "PDF · one page per layout",
                 onChoose: { choose(.floorPlan) },
                 onDrop: viewModel.addFloorPlanFiles
             )
@@ -223,7 +225,11 @@ struct ProjectSetupView: View {
                     PlanFileRow(
                         display: row,
                         onEdit: { viewModel.editLayout(fileID: row.id) },
-                        onPreview: { previewedLayout = viewModel.previewLayout(fileID: row.id) },
+                        onPreview: {
+                            if viewModel.previewLayout(fileID: row.id) != nil {
+                                previewedFileID = row.id
+                            }
+                        },
                         onDelete: { confirmDeletion(of: row, remove: viewModel.deleteFloorPlan) },
                         onRetry: { viewModel.retryFloorPlan(id: row.id) }
                     )

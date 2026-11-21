@@ -25,7 +25,7 @@ struct EditorHintStrip: View {
         case .select:
             return "Click to select · Drag to move · Marquee on floor · Space-drag to pan"
         case .drawWall:
-            return "Click to place segment · Shift for angle lock · Return or double-click to finish · Escape to cancel"
+            return "Click to place wall · Shift for angle lock · Double-click to end chain · Escape to exit tool"
         case .room:
             return "Drag rectangle to create room walls · Escape to cancel"
         case .row:

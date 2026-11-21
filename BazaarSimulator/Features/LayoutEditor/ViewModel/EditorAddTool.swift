@@ -1,12 +1,15 @@
 import Foundation
 
 /// The buttons floating beside the inspector. Each starts adding one kind of element: the Floor Plan tab adds a
-/// booth, a table, or an entertainment attraction, and the Structure tab draws a wall, places a block or a door, or
-/// marks a restricted area.
+/// booth or audience seating, and the Structure tab draws a wall, places an object or a door, or marks a restricted area.
 enum EditorAddTool: CaseIterable, Identifiable, Sendable {
+    enum Icon: Sendable {
+        case system(String)
+        case asset(String)
+    }
+
     case booth
-    case table
-    case entertainment
+    case chair
     case wall
     case block
     case door
@@ -16,7 +19,7 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
 
     var layer: EditorLayer {
         switch self {
-        case .booth, .table, .entertainment: .booths
+        case .booth, .chair: .booths
         case .wall, .block, .door, .restrictedArea: .structure
         }
     }
@@ -24,24 +27,22 @@ enum EditorAddTool: CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .booth: "Add booth"
-        case .table: "Add table"
-        case .entertainment: "Add entertainment"
+        case .chair: "Add chair"
         case .wall: "Draw wall"
-        case .block: "Add block"
+        case .block: "Add object"
         case .door: "Add door"
         case .restrictedArea: "Mark restricted area"
         }
     }
 
-    var systemImage: String {
+    var icon: Icon {
         switch self {
-        case .booth: "storefront"
-        case .table: "chair"
-        case .entertainment: "music.mic"
-        case .wall: "rectangle.split.3x3"
-        case .block: "square.fill"
-        case .door: "door.left.hand.open"
-        case .restrictedArea: "nosign"
+        case .booth: .asset("BoothIcon")
+        case .chair: .system("chair.fill")
+        case .wall: .asset("WallIcon")
+        case .block: .system("square.fill")
+        case .door: .system("door.left.hand.closed")
+        case .restrictedArea: .asset("BarrierIcon")
         }
     }
 
@@ -56,10 +57,8 @@ extension LayoutEditorViewModel {
         switch item {
         case .booth:
             return cachedBoothTemplates.first.map { .place(.template($0)) }
-        case .table:
-            return ObjectCatalog.defaultItemID(for: .table).map { .place(.catalog($0)) }
-        case .entertainment:
-            return .place(.catalog(ObjectCatalog.entertainmentID))
+        case .chair:
+            return ObjectCatalog.defaultItemID(for: .seating).map { .place(.catalog($0)) }
         case .wall:
             return .drawWall(itemID: selectedWallItemID)
         case .block:

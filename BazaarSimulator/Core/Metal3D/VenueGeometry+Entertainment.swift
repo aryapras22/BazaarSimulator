@@ -6,7 +6,7 @@ extension VenueGeometry {
     /// display.
     /// Its front is its first open side, or the bottom side of the plan when none is open.
     static func entertainment(_ object: LayoutObject) -> [VenueBlock] {
-        let front = [OpenSides.bottom, .top, .left, .right].first { object.openSides.contains($0) } ?? .bottom
+        let front = frontSide(of: object)
         var (width, depth) = size(of: object)
         let quarterTurns: Float
         switch front {
@@ -27,8 +27,36 @@ extension VenueGeometry {
             let label = object.label.lowercased()
             let isCompetition = label.contains("competition") || label.contains("lomba")
             return display(width: width, depth: depth, isCompetition: isCompetition, frame: frame)
+        case .informationDesk, .disabled:
+            return display(width: width, depth: depth, isCompetition: false, frame: frame)
         case .stage:
             return stage(width: width, depth: depth, height: Float(object.heightM ?? 0.5), frame: frame)
+        }
+    }
+
+    static func frontSide(of object: LayoutObject) -> OpenSides {
+        let priority: [OpenSides] = [.bottom, .top, .left, .right]
+        let open = priority.filter { object.openSides.contains($0) }
+        switch open.count {
+        case 1:
+            return open[0]
+        case 2:
+            if let horizontal = [OpenSides.bottom, .top].first(where: { object.openSides.contains($0) }),
+               let vertical = [OpenSides.left, .right].first(where: { object.openSides.contains($0) }),
+               object.placement.sizeM.x != object.placement.sizeM.y {
+                return object.placement.sizeM.x > object.placement.sizeM.y ? horizontal : vertical
+            }
+            return open[0]
+        case 3:
+            switch OpenSides.all.subtracting(object.openSides) {
+            case .top: return .bottom
+            case .bottom: return .top
+            case .left: return .right
+            case .right: return .left
+            default: return .bottom
+            }
+        default:
+            return .bottom
         }
     }
 }

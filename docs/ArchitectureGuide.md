@@ -30,7 +30,7 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | Feature | Description (Hi-Fi screen) |
 | ---| --- |
 | Project library | Sidebar list of projects. Right-click a project, or one of its saved analyses, for Delete, which asks first ("Delete Project?" removes the project's files, layouts, and saved analyses too). The search field shows only while there are projects. With none, the page reads "Create Your First Project" with an Add Project button. Renaming a project on its upload page renames it in the sidebar. Create, open, delete |
-| Project setup | A name field, then two cards. Legends and Layouts each have a help button that says what a good one is. A legend reads into its colors, each with a category (Foods, Goods, or Others), Clear All, and Add Legends. Layouts list each PDF with its booth and door counts and an Edit, Preview, Delete menu, or Scan Failed with retry and delete. Layouts stay dimmed until a legend is read, and ask for a legend if it is cleared. A file that is not a PDF opens an Unsupported File notice. Deleting a file asks first. Preview shows the plan with zoom. Set Parameters is orange once every file is read |
+| Project setup | A name field, then two cards. Legends and Layouts each have a help button that says what a good one is. A legend reads into its colors, each with a category (Foods or Goods, unassigned until picked), Clear All, and Add Legends. Layouts list each PDF with its booth and door counts and an Edit, Preview, Delete menu, or Scan Failed with retry and delete. Layouts stay dimmed until a legend is read, and ask for a legend if it is cleared. A file that is not a PDF opens an Unsupported File notice. Deleting a file asks first. Preview shows the plan with zoom. Set Parameters is orange once every file is read |
 | Layout editor | Two-layer editing (Structure and Booths) with inactive layer dimming (35%). Vertical tool rail per layer, collapsible side panel, canvas with hint strip and visitor flow toggle, wall graph editing with node and midpoint gestures, hall outline edge handles that grow or shrink the hall, and fixed inspector column. View presets: Plan and 3D. The same editor is used to review detected objects |
 | Parameters | A sheet that opens when setup continues, and again from the Analysis header, with Cancel and Apply. Total visitors per day, event duration, bazaar type, visitor type mix. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
@@ -174,6 +174,7 @@ BazaarSimulation/
 │   ├── Domain/                          # Project, Layout, Legend, VisitorType, VisitorMix, EventParameters, snapshots, enums
 │   │   └── Catalog/                     # CatalogItem, ShapePrimitive, ObjectCatalog, BoothShape, BoothTemplates
 │   ├── Scene3D/                         # SceneGeometryBuilder, SceneMeshFactory (RealityKit), CameraRig, CameraRay, BoundingBox3D
+│   ├── Metal3D/                         # Metal3DRenderer, Metal3DSceneView, VenueGeometry, OrbitCamera, FieldImage, HeatScale, SeverityGrade
 │   ├── PlanView/                        # ZoomablePlan, LayoutPlanCanvas: a layout drawn on a plan, shared by the Analysis and Project setup pages; the zoomable plan is used by the layout preview
 │   ├── Persistence/                     # ProjectRecord (SwiftData) and mapper
 │   ├── Repositories/                    # ProjectRepository
@@ -198,7 +199,7 @@ BazaarSimulation/
 │   ├── Parameters/
 │   ├── ProjectOverview/
 │   ├── Analysis/
-│   └── Simulation/                      # Each has View/, ViewModel/, ViewComponents/. the 3D venue and simulator scene live in `Features/Analysis/Scene/`
+│   └── Simulation/                      # Each has View/, ViewModel/, ViewComponents/. The shared Metal 3D renderer and venue geometry live in `Core/Metal3D/`
 │
 └── Tests/
     ├── Core/                            # Mirrors the source folders
@@ -220,7 +221,8 @@ struct LayoutObject: Codable, Identifiable, Sendable {
     var kind: LayoutObjectKind       // booth, door, wall, block, closedArea, table, seating, entertainment
     var label: String                // "B-7", "NW"
     var placement: Placement
-    var categoryID: LegendEntry.ID?  // booths: a legend category
+    var categoryID: LegendEntry.ID?  // booths: matched legend swatch (colour only)
+    var boothType: BoothType?        // booths: Foods or Goods, nil when unassigned
     var openSides: OpenSides = []    // booths: the sides visitors can use
     var doorFlow: DoorFlow?          // doors: direction and connection (Door inspector on Structure layer)
 }
@@ -238,7 +240,7 @@ struct Placement: Codable, Sendable {
 | ---| --- |
 | `Project` | Name, `Legend`, `EventParameters`, a list of `Layout`, and `SimulationConfig` |
 | `Layout` | Name, width, depth, and a list of `LayoutObject`. Tables and seating blocks are objects too: each names a standard model in `FurnitureModels` by `catalogID`, and its chairs are computed from the model, never stored. One per floor plan PDF |
-| `Legend` | Entries of name and RGB color (in the Hi-Fi: F&B, Fashion, Lifestyle & Hobbies), read from the legend PDFs. Booth categories come from here |
+| `Legend` | Entries of name, RGB color, and Foods or Goods type, read from the legend PDFs. Used during import to seed each booth's swatch colour and `boothType`; after import each booth stores its own `boothType` |
 | `EventParameters` | Total visitors per day, event hours, bazaar type, `VisitorMix`. Shared by every layout |
 | `VisitorType` | Name, one-line summary, and the behavior parameters the engine reads (see below) |
 | `VisitorMix` | A percentage per visitor type. Rescales so the total stays 100. A locked share is left out of rescaling |
@@ -278,7 +280,7 @@ A view model asks for projects. It does not know whether they live in SwiftData 
 ### Floor plan import and reading
 Project setup takes two kinds of PDF: legends (one set serves every layout) and floor plans (one PDF per layout). Four steps, each in its own piece:
 1. `PDFImportService` renders the page to an image and pulls the page text with PDFKit.
-2. A reader backend turns image and text into raw output shaped by the model. `readLegend` gives an `ExtractedLegend`, `readPlan` gives an `ExtractedLayout`. Legends are read first, because reading a plan needs the legend to label booth categories.
+2. A reader backend turns image and text into raw output shaped by the model. `readLegend` gives an `ExtractedLegend`, `readPlan` gives an `ExtractedLayout`. Legends are read first, because reading a plan uses the legend to match booth swatches and set each booth's initial `boothType`.
 3. `ImportQueue` runs the files one at a time, which also keeps one model loaded (rule 8). It publishes a state per file: waiting, reading with progress, done with detected counts (booths and doors), or failed. Cancel stops the queue. Continue to Review is enabled when every file is done.
 4. The Layout editor opens in review mode. The user edits, deletes, and confirms detected objects. A mapper converts each draft to a `Layout` in metres.
 
@@ -336,7 +338,7 @@ protocol AnalysisServiceProtocol: AnyObject {
 
 `LayoutAnalysis` holds raw measurements only: the density and people count of each monitored spot every 10 seconds of the event, the people passing the doors each minute, the area of floor the plan shows, and the replay of the whole event. It knows nothing about grades or wording. The Analysis feature turns the measurements into the compare page: `OutcomeBuilder` reads the busiest window and the day series from them, and `CompareRulesEngine` applies the rules in the Compare Page Insight Rules.
 
-`CrowdSimulation` is the engine for these runs. It is a seeded, fixed-step simulation over a `NavigationGrid` of 0.5 m cells: groups arrive from `SpawnScheduler` (rate and visitor mix come from `EventParameters`; group size is drawn from 1 to 5 around a normal mean of 3), walk the shortest way to a few booths using each type's speed, stops, and dwell time, and slow down as the floor under them fills. A booth marked disabled still takes up floor but is never chosen. A stage with free seating within 15 m is watched from a seat instead of walked up to. Arrivals stop 30 minutes before closing and everyone inside is sent to the exit 10 minutes before, so the hall is empty when the event ends. After the run, `SpotSelector` picks up to four monitored spots, the most crowded blocks of floor in the busiest window. While it runs, the whole event is also recorded as a `SimulationReplay`: a frame every 10 seconds with each visitor group's position, and how often each tile of floor has been walked. The simulator in `Features/Analysis` plays that replay over a drawn plan of the layout, with three overlays (congestion grades, crowd density, busiest path), so what it shows is the same event the numbers came from. The simulator can also show the run in 3D, drawn by `Metal3DRenderer` (`Features/Analysis/Scene`). `VenueGeometry` turns the layout into boxes and cylinders (a booth is a stall with posts, an awning, counters on its open sides and panels on the closed ones; a door is a frame with a leaf standing open, cut through its wall), and the renderer draws each kind in one instanced call (the venue, the visitors, the glow markers), with a depth buffer and 4x antialiasing, so the cost barely grows with the crowd. Crowd density and busiest paths are painted onto a texture laid over the floor, spots get a floating label, and `OrbitCamera` handles drag to orbit, scroll to zoom, and shift-drag to move. The shaders are kept as source text and compiled at start, so the app builds without the Metal Toolchain component. Tests draw into an offscreen texture and read the pixels back. A 2D and 3D switch picks between the two views.
+`CrowdSimulation` is the engine for these runs. It is a seeded, fixed-step simulation over a `NavigationGrid` of 0.5 m cells: groups arrive from `SpawnScheduler` (rate and visitor mix come from `EventParameters`; group size is drawn from 1 to 5 around a normal mean of 3), walk the shortest way to a few booths using each type's speed, stops, and dwell time, and slow down as the floor under them fills. A booth marked disabled still takes up floor but is never chosen. A stage with free seating within 15 m is watched from a seat instead of walked up to. Arrivals stop 30 minutes before closing and everyone inside is sent to the exit 10 minutes before, so the hall is empty when the event ends. After the run, `SpotSelector` picks up to four monitored spots, the most crowded blocks of floor in the busiest window. While it runs, the whole event is also recorded as a `SimulationReplay`: a frame every 10 seconds with each visitor group's position, and how often each tile of floor has been walked. The simulator in `Features/Analysis` plays that replay over a drawn plan of the layout, with three overlays (congestion grades, crowd density, busiest path), so what it shows is the same event the numbers came from. The simulator can also show the run in 3D, drawn by `Metal3DRenderer` (`Core/Metal3D/`). `VenueGeometry` turns the layout into boxes and cylinders (a booth is a stall with posts, an awning, counters on its open sides and panels on the closed ones; a door is a frame with a leaf standing open, cut through its wall), and the renderer draws each kind in one instanced call (the venue, the visitors, the glow markers), with a depth buffer and 4x antialiasing, so the cost barely grows with the crowd. Crowd density and busiest paths are painted onto a texture laid over the floor, spots get a floating label, and `OrbitCamera` handles drag to orbit, scroll to zoom, and shift-drag to move. The shaders are kept as source text and compiled at start, so the app builds without the Metal Toolchain component. Tests draw into an offscreen texture and read the pixels back. A 2D and 3D switch picks between the two views.
 
 ### Cross-feature state
 The editor, parameters, overview, analysis, and simulation all work on the same project. That state lives in one injected object in `Core/Session/`.

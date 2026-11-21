@@ -28,9 +28,9 @@ struct ProjectSetupViewModelTests {
         #expect(viewModel.statusText.contains("Add a legend"))
     }
 
-    @Test("The 7th floor plan is refused, and the floor plan zone disables at 6")
+    @Test("More than 6 floor plans are accepted and the floor plan zone stays enabled")
     @MainActor
-    func maxSixFloorPlansAllowed() {
+    func acceptsMoreThanSixFloorPlans() {
         let session = ProjectSession()
         let project = session.createProject(named: "Bazaar 1")
         let queue = ScriptedImportQueue(isSynchronous: true)
@@ -46,41 +46,15 @@ struct ProjectSetupViewModelTests {
 
         let sixPlans = (1...6).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
         viewModel.addFloorPlanFiles(urls: sixPlans)
-
         #expect(viewModel.floorPlanFiles.count == 6)
-        #expect(!viewModel.isFloorPlanZoneEnabled)
+        #expect(viewModel.isFloorPlanZoneEnabled)
 
-        let seventhPlan = URL(fileURLWithPath: "/tmp/layout7.pdf")
-        viewModel.addFloorPlanFiles(urls: [seventhPlan])
+        let morePlans = (7...9).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
+        viewModel.addFloorPlanFiles(urls: morePlans)
 
-        #expect(viewModel.floorPlanFiles.count == 6)
-        #expect(viewModel.statusText == "Only 6 floor plans allowed")
-    }
-
-    @Test("addFloorPlanFiles accepts files up to 6 and drops the rest with a message")
-    @MainActor
-    func addFloorPlanFilesAcceptsUpToCap() {
-        let session = ProjectSession()
-        let project = session.createProject(named: "Bazaar 1")
-        let queue = ScriptedImportQueue(isSynchronous: true)
-        let viewModel = ProjectSetupViewModel(
-            projectID: project.id,
-            session: session,
-            importQueue: queue,
-            onContinue: { _ in }
-        )
-
-        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
-
-        let fourPlans = (1...4).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
-        viewModel.addFloorPlanFiles(urls: fourPlans)
-        #expect(viewModel.floorPlanFiles.count == 4)
-
-        let threeMorePlans = (5...7).map { URL(fileURLWithPath: "/tmp/layout\($0).pdf") }
-        viewModel.addFloorPlanFiles(urls: threeMorePlans)
-
-        #expect(viewModel.floorPlanFiles.count == 6)
-        #expect(viewModel.statusText == "Only 6 floor plans allowed. Added 2 of 3.")
+        #expect(viewModel.floorPlanFiles.count == 9)
+        #expect(viewModel.isFloorPlanZoneEnabled)
+        #expect(!viewModel.isStatusError)
     }
 
     @Test("Non-PDF files are refused with a message")
@@ -422,6 +396,52 @@ extension ProjectSetupViewModelTests {
         let updatedBooth = try #require(updatedLayout.objects.first { $0.id == boothID })
         #expect(updatedBooth.placement.center == newCenter)
     }
+
+    @Test("Preview and row summaries reflect layout edits saved in ProjectSession")
+    @MainActor
+    func previewAndPlanRowsReflectSessionEdits() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        viewModel.addFloorPlanFiles(urls: [URL(fileURLWithPath: "/tmp/plan1.pdf")])
+        let file = try #require(viewModel.floorPlanFiles.first)
+        viewModel.continueToReview()
+
+        var editedLayout = try #require(session.layout(id: file.id, in: project.id))
+        let initialBooths = editedLayout.objects.filter { $0.kind == .booth }.count
+        let initialDoors = editedLayout.objects.filter { $0.kind == .door }.count
+
+        let addedBooth = LayoutObject(
+            kind: .booth,
+            label: "B-New",
+            placement: Placement(center: SIMD2<Double>(12, 12), sizeM: SIMD2<Double>(2, 2))
+        )
+        let addedDoor = LayoutObject(
+            kind: .door,
+            label: "D-New",
+            placement: Placement(center: SIMD2<Double>(1, 0), sizeM: SIMD2<Double>(2, 0.3))
+        )
+        editedLayout.objects.append(contentsOf: [addedBooth, addedDoor])
+        session.updateLayout(editedLayout, in: project.id)
+
+        let preview = try #require(viewModel.previewLayout(fileID: file.id))
+        #expect(preview.objects.contains { $0.id == addedBooth.id })
+        #expect(preview.objects.contains { $0.id == addedDoor.id })
+
+        let row = try #require(viewModel.planRows.first { $0.id == file.id })
+        let expectedStatus = PlanRowDisplay.Status.done(
+            text: ImportRowFormatter.doneText(booths: initialBooths + 1, doors: initialDoors + 1)
+        )
+        #expect(row.status == expectedStatus)
+    }
 }
 
 @Suite("UploadPageStatesTests")
@@ -480,6 +500,6 @@ struct UploadPageStatesTests {
 
     @Test("The categories offered are Foods, Goods and Others")
     func categories() {
-        #expect(BoothType.allCases.map(\.displayName) == ["Foods", "Goods", "Others"])
+        #expect(BoothType.allCases.map(\.displayName) == ["Foods", "Goods"])
     }
 }

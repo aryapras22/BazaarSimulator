@@ -6,6 +6,7 @@ struct LayoutEditorView: View {
     @State var canvasViewSize: SIMD2<Double> = SIMD2<Double>(960, 640)
     @State private var pointer = CanvasPointer()
     @State private var isSidePanelVisible = true
+    @State private var is3DPreview = false
     @FocusState private var isCanvasFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.pageClearsToolbar) private var pageClearsToolbar
@@ -13,6 +14,7 @@ struct LayoutEditorView: View {
     /// Room the tool buttons take at the right of the canvas: their width and a gap on each side.
     private static let toolButtonsWidth: CGFloat = 64
     private static let inspectorWidth = InspectorPanelMetrics.width
+    private static let rightColumnInset = inspectorWidth + InspectorPanelMetrics.margin * 3
     /// The header row: its top gap, its height and the gap under it.
     private static let headerRowHeight: CGFloat = Spacing.m + 40 + Spacing.s
     /// How much of the canvas' right side lies under the tool buttons and the inspector.
@@ -23,32 +25,40 @@ struct LayoutEditorView: View {
         // The inspector runs the whole height of the window, so the header, with undo and redo, ends above the tools.
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
-                EditorHeaderBar(viewModel: viewModel)
+                editorHeader
                     // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
                     .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
                     // Redo ends exactly above the right edge of the tool buttons.
-                    .padding(.trailing, Self.inspectorWidth + InspectorPanelMetrics.margin * 3)
+                    .padding(.trailing, is3DPreview ? Spacing.l : Self.rightColumnInset)
                     .padding(.top, Spacing.m)
                     .padding(.bottom, Spacing.s)
 
-                viewportArea
+                EditorViewportContainer(
+                    is3DPreview: Binding(get: { is3DPreview }, set: { set3DPreview($0) }),
+                    layout: viewModel.activeLayout,
+                    background: viewModel.canvasBackground
+                ) {
+                    viewportArea
+                }
             }
 
-            EditorToolButtons(
-                layer: viewModel.activeLayer,
-                isActive: { viewModel.isActive($0) },
-                isAvailable: { viewModel.tool(for: $0) != nil },
-                onSelect: { viewModel.toggle($0) }
-            )
-            .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
-            .padding(.trailing, Self.inspectorWidth + InspectorPanelMetrics.margin * 3)
+            if !is3DPreview {
+                EditorToolButtons(
+                    layer: viewModel.activeLayer,
+                    isActive: { viewModel.isActive($0) },
+                    isAvailable: { viewModel.tool(for: $0) != nil },
+                    onSelect: { viewModel.toggle($0) }
+                )
+                .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
+                .padding(.trailing, Self.rightColumnInset)
 
-            LayoutInspectorColumn(
-                viewModel: viewModel,
-                onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
-            )
-            .padding(InspectorPanelMetrics.margin)
-            .frame(maxHeight: .infinity, alignment: .top)
+                LayoutInspectorColumn(
+                    viewModel: viewModel,
+                    onFocusIssue: { viewModel.focusIssue($0, in: canvasViewSize) }
+                )
+                .padding(InspectorPanelMetrics.margin)
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background.ignoresSafeArea())
@@ -58,9 +68,21 @@ struct LayoutEditorView: View {
         .focusedSceneValue(\.editorCommandActions, commandActions)
         .onKeyPress(keys: [.delete, .deleteForward, .macDelete]) { _ in
             // Placed on the whole editor so Delete works after a click in the side panels; a text field being edited keeps it.
-            guard !(NSApp.keyWindow?.firstResponder is NSText) else { return .ignored }
+            guard !is3DPreview, !(NSApp.keyWindow?.firstResponder is NSText) else { return .ignored }
             viewModel.deleteCurrentSelection()
             return .handled
+        }
+        .background {
+            Button("Redo") {
+                guard !is3DPreview, !(NSApp.keyWindow?.firstResponder is NSText) else { return }
+                viewModel.redo()
+            }
+            .keyboardShortcut("y", modifiers: .command)
+            .disabled(is3DPreview || !viewModel.canRedo)
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
         .confirmationDialog(groupDeleteDialogTitle, isPresented: isGroupDeletePending, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { viewModel.deleteGroupSelection() }
@@ -92,32 +114,54 @@ extension LayoutEditorView {
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world,
-            background: viewModel.canvasBackground,
-            showsAttractiveness: viewModel.showsAttractiveness
+            background: viewModel.canvasBackground
         )
     }
 
     private var commandActions: EditorCommandActions {
         let selected = viewModel.selectedObject
-        let isMovable = selected?.kind.isMovable == true
-        let isRotatable = selected?.kind.isRotatable == true
+        let isMovable = !is3DPreview && selected?.kind.isMovable == true
+        let isRotatable = !is3DPreview && selected?.kind.isRotatable == true
         return EditorCommandActions(
-            canUndo: viewModel.canUndo,
-            canRedo: viewModel.canRedo,
-            hasSelection: isMovable || viewModel.groupSelection != nil,
+            canUndo: !is3DPreview && viewModel.canUndo,
+            canRedo: !is3DPreview && viewModel.canRedo,
+            hasSelection: !is3DPreview && (isMovable || viewModel.groupSelection != nil),
+            canCopy: !is3DPreview && viewModel.canCopy,
+            canPaste: !is3DPreview && viewModel.canPaste,
             canDuplicate: isMovable,
             canRotate: isRotatable,
-            undo: { viewModel.undo() },
-            redo: { viewModel.redo() },
-            deleteSelected: { viewModel.deleteCurrentSelection() },
-            duplicateSelected: { viewModel.duplicateSelected() },
-            rotateSelected: { viewModel.rotateSelected() },
-            zoomIn: { viewModel.zoomIn(in: canvasViewSize) },
-            zoomOut: { viewModel.zoomOut(in: canvasViewSize) },
-            fitToView: { viewModel.fitToView(in: canvasViewSize) },
-            selectStructureLayer: { viewModel.selectLayer(.structure) },
-            selectBoothsLayer: { viewModel.selectLayer(.booths) }
+            undo: { guard !is3DPreview else { return }; viewModel.undo() },
+            redo: { guard !is3DPreview else { return }; viewModel.redo() },
+            copySelected: { guard !is3DPreview else { return }; viewModel.copySelected() },
+            pasteClipboard: { guard !is3DPreview else { return }; viewModel.pasteClipboard() },
+            deleteSelected: { guard !is3DPreview else { return }; viewModel.deleteCurrentSelection() },
+            duplicateSelected: { guard !is3DPreview else { return }; viewModel.duplicateSelected() },
+            rotateSelected: { guard !is3DPreview else { return }; viewModel.rotateSelected() },
+            zoomIn: { guard !is3DPreview else { return }; viewModel.zoomIn(in: canvasViewSize) },
+            zoomOut: { guard !is3DPreview else { return }; viewModel.zoomOut(in: canvasViewSize) },
+            fitToView: { guard !is3DPreview else { return }; viewModel.fitToView(in: canvasViewSize) },
+            selectStructureLayer: { guard !is3DPreview else { return }; viewModel.selectLayer(.structure) },
+            selectBoothsLayer: { guard !is3DPreview else { return }; viewModel.selectLayer(.booths) }
         )
+    }
+
+    @ViewBuilder
+    private var editorHeader: some View {
+        if is3DPreview {
+            let index = (viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0) + 1
+            Editor3DHeaderBar(layoutIndex: index, onBack: { viewModel.requestBack() })
+        } else {
+            EditorHeaderBar(viewModel: viewModel)
+        }
+    }
+
+    private func set3DPreview(_ enabled: Bool) {
+        guard enabled != is3DPreview else { return }
+        if enabled {
+            viewModel.cancelActiveTool()
+            viewModel.selectObject(nil)
+        }
+        is3DPreview = enabled
     }
 
     private var viewportArea: some View {
@@ -138,7 +182,6 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 background: $viewModel.canvasBackground,
-                showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
                 onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }
@@ -166,7 +209,6 @@ extension LayoutEditorView {
                 .padding(.trailing, Self.coveredWidth)
             }
         }
-        .clipped()
     }
 
     /// The part of the canvas not under the tool buttons and the inspector. Fitting and zooming work on this, so

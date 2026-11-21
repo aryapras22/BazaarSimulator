@@ -36,10 +36,10 @@ struct AppDialog: View {
                 content.message
                     .font(.system(size: 13))
                     .foregroundColor(Palette.textSecondary)
-                    .multilineTextAlignment(isNotice ? .center : .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: isNotice ? .center : .leading)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
 
             buttons
         }
@@ -52,11 +52,6 @@ struct AppDialog: View {
         }
         .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
         .accessibilityElement(children: .contain)
-    }
-
-    private var isNotice: Bool {
-        if case .notice = content.kind { return true }
-        return false
     }
 
     @ViewBuilder

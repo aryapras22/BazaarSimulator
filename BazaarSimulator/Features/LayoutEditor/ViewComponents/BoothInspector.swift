@@ -22,14 +22,6 @@ struct BoothInspector: View {
 
             categoryPicker
 
-            Toggle(isOn: $draft.isDisabled) {
-                Text("Disabled")
-                    .font(Typography.inspectorLabel)
-                    .foregroundStyle(Palette.textPrimary)
-            }
-            .toggleStyle(.switch)
-            .help("A disabled booth stays on the plan but is closed, so no visitor goes to it")
-
             if let groupActions {
                 groupSection(groupActions)
             }
@@ -64,9 +56,9 @@ struct BoothInspector: View {
     private var categoryPicker: some View {
         CategoryPicker(
             categories: categories,
-            title: categories.first { $0.id == draft.categoryID }?.name ?? "Unassigned",
-            isChecked: { $0.id == draft.categoryID },
-            onSelect: { draft.categoryID = $0 }
+            title: categories.first { $0.id == draft.boothType }?.name ?? "Unassigned",
+            currentChoice: draft.categoryChoice,
+            onSelect: { draft.choose($0) }
         )
     }
 
@@ -106,17 +98,14 @@ struct BoothGroupActions {
                 rotationRadians: .pi / 2
             ),
             categoryID: PreviewLayouts.sampleLegend.entries.first?.id,
+            boothType: .fnb,
             openSides: [.right, .bottom]
         )
     )
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map {
-            CategoryOption(id: $0.id, name: $0.name, color: $0.color)
-        }
     InspectorPanel(title: "Booth B-7") {
         BoothInspector(
             draft: $draft,
-            categories: options,
+            categories: CategoryOption.boothOptions,
             sizeRange: 0.5...50.0,
             groupActions: BoothGroupActions(
                 nameTitle: "Select group B · 30",

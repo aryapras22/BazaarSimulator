@@ -32,7 +32,7 @@ extension LayoutEditorViewModel {
         let dimensions = "\(DimensionInput.text(for: size.x)) × \(DimensionInput.text(for: size.y)) m"
         switch object.kind {
         case .booth:
-            let category = legend.entries.first { $0.id == object.categoryID }?.name ?? "Unassigned"
+            let category = object.boothType?.displayName ?? "Unassigned"
             return "Booth \(BoothLabelFormatter.display(object.label)) · \(category) · \(dimensions)"
         case .door:
             let direction = (object.doorFlow?.direction ?? .both).displayName

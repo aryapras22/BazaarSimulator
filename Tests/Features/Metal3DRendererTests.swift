@@ -48,6 +48,7 @@ struct Metal3DRendererTests {
         venue: SimulationVenue? = nil,
         camera: OrbitCamera? = nil,
         samples: Int = 1,
+        clearColor: MTLClearColor = Metal3DRenderer.background,
         using shared: Metal3DRenderer? = nil
     ) throws -> Picture {
         let renderer = try shared ?? #require(Metal3DRenderer(sampleCount: samples))
@@ -57,7 +58,11 @@ struct Metal3DRendererTests {
         descriptor.usage = [.renderTarget, .shaderRead]
         descriptor.storageMode = renderer.device.hasUnifiedMemory ? .shared : .managed
         let texture = try #require(renderer.device.makeTexture(descriptor: descriptor))
-        let commands = try #require(renderer.render(frame, venue: venue ?? self.venue(), camera: camera ?? topDown(), to: texture))
+        let commands = try #require(
+            renderer.render(
+                frame, venue: venue ?? self.venue(), camera: camera ?? topDown(), to: texture, clearColor: clearColor
+            )
+        )
         commands.waitUntilCompleted()
         if !renderer.device.hasUnifiedMemory {
             let sync = try #require(renderer.device.makeCommandQueue()?.makeCommandBuffer())
@@ -89,6 +94,18 @@ struct Metal3DRendererTests {
         let picture = try draw()
         #expect(near(picture.pixel(10, 10), background, 0.01))
         #expect(near(picture.pixel(120, 90), background, 0.01))
+    }
+
+    @Test("An empty venue uses the custom clear color when provided")
+    func customClearColor() throws {
+        let clearColor = Metal3DRenderer.clearColor(for: Palette.canvasBackgroundGrey)
+        let expected = SIMD3(clearColor.red, clearColor.green, clearColor.blue)
+        #expect(clearColor.alpha == 1)
+        #expect(expected.x < 0.2 && expected.y < 0.2 && expected.z < 0.25 && expected.z > expected.x)
+        let picture = try draw(clearColor: clearColor)
+        #expect(near(picture.pixel(10, 10), expected, 0.01))
+        #expect(near(picture.pixel(120, 90), expected, 0.01))
+        #expect(!near(picture.pixel(120, 90), background, 0.1))
     }
 
     @Test("A block is drawn in its color, lit from above, and not past its edges")

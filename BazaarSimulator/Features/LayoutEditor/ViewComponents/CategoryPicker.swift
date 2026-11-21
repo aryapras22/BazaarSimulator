@@ -1,24 +1,43 @@
 import SwiftUI
 
 struct CategoryPicker: View {
+    private static let helpText =
+        "Booths are Foods or Goods, entertainment entries are attractions such as a stage or "
+        + "photobooth, and Others holds information desks, other entries, and closed stands."
+
     let categories: [CategoryOption]
+    var entertainmentTypes: [EntertainmentType] = EntertainmentType.allCases
     let title: String
-    let isChecked: (CategoryOption) -> Bool
-    let onSelect: (UUID?) -> Void
+    let currentChoice: CategoryChoice?
+    let onSelect: (CategoryChoice) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("Category")
-                .font(Typography.inspectorLabel)
-                .foregroundStyle(Palette.textPrimary)
+            HStack(spacing: Spacing.xs) {
+                Text("Category")
+                    .font(Typography.inspectorLabel)
+                    .foregroundStyle(Palette.textPrimary)
+
+                Image(systemName: "info.circle")
+                    .font(Typography.caption)
+                    .foregroundStyle(Palette.textSecondary)
+                    .help(Self.helpText)
+                    .accessibilityLabel(Self.helpText)
+            }
 
             Picker("Category", selection: selection) {
                 if selection.wrappedValue == nil {
-                    Text(title).tag(CategoryOption?.none)
+                    Text(title).tag(CategoryChoice?.none)
                 }
-                ForEach(categories) { option in
-                    Text(option.name).tag(Optional(option))
+                if !categories.isEmpty {
+                    Section("Booth") {
+                        ForEach(categories) { option in
+                            Text(option.name).tag(CategoryChoice?.some(.booth(option.id)))
+                        }
+                    }
                 }
+                entertainmentSection("Entertainment", types: entertainmentTypes.filter { !$0.isInOthersSection })
+                entertainmentSection("Others", types: entertainmentTypes.filter(\.isInOthersSection))
             }
             .pickerStyle(.menu)
             .labelsHidden()
@@ -27,27 +46,65 @@ struct CategoryPicker: View {
         }
     }
 
-    private var selection: Binding<CategoryOption?> {
+    @ViewBuilder
+    private func entertainmentSection(_ title: String, types: [EntertainmentType]) -> some View {
+        if !types.isEmpty {
+            Section(title) {
+                ForEach(types, id: \.self) { type in
+                    Text(type.displayName).tag(CategoryChoice?.some(.entertainment(type)))
+                }
+            }
+        }
+    }
+
+    private var selection: Binding<CategoryChoice?> {
         Binding(
-            get: { categories.first(where: isChecked) },
-            set: { option in
-                if let option { onSelect(option.id) }
+            get: { resolvedSelection },
+            set: { choice in
+                if let choice { onSelect(choice) }
             }
         )
+    }
+
+    private var resolvedSelection: CategoryChoice? {
+        guard let currentChoice else { return nil }
+        switch currentChoice {
+        case .booth(let id):
+            return categories.contains { $0.id == id } ? currentChoice : nil
+        case .entertainment(let type):
+            return entertainmentTypes.contains(type) ? currentChoice : nil
+        }
     }
 }
 
 #Preview("Category picker") {
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map { CategoryOption(id: $0.id, name: $0.name, color: $0.color) }
+    let options = CategoryOption.boothOptions
     VStack(spacing: Spacing.l) {
         CategoryPicker(
             categories: options,
-            title: "Fashion & Beauty",
-            isChecked: { $0.id == options[2].id },
+            title: "Goods",
+            currentChoice: .booth(.goods),
             onSelect: { _ in }
         )
-        CategoryPicker(categories: options, title: "Mixed", isChecked: { _ in false }, onSelect: { _ in })
+        CategoryPicker(
+            categories: options,
+            title: "Information Desk",
+            currentChoice: .entertainment(.informationDesk),
+            onSelect: { _ in }
+        )
+        CategoryPicker(
+            categories: options,
+            title: EntertainmentType.other.displayName,
+            currentChoice: .entertainment(.other),
+            onSelect: { _ in }
+        )
+        CategoryPicker(
+            categories: options,
+            entertainmentTypes: [],
+            title: "Mixed",
+            currentChoice: nil,
+            onSelect: { _ in }
+        )
     }
     .padding()
     .frame(width: 300)

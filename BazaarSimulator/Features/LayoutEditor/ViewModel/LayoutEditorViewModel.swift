@@ -3,9 +3,12 @@ import Observation
 import simd
 
 struct CategoryOption: Identifiable, Hashable, Sendable {
-    var id: UUID?
+    var id: BoothType?
     var name: String
-    var color: LegendColor?
+
+    static let boothOptions: [CategoryOption] =
+        [CategoryOption(id: nil, name: "Unassigned")]
+        + BoothType.allCases.map { CategoryOption(id: $0, name: $0.displayName) }
 }
 
 struct DoorAdviceDisplay: Hashable, Sendable {
@@ -47,7 +50,8 @@ final class LayoutEditorViewModel {
     var dragState = CanvasDragState()
     @ObservationIgnored var activeToolHandler: (any EditorToolHandling)?
     var transform = CanvasTransform()
-    var showsAttractiveness = false
+    var clipboard: [LayoutObject] = []
+    @ObservationIgnored var clipboardPasteCount = 0
     var hasFittedTransform = false
     @ObservationIgnored var autoFitTransform: CanvasTransform?
     private(set) var issues: [LayoutIssue] = []

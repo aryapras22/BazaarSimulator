@@ -400,3 +400,131 @@ struct SavedRunPageTests {
         #expect(first.phase == .ready)
     }
 }
+
+@Suite("ProjectDraftPersistenceTests")
+@MainActor
+struct ProjectDraftPersistenceTests {
+    private func temporaryStore() -> FileSavedAnalysisStore {
+        FileSavedAnalysisStore(root: FileManager.default.temporaryDirectory
+            .appendingPathComponent("draft-persistence-tests-\(UUID().uuidString)"))
+    }
+
+    private func analysis(for layout: Layout) -> LayoutAnalysis {
+        let spot = SpotMeasurement(
+            number: 1, name: "Near B1", position: SIMD2(4, 5),
+            densitySamples: [0.2, 0.5], peopleSamples: [2, 5]
+        )
+        var measured = LayoutAnalysis(
+            layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 60, spots: [spot],
+            flowPerMinute: [2, 3], simulatedPeople: 40, totalPeople: 40
+        )
+        measured.plan = PlanFrame(origin: .zero, size: layout.sizeM)
+        return measured
+    }
+
+    @Test("Editing a layout and reopening the store restores the latest saved draft")
+    func editedDraftSurvivesRelaunch() throws {
+        let store = temporaryStore()
+        let session = ProjectSession(store: store)
+        let project = session.createProject(named: "Alpha")
+        let initialLayout = TestLayouts.hall(booths: 3)
+        let secondLayout = TestLayouts.hall(booths: 5)
+        let initialDraft = ProjectDraft(
+            name: "Alpha", legend: PreviewLayouts.sampleLegend, layouts: [initialLayout, secondLayout]
+        )
+        session.setDraft(initialDraft, for: project.id)
+        session.recordAnalysis(
+            layouts: [initialLayout, secondLayout],
+            analyses: [analysis(for: initialLayout), analysis(for: secondLayout)],
+            parameters: TestLayouts.parameters,
+            peakMinute: 660,
+            in: project.id
+        )
+
+        var edited = initialLayout
+        edited.name = "Edited Hall"
+        edited.objects.append(LayoutObject(
+            kind: .booth,
+            label: "B4",
+            placement: Placement(center: SIMD2(19, 2.5), sizeM: SIMD2(3, 2)),
+            openSides: [.bottom]
+        ))
+        session.updateLayout(edited, in: project.id)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        let restored = try #require(reopened.draft(for: project.id))
+        #expect(restored.name == "Alpha")
+        #expect(restored.legend == PreviewLayouts.sampleLegend)
+        #expect(restored.layouts == [edited, secondLayout])
+        #expect(reopened.layout(id: edited.id, in: project.id) == edited)
+    }
+
+    @Test("Deleting a project removes its persisted draft from the store")
+    func deletingProjectRemovesPersistedDraft() {
+        let store = temporaryStore()
+        let session = ProjectSession(store: store)
+        let project = session.createProject(named: "Drop")
+        let draft = ProjectDraft(name: "Drop", layouts: [TestLayouts.hall(booths: 3)])
+        session.setDraft(draft, for: project.id)
+
+        let beforeDelete = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        #expect(beforeDelete.draft(for: project.id) == draft)
+
+        session.deleteProject(id: project.id)
+        store.saveProjects([project])
+
+        let afterDelete = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        #expect(afterDelete.draft(for: project.id) == nil)
+    }
+
+    @Test("A legacy project without a draft file restores layouts from its latest saved analysis")
+    func legacyProjectFallsBackToLatestSavedAnalysis() throws {
+        let store = temporaryStore()
+        let project = ProjectSummary(name: "Legacy")
+        store.saveProjects([project])
+
+        let olderLayouts = [TestLayouts.hall(booths: 3)]
+        let latestLayouts = [TestLayouts.hall(booths: 6)]
+        let older = SavedAnalysis(
+            number: 1,
+            createdAt: Date(timeIntervalSince1970: 1_000),
+            parameters: TestLayouts.parameters,
+            layouts: olderLayouts,
+            analyses: [analysis(for: olderLayouts[0])],
+            peakMinute: 660
+        )
+        let latest = SavedAnalysis(
+            number: 2,
+            createdAt: Date(timeIntervalSince1970: 2_000),
+            parameters: TestLayouts.parameters,
+            layouts: latestLayouts,
+            analyses: [analysis(for: latestLayouts[0])],
+            peakMinute: 660
+        )
+        store.save(older, in: project.id)
+        store.save(latest, in: project.id)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        let restored = try #require(reopened.draft(for: project.id))
+        #expect(restored.name == project.name)
+        #expect(restored.layouts == latestLayouts)
+    }
+
+    @Test("Seeding mock projects on relaunch preserves an existing persisted draft")
+    func seedingMockProjectDoesNotOverwritePersistedDraft() throws {
+        let store = temporaryStore()
+        let firstSession = ProjectSession(store: store)
+        _ = AppServices(projectSession: firstSession, seedsMockProject: true)
+        let seeded = try #require(firstSession.project(named: "Annyeong Market"))
+        var edited = try #require(firstSession.draft(for: seeded.id)?.layouts.first)
+        edited.name = "Customized Annyeong"
+        edited.sizeM.x += 2
+        firstSession.updateLayout(edited, in: seeded.id)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        _ = AppServices(projectSession: reopened, seedsMockProject: true)
+
+        #expect(reopened.project(named: "Annyeong Market")?.id == seeded.id)
+        #expect(reopened.layout(id: edited.id, in: seeded.id) == edited)
+    }
+}

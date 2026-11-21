@@ -48,7 +48,7 @@ enum BoothRowPlanner {
                 rotationRadians: rotationRad
             )
             let valid = isPlacementValid(placement, in: layout)
-            planned.append(PlannedBooth(placement: placement, openSides: .bottom, isValid: valid))
+            planned.append(PlannedBooth(placement: placement, openSides: [], isValid: valid))
         }
         return BoothRowPlan(booths: planned)
     }
@@ -86,7 +86,7 @@ enum BoothRowPlanner {
                 planned.append(makePlannedBooth(
                     center: center,
                     size: SIMD2<Double>(slotWidth, slotDepth),
-                    openSides: .top,
+                    openSides: [],
                     layout: layout
                 ))
             }
@@ -97,7 +97,7 @@ enum BoothRowPlanner {
                     planned.append(makePlannedBooth(
                         center: center,
                         size: SIMD2<Double>(slotWidth, slotDepth),
-                        openSides: .bottom,
+                        openSides: [],
                         layout: layout
                     ))
                 }

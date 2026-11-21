@@ -78,11 +78,13 @@ final class AppServices {
             projectID: project.id
         )
 
-        let floorPlanFiles = importQueue.files(for: project.id).filter { $0.kind == .floorPlan }
-        let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id)?.layout }
-        let legend = importQueue.legend(for: project.id) ?? Legend()
-        let draft = ProjectDraft(name: project.name, legend: legend, layouts: layouts)
-        session.setDraft(draft, for: project.id)
+        if session.draft(for: project.id) == nil {
+            let floorPlanFiles = importQueue.files(for: project.id).filter { $0.kind == .floorPlan }
+            let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id)?.layout }
+            let legend = importQueue.legend(for: project.id) ?? Legend()
+            let draft = ProjectDraft(name: project.name, legend: legend, layouts: layouts)
+            session.setDraft(draft, for: project.id)
+        }
         session.selectProject(id: project.id)
         return project.id
     }

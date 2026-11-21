@@ -8,7 +8,6 @@ enum ObjectCatalog {
     /// The furniture the library offers. Imported tables of other models still resolve through `items`.
     static let libraryItems: [CatalogItem] = structureItems
         + furnitureItems.filter { $0.id == "table-rect-4" || $0.id == FurnitureModels.seatingBlockID }
-        + entertainmentItems.filter { $0.id == entertainmentID }
 
     static func item(_ id: String) -> CatalogItem? {
         items.first { $0.id == id }
@@ -50,7 +49,7 @@ enum ObjectCatalog {
     }
 
     private static let seatingBlockItem = CatalogItem(
-        id: FurnitureModels.seatingBlockID, name: "Seating block", category: .furniture, kind: .seating,
+        id: FurnitureModels.seatingBlockID, name: "Audience Seating", category: .furniture, kind: .seating,
         sizeM: FurnitureModels.seatingBlockSizeM, heightM: FurnitureModels.chairHeightM, footprint: .rect,
         resize: .free, placement: .point,
         keywords: ["seating", "audience", "chairs", "rows", "furniture"],
@@ -102,10 +101,10 @@ enum ObjectCatalog {
             keywords: ["wall", "structure", "perimeter"], seats: []
         ),
         CatalogItem(
-            id: "block", name: "Block", category: .structure, kind: .block,
+            id: "block", name: "Object", category: .structure, kind: .block,
             sizeM: SIMD2(2.0, 2.0), heightM: 1.2, footprint: .rect,
             resize: .free, placement: .point,
-            keywords: ["block", "concrete", "barrier", "cube"], seats: []
+            keywords: ["object", "block", "concrete", "barrier", "cube"], seats: []
         ),
         CatalogItem(
             id: columnID, name: "Column", category: .structure, kind: .block,
@@ -132,18 +131,26 @@ enum ObjectCatalog {
 nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
     case stage
     case photobooth
+    case informationDesk
     case other
+    case disabled
 
     var displayName: String {
         switch self {
         case .stage: "Stage"
         case .photobooth: "Photobooth"
+        case .informationDesk: "Information Desk"
         case .other: "Others"
+        case .disabled: "Disabled"
         }
     }
 
     var catalogID: String {
         "entertainment-\(rawValue)"
+    }
+
+    var isInOthersSection: Bool {
+        self == .informationDesk || self == .other || self == .disabled
     }
 
     /// The type chosen in the inspector. An object that never had one chosen, such as one read from a plan, carries
@@ -153,6 +160,7 @@ nonisolated enum EntertainmentType: String, CaseIterable, Hashable, Sendable {
             return chosen
         }
         let lowered = label.lowercased()
+        if lowered.contains("info") { return .informationDesk }
         if lowered.contains("photo") { return .photobooth }
         if ["competition", "lomba", "display"].contains(where: lowered.contains) { return .other }
         return .stage

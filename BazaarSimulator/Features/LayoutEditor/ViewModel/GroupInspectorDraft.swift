@@ -20,7 +20,7 @@ enum MixedValue<Value: Equatable & Sendable>: Equatable, Sendable {
 
 struct GroupInspectorDraft: Equatable, Sendable {
     let memberIDs: [UUID]
-    var category: FieldChange<LegendEntry.ID?> = .unchanged
+    var category: FieldChange<BoothType?> = .unchanged
     var widthM: FieldChange<Double> = .unchanged
     var lengthM: FieldChange<Double> = .unchanged
     var rotationDegrees: FieldChange<Int> = .unchanged
@@ -32,7 +32,7 @@ struct GroupInspectorDraft: Equatable, Sendable {
 
     func applied(to member: LayoutObject) -> LayoutObject {
         var updated = member
-        if case .set(let value) = category, member.kind.hasCategory { updated.categoryID = value }
+        if case .set(let value) = category, member.kind.hasCategory { updated.boothType = value }
         if case .set(let value) = widthM, member.kind.isResizable { updated.placement.sizeM.x = value }
         if case .set(let value) = lengthM, member.kind.isResizable { updated.placement.sizeM.y = value }
         if case .set(let value) = rotationDegrees { updated.placement.rotationDegrees = value }
@@ -41,7 +41,7 @@ struct GroupInspectorDraft: Equatable, Sendable {
 }
 
 struct GroupInspectorDisplay: Equatable, Sendable {
-    let category: MixedValue<LegendEntry.ID?>
+    let category: MixedValue<BoothType?>
     let width: MixedValue<Double>
     let length: MixedValue<Double>
     let rotation: MixedValue<Int>
@@ -50,7 +50,7 @@ struct GroupInspectorDisplay: Equatable, Sendable {
     let boothCount: Int
 
     init(
-        category: MixedValue<LegendEntry.ID?>,
+        category: MixedValue<BoothType?>,
         width: MixedValue<Double>,
         length: MixedValue<Double>,
         rotation: MixedValue<Int>,

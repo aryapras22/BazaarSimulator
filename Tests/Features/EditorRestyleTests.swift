@@ -35,7 +35,7 @@ struct EditorRestyleTests {
 
     @Test("Each tab lists its own add buttons")
     func addButtonsPerLayer() {
-        #expect(EditorAddTool.tools(for: .booths) == [.booth, .table, .entertainment])
+        #expect(EditorAddTool.tools(for: .booths) == [.booth, .chair])
         #expect(EditorAddTool.tools(for: .structure) == [.wall, .block, .door, .restrictedArea])
     }
 
@@ -52,7 +52,15 @@ struct EditorRestyleTests {
     @Test("A button of the other tab does nothing")
     func otherLayerIgnored() {
         let context = LayoutEditorViewModelTests.makeContext(layer: .structure)
-        context.viewModel.toggle(.table)
+        context.viewModel.toggle(.chair)
         #expect(context.viewModel.tool == .select)
+    }
+
+    @Test("The chair button on the Floor Plan tab places an audience seating block")
+    func toggleChairAddsSeating() {
+        let context = LayoutEditorViewModelTests.makeContext(layer: .booths)
+        context.viewModel.toggle(.chair)
+        #expect(context.viewModel.tool == .place(.catalog(FurnitureModels.seatingBlockID)))
+        #expect(context.viewModel.isActive(.chair))
     }
 }

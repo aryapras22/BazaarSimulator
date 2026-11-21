@@ -9,7 +9,7 @@ struct InspectorDraft: Sendable, Equatable {
     var heightM: Double
     var rotationDegrees: Int
     var shape: FootprintShape
-    var categoryID: LegendEntry.ID?
+    var boothType: BoothType?
     var openSides: OpenSides
     var doorDirection: DoorDirection
     var doorConnection: DoorConnection
@@ -26,7 +26,7 @@ struct InspectorDraft: Sendable, Equatable {
         self.heightM = object.heightM ?? Self.defaultHeight(for: object)
         self.rotationDegrees = object.placement.rotationDegrees
         self.shape = object.placement.shape
-        self.categoryID = object.categoryID
+        self.boothType = object.boothType
         self.openSides = object.openSides
         self.doorDirection = object.doorFlow?.direction ?? .both
         self.doorConnection = object.doorFlow?.connection ?? .hallToLobby
@@ -39,14 +39,53 @@ struct InspectorDraft: Sendable, Equatable {
         if let catalogID = object.catalogID, let item = ObjectCatalog.item(catalogID) {
             return item.heightM
         }
+        return defaultHeight(for: object.kind)
+    }
+
+    private static func defaultHeight(for kind: LayoutObjectKind) -> Double {
         let heights: [LayoutObjectKind: Double] = [
-            .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05
+            .wall: 3.0, .booth: 2.4, .door: 2.1, .block: 1.2, .closedArea: 0.05, .seating: FurnitureModels.chairHeightM
         ]
-        return heights[object.kind] ?? 3.0
+        return heights[kind] ?? 3.0
+    }
+
+    var categoryChoice: CategoryChoice {
+        switch kind {
+        case .entertainment:
+            return .entertainment(EntertainmentType.resolve(catalogID: catalogID, label: label))
+        default:
+            return .booth(boothType)
+        }
+    }
+
+    mutating func choose(_ choice: CategoryChoice) {
+        guard kind == .booth || kind == .entertainment else { return }
+        switch choice {
+        case .booth(let type):
+            if kind != .booth {
+                catalogID = nil
+                heightM = Self.defaultHeight(for: .booth)
+            }
+            kind = .booth
+            boothType = type
+            isDisabled = false
+        case .entertainment(let type):
+            if kind != .entertainment {
+                attractiveness = LayoutObjectKind.entertainment.defaultAttractiveness
+            }
+            kind = .entertainment
+            boothType = nil
+            catalogID = type.catalogID
+            isDisabled = (type == .disabled)
+            if let itemHeight = ObjectCatalog.item(type.catalogID)?.heightM {
+                heightM = itemHeight
+            }
+        }
     }
 
     func applied(to original: LayoutObject) -> LayoutObject {
         var updated = original
+        updated.kind = kind
         updated.label = label
         if kind == .door {
             updated.placement.sizeM = .init(widthM, original.placement.sizeM.y)
@@ -59,7 +98,10 @@ struct InspectorDraft: Sendable, Equatable {
         if kind.canBeRound {
             updated.placement.shape = shape
         }
-        updated.categoryID = categoryID
+        updated.boothType = boothType
+        if kind == .entertainment {
+            updated.categoryID = nil
+        }
         updated.openSides = openSides
         updated.catalogID = catalogID
         updated.attractiveness = attractiveness

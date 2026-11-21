@@ -48,7 +48,7 @@ struct OpenSidesControl: View {
             .frame(maxWidth: .infinity)
             .frame(height: 152)
 
-            Text("Orange = open · click an edge to toggle")
+            Text("Orange = closed · click an edge to toggle")
                 .font(Typography.caption)
                 .foregroundStyle(Palette.textSecondary)
         }
@@ -71,8 +71,8 @@ struct OpenSidesControl: View {
                         .frame(width: 24, height: 104)
                 }
 
-                if isOpen {
-                    Text("Open")
+                if !isOpen {
+                    Text("Closed")
                         .font(Typography.caption)
                         .foregroundStyle(Palette.highlight)
                         .offset(
@@ -120,13 +120,13 @@ private struct HorizontalEdgeLine: View {
             path.move(to: CGPoint(x: 4, y: size.height / 2))
             path.addLine(to: CGPoint(x: size.width - 4, y: size.height / 2))
             if isOpen {
-                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
-            } else {
                 context.stroke(
                     path,
                     with: .color(Palette.diagramChip),
                     style: StrokeStyle(lineWidth: 2, dash: [5, 4])
                 )
+            } else {
+                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
             }
         }
     }
@@ -141,13 +141,13 @@ private struct VerticalEdgeLine: View {
             path.move(to: CGPoint(x: size.width / 2, y: 4))
             path.addLine(to: CGPoint(x: size.width / 2, y: size.height - 4))
             if isOpen {
-                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
-            } else {
                 context.stroke(
                     path,
                     with: .color(Palette.diagramChip),
                     style: StrokeStyle(lineWidth: 2, dash: [5, 4])
                 )
+            } else {
+                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
             }
         }
     }
