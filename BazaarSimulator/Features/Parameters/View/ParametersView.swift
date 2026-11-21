@@ -24,9 +24,17 @@ struct ParametersView: View {
         }
         .environment(\.formCommitScope, commitScope)
         .padding(Spacing.xl)
-        .frame(minWidth: 860)
+        .frame(width: 860)
         .fixedSize(horizontal: false, vertical: true)
-        .background(Palette.background)
+        // gini doang bruh
+        .glassEffect(.regular, in: .rect(cornerRadius: 15))
+//        .glassEffect(
+//            .clear
+//                .tint(.black.opacity(0.55)),
+////            .regular
+////                .tint(.white.opacity(0.015)),
+//            in: .rect(cornerRadius: 15)
+        .preferredColorScheme(.dark)
     }
 
     private var divider: some View {
@@ -69,7 +77,7 @@ struct ParametersView: View {
                 DropdownField(
                     options: viewModel.catalog.bazaarTypes.map(\.id),
                     selection: $viewModel.bazaarTypeID,
-                    title: { viewModel.catalog.bazaarType(id: $0)?.name ?? $0 }
+                    title: { viewModel.bazaarTypeTitle(for: $0) }
                 )
                 .frame(width: 234)
             }
@@ -90,11 +98,12 @@ struct ParametersView: View {
             Spacer()
             Button("Cancel") { viewModel.cancel() }
                 .buttonStyle(.secondary)
+                .keyboardShortcut(.cancelAction)
             Button("Apply") {
                 commitScope.commitAll()
                 viewModel.apply()
             }
-                .buttonStyle(.primary)
+            .buttonStyle(.primary(fill: Palette.actionOrange))
         }
     }
 }
@@ -110,5 +119,7 @@ struct ParametersView: View {
     )
 
     return ParametersView(viewModel: viewModel)
+        .padding(Spacing.xl)
+        .background(Palette.background)
         .preferredColorScheme(.dark)
 }

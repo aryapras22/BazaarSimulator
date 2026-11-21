@@ -2,8 +2,21 @@ import Foundation
 
 /// The bundled visitor types and bazaar type presets.
 struct PresetCatalog: Sendable {
+    static let defaultTotalVisitors = 5000
+
     let visitorTypes: [VisitorType]
     let bazaarTypes: [BazaarTypePreset]
+    let defaultTotalVisitors: Int
+
+    init(
+        visitorTypes: [VisitorType],
+        bazaarTypes: [BazaarTypePreset],
+        defaultTotalVisitors: Int = PresetCatalog.defaultTotalVisitors
+    ) {
+        self.visitorTypes = visitorTypes
+        self.bazaarTypes = bazaarTypes
+        self.defaultTotalVisitors = defaultTotalVisitors
+    }
 
     /// Bundled data is part of the app, so a missing or broken file is a programmer error.
     static func bundled(in bundle: Bundle = .main) -> PresetCatalog {
@@ -29,12 +42,19 @@ struct PresetCatalog: Sendable {
 
     /// What a project starts with: the first bazaar type, 10:00 to 21:00, no peak hours.
     func defaultParameters() -> EventParameters {
-        let preset = bazaarTypes[0]
+        if let preset = bazaarTypes.first {
+            return EventParameters(
+                totalVisitors: defaultTotalVisitors,
+                eventHours: TimeRange(startMinute: 10 * 60, endMinute: 21 * 60),
+                bazaarTypeID: preset.id,
+                mix: mix(for: preset)
+            )
+        }
         return EventParameters(
-            totalVisitors: preset.totalVisitors,
+            totalVisitors: defaultTotalVisitors,
             eventHours: TimeRange(startMinute: 10 * 60, endMinute: 21 * 60),
-            bazaarTypeID: preset.id,
-            mix: mix(for: preset)
+            bazaarTypeID: EventParameters.customBazaarTypeID,
+            mix: VisitorMix(equalSplitOf: visitorTypes.map(\.id))
         )
     }
 }

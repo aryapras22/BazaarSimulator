@@ -141,6 +141,8 @@ final class AnalysisService: AnalysisServiceProtocol {
             }
         }
 
+        if Task.isCancelled { return [] }
+
         let previewLayoutID = prepared.first { $0.setup != nil }?.layout.id ?? layouts.first?.id
         let tracker = RunProgressAggregator(layouts: layouts, cachedLayoutIDs: cachedLayoutIDs)
 

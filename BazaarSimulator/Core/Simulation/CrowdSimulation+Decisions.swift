@@ -19,7 +19,7 @@ nonisolated extension CrowdSimulation {
             return
         }
         if !party.isGoalDriven && !party.hasWalkedTheHall {
-            // A stroller walks the whole hall: it heads for the farthest booth it has not seen, then leaves.
+            // An explorer walks the whole hall: it heads for the farthest booth it has not seen, then leaves.
             let farthest = world.booths.indices
                 .filter { world.booths[$0].isReachable(fromGate: party.gate) && !party.visited.contains($0) }
                 .max { world.booths[$0].gateCosts[party.gate] < world.booths[$1].gateCosts[party.gate] }
@@ -116,7 +116,7 @@ nonisolated extension CrowdSimulation {
         }
     }
 
-    /// A buyer can be pulled into a more attractive booth, and a stroller stops now and then at any booth in view.
+    /// A buyer can be pulled into a more attractive booth, and an explorer stops now and then at any booth in view.
     /// Entertainment draws both of them without using up the detour, the stopovers or the planned booths.
     func considerDetour(_ party: CrowdParty) {
         guard !isClosing else { return }

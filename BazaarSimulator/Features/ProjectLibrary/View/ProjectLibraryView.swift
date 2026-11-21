@@ -22,7 +22,7 @@ struct ProjectLibraryView: View {
             }
         }
         .padding(Spacing.m)
-        .frame(minWidth: 200, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 240, maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -97,7 +97,7 @@ struct ProjectLibraryView: View {
 
     private func runningRow(in project: ProjectSummary) -> some View {
         SavedAnalysisRow(
-            name: "Loading analysis…",
+            name: "Running...",
             detail: "",
             isSelected: viewModel.isRunningSelected(project),
             isRenaming: false,

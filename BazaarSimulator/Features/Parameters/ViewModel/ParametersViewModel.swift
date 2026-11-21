@@ -19,6 +19,7 @@ final class ParametersViewModel {
         projectID: UUID,
         session: any ProjectSessionProtocol,
         catalog: PresetCatalog,
+        initialParameters: EventParameters? = nil,
         onClose: @escaping () -> Void,
         onApply: (() -> Void)? = nil
     ) {
@@ -28,7 +29,7 @@ final class ParametersViewModel {
         self.onClose = onClose
         self.onApply = onApply
 
-        let stored = session.eventParameters(for: projectID) ?? catalog.defaultParameters()
+        let stored = initialParameters ?? session.eventParameters(for: projectID) ?? catalog.defaultParameters()
         draft = stored
     }
 
@@ -73,18 +74,28 @@ final class ParametersViewModel {
         set { selectBazaarType(id: newValue) }
     }
 
-    /// Picking a type reseeds the visitor total and the mix. The user can change both afterwards.
+    func bazaarTypeTitle(for id: String) -> String {
+        if id == EventParameters.customBazaarTypeID {
+            return EventParameters.customBazaarTypeName
+        }
+        return catalog.bazaarType(id: id)?.name ?? id
+    }
+
+    /// Picking a type reseeds the visitor mix without altering total visitors.
     func selectBazaarType(id: String) {
         guard let preset = catalog.bazaarType(id: id) else { return }
         draft.bazaarTypeID = id
-        draft.totalVisitors = preset.totalVisitors
         draft.mix = catalog.mix(for: preset)
     }
 
     var mix: VisitorMix { draft.mix }
 
     func setPercent(_ percent: Int, for id: String) {
+        let previousPercents = draft.mix.shares.map(\.percent)
         draft.mix.setPercent(percent, for: id)
+        if draft.mix.shares.map(\.percent) != previousPercents {
+            draft.bazaarTypeID = EventParameters.customBazaarTypeID
+        }
     }
 
     func toggleLock(for id: String) {

@@ -115,10 +115,10 @@ final class ProjectSession: ProjectSessionProtocol {
             startMinutes: parameters.eventHours.startMinute,
             endMinutes: parameters.eventHours.endMinute,
             bazaarType: parameters.bazaarTypeID,
-            socializerPercent: Double(parameters.mix.share(for: "socializer")?.percent ?? 21),
-            familyMemberPercent: Double(parameters.mix.share(for: "family")?.percent ?? 46),
-            strollerPercent: Double(parameters.mix.share(for: "stroller")?.percent ?? 33),
-            purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 0)
+            socializerPercent: Double(parameters.mix.share(for: "socializer")?.percent ?? 20),
+            familyMemberPercent: Double(parameters.mix.share(for: "family")?.percent ?? 50),
+            explorerPercent: Double(parameters.mix.share(for: "explorer")?.percent ?? 15),
+            purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 15)
         )
     }
 

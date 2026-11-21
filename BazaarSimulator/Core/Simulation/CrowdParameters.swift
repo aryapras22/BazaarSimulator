@@ -230,8 +230,8 @@ nonisolated enum CrowdParameters {
         key: "family", isFamily: true, aloneChance: 0, isGoalDriven: true, dwellSeconds: 100...239,
         plannedBooths: 3...5, foodShare: 0.4, loyalty: 3.5, sitChance: 0.6, stopovers: 0
     )
-    static let stroller = CrowdPersona(
-        key: "stroller", isFamily: false, aloneChance: 0, isGoalDriven: false, dwellSeconds: 60...150,
+    static let explorer = CrowdPersona(
+        key: "explorer", isFamily: false, aloneChance: 0, isGoalDriven: false, dwellSeconds: 60...150,
         plannedBooths: 1...2, foodShare: 0.7, loyalty: 0, sitChance: 0, stopovers: 2
     )
     static let buyer = CrowdPersona(

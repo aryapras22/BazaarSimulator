@@ -8,7 +8,8 @@ import Testing
 struct SimulationPlayerViewModelTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func makeModel(layoutCount: Int = 2, layout: LayoutID = .one) -> SimulationPlayerViewModel {
@@ -234,7 +235,8 @@ struct PlaybackClockTests {
 struct SimulationPlayerSceneTests {
     private let catalog = PresetCatalog(
         visitorTypes: TestLayouts.visitorTypes,
-        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", totalVisitors: 150, mix: ["a": 50, "b": 50])]
+        bazaarTypes: [BazaarTypePreset(id: "test", name: "Test", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 150
     )
 
     private func loadedModel() async -> SimulationPlayerViewModel {

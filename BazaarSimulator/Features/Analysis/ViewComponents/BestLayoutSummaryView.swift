@@ -52,11 +52,11 @@ struct BestLayoutSummaryView: View {
                     .frame(height: 1)
 
                 whyRow
-                    .padding(.leading, 24)
+                    .padding(.leading, 18)
                     .padding(.top, 16)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 20)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
         .frame(height: DashboardMetrics.summaryHeight)

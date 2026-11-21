@@ -58,15 +58,31 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { _ in
             isFullScreen = false
         }
-        .sheet(item: parametersRequest) { request in
-            ParametersSheet {
-                factory.makeParametersViewModel(
-                    projectID: request.projectID,
-                    onClose: { router.dismissParameters() },
-                    onApply: { router.showAnalysis(projectID: request.projectID) }
-                )
+        .overlay {
+            if let request = parametersRequest {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture { router.dismissParameters() }
+                    ParametersSheet {
+                        factory.makeParametersViewModel(
+                            projectID: request.projectID,
+                            analysisID: request.analysisID,
+                            onClose: { router.dismissParameters() },
+                            onApply: {
+                                router.showAnalysis(projectID: request.projectID)
+                                factory.makeDashboardViewModel(projectID: request.projectID).startSimulation()
+                            }
+                        )
+                    }
+                    .id(request.id)
+                    .padding(Spacing.xl)
+                    .onExitCommand { router.dismissParameters() }
+                }
+                .transition(.opacity)
             }
         }
+        .animation(.easeOut(duration: 0.15), value: parametersRequest)
         .onChange(of: router.simulationRequest) { _, request in
             guard let request else { return }
             openWindow(id: SimulationWindowContent.windowID, value: request)
@@ -98,11 +114,10 @@ struct RootView: View {
         )
     }
 
-    private var parametersRequest: Binding<ParametersRequest?> {
-        Binding(
-            get: { router.parametersProjectID.map(ParametersRequest.init) },
-            set: { if $0 == nil { router.dismissParameters() } }
-        )
+    private var parametersRequest: ParametersRequest? {
+        router.parametersProjectID.map {
+            ParametersRequest(projectID: $0, analysisID: router.parametersAnalysisID)
+        }
     }
 
     @ViewBuilder
@@ -122,11 +137,17 @@ struct RootView: View {
             }
             .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
-            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)) { close in
-                // A saved run cannot change. Applying new parameters opens the project's latest analysis, which runs again.
-                ParametersView(viewModel: factory.makeParametersViewModel(
-                    projectID: projectID, onClose: close, onApply: { router.showAnalysis(projectID: projectID) }
-                ))
+            DashboardView(
+                viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)
+            ) { close in
+                ParametersView(
+                    viewModel: factory.makeParametersViewModel(
+                        projectID: projectID,
+                        analysisID: analysisID, //only diff from dev btw
+                        onClose: close,
+                        onApply: { router.showAnalysis(projectID: projectID) }
+                    )
+                )
             }
             .id(analysisID)
         case .editor(let projectID):
@@ -136,9 +157,10 @@ struct RootView: View {
     }
 }
 
-private struct ParametersRequest: Identifiable {
+private struct ParametersRequest: Identifiable, Equatable {
     let projectID: UUID
-    var id: UUID { projectID }
+    let analysisID: UUID?
+    var id: String { "\(projectID.uuidString)-\(analysisID?.uuidString ?? "latest")" }
 }
 
 /// Builds the Parameters view model once per presentation, so a redraw of the app does not reset it.

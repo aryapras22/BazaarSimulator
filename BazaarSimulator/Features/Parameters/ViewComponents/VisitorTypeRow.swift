@@ -33,8 +33,7 @@ struct VisitorTypeRow: View {
                     get: { Double(percent) },
                     set: { onChange(Int($0.rounded())) }
                 ),
-                in: 0...100,
-                step: 1
+                in: 0...100
             )
             .tint(color)
             .disabled(!isEditable)

@@ -7,7 +7,7 @@ struct SingleLayoutSummaryView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 22) {
+            HStack(alignment: .center, spacing: 18) {
                 Image(systemName: "chart.xyaxis.line")
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(.white)
@@ -27,9 +27,9 @@ struct SingleLayoutSummaryView: View {
                         .help("See how this layout does on each result, and how it changes during the day")
                         .padding(.top, 6)
                 }
-                .frame(width: 300, alignment: .leading)
+                .frame(minWidth: 180, idealWidth: 260, maxWidth: 300, alignment: .leading)
             }
-            .padding(.trailing, 26)
+            .padding(.trailing, 20)
             .frame(maxHeight: .infinity)
 
             ForEach(summary.stats) { stat in
@@ -40,7 +40,7 @@ struct SingleLayoutSummaryView: View {
                 StatColumn(stat: stat, tint: summary.layout.chartColor)
             }
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 20)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
         .frame(height: DashboardMetrics.singleSummaryHeight)
@@ -79,7 +79,7 @@ private struct StatColumn: View {
             .frame(height: 38, alignment: .bottomLeading)
             .padding(.top, 2)
         }
-        .padding(.leading, 24)
+        .padding(.leading, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(stat.title): \(stat.text) \(stat.unit). \(stat.caption).")

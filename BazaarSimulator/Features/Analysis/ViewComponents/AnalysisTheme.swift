@@ -82,6 +82,7 @@ struct ControlButtonStyle: ButtonStyle {
     var fill: Color = .cardButtonFill
     var horizontalPadding: CGFloat = 16
     var minWidth: CGFloat? = nil
+    var allowsTruncation: Bool = false
 
     static let height: CGFloat = 29
 
@@ -90,7 +91,8 @@ struct ControlButtonStyle: ButtonStyle {
             configuration: configuration,
             fill: fill,
             horizontalPadding: horizontalPadding,
-            minWidth: minWidth
+            minWidth: minWidth,
+            allowsTruncation: allowsTruncation
         )
     }
 
@@ -99,6 +101,7 @@ struct ControlButtonStyle: ButtonStyle {
         let fill: Color
         let horizontalPadding: CGFloat
         let minWidth: CGFloat?
+        let allowsTruncation: Bool
         @State private var isHovered = false
 
         var body: some View {
@@ -107,7 +110,7 @@ struct ControlButtonStyle: ButtonStyle {
             configuration.label
                 .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
-                .fixedSize()
+                .fixedSize(horizontal: !allowsTruncation, vertical: true)
                 .foregroundStyle(.textPrimary)
                 .padding(.horizontal, horizontalPadding)
                 .frame(minWidth: minWidth, minHeight: ControlButtonStyle.height, maxHeight: ControlButtonStyle.height)

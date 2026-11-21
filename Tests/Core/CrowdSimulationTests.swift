@@ -238,7 +238,7 @@ struct CrowdSimulationTests {
         if buyerOnly {
             settings.socializerWeight = 0
             settings.familyWeight = 0
-            settings.strollerWeight = 0
+            settings.explorerWeight = 0
             settings.buyerWeight = 1
         }
         return CrowdSimulation(world: CrowdWorld(layout: layout, legend: legend), settings: settings)
@@ -293,7 +293,7 @@ extension CrowdSimulationTests {
         #expect(party.detours == CrowdParameters.maxDetours)
     }
 
-    @Test("A stopover at entertainment leaves the stroller's stopovers untouched")
+    @Test("A stopover at entertainment leaves the explorer's stopovers untouched")
     func entertainmentStopoverIsFree() {
         let simulation = makeSimulation(objects: [Self.stage(at: SIMD2(6, 2))])
         let party = spawnedParty(in: simulation)

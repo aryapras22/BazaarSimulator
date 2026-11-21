@@ -19,13 +19,25 @@ struct DashboardView<ParametersSheet: View>: View {
                 viewModel: viewModel,
                 metrics: DashboardMetrics(size: geometry.size, layoutCount: max(viewModel.layoutIDs.count, 1))
             )
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .clipped()
         }
         .underToolbarInWindow()
         .background { DashboardBackground().ignoresSafeArea() }
-        .sheet(isPresented: $viewModel.isParametersPresented) {
-            SheetHost { parametersSheet(viewModel.closeParameters) }
+        .overlay {
+            if viewModel.isParametersPresented {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.closeParameters() }
+                    SheetHost { parametersSheet(viewModel.closeParameters) }
+                        .padding(Spacing.xl)
+                        .onExitCommand { viewModel.closeParameters() }
+                }
+                .transition(.opacity)
+            }
         }
+        .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
         .sheet(isPresented: $viewModel.isInsightsPresented) {
             InsightsSheet(viewModel: viewModel)
         }
@@ -55,7 +67,7 @@ struct DashboardContent: View {
             DashboardHeader(
                 title: viewModel.title,
                 onBack: viewModel.onBack,
-                onOpenParameters: { viewModel.isParametersPresented = true }
+                onOpenParameters: { viewModel.openParameters() }
             )
 
             switch viewModel.phase {
@@ -65,7 +77,8 @@ struct DashboardContent: View {
                     showsProgress: true,
                     progress: viewModel.loadingProgress,
                     previewVenue: viewModel.previewVenue,
-                    previewFrame: viewModel.previewFrame
+                    previewFrame: viewModel.previewFrame,
+                    onCancel: { viewModel.cancelSimulation() }
                 )
             case .needsLayouts:
                 RunningNotice(text: "Add a floor plan to analyse it.", showsProgress: false)
@@ -122,6 +135,7 @@ private struct RunningNotice: View {
     var progress: Double = 0.0
     var previewVenue: SimulationVenue?
     var previewFrame: SimulationSceneFrame = SimulationSceneFrame()
+    var onCancel: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -140,23 +154,32 @@ private struct RunningNotice: View {
             }
 
             VStack(spacing: 12) {
-                if showsProgress {
-                    ProgressView()
-                }
-                Text(text)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.textPrimary)
-                if showsProgress {
-                    VStack(spacing: 6) {
-                        ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
-                            .progressViewStyle(.linear)
-                            .tint(Palette.accent)
-                            .frame(width: 240)
-                        Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundStyle(.textSecondary)
+                VStack(spacing: 12) {
+                    if showsProgress {
+                        ProgressView()
                     }
+                    Text(text)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.textPrimary)
+                    if showsProgress {
+                        VStack(spacing: 6) {
+                            ProgressView(value: min(max(progress, 0.02), 1.0), total: 1.0)
+                                .progressViewStyle(.linear)
+                                .tint(Palette.accent)
+                                .frame(width: 240)
+                            Text("\(Int((min(max(progress, 0), 1) * 100).rounded()))%")
+                                .font(.system(size: 11.5, weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(.textSecondary)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+
+                if let onCancel {
+                    Button("Cancel", action: onCancel)
+                        .buttonStyle(.secondary)
+                        .padding(.top, Spacing.xs)
                 }
             }
             .padding(.horizontal, 28)
@@ -173,7 +196,7 @@ private struct RunningNotice: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -204,9 +227,12 @@ struct DashboardHeader: View {
             Text(title)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .minimumScaleFactor(0.85)
                 .padding(.leading, 19)
 
-            Spacer()
+            Spacer(minLength: 12)
 
             if let onOpenParameters {
                 Button("Parameters", action: onOpenParameters)

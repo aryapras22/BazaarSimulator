@@ -69,13 +69,15 @@ struct LayoutComparisonCard: View {
     }
 
     private var headerBar: some View {
-        HStack(spacing: 13) {
+        HStack(spacing: 6) {
             Button { showsChoices = true } label: {
-                HStack(spacing: 9) {
+                HStack(spacing: 7) {
                     Circle()
                         .fill(layout.accent)
                         .frame(width: 10, height: 10)
+                        .layoutPriority(1)
                     Text(layout.name)
+                        .layoutPriority(1)
                     if let planName = floorPlan?.name, !planName.isEmpty {
                         Text(planName)
                             .foregroundStyle(.textMuted)
@@ -85,24 +87,25 @@ struct LayoutComparisonCard: View {
                     if !choices.isEmpty {
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 10, weight: .semibold))
-                            .padding(.leading, 3)
+                            .padding(.leading, 2)
+                            .layoutPriority(1)
                     }
                 }
             }
-            .buttonStyle(ControlButtonStyle(horizontalPadding: 11))
+            .buttonStyle(ControlButtonStyle(horizontalPadding: 10, allowsTruncation: true))
             .allowsHitTesting(!choices.isEmpty)
             .help(choices.isEmpty ? "" : "Show another of the project's layouts here")
             .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
             .accessibilityLabel("Layout selector, \(layout.name)")
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 0)
 
             if showsSimulate {
                 Button(action: onSimulate) {
                     Label("Simulate", systemImage: "play.fill")
                         .labelStyle(ControlLabelStyle())
                 }
-                .buttonStyle(ControlButtonStyle())
+                .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
                 .help("Watch visitors move through \(layout.name)")
             }
 
@@ -111,7 +114,7 @@ struct LayoutComparisonCard: View {
                     Label("Edit", systemImage: "pencil")
                         .labelStyle(ControlLabelStyle())
                 }
-                .buttonStyle(ControlButtonStyle())
+                .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
                 .help("Change \(layout.name) in the layout editor")
             }
         }
@@ -209,7 +212,8 @@ struct SeverityScaleView: View {
         Text("\(Text("Calm").fontWeight(.semibold).foregroundStyle(.textPrimary)): A - B · \(Text("Busy").fontWeight(.semibold).foregroundStyle(.textPrimary)): C - D · \(Text("Stuck").fontWeight(.semibold).foregroundStyle(.textPrimary)): E - F")
             .font(.system(size: 11))
             .foregroundStyle(.textSecondary)
-            .fixedSize()
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .frame(height: Self.labelHeight)
     }
 

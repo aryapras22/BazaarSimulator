@@ -33,9 +33,10 @@ struct SimulationRequest: Codable, Hashable, Sendable {
 @MainActor
 final class AppRouter {
     var destination: AppDestination
-    /// The project whose Parameters sheet is showing. Set when setup continues, so the parameters are
-    /// chosen before the analysis opens.
+    /// The project whose Parameters overlay is showing.
     private(set) var parametersProjectID: UUID?
+    /// When Parameters was opened from a saved run, the run whose stored values seed the form.
+    private(set) var parametersAnalysisID: UUID?
     /// Set when a layout's simulator should open. The window opens and clears it.
     private(set) var simulationRequest: SimulationRequest?
     private var editorOrigin: AppDestination?
@@ -93,11 +94,13 @@ final class AppRouter {
         simulationRequest = nil
     }
 
-    func showParameters(projectID: UUID) {
+    func showParameters(projectID: UUID, analysisID: UUID? = nil) {
         parametersProjectID = projectID
+        parametersAnalysisID = analysisID
     }
 
     func dismissParameters() {
         parametersProjectID = nil
+        parametersAnalysisID = nil
     }
 }

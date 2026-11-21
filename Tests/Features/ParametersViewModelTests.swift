@@ -11,8 +11,8 @@ struct ParametersViewModelTests {
             VisitorType(id: "c", name: "C", summary: ""), VisitorType(id: "d", name: "D", summary: "")
         ],
         bazaarTypes: [
-            BazaarTypePreset(id: "one", name: "One", totalVisitors: 5000, mix: ["a": 40, "b": 30, "c": 20, "d": 10]),
-            BazaarTypePreset(id: "two", name: "Two", totalVisitors: 800, mix: ["a": 10, "b": 10, "c": 10, "d": 70])
+            BazaarTypePreset(id: "one", name: "One", mix: ["a": 40, "b": 30, "c": 20, "d": 10]),
+            BazaarTypePreset(id: "two", name: "Two", mix: ["a": 10, "b": 10, "c": 10, "d": 70])
         ]
     )
 
@@ -32,12 +32,48 @@ struct ParametersViewModelTests {
         #expect(model.endText == "21:00")
     }
 
-    @Test("Picking a bazaar type reseeds the visitor total and the mix")
+    @Test("Picking a bazaar type reseeds the mix without changing total visitors")
     func bazaarTypeSeeds() {
         let (model, _, _) = makeModel()
+        model.commitTotalVisitors("1200")
         model.bazaarTypeID = "two"
-        #expect(model.draft.totalVisitors == 800)
+        #expect(model.draft.totalVisitors == 1200)
         #expect(model.mix.share(for: "d")?.percent == 70)
+    }
+
+    @Test("Bundled bazaar types never overwrite the visitor total")
+    func bundledBazaarTypeKeepsTotalVisitors() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let model = ParametersViewModel(
+            projectID: project.id, session: session, catalog: .bundled(), onClose: {}
+        )
+        model.commitTotalVisitors("3500")
+        model.bazaarTypeID = "culinary"
+        #expect(model.draft.totalVisitors == 3500)
+        #expect(model.mix.share(for: "socializer")?.percent == 30)
+        #expect(model.mix.share(for: "explorer")?.percent == 20)
+    }
+
+    @Test("Changing a visitor share switches bazaar type to Custom while keeping Custom out of options")
+    func changingVisitorMixSwitchesToCustom() {
+        let (model, session, id) = makeModel()
+        model.setPercent(40, for: "a")
+        #expect(model.bazaarTypeID == "one")
+
+        model.setPercent(65, for: "a")
+        #expect(model.bazaarTypeID == EventParameters.customBazaarTypeID)
+        #expect(model.bazaarTypeTitle(for: model.bazaarTypeID) == "Custom")
+        #expect(!model.catalog.bazaarTypes.map(\.id).contains(EventParameters.customBazaarTypeID))
+
+        model.apply()
+        let reopened = ParametersViewModel(projectID: id, session: session, catalog: catalog, onClose: {})
+        #expect(reopened.bazaarTypeID == EventParameters.customBazaarTypeID)
+        #expect(reopened.bazaarTypeTitle(for: reopened.bazaarTypeID) == "Custom")
+
+        reopened.bazaarTypeID = "two"
+        #expect(reopened.bazaarTypeID == "two")
+        #expect(reopened.mix.share(for: "d")?.percent == 70)
     }
 
     @Test("Event hours reject a start at or after the end, and bad text")

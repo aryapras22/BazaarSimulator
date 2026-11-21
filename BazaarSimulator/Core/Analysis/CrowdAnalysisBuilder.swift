@@ -5,7 +5,12 @@ import simd
 /// into the `LayoutAnalysis` the Analysis feature reads.
 enum CrowdAnalysisBuilder {
     /// The visitor type each persona of the crowd model stands for, by the type's id.
-    private static let personas = [("social", "socializer"), ("family", "family"), ("stroller", "stroller"), ("buyer", "buyer")]
+    private static let personas = [
+        ("social", "socializer"),
+        ("family", "family"),
+        ("explorer", "explorer"),
+        ("buyer", "buyer")
+    ]
 
     static func setup(for input: SimulationInput, grid: NavigationGrid) -> CrowdMeasuringSetup {
         let parameters = input.parameters
@@ -35,7 +40,7 @@ enum CrowdAnalysisBuilder {
             randomSeed: input.seed,
             socializerWeight: share("socializer"),
             familyWeight: share("family"),
-            strollerWeight: share("stroller"),
+            explorerWeight: share("explorer"),
             buyerWeight: share("buyer")
         )
         // A persona whose type the catalog does not have is shown as one of the types it does have.

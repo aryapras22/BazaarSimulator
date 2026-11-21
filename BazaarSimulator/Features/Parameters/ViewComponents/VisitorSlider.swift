@@ -91,8 +91,8 @@ struct VisitorSlider: View {
 private struct VisitorSliderPreview: View {
     private let catalog = PresetCatalog.bundled()
     @State private var mix = VisitorMix(shares: [
-        .init(id: "socializer", percent: 21), .init(id: "family", percent: 46),
-        .init(id: "stroller", percent: 30), .init(id: "buyer", percent: 3)
+        .init(id: "socializer", percent: 20), .init(id: "family", percent: 50),
+        .init(id: "explorer", percent: 15), .init(id: "buyer", percent: 15)
     ])
 
     var body: some View {
