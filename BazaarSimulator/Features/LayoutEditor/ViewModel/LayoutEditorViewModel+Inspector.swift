@@ -206,6 +206,30 @@ extension LayoutEditorViewModel {
         updateInspectorDraft(draft)
     }
 
+    func selectFurnitureType(_ catalogID: String) {
+        guard var draft = inspectorDraft,
+              draft.kind == .seating || draft.kind == .table else {
+            return
+        }
+        if catalogID == FurnitureModels.seatingBlockID {
+            guard draft.kind != .seating || draft.catalogID != FurnitureModels.seatingBlockID else { return }
+            draft.kind = .seating
+            draft.catalogID = FurnitureModels.seatingBlockID
+            draft.widthM = FurnitureModels.seatingBlockSizeM.x
+            draft.lengthM = FurnitureModels.seatingBlockSizeM.y
+            draft.heightM = FurnitureModels.chairHeightM
+        } else if let table = FurnitureModels.table(catalogID) {
+            draft.kind = .table
+            draft.catalogID = table.id
+            draft.widthM = table.sizeM.x
+            draft.lengthM = table.sizeM.y
+            draft.heightM = FurnitureModels.tableHeightM
+        } else {
+            return
+        }
+        updateInspectorDraft(draft)
+    }
+
     func updateInspectorDraft(_ draft: InspectorDraft) {
         inspectorDraft = draft
         applyInspectorDraft()

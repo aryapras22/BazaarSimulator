@@ -182,7 +182,7 @@ struct LayoutEditorViewModelFurnitureTests {
         #expect(viewModel.inspectorDraft?.kind == .table)
     }
 
-    @Test("The furniture Type picker lists Audience Seating before every table model, and table switching keeps working")
+    @Test("The furniture Type picker lists Audience Seating before table models, and table switching keeps working")
     func pickerOrderAndTableModelSwitch() throws {
         let expectedIDs = [FurnitureModels.seatingBlockID] + FurnitureModels.tables.map(\.id)
         let expectedNames = ["Audience Seating"] + FurnitureModels.tables.map(\.name)

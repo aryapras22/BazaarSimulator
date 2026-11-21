@@ -60,9 +60,9 @@ struct LayoutInspectorColumn: View {
                 onUseAdvice: {}
             )
         case .table:
-            TableInspector(draft: draft)
+            TableInspector(draft: draft, onSelectType: { viewModel.selectFurnitureType($0) })
         case .seating:
-            SeatingInspector(draft: draft)
+            SeatingInspector(draft: draft, onSelectType: { viewModel.selectFurnitureType($0) })
         case .wall:
             WallInspector(
                 draft: draft,
