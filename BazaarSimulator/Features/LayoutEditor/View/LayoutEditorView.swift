@@ -35,7 +35,8 @@ struct LayoutEditorView: View {
 
                 EditorViewportContainer(
                     is3DPreview: Binding(get: { is3DPreview }, set: { set3DPreview($0) }),
-                    layout: viewModel.activeLayout
+                    layout: viewModel.activeLayout,
+                    background: viewModel.canvasBackground
                 ) {
                     viewportArea
                 }

@@ -18,6 +18,7 @@ struct EditorViewportModeToggle: View {
 struct EditorViewportContainer<TwoDContent: View>: View {
     @Binding var is3DPreview: Bool
     let layout: Layout?
+    var background: CanvasBackground = .grey
     @ViewBuilder let twoDContent: () -> TwoDContent
 
     @State private var venueBuilder = Editor3DVenueBuilder()
@@ -26,7 +27,7 @@ struct EditorViewportContainer<TwoDContent: View>: View {
     var body: some View {
         Group {
             if is3DPreview {
-                Editor3DPreviewView(venue: previewVenue)
+                Editor3DPreviewView(venue: previewVenue, backgroundColor: background.fill)
             } else {
                 twoDContent()
             }
@@ -115,11 +116,12 @@ struct Editor3DHeaderBar: View {
 /// Read-only 3D preview of the active layout inside the layout editor. Supports orbit, pan, and zoom only.
 struct Editor3DPreviewView: View {
     let venue: SimulationVenue?
+    var backgroundColor: Color = Palette.canvasBackgroundGrey
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             if let venue {
-                Metal3DSceneView(venue: venue, frame: SimulationSceneFrame())
+                Metal3DSceneView(venue: venue, frame: SimulationSceneFrame(), backgroundColor: backgroundColor)
                     .accessibilityLabel("Read-only 3D layout preview")
 
                 readOnlyBadge
@@ -130,7 +132,7 @@ struct Editor3DPreviewView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Palette.background)
+        .background(backgroundColor)
     }
 
     private var readOnlyBadge: some View {
