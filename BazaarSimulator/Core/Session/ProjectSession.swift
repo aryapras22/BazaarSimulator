@@ -67,13 +67,22 @@ final class ProjectSession: ProjectSessionProtocol {
     private var savedAnalysesByProject: [UUID: [SavedAnalysis]] = [:]
     private let store: (any SavedAnalysisStoring)?
 
-    /// With a store, projects and saved analyses are read from it now and written to it as they change.
+    /// With a store, projects, drafts, and saved analyses are read from it now and written to it as they change.
     init(store: (any SavedAnalysisStoring)? = nil) {
         self.store = store
         guard let store else { return }
         projects = store.loadProjects()
         for project in projects {
-            savedAnalysesByProject[project.id] = store.loadAnalyses(for: project.id)
+            let analyses = store.loadAnalyses(for: project.id)
+            savedAnalysesByProject[project.id] = analyses
+            if let draft = store.loadDraft(for: project.id)?.resolvingBoothTypes() {
+                drafts[project.id] = draft
+                activeLayoutIDs[project.id] = draft.layouts.first?.id
+            } else if let latest = analyses.last, !latest.layouts.isEmpty {
+                let fallback = ProjectDraft(name: project.name, layouts: latest.layouts)
+                drafts[project.id] = fallback
+                activeLayoutIDs[project.id] = fallback.layouts.first?.id
+            }
         }
     }
 
@@ -138,6 +147,7 @@ final class ProjectSession: ProjectSessionProtocol {
         analysingProjects.remove(id)
         savedAnalysesByProject[id] = nil
         store?.saveProjects(projects)
+        store?.deleteDraft(for: id)
         store?.deleteAnalyses(of: id)
     }
 
@@ -147,6 +157,7 @@ final class ProjectSession: ProjectSessionProtocol {
 
     func setDraft(_ draft: ProjectDraft, for projectID: UUID) {
         drafts[projectID] = draft
+        store?.saveDraft(draft, for: projectID)
         if let activeID = activeLayoutIDs[projectID],
            draft.layouts.contains(where: { $0.id == activeID }) {
             return
@@ -165,6 +176,7 @@ final class ProjectSession: ProjectSessionProtocol {
         }
         currentDraft.layouts[index] = layout
         drafts[projectID] = currentDraft
+        store?.saveDraft(currentDraft, for: projectID)
     }
 
     func activeLayoutID(for projectID: UUID) -> Layout.ID? {

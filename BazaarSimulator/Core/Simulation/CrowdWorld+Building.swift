@@ -27,9 +27,8 @@ extension CrowdWorld {
     }
 
     func buildBoothsAndTables(legend: Legend) {
-        let foodCategories = Set(legend.entries.filter { $0.type == .fnb }.map(\.id))
         for object in layout.objects where object.kind == .booth || object.kind == .entertainment {
-            let isFood = object.categoryID.map(foodCategories.contains) ?? false
+            let isFood = object.kind == .booth && object.boothType == .fnb
             let size = object.placement.sizeM
             let pull = min(5, max(1, object.attractiveness))
             if pull >= CrowdParameters.windowShoppingMinPull {

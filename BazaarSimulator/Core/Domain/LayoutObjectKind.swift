@@ -15,7 +15,7 @@ enum LayoutObjectKind: String, Codable, CaseIterable, Hashable, Sendable {
         case .booth: return "Booth"
         case .door: return "Door"
         case .wall: return "Wall"
-        case .block: return "Block"
+        case .block: return "Object"
         case .closedArea: return "Restricted area"
         case .table: return "Table"
         case .seating: return "Seating"

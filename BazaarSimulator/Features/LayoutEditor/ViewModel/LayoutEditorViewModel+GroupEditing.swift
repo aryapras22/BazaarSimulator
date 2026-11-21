@@ -28,7 +28,7 @@ extension LayoutEditorViewModel {
         let members = selectedGroupMembers.map { groupDraft?.applied(to: $0) ?? $0 }
         let boothCount = members.filter { $0.kind == .booth }.count
         return GroupInspectorDisplay(
-            category: MixedValue(members.map(\.categoryID)),
+            category: MixedValue(members.map(\.boothType)),
             width: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.x) }),
             length: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.y) }),
             rotation: MixedValue(members.map(\.placement.rotationDegrees)),

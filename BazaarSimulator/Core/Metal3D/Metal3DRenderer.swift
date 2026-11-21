@@ -182,7 +182,8 @@ final class Metal3DRenderer {
         venue: SimulationVenue,
         camera: OrbitCamera,
         to target: MTLTexture,
-        present drawable: MTLDrawable? = nil
+        present drawable: MTLDrawable? = nil,
+        clearColor: MTLClearColor = Metal3DRenderer.background
     ) -> MTLCommandBuffer? {
         loadVenue(venue)
         drawCallCount = 0
@@ -198,7 +199,7 @@ final class Metal3DRenderer {
             pass.colorAttachments[0].storeAction = .store
         }
         pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = Self.background
+        pass.colorAttachments[0].clearColor = clearColor
         pass.depthAttachment.texture = attachment(&depthTexture, like: target, format: Self.depthFormat)
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1
@@ -387,6 +388,14 @@ final class Metal3DRenderer {
         texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0, withBytes: bytes, bytesPerRow: width * 4)
         labelTextures[text] = texture
         return texture
+    }
+
+    static func clearColor(for color: Color) -> MTLClearColor {
+        let converted = NSColor(color).usingColorSpace(.sRGB) ?? .white
+        return MTLClearColor(
+            red: Double(converted.redComponent), green: Double(converted.greenComponent),
+            blue: Double(converted.blueComponent), alpha: Double(converted.alphaComponent)
+        )
     }
 
     private static func rgba(_ color: Color) -> SIMD4<Float> {

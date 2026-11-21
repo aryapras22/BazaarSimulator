@@ -17,12 +17,14 @@ struct GroupInspector: View {
 
             CategoryPicker(
                 categories: categories,
+                entertainmentTypes: [],
                 title: categoryTitle,
-                isChecked: { option in
-                    if case .shared(let shared) = display.category { return shared == option.id }
-                    return false
-                },
-                onSelect: { draft.category = .set($0) }
+                currentChoice: currentCategoryChoice,
+                onSelect: { choice in
+                    if case .booth(let id) = choice {
+                        draft.category = .set(id)
+                    }
+                }
             )
 
             GroupSizeFields(draft: $draft, width: display.width, length: display.length, range: sizeRange)
@@ -34,6 +36,11 @@ struct GroupInspector: View {
                     .buttonStyle(SecondaryButtonStyle())
             }
         }
+    }
+
+    private var currentCategoryChoice: CategoryChoice? {
+        guard case .shared(let shared) = display.category else { return nil }
+        return .booth(shared)
     }
 
     private var categoryTitle: String {
@@ -55,14 +62,13 @@ struct GroupInspector: View {
 #Preview("Group inspector: shared and mixed values") {
     @Previewable @State var sharedDraft = GroupInspectorDraft(memberIDs: [])
     @Previewable @State var mixedDraft = GroupInspectorDraft(memberIDs: [])
-    let options = [CategoryOption(id: nil, name: "Unassigned", color: nil)] +
-        PreviewLayouts.sampleLegend.entries.map { CategoryOption(id: $0.id, name: $0.name, color: $0.color) }
+    let options = CategoryOption.boothOptions
     HStack(alignment: .top, spacing: Spacing.l) {
         InspectorPanel(title: "Group A · 112 booths") {
             GroupInspector(
                 draft: $sharedDraft,
                 display: GroupInspectorDisplay(
-                    category: .shared(options[1].id),
+                    category: .shared(.fnb),
                     width: .shared(2.5),
                     length: .shared(2.5),
                     rotation: .shared(0),

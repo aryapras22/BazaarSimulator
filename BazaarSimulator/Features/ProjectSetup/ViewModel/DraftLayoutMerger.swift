@@ -2,7 +2,8 @@ import Foundation
 
 enum DraftLayoutMerger {
     /// Keeps the existing (possibly edited) layout for every imported layout whose ID is unchanged,
-    /// adds new ones, drops ones whose file was removed, and clears category IDs not in the legend.
+    /// adds new ones, drops ones whose file was removed, clears category IDs not in the legend,
+    /// and fills missing booth types from the legend.
     static func merged(imported: [Layout], existing: [Layout], legend: Legend) -> [Layout] {
         let validCategoryIDs = Set(legend.entries.map(\.id))
         return imported.map { importedLayout in
@@ -12,7 +13,7 @@ enum DraftLayoutMerger {
                     layout.objects[index].categoryID = nil
                 }
             }
-            return layout
+            return layout.resolvingBoothTypes(from: legend)
         }
     }
 }

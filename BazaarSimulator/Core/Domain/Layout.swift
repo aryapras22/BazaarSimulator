@@ -46,3 +46,26 @@ struct Layout: Codable, Identifiable, Hashable, Sendable {
         self.source = source
     }
 }
+
+extension Layout {
+    /// Fills `boothType` from `legend` on booths that have a `categoryID` but no saved `boothType`.
+    func resolvingBoothTypes(from legend: Legend) -> Layout {
+        let typesByID = Dictionary(
+            uniqueKeysWithValues: legend.entries.compactMap { entry in
+                entry.type.map { (entry.id, $0) }
+            }
+        )
+        guard !typesByID.isEmpty else { return self }
+        var updated = self
+        for index in updated.objects.indices {
+            guard updated.objects[index].kind == .booth,
+                  updated.objects[index].boothType == nil,
+                  let categoryID = updated.objects[index].categoryID,
+                  let type = typesByID[categoryID] else {
+                continue
+            }
+            updated.objects[index].boothType = type
+        }
+        return updated
+    }
+}

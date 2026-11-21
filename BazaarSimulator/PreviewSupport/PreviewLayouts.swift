@@ -5,15 +5,18 @@ enum PreviewLayouts {
     static let sampleLegend = Legend(entries: [
         LegendEntry(
             name: "Food & Beverage",
-            color: LegendColor(red: 222 / 255.0, green: 42 / 255.0, blue: 42 / 255.0)
+            color: LegendColor(red: 222 / 255.0, green: 42 / 255.0, blue: 42 / 255.0),
+            type: .fnb
         ),
         LegendEntry(
             name: "Fashion & Beauty",
-            color: LegendColor(red: 42 / 255.0, green: 222 / 255.0, blue: 49 / 255.0)
+            color: LegendColor(red: 42 / 255.0, green: 222 / 255.0, blue: 49 / 255.0),
+            type: .goods
         ),
         LegendEntry(
             name: "Lifestyle & Hobbies",
-            color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0)
+            color: LegendColor(red: 244 / 255.0, green: 220 / 255.0, blue: 48 / 255.0),
+            type: .goods
         )
     ])
 
@@ -83,6 +86,7 @@ enum PreviewLayouts {
                 label: "B7",
                 placement: Placement(center: SIMD2<Double>(8, 8), sizeM: SIMD2<Double>(2, 2)),
                 categoryID: foodID,
+                boothType: .fnb,
                 openSides: [.right, .bottom]
             ),
             LayoutObject(

@@ -177,9 +177,9 @@ struct ExtractedLayoutMapperTests {
         #expect(layout.objects.map(\.label) == ["U1", "A2", "U2"])
     }
 
-    @Test("A booth named after its ID prefix takes the category with its legend colour")
+    @Test("A booth named after its ID prefix takes the category and boothType of its legend colour")
     func categoryByColour() throws {
-        let fashion = LegendEntry(name: "FASHION ZONE", color: LegendColor(red: 0, green: 0, blue: 1))
+        let fashion = LegendEntry(name: "FASHION ZONE", color: LegendColor(red: 0, green: 0, blue: 1), type: .goods)
         let legend = Legend(entries: [food, fashion])
         let plan = DetectedPlan(items: [
             item("Booth F", [0, 0, 20, 20], id: "F1", rgb: [0, 0, 255]),
@@ -190,7 +190,9 @@ struct ExtractedLayoutMapperTests {
 
         #expect(layout.objects[0].kind == .booth)
         #expect(layout.objects[0].categoryID == fashion.id)
+        #expect(layout.objects[0].boothType == .goods)
         #expect(layout.objects[1].kind == .block)
+        #expect(layout.objects[1].boothType == nil)
     }
 
     @Test("Symbol classes map to walls, doors, blocks and markers according to the symbol mapping")

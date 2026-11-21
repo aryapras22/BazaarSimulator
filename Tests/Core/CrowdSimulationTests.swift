@@ -78,14 +78,13 @@ struct CrowdSimulationTests {
 
     @Test("A planned food buyer picks food booths in proportion to pull")
     func plansFollowFoodShareAndPull() {
-        let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
         var strong = Self.booth(at: SIMD2(6, 6))
-        strong.categoryID = food.id
+        strong.boothType = .fnb
         strong.attractiveness = 4
         var weak = Self.booth(at: SIMD2(12, 6))
-        weak.categoryID = food.id
+        weak.boothType = .fnb
         weak.attractiveness = 1
-        let simulation = makeSimulation(objects: [strong, weak], legend: Legend(entries: [food]), buyerOnly: true)
+        let simulation = makeSimulation(objects: [strong, weak], buyerOnly: true)
 
         var strongFirst = 0
         for _ in 0..<400 {
@@ -150,15 +149,14 @@ struct CrowdSimulationTests {
 
     @Test("A food buyer who wants to sit walks to a free table after the booth")
     func foodBuyerGoesToTable() {
-        let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
         var booth = Self.booth(at: SIMD2(6, 6))
-        booth.categoryID = food.id
+        booth.boothType = .fnb
         let table = LayoutObject(
             kind: .table,
             label: "Table",
             placement: Placement(center: SIMD2(12, 6), sizeM: SIMD2(1, 1))
         )
-        let simulation = makeSimulation(objects: [booth, table], legend: Legend(entries: [food]))
+        let simulation = makeSimulation(objects: [booth, table])
         let party = spawnedParty(in: simulation)
         party.target = .booth(0, .planned)
         simulation.startVisit(party, booth: 0)
@@ -412,16 +410,15 @@ extension CrowdSimulationTests {
 
     @Test("A party sits on the chairs of a seating group big enough for it")
     func partySitsOnSeatingBlock() throws {
-        let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
         var booth = Self.booth(at: SIMD2(6, 6))
-        booth.categoryID = food.id
+        booth.boothType = .fnb
         let seating = LayoutObject(
             kind: .seating,
             label: "Seats",
             placement: Placement(center: SIMD2(12, 6), sizeM: SIMD2(2.5, 0.5)),
             catalogID: FurnitureModels.seatingBlockID
         )
-        let simulation = makeSimulation(objects: [booth, seating], legend: Legend(entries: [food]))
+        let simulation = makeSimulation(objects: [booth, seating])
         let party = spawnedParty(in: simulation)
         party.target = .booth(0, .planned)
         simulation.startVisit(party, booth: 0)

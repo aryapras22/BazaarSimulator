@@ -202,11 +202,13 @@ enum ExtractedLayoutMapper {
             )
         }
         unlabeled += item.id == nil ? 1 : 0
+        let matched = category(for: item, in: legend)
         return LayoutObject(
             kind: .booth,
             label: item.id ?? "U\(unlabeled)",
             placement: placement,
-            categoryID: category(for: item, in: legend)?.id,
+            categoryID: matched?.id,
+            boothType: matched?.type,
             reviewState: .detected
         )
     }

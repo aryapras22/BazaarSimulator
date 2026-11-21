@@ -27,7 +27,7 @@ struct BoothTemplatesTests {
 
         let template = BoothTemplates.standard(layouts: [annyeong, beyond])
 
-        #expect(template.categoryID == nil)
+        #expect(template.boothType == nil)
         #expect(template.sizeKey == BoothSizeKey(shortM: 2.5, longM: 2.5))
         #expect(template.count == 94 + 18 + 21 + 4 + 120 + 8 + 9 + 3 + 18 + 30 + 26 + 3 + 9)
     }

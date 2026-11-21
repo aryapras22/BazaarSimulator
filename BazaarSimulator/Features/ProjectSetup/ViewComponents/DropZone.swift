@@ -67,7 +67,7 @@ struct DropZone: View {
 }
 
 #Preview("Disabled") {
-    DropZone(hint: "PDF · one page per layout · up to 6", onChoose: {}, onDrop: { _ in })
+    DropZone(hint: "PDF · one page per layout", onChoose: {}, onDrop: { _ in })
         .padding()
         .frame(width: 600)
         .background(Palette.surfaceDisabled)

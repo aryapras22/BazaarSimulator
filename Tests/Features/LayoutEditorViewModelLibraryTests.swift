@@ -101,7 +101,7 @@ struct LayoutEditorViewModelLibraryTests {
         #expect(CatalogCategory.furniture.layer == .booths)
     }
 
-    @Test("Template placement creates booth with size, category, inferred sides, and label N1")
+    @Test("Template placement creates booth with size, category, closed sides, and label N1")
     func templatePlacementCreatesBooth() throws {
         let viewModel = Self.makeViewModel()
         let templateRow = try #require(viewModel.libraryRows.first { $0.category == .project })
@@ -121,10 +121,10 @@ struct LayoutEditorViewModelLibraryTests {
         let placedBooth = try #require(viewModel.activeLayout?.objects.first { $0.id == selectedID })
         #expect(placedBooth.label == "N1")
         #expect(placedBooth.kind == .booth)
-        #expect(!placedBooth.openSides.isEmpty)
+        #expect(placedBooth.openSides == [])
 
         if case .template(let template) = templateRow.source {
-            #expect(placedBooth.categoryID == template.categoryID)
+            #expect(placedBooth.boothType == template.boothType)
             #expect(placedBooth.placement.sizeM.x == template.sizeKey.shortM)
             #expect(placedBooth.placement.sizeM.y == template.sizeKey.longM)
         }

@@ -5,9 +5,14 @@ import SwiftUI
 struct Metal3DSceneView: NSViewRepresentable {
     let venue: SimulationVenue
     let frame: SimulationSceneFrame
+    var backgroundColor: Color?
+
+    private var resolvedClearColor: MTLClearColor {
+        backgroundColor.map(Metal3DRenderer.clearColor(for:)) ?? Metal3DRenderer.background
+    }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(venue: venue)
+        Coordinator(venue: venue, clearColor: resolvedClearColor)
     }
 
     func makeNSView(context: Context) -> OrbitView {
@@ -15,7 +20,7 @@ struct Metal3DSceneView: NSViewRepresentable {
         let view = OrbitView(frame: .zero, device: coordinator.renderer?.device)
         view.delegate = coordinator
         view.colorPixelFormat = Metal3DRenderer.colorFormat
-        view.clearColor = Metal3DRenderer.background
+        view.clearColor = resolvedClearColor
         view.framebufferOnly = true
         // The view redraws when SwiftUI hands it a new frame or the camera moves, so a paused simulation
         // costs nothing.
@@ -37,7 +42,9 @@ struct Metal3DSceneView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: OrbitView, context: Context) {
-        context.coordinator.update(venue: venue, frame: frame)
+        let clearColor = resolvedClearColor
+        view.clearColor = clearColor
+        context.coordinator.update(venue: venue, frame: frame, clearColor: clearColor)
         view.setNeedsDisplay(view.bounds)
     }
 
@@ -102,26 +109,31 @@ struct Metal3DSceneView: NSViewRepresentable {
         var camera: OrbitCamera
         private var venue: SimulationVenue
         private var frame = SimulationSceneFrame()
+        private var clearColor: MTLClearColor
 
-        init(venue: SimulationVenue) {
+        init(venue: SimulationVenue, clearColor: MTLClearColor = Metal3DRenderer.background) {
             self.venue = venue
+            self.clearColor = clearColor
             camera = .framing(plan: venue.plan)
         }
 
         /// A different venue starts with the camera framed on it.
-        func update(venue: SimulationVenue, frame: SimulationSceneFrame) {
+        func update(venue: SimulationVenue, frame: SimulationSceneFrame, clearColor: MTLClearColor) {
             if venue.id != self.venue.id {
                 camera = .framing(plan: venue.plan)
             }
             self.venue = venue
             self.frame = frame
+            self.clearColor = clearColor
         }
 
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
         func draw(in view: MTKView) {
             guard let renderer, let drawable = view.currentDrawable else { return }
-            renderer.render(frame, venue: venue, camera: camera, to: drawable.texture, present: drawable)
+            renderer.render(
+                frame, venue: venue, camera: camera, to: drawable.texture, present: drawable, clearColor: clearColor
+            )
         }
     }
 }

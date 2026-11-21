@@ -34,6 +34,7 @@ final class DashboardViewModel {
     private(set) var isRunning = false
     private(set) var simulationResult: SimulationResult?
     private(set) var previewVenue: SimulationVenue?
+    private var previewLayout: Layout?
     private(set) var previewFrame = SimulationSceneFrame()
     private(set) var loadingProgress: Double = 0.0
     private var runTask: Task<Void, Never>?
@@ -216,11 +217,15 @@ final class DashboardViewModel {
             phase = .needsLayouts(count: count)
         case .ready(let result):
             guard run == runCount, !Task.isCancelled else { return }
+            if currentInputs != inputs {
+                await runSimulation()
+                return
+            }
             loadingProgress = 1.0
             simulationResult = result
             shownInputs = inputs
             phase = .ready
-            record(result)
+            record(result, parameters: inputs.parameters)
         case .cancelled:
             break
         }
@@ -232,12 +237,14 @@ final class DashboardViewModel {
         let targetLayout = (targetLayoutID.flatMap { id in layouts.first { $0.id == id } }) ?? layouts.first
         guard let targetLayout else {
             previewVenue = nil
+            previewLayout = nil
             return
         }
-        if previewVenue?.id != targetLayout.id {
+        if previewVenue == nil || previewLayout != targetLayout {
             let grid = NavigationGrid(layout: targetLayout)
+            previewLayout = targetLayout
             previewVenue = SimulationVenue(
-                id: targetLayout.id,
+                id: UUID(),
                 blocks: VenueGeometry.blocks(for: targetLayout),
                 plan: grid.plan,
                 attractions: VenueGeometry.attractions(in: targetLayout),
@@ -253,7 +260,7 @@ final class DashboardViewModel {
         guard phase == .loading, run == runCount else { return }
         loadingProgress = max(loadingProgress, progress)
         guard !visitors.isEmpty else { return }
-        if previewVenue?.id != layoutID {
+        if previewLayout?.id != layoutID {
             preparePreviewVenue(for: layoutID)
         }
         var frame = SimulationSceneFrame()
@@ -301,13 +308,13 @@ final class DashboardViewModel {
     }
 
     /// Keeps a finished analysis as the next saved run in the sidebar.
-    private func record(_ result: SimulationResult) {
+    private func record(_ result: SimulationResult, parameters: EventParameters) {
         let ordered = LayoutID.allCases.filter { result.layouts[$0] != nil }
         let layouts = ordered.compactMap { result.layouts[$0] }
         let analyses = ordered.compactMap { result.analyses[$0] }
         guard !ordered.isEmpty, analyses.count == ordered.count else { return }
         session.recordAnalysis(
-            layouts: layouts, analyses: analyses, parameters: currentParameters,
+            layouts: layouts, analyses: analyses, parameters: parameters,
             peakMinute: result.schedule.peakMinute, in: projectID
         )
     }

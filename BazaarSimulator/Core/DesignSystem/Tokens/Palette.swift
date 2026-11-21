@@ -35,11 +35,16 @@ enum Palette {
     static let canvasGridLineGrey = Color(hex: 0x3A434F)
     static let canvasBackgroundWhite = Color(hex: 0xFFFFFF)
     static let canvasGridLineWhite = Color(hex: 0xDCE3EC)
-    static let attractivenessLow = Color(hex: 0xBFD9F2)
-    static let attractivenessMid = Color(hex: 0xFFE08A)
-    static let attractivenessHigh = Color(hex: 0xE59A2E)
+    static let attractivenessSteps: [Color] = [
+        Color(hex: 0xFCAD6B),
+        Color(hex: 0xFD8D3B),
+        Color(hex: 0xF2680F),
+        Color(hex: 0xD84704),
+        Color(hex: 0x8C2C04)
+    ]
     static let canvasFloor = Color(hex: 0xFBFCFE)
     static let canvasLine = Color(hex: 0x1F4E86)
+    static let canvasLabelOnDark = Color(hex: 0xFFFFFF)
     static let canvasGridOnFloor = Color(hex: 0x1F4E86, alpha: 0.10)
     static let canvasGridOnFloorMajor = Color(hex: 0x1F4E86, alpha: 0.18)
     static let canvasHatch = Color(hex: 0x1F4E86, alpha: 0.35)
@@ -81,6 +86,20 @@ enum Palette {
     static let scenePillar = Color(hex: 0xCBD5E1)
     static let scenePlant = Color(hex: 0x22C55E)
     static let sceneSign = Color(hex: 0x3B82F6)
+
+    static let heatLow = Color(hex: 0x70D364)
+    static let heatMedium = Color(hex: 0xEFE810)
+    static let heatOrange = Color(hex: 0xFB7E07)
+    static let heatHigh = Color(hex: 0xF82D04)
+    static let spotGlow = Color(hex: 0xFF2D2D)
+}
+
+extension ShapeStyle where Self == Color {
+    static var heatLow: Color { Palette.heatLow }
+    static var heatMedium: Color { Palette.heatMedium }
+    static var heatOrange: Color { Palette.heatOrange }
+    static var heatHigh: Color { Palette.heatHigh }
+    static var spotGlow: Color { Palette.spotGlow }
 }
 
 extension Color {

@@ -31,8 +31,8 @@ enum BoothRenderer {
             fillColor = Palette.canvasSelection
             strokeColor = Palette.canvasLine
         } else {
-            if state.booth.isDisabled {
-                fillColor = Palette.canvasBoothFill.opacity(0.35)
+            if DisabledObjectIndicator.isDisabled(state.booth) {
+                fillColor = DisabledObjectIndicator.mutedFill
             } else if state.attractiveness == .heat {
                 fillColor = AttractivenessScale.color(for: state.booth.attractiveness)
             } else {
@@ -42,6 +42,12 @@ enum BoothRenderer {
         }
 
         context.fill(path, with: .color(fillColor))
+
+        if DisabledObjectIndicator.isDisabled(state.booth) {
+            DisabledObjectIndicator.drawOverlay(
+                for: state.booth.placement, isSelected: state.isSelected, in: &context, transform: transform
+            )
+        }
 
         drawOpenSideStrips(of: state.booth, blockedSides: state.blockedSides, in: &context, transform: transform)
 
@@ -66,7 +72,10 @@ enum BoothRenderer {
 
         if transform.scale >= 10.0 {
             let centerView = transform.toView(state.booth.placement.center)
-            let labelColor = state.isSelected ? Color.white : strokeColor
+            let isDarkFill = !DisabledObjectIndicator.isDisabled(state.booth)
+                && state.attractiveness == .heat
+                && AttractivenessScale.isDarkStep(for: state.booth.attractiveness)
+            let labelColor = (state.isSelected || isDarkFill) ? Palette.canvasLabelOnDark : strokeColor
             let text = Text(state.displayLabel)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)
@@ -79,19 +88,9 @@ enum BoothRenderer {
         in context: inout GraphicsContext,
         transform: CanvasTransform
     ) {
-        guard state.attractiveness != .hidden, transform.scale >= 5.0 else { return }
+        guard state.attractiveness == .dot, transform.scale >= 5.0 else { return }
         let placement = state.booth.placement
         let value = state.booth.attractiveness
-        if state.attractiveness == .heat {
-            guard transform.scale >= 16.0 else { return }
-            let cornerLocal = SIMD2<Double>(placement.sizeM.x / 2.0, placement.sizeM.y / 2.0)
-            let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
-            let text = Text(DimensionInput.text(for: value))
-                .font(Typography.canvasLabel(scaledBy: transform.scale))
-                .foregroundStyle(state.isSelected ? Color.white : Palette.canvasLine)
-            context.draw(text, at: CGPoint(x: corner.x - 3, y: corner.y - 2), anchor: .bottomTrailing)
-            return
-        }
         guard abs(value - AttractivenessScale.defaultValue) > 0.001 else { return }
         let cornerLocal = SIMD2<Double>(-placement.sizeM.x / 2.0, -placement.sizeM.y / 2.0)
         let corner = transform.toView(LayoutGeometry.toWorld(local: cornerLocal, in: placement))
@@ -101,7 +100,7 @@ enum BoothRenderer {
         context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
-    /// Booths and entertainment both mark their open sides, red where something blocks them.
+    /// Booths and entertainment mark closed sides in orange and blocked open sides in red.
     static func drawOpenSideStrips(
         of object: LayoutObject,
         blockedSides: OpenSides,
@@ -114,7 +113,16 @@ enum BoothRenderer {
         let depth = min(stripThicknessM, min(placement.sizeM.x, placement.sizeM.y) * 0.25)
         let halfDepth = depth / 2.0
 
-        for side in OpenSides.ordered where object.openSides.contains(side) {
+        for side in OpenSides.ordered {
+            let stripColor: Color
+            if !object.openSides.contains(side) {
+                stripColor = Palette.canvasOpenSide
+            } else if blockedSides.contains(side) {
+                stripColor = Palette.canvasIssue
+            } else {
+                continue
+            }
+
             let localCenter: SIMD2<Double>
             let stripSize: SIMD2<Double>
             if side == .top {
@@ -140,8 +148,6 @@ enum BoothRenderer {
                 for: LayoutGeometry.corners(of: stripPlacement),
                 transform: transform
             )
-            let isBlocked = blockedSides.contains(side)
-            let stripColor = isBlocked ? Palette.canvasIssue : Palette.canvasOpenSide
             context.fill(stripPath, with: .color(stripColor))
         }
     }

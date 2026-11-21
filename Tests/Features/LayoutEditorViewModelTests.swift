@@ -110,19 +110,18 @@ struct LayoutEditorViewModelTests {
         #expect(duplicated.placement.center == booth.placement.center + SIMD2<Double>(1.0, 1.0))
     }
 
-    @Test("Add Booth Here adds an unassigned 2 x 2 booth with inferred open sides")
-    func addBoothHereAddsUnassignedBoothWithInferredSides() throws {
+    @Test("Add Booth Here adds an unassigned 2 x 2 booth with all sides closed")
+    func addBoothHereAddsUnassignedBoothWithClosedSides() throws {
         let context = Self.makeContext()
 
         context.viewModel.addObject(kind: .booth, at: SIMD2<Double>(20.1, 10.1))
 
         let added = try #require(context.viewModel.selectedObject)
-        let layout = try #require(context.viewModel.activeLayout)
         #expect(added.kind == .booth)
         #expect(added.categoryID == nil)
         #expect(added.placement.sizeM == SIMD2<Double>(2.0, 2.0))
         #expect(added.placement.center == SIMD2<Double>(20.0, 10.0))
-        #expect(added.openSides == OpenSideInference.defaultSide(for: added, in: layout))
+        #expect(added.openSides == [])
     }
 
     @Test("Hovering does not refresh issues")
@@ -298,5 +297,55 @@ extension LayoutEditorViewModelTests {
         viewModel.selectBooths([])
         #expect(viewModel.selectionID == nil)
         #expect(viewModel.groupSelection == nil)
+    }
+
+    @Test("Booth library template row starts with all sides closed")
+    func boothLibraryTemplateRowHasAllSidesClosed() throws {
+        let context = Self.makeContext()
+        let templateRow = try #require(context.viewModel.libraryRows.first { $0.category == .project })
+
+        #expect(templateRow.openSides == [])
+    }
+
+    @Test("Committing a booth template placement starts with all sides closed")
+    func commitTemplatePlacementStartsWithClosedSides() throws {
+        let context = Self.makeContext()
+        let templateRow = try #require(context.viewModel.libraryRows.first { $0.category == .project })
+        context.viewModel.startPlacing(templateRow)
+        context.viewModel.updatePlacementPreview(at: SIMD2<Double>(20, 10), free: false)
+
+        context.viewModel.commitPlacement(keepTool: false)
+
+        let placed = try #require(context.viewModel.selectedObject)
+        #expect(placed.kind == .booth)
+        #expect(placed.openSides == [])
+    }
+
+    @Test("Dropping a booth template from the library starts with all sides closed")
+    func dropTemplatePlacementStartsWithClosedSides() throws {
+        let context = Self.makeContext()
+        let templateRow = try #require(context.viewModel.libraryRows.first { $0.category == .project })
+
+        context.viewModel.placeLibraryItem(id: templateRow.id, at: SIMD2<Double>(20, 10))
+
+        let placed = try #require(context.viewModel.selectedObject)
+        #expect(placed.kind == .booth)
+        #expect(placed.openSides == [])
+    }
+
+    @Test("Placing a booth template with PlaceTool starts with all sides closed")
+    func placeToolTemplateStartsWithClosedSides() throws {
+        let context = Self.makeContext()
+        let templateRow = try #require(context.viewModel.libraryRows.first { $0.category == .project })
+        context.viewModel.startPlacing(templateRow)
+        let event = CanvasPointerEvent(worldPoint: SIMD2<Double>(20, 10))
+
+        context.viewModel.handlePointerMove(event)
+        context.viewModel.handlePointerPress(event)
+        context.viewModel.handlePointerRelease(event)
+
+        let placed = try #require(context.viewModel.selectedObject)
+        #expect(placed.kind == .booth)
+        #expect(placed.openSides == [])
     }
 }

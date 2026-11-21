@@ -36,7 +36,7 @@ struct BoothRowPlannerTests {
         #expect(plan.booths.count == 4)
         #expect(plan.validCount == 4)
         #expect(plan.skippedCount == 0)
-        #expect(plan.booths.allSatisfy { $0.openSides == .bottom })
+        #expect(plan.booths.allSatisfy { $0.openSides == [] })
     }
 
     @Test("A run that does not divide evenly drops the remainder")
@@ -101,9 +101,8 @@ struct BoothRowPlannerTests {
         )
 
         #expect(plan.booths.count >= 8)
-        let topFacing = plan.booths.filter { $0.openSides == .top }
-        let bottomFacing = plan.booths.filter { $0.openSides == .bottom }
-        #expect(!topFacing.isEmpty)
-        #expect(!bottomFacing.isEmpty)
+        let rowYs = Set(plan.booths.map(\.placement.center.y)).sorted()
+        #expect(rowYs == [3.25, 5.75, 10.25, 12.75])
+        #expect(plan.booths.allSatisfy { $0.openSides == [] })
     }
 }

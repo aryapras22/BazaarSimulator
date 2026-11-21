@@ -1,10 +1,13 @@
 import Foundation
 import os
 
-/// Where projects and their saved analyses are kept between launches.
+/// Where projects, drafts, and their saved analyses are kept between launches.
 protocol SavedAnalysisStoring: Sendable {
     func loadProjects() -> [ProjectSummary]
     func saveProjects(_ projects: [ProjectSummary])
+    func loadDraft(for projectID: UUID) -> ProjectDraft?
+    func saveDraft(_ draft: ProjectDraft, for projectID: UUID)
+    func deleteDraft(for projectID: UUID)
     func loadAnalyses(for projectID: UUID) -> [SavedAnalysis]
     func save(_ analysis: SavedAnalysis, in projectID: UUID)
     func delete(analysisID: UUID, in projectID: UUID)
@@ -12,8 +15,8 @@ protocol SavedAnalysisStoring: Sendable {
     func deleteAnalyses(of projectID: UUID)
 }
 
-/// One JSON file per saved analysis, in a folder per project:
-/// `<root>/Projects.json` and `<root>/Analyses/<project id>/<analysis id>.json`.
+/// One JSON file per project draft and per saved analysis:
+/// `<root>/Projects.json`, `<root>/Drafts/<project id>.json`, and `<root>/Analyses/<project id>/<analysis id>.json`.
 /// Files are small, so writes finish before the call returns. Nothing is lost if the app quits right after a save.
 final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
     private let root: URL
@@ -33,6 +36,11 @@ final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
 
     private var projectsFile: URL { root.appendingPathComponent("Projects.json") }
 
+    private func draftFile(for projectID: UUID) -> URL {
+        root.appendingPathComponent("Drafts", isDirectory: true)
+            .appendingPathComponent("\(projectID.uuidString).json")
+    }
+
     private func folder(for projectID: UUID) -> URL {
         root.appendingPathComponent("Analyses", isDirectory: true)
             .appendingPathComponent(projectID.uuidString, isDirectory: true)
@@ -45,6 +53,20 @@ final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
     func saveProjects(_ projects: [ProjectSummary]) {
         let file = projectsFile
         queue.sync { write(projects, to: file) }
+    }
+
+    func loadDraft(for projectID: UUID) -> ProjectDraft? {
+        queue.sync { read(ProjectDraft.self, from: draftFile(for: projectID)) }
+    }
+
+    func saveDraft(_ draft: ProjectDraft, for projectID: UUID) {
+        let file = draftFile(for: projectID)
+        queue.sync { write(draft, to: file) }
+    }
+
+    func deleteDraft(for projectID: UUID) {
+        let file = draftFile(for: projectID)
+        queue.sync { try? FileManager.default.removeItem(at: file) }
     }
 
     func loadAnalyses(for projectID: UUID) -> [SavedAnalysis] {

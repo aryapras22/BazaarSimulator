@@ -3,7 +3,14 @@ import simd
 
 struct WallDrawing: Equatable, Sendable {
     var points: [SIMD2<Double>] = []
+    var previousPoint: SIMD2<Double>?
     var typedLength: String = ""
+
+    init(points: [SIMD2<Double>] = [], previousPoint: SIMD2<Double>? = nil, typedLength: String = "") {
+        self.points = points
+        self.previousPoint = previousPoint
+        self.typedLength = typedLength
+    }
 
     static func snappedPoint(
         _ pointer: SIMD2<Double>,

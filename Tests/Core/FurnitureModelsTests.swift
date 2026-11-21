@@ -71,4 +71,26 @@ struct FurnitureModelsTests {
 
         #expect(FurnitureModels.tables.contains { $0.id == fit.model.id })
     }
+
+    @Test("Audience seating seat count equals rows times seats per row")
+    func audienceSeatingRowsTimesSeatsPerRow() {
+        let rows = 5
+        let seatsPerRow = 7
+        let size = SIMD2(
+            Double(seatsPerRow) * FurnitureModels.seatPitchM,
+            Double(rows) * FurnitureModels.seatPitchM
+        )
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "Audience",
+            placement: Placement(center: SIMD2(10, 10), sizeM: size, rotationRadians: .pi / 4),
+            catalogID: FurnitureModels.seatingBlockID,
+            heightM: FurnitureModels.chairHeightM
+        )
+
+        #expect(FurnitureModels.seatsAlong(size.x) == seatsPerRow)
+        #expect(FurnitureModels.seatsAlong(size.y) == rows)
+        #expect(FurnitureModels.gridOffsets(for: size).count == rows * seatsPerRow)
+        #expect(FurnitureModels.chairs(of: seating).count == rows * seatsPerRow)
+    }
 }

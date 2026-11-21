@@ -18,7 +18,7 @@ struct LayoutEditorViewModelFurnitureTests {
         return nil
     }
 
-    @Test("The Booths library offers the 4-seat table, the seating block and the entertainment object")
+    @Test("The Booths library offers the 4-seat table and the seating block")
     func libraryOffersStandardModels() {
         let context = LayoutEditorViewModelTests.makeContext()
         context.viewModel.selectLayer(.booths)
@@ -26,8 +26,7 @@ struct LayoutEditorViewModelFurnitureTests {
 
         #expect(rows.map(\.id) == ["table-rect-4", FurnitureModels.seatingBlockID])
         #expect(rows.allSatisfy { !$0.seats.isEmpty })
-        let entertainment = context.viewModel.libraryRows.filter { $0.category == .entertainment }
-        #expect(entertainment.map(\.id) == [ObjectCatalog.entertainmentID])
+        #expect(!context.viewModel.libraryRows.contains { $0.category == .entertainment })
         context.viewModel.selectLayer(.structure)
         #expect(!context.viewModel.libraryRows.contains { $0.category == .furniture })
     }
@@ -112,7 +111,100 @@ struct LayoutEditorViewModelFurnitureTests {
         )
         var draft = GroupInspectorDraft(memberIDs: [table.id])
         draft.widthM = .set(3)
-        draft.category = .set(UUID())
+        draft.category = .set(.goods)
         #expect(draft.applied(to: table) == table)
+    }
+
+    @Test("Switching audience seating to a table model updates it in place and undo restores the seating block")
+    func seatingToTableAndUndo() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
+        let spot = try #require(freeSpot(for: .seating, size: FurnitureModels.seatingBlockSizeM, in: context.layout))
+
+        viewModel.placeLibraryItem(id: FurnitureModels.seatingBlockID, at: spot)
+        viewModel.rotateSelected()
+        let seating = try #require(viewModel.selectedObject)
+        let targetModel = try #require(FurnitureModels.table("table-round-6"))
+
+        viewModel.selectFurnitureType(targetModel.id)
+
+        let converted = try #require(viewModel.activeLayout?.objects.first { $0.id == seating.id })
+        #expect(converted.id == seating.id)
+        #expect(converted.kind == .table)
+        #expect(converted.catalogID == targetModel.id)
+        #expect(converted.placement.sizeM == targetModel.sizeM)
+        #expect(converted.placement.center == seating.placement.center)
+        #expect(converted.placement.rotationDegrees == seating.placement.rotationDegrees)
+        #expect(viewModel.inspectorDraft?.kind == .table)
+
+        viewModel.undo()
+
+        let restored = try #require(viewModel.activeLayout?.objects.first { $0.id == seating.id })
+        #expect(restored.kind == .seating)
+        #expect(restored.catalogID == FurnitureModels.seatingBlockID)
+        #expect(restored.placement.sizeM == FurnitureModels.seatingBlockSizeM)
+        #expect(restored.placement.center == seating.placement.center)
+        #expect(restored.placement.rotationDegrees == seating.placement.rotationDegrees)
+        #expect(viewModel.inspectorDraft?.kind == .seating)
+    }
+
+    @Test("Switching a table to audience seating turns it into a seating block in place and can be undone")
+    func tableToSeatingAndUndo() throws {
+        let context = LayoutEditorViewModelTests.makeContext()
+        let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
+        let spot = try #require(freeSpot(for: .seating, size: FurnitureModels.seatingBlockSizeM, in: context.layout))
+
+        viewModel.placeLibraryItem(id: "table-rect-4", at: spot)
+        viewModel.rotateSelected()
+        let table = try #require(viewModel.selectedObject)
+
+        viewModel.selectFurnitureType(FurnitureModels.seatingBlockID)
+
+        let converted = try #require(viewModel.activeLayout?.objects.first { $0.id == table.id })
+        #expect(converted.id == table.id)
+        #expect(converted.kind == .seating)
+        #expect(converted.catalogID == FurnitureModels.seatingBlockID)
+        #expect(converted.placement.sizeM == FurnitureModels.seatingBlockSizeM)
+        #expect(converted.placement.center == table.placement.center)
+        #expect(converted.placement.rotationDegrees == table.placement.rotationDegrees)
+        #expect(viewModel.inspectorDraft?.kind == .seating)
+
+        viewModel.undo()
+
+        let restored = try #require(viewModel.activeLayout?.objects.first { $0.id == table.id })
+        #expect(restored.kind == .table)
+        #expect(restored.catalogID == "table-rect-4")
+        #expect(restored.placement.sizeM == table.placement.sizeM)
+        #expect(restored.placement.center == table.placement.center)
+        #expect(restored.placement.rotationDegrees == table.placement.rotationDegrees)
+        #expect(viewModel.inspectorDraft?.kind == .table)
+    }
+
+    @Test("The furniture Type picker lists Audience Seating before table models, and table switching keeps working")
+    func pickerOrderAndTableModelSwitch() throws {
+        let expectedIDs = [FurnitureModels.seatingBlockID] + FurnitureModels.tables.map(\.id)
+        let expectedNames = ["Audience Seating"] + FurnitureModels.tables.map(\.name)
+        #expect(FurnitureTypePicker.options.map(\.id) == expectedIDs)
+        #expect(FurnitureTypePicker.options.map(\.name) == expectedNames)
+
+        let context = LayoutEditorViewModelTests.makeContext()
+        let viewModel = context.viewModel
+        viewModel.selectLayer(.booths)
+        let spot = try #require(freeSpot(for: .table, size: SIMD2(1.8, 1.8), in: context.layout))
+
+        viewModel.placeLibraryItem(id: "table-rect-4", at: spot)
+        let original = try #require(viewModel.selectedObject)
+        let nextModel = try #require(FurnitureModels.table("table-round-8"))
+
+        viewModel.selectFurnitureType(nextModel.id)
+
+        let switched = try #require(viewModel.activeLayout?.objects.first { $0.id == original.id })
+        #expect(switched.kind == .table)
+        #expect(switched.catalogID == nextModel.id)
+        #expect(switched.placement.sizeM == nextModel.sizeM)
+        #expect(switched.placement.center == original.placement.center)
+        #expect(switched.placement.rotationDegrees == original.placement.rotationDegrees)
     }
 }

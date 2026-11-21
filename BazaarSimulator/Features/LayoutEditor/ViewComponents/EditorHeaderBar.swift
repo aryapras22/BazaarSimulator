@@ -25,7 +25,7 @@ struct EditorHeaderBar: View {
                 roundButton("arrow.uturn.backward", label: "Undo", help: "Undo (⌘Z)", enabled: viewModel.canUndo) {
                     viewModel.undo()
                 }
-                roundButton("arrow.uturn.forward", label: "Redo", help: "Redo (⇧⌘Z)", enabled: viewModel.canRedo) {
+                roundButton("arrow.uturn.forward", label: "Redo", help: "Redo (⇧⌘Z / ⌘Y)", enabled: viewModel.canRedo) {
                     viewModel.redo()
                 }
             }
@@ -140,7 +140,7 @@ struct EditorHeaderBar: View {
         case .place(let source):
             switch source {
             case .template(let template):
-                let name = viewModel.legend.entries.first { $0.id == template.categoryID }?.name ?? "Booth"
+                let name = template.boothType?.displayName ?? "Booth"
                 return "Placing \(name) booth · Esc to stop"
             case .catalog(let itemID):
                 let name = ObjectCatalog.item(itemID)?.name ?? "item"

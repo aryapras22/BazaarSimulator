@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One color of the legend: its swatch, its name, the category the booths of that color belong to, and a trash can.
-/// Foods, Goods and Others are all offered.
+/// Only Foods and Goods are offered; an entry with neither is unassigned.
 struct LegendEntryRow: View {
     let name: String
     let color: Color

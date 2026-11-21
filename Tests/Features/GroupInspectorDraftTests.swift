@@ -5,34 +5,31 @@ import Testing
 
 @Suite
 struct GroupInspectorDraftTests {
-    private func booth(_ label: String, category: UUID? = nil, center: SIMD2<Double> = .zero) -> LayoutObject {
+    private func booth(_ label: String, boothType: BoothType? = nil, center: SIMD2<Double> = .zero) -> LayoutObject {
         LayoutObject(
             kind: .booth,
             label: label,
             placement: Placement(center: center, sizeM: SIMD2<Double>(2.5, 2.5)),
-            categoryID: category
+            boothType: boothType
         )
     }
 
-    @Test("Members with different categories show Mixed, equal ones show the shared value")
+    @Test("Members with different booth types show Mixed, equal ones show the shared value")
     func mixedAndSharedValues() {
-        let fashion = UUID()
-
-        #expect(MixedValue([fashion, UUID()]) == .mixed)
-        #expect(MixedValue([fashion, fashion]) == .shared(fashion))
+        #expect(MixedValue<BoothType?>([.fnb, .goods]) == .mixed)
+        #expect(MixedValue<BoothType?>([.goods, .goods]) == .shared(.goods))
     }
 
     @Test("Changing only the category leaves sizes and rotations untouched")
     func categoryChangeLeavesGeometry() {
-        let target = UUID()
         var rotated = booth("A1")
         rotated.placement.rotationDegrees = 90
         var draft = GroupInspectorDraft(memberIDs: [rotated.id])
-        draft.category = .set(target)
+        draft.category = .set(.goods)
 
         let updated = draft.applied(to: rotated)
 
-        #expect(updated.categoryID == target)
+        #expect(updated.boothType == .goods)
         #expect(updated.placement.sizeM == rotated.placement.sizeM)
         #expect(updated.placement.rotationDegrees == 90)
     }

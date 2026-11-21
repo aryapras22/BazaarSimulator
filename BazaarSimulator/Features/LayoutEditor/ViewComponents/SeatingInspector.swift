@@ -4,6 +4,7 @@ import SwiftUI
 struct SeatingInspector: View {
     @Binding var draft: InspectorDraft
     var titleIssues: [String] = []
+    let onSelectType: (String) -> Void
 
     private static let seatRange = 1...60
 
@@ -25,13 +26,10 @@ struct SeatingInspector: View {
         VStack(alignment: .leading, spacing: Spacing.l) {
             TitleIssues(issues: titleIssues)
 
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                Text("Label")
-                    .font(Typography.inspectorLabel)
-                    .foregroundStyle(Palette.textPrimary)
-                TextField("Label", text: $draft.label)
-                    .textFieldStyle(FieldOnSurfaceStyle())
-            }
+            FurnitureTypePicker(
+                selectedID: FurnitureModels.seatingBlockID,
+                onSelect: onSelectType
+            )
 
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Stepper("Rows: \(rows.wrappedValue)", value: rows, in: Self.seatRange)

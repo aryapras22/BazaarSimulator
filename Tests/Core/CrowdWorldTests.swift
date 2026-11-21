@@ -73,19 +73,16 @@ struct CrowdWorldTests {
         #expect(!field.costs[world.cell(at: SIMD2(10, 15))].isFinite)
     }
 
-    @Test("Booth type and pull come from the legend and attractiveness")
+    @Test("Booth type and pull come from boothType and attractiveness")
     func boothTypeAndPull() {
-        let food = LegendEntry(name: "Food", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
-        let goods = LegendEntry(name: "Goods", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
         var foodBooth = Self.booth(at: SIMD2(6, 6))
-        foodBooth.categoryID = food.id
+        foodBooth.boothType = .fnb
         foodBooth.attractiveness = 9
         var goodsBooth = Self.booth(at: SIMD2(12, 6), size: SIMD2(1, 1))
-        goodsBooth.categoryID = goods.id
+        goodsBooth.boothType = .goods
 
         let world = CrowdWorld(
-            layout: Self.floorLayout(objects: [foodBooth, goodsBooth]),
-            legend: Legend(entries: [food, goods])
+            layout: Self.floorLayout(objects: [foodBooth, goodsBooth])
         )
 
         #expect(world.booths[0].isFood)

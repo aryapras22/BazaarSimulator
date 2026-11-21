@@ -87,15 +87,14 @@ final class PlaceTool: EditorToolHandling {
         case .template(let template):
             let objectID = UUID()
             let label = LayoutObjectNaming.nextLabel(for: .booth, in: context.layout)
-            var booth = LayoutObject(
+            let booth = LayoutObject(
                 id: objectID,
                 kind: .booth,
                 label: label,
                 placement: candidate.placement,
-                categoryID: template.categoryID,
+                boothType: template.boothType,
                 heightM: BoothShape.panelHeightM
             )
-            booth.openSides = OpenSideInference.defaultSide(for: booth, in: context.layout)
             context.applyEdit(.insert(booth, index: context.layout.objects.count))
             context.selectObject(objectID)
 
