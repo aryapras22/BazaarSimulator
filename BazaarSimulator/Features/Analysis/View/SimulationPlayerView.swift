@@ -66,13 +66,18 @@ struct SimulationPlayerView: View {
                 .ignoresSafeArea()
                 .overlay(alignment: .top) { topOverlay(topInset: topInset) }
                 .overlay(alignment: .topLeading) {
-                    SimulationInfoPanel(
-                        layoutName: viewModel.layoutID.name,
-                        visitorsInside: viewModel.visitorsInside(at: time),
-                        mode: viewModel.mode,
-                        visitorTypes: viewModel.visitorTypes,
-                        tenantTypes: viewModel.tenantTypes
-                    )
+                    VStack(alignment: .leading, spacing: Spacing.m) {
+                        SimulationInfoPanel(
+                            layoutName: viewModel.layoutID.name,
+                            visitorsInside: viewModel.visitorsInside(at: time),
+                            mode: viewModel.mode,
+                            visitorTypes: viewModel.visitorTypes
+                        )
+
+                        if !viewModel.tenantTypes.isEmpty {
+                            SimulationTenantLegendPanel(tenantTypes: viewModel.tenantTypes)
+                        }
+                    }
                     .padding(.leading, Spacing.l)
                     .padding(.top, topInset + 58)
                 }

@@ -7,7 +7,6 @@ struct SimulationInfoPanel: View {
     let visitorsInside: Int
     let mode: SimulationMode
     let visitorTypes: [VisitorType]
-    var tenantTypes: [TenantLegendItem] = []
 
     private static let inset: CGFloat = 16
 
@@ -70,29 +69,6 @@ struct SimulationInfoPanel: View {
                 }
             }
             .padding(.top, 8)
-
-            if !tenantTypes.isEmpty {
-                Text("Tenant types")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.textSecondary)
-                    .padding(.top, 16)
-
-                VStack(alignment: .leading, spacing: 7) {
-                    ForEach(tenantTypes) { tenant in
-                        HStack(spacing: 10.5) {
-                            Circle()
-                                .fill(tenant.color)
-                                .frame(width: 13, height: 13)
-                            Text(tenant.name)
-                                .font(.system(size: 12.25, weight: .bold))
-                                .foregroundStyle(.textPrimary)
-                                .lineLimit(1)
-                        }
-                        .frame(height: 18, alignment: .leading)
-                    }
-                }
-                .padding(.top, 8)
-            }
         }
         .padding(.horizontal, Self.inset)
         .padding(.top, 16.5)
@@ -131,7 +107,9 @@ struct SimulationInfoPanel: View {
             SeverityScaleView(labelBelow: true, cellWidth: 40, barHeight: 26, barRadius: 8, labelSpacing: 5, letterSize: 11.5)
 
             Button {
-                showsGradeRanges.toggle()
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
+                    showsGradeRanges.toggle()
+                }
             } label: {
                 HStack(spacing: 4) {
                     Text(showsGradeRanges ? "Hide what the grades mean" : "What do the grades mean?")
@@ -188,6 +166,44 @@ struct SimulationInfoPanel: View {
                 .fixedSize()
         }
         .frame(width: 141.8, height: 18, alignment: .leading)
+    }
+}
+
+/// Separate floating card below `SimulationInfoPanel` listing each tenant category and its booth color.
+struct SimulationTenantLegendPanel: View {
+    let tenantTypes: [TenantLegendItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Tenant types")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.textSecondary)
+
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(tenantTypes) { tenant in
+                    HStack(spacing: 10.5) {
+                        Circle()
+                            .fill(tenant.color)
+                            .frame(width: 13, height: 13)
+                        Text(tenant.name)
+                            .font(.system(size: 12.25, weight: .bold))
+                            .foregroundStyle(.textPrimary)
+                            .lineLimit(1)
+                    }
+                    .frame(height: 18, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .frame(width: SimulationInfoPanel.width, alignment: .leading)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+            shape
+                .fill(Color(hex: 0x2E405C))
+                .overlay { shape.strokeBorder(Color(hex: 0x4A5D78).opacity(0.8), lineWidth: 1) }
+                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+        }
     }
 }
 
