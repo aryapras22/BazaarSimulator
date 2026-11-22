@@ -61,7 +61,6 @@ struct SimulationPlayerView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
         }
-        .onAppear { if !reduceMotion { clock.play() } }
     }
 
     @ViewBuilder
