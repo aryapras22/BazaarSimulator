@@ -253,9 +253,9 @@ struct DashboardLayoutTests {
         let items = VisitorSliderItem.items(for: PresetCatalog.bundled().visitorTypes)
         let expected: [(String, UInt)] = [
             ("Socializer", 0x0A80E1),
-            ("Family Member", 0x13B6C7),
+            ("Family", 0x13B6C7),
             ("Explorer", 0xDA8133),
-            ("Purpose Buyer", 0xBD34D4)
+            ("Shopper", 0xBD34D4)
         ]
 
         #expect(items.map(\.name) == expected.map(\.0))

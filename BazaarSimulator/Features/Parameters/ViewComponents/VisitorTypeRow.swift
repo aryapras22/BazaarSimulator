@@ -59,7 +59,7 @@ struct VisitorTypeRow: View {
 
 #Preview("Normal") {
     VisitorTypeRow(
-        name: "Socializer", summary: "Wanders and stops to chat",
+        name: "Socializer", summary: "Hangs out and stays longer",
         color: Palette.visitorSeries1, percent: 40, isLocked: false, isEditable: true,
         onChange: { _ in }, onToggleLock: {}
     )
@@ -70,7 +70,7 @@ struct VisitorTypeRow: View {
 
 #Preview("Locked") {
     VisitorTypeRow(
-        name: "Purpose Buyer", summary: "Heads straight to planned stops and leaves quickly",
+        name: "Shopper", summary: "Buys quickly and directly",
         color: Palette.visitorSeries4, percent: 25, isLocked: true, isEditable: false,
         onChange: { _ in }, onToggleLock: {}
     )
