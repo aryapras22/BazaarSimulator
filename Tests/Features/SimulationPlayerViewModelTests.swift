@@ -342,6 +342,11 @@ struct SimulationPlayerSceneTests {
         }
     }
 
+    @Test("Simulation modes expose Congestion Spots, Crowd Level, and Walking Routes tabs")
+    func modeTitles() {
+        #expect(SimulationMode.allCases.map(\.title) == ["Congestion Spots", "Crowd Level", "Walking Routes"])
+    }
+
     @Test("Tenant categories receive distinct colors for the legend and booths")
     func tenantColorsDifferentiateCategories() {
         let fnb = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)

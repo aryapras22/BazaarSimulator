@@ -8,7 +8,7 @@ enum SimulationMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .congestion: "Stuck Spots"
+        case .congestion: "Congestion Spots"
         case .density: "Crowd Level"
         case .footfall: "Walking Routes"
         }
