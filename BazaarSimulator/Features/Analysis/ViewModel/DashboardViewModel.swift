@@ -30,8 +30,6 @@ final class DashboardViewModel {
     var tab: AnalysisTab = .congestionPoints
     var isParametersPresented: Bool = false
     var isInsightsPresented: Bool = false
-    /// Insights or Parameters is open over the window.
-    var isCoveredByModal: Bool { isInsightsPresented || isParametersPresented }
     private(set) var phase: Phase = .loading
     private(set) var isRunning = false
     private(set) var simulationResult: SimulationResult?

@@ -6,7 +6,6 @@ struct RootView: View {
     @State private var factory: ProjectScreenFactory
     @State private var libraryViewModel: ProjectLibraryViewModel
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @Environment(\.openWindow) private var openWindow
     @State private var isFullScreen = false
 
     init(services: AppServices? = nil) {
@@ -19,7 +18,7 @@ struct RootView: View {
         _factory = State(initialValue: factory)
         _libraryViewModel = State(initialValue: factory.makeLibraryViewModel())
         switch initialDestination {
-        case .editor:
+        case .editor, .simulation:
             _columnVisibility = State(initialValue: .detailOnly)
         default:
             _columnVisibility = State(initialValue: .all)
@@ -40,17 +39,16 @@ struct RootView: View {
         }
         // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
         .frame(minWidth: 1280, minHeight: 800)
-        // Insights and Parameters cover the whole window, so the window is blurred behind them, the sidebar too.
-        .blur(radius: analysisViewModel?.isCoveredByModal == true ? 14 : 0)
+        // Insights covers the whole window, so the window is blurred behind it, the sidebar too.
+        .blur(radius: analysisViewModel?.isInsightsPresented == true ? 14 : 0)
         .appDialog(deletionDialog)
         .appBackground()
         .overlay {
             if let analysisViewModel {
                 InsightsOverlay(viewModel: analysisViewModel)
-                parametersOverlay(for: analysisViewModel)
             }
         }
-        .animation(.easeOut(duration: 0.15), value: analysisViewModel?.isCoveredByModal)
+        .animation(.easeOut(duration: 0.15), value: analysisViewModel?.isInsightsPresented)
         .preferredColorScheme(.dark)
         // In full screen the toolbar, and the sidebar button in it, stays showing like in a window. The window's own
         // buttons appear only when the pointer goes to the top left, as in Notes.
@@ -67,23 +65,34 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { _ in
             isFullScreen = false
         }
-        .sheet(item: parametersRequest) { request in
-            ParametersSheet {
-                factory.makeParametersViewModel(
-                    projectID: request.projectID,
-                    onClose: { router.dismissParameters() },
-                    onApply: { router.showAnalysis(projectID: request.projectID) }
-                )
+        .overlay {
+            if let request = parametersRequest {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture { router.dismissParameters() }
+                    ParametersSheet {
+                        factory.makeParametersViewModel(
+                            projectID: request.projectID,
+                            analysisID: request.analysisID,
+                            onClose: { router.dismissParameters() },
+                            onApply: {
+                                router.showAnalysis(projectID: request.projectID)
+                                factory.makeDashboardViewModel(projectID: request.projectID).startSimulation()
+                            }
+                        )
+                    }
+                    .id(request.id)
+                    .padding(Spacing.xl)
+                    .onExitCommand { router.dismissParameters() }
+                }
+                .transition(.opacity)
             }
         }
-        .onChange(of: router.simulationRequest) { _, request in
-            guard let request else { return }
-            openWindow(id: SimulationWindowContent.windowID, value: request)
-            router.clearSimulationRequest()
-        }
+        .animation(.easeOut(duration: 0.15), value: parametersRequest)
         .onChange(of: router.destination) { _, newDestination in
             switch newDestination {
-            case .editor:
+            case .editor, .simulation:
                 columnVisibility = .detailOnly
             default:
                 columnVisibility = .all
@@ -91,7 +100,7 @@ struct RootView: View {
         }
     }
 
-    /// The page on screen, when it is an analysis. Its Insights and Parameters are drawn over the whole window from here.
+    /// The page on screen, when it is an analysis. Its Insights are drawn over the whole window from here.
     private var analysisViewModel: DashboardViewModel? {
         switch router.destination {
         case .analysis(let projectID), .review(let projectID):
@@ -100,27 +109,6 @@ struct RootView: View {
             factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)
         default:
             nil
-        }
-    }
-
-    /// The Parameters of the analysis on screen, as glass over the window. Applying them on a saved run, which cannot
-    /// change, opens the project's latest analysis, which runs again.
-    @ViewBuilder
-    private func parametersOverlay(for dashboard: DashboardViewModel) -> some View {
-        if dashboard.isParametersPresented {
-            GlassModal(maxWidth: 940) { _ in
-                ParametersSheet(showsBackground: false) {
-                    switch router.destination {
-                    case .savedAnalysis(let projectID, _):
-                        factory.makeParametersViewModel(
-                            projectID: projectID, onClose: dashboard.closeParameters,
-                            onApply: { router.showAnalysis(projectID: projectID) }
-                        )
-                    default:
-                        factory.makeParametersViewModel(projectID: dashboard.projectID, onClose: dashboard.closeParameters)
-                    }
-                }
-            }
         }
     }
 
@@ -140,11 +128,10 @@ struct RootView: View {
         )
     }
 
-    private var parametersRequest: Binding<ParametersRequest?> {
-        Binding(
-            get: { router.parametersProjectID.map(ParametersRequest.init) },
-            set: { if $0 == nil { router.dismissParameters() } }
-        )
+    private var parametersRequest: ParametersRequest? {
+        router.parametersProjectID.map {
+            ParametersRequest(projectID: $0, analysisID: router.parametersAnalysisID)
+        }
     }
 
     @ViewBuilder
@@ -159,35 +146,54 @@ struct RootView: View {
             ProjectSetupView(viewModel: factory.makeSetupViewModel(projectID: projectID))
                 .id(projectID)
         case .analysis(let projectID), .review(let projectID):
-            DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID))
-                .id(projectID)
+            DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID)) { close in
+                ParametersView(viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close))
+            }
+            .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
-            DashboardView(viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID))
-                .id(analysisID)
+            DashboardView(
+                viewModel: factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)
+            ) { close in
+                ParametersView(
+                    viewModel: factory.makeParametersViewModel(
+                        projectID: projectID,
+                        analysisID: analysisID, //only diff from dev btw
+                        onClose: close,
+                        onApply: { router.showAnalysis(projectID: projectID) }
+                    )
+                )
+            }
+            .id(analysisID)
         case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)
+        case .simulation(let projectID, let layout, let analysisID):
+            SimulationPlayerView(
+                viewModel: factory.makeSimulationPlayerViewModel(
+                    projectID: projectID, layout: layout, analysisID: analysisID
+                )
+            )
+            .id("\(projectID.uuidString)-\(layout.rawValue)-\(analysisID?.uuidString ?? "latest")")
         }
     }
 }
 
-private struct ParametersRequest: Identifiable {
+private struct ParametersRequest: Identifiable, Equatable {
     let projectID: UUID
-    var id: UUID { projectID }
+    let analysisID: UUID?
+    var id: String { "\(projectID.uuidString)-\(analysisID?.uuidString ?? "latest")" }
 }
 
 /// Builds the Parameters view model once per presentation, so a redraw of the app does not reset it.
 private struct ParametersSheet: View {
     @State private var viewModel: ParametersViewModel
-    private let showsBackground: Bool
 
-    init(showsBackground: Bool = true, make: () -> ParametersViewModel) {
-        self.showsBackground = showsBackground
+    init(make: () -> ParametersViewModel) {
         _viewModel = State(initialValue: make())
     }
 
     var body: some View {
-        ParametersView(viewModel: viewModel, showsBackground: showsBackground)
+        ParametersView(viewModel: viewModel)
     }
 }
 

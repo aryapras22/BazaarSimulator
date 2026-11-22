@@ -19,6 +19,15 @@ struct BestLayoutSummaryView: View {
                         .foregroundStyle(summary.best.chartColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                    Text("Based on the average across the whole event.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("See full insights", action: onInsights)
+                        .buttonStyle(ControlButtonStyle())
+                        .help("Compare both layouts on stuck spots, crowd level and time stuck")
+                        .padding(.top, 4)
                 }
                 .frame(width: 190, alignment: .leading)
             }
@@ -46,14 +55,6 @@ struct BestLayoutSummaryView: View {
                 // Only as tall as its tallest column, so the dividers match it and the row can be centered.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxHeight: .infinity)
-
-                Rectangle()
-                    .fill(Color.divider)
-                    .frame(height: 1)
-
-                whyRow
-                    .padding(.leading, 18)
-                    .padding(.top, 16)
             }
         }
         .padding(.horizontal, 20)
@@ -61,27 +62,6 @@ struct BestLayoutSummaryView: View {
         .frame(maxWidth: .infinity)
         .frame(height: DashboardMetrics.summaryHeight)
         .cardSurface()
-    }
-
-    private var whyRow: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "chart.xyaxis.line")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.textSecondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Why is \(summary.best.name) better?")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.textPrimary)
-                Text("Compare both layouts on stuck spots, crowd level and time stuck in Insights.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Insights", action: onInsights)
-                .buttonStyle(ControlButtonStyle())
-        }
     }
 }
 
