@@ -9,11 +9,11 @@ struct DashboardMetrics {
     static let referenceHeight: CGFloat = 1268
     static let reference = DashboardMetrics(size: CGSize(width: 1197, height: referenceHeight))
 
-    static let horizontalPadding = (leading: CGFloat(28), trailing: CGFloat(26))
+    static let horizontalPadding = (leading: CardSpacing.gap, trailing: CardSpacing.gap)
     static let headerHeight: CGFloat = 40
     static let analysisTitleHeight: CGFloat = 24
     static let tabBarHeight: CGFloat = 35
-    static let cardGap: CGFloat = 28
+    static let cardGap: CGFloat = CardSpacing.gap
     static let summaryHeight: CGFloat = 190
     /// The Result bar under a single layout has no "why" row, so it is lower.
     static let singleSummaryHeight: CGFloat = 168
@@ -58,9 +58,11 @@ struct DashboardMetrics {
         // With two layouts the row under each plan, which only the single layout fills, is left out, so the plans get
         // its room.
         let underPlanRow = SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight + 3
-        let pageFixed = lerp(16, 29) + Self.headerHeight + lerp(14, 25)
+        // The gaps between the cells of the page are all the same.
+        let gap = CardSpacing.gap
+        let pageFixed = lerp(16, 29) + Self.headerHeight + gap
             + (layoutCount == 1 ? cardChrome : cardChrome - underPlanRow)
-            + lerp(16, 24) + (layoutCount == 1 ? Self.singleSummaryHeight : Self.summaryHeight) + lerp(16, 26)
+            + gap + (layoutCount == 1 ? Self.singleSummaryHeight : Self.summaryHeight) + gap
         planHeight = max(min(size.height - pageFixed, widthLimitedPlan), 200)
         recommendationWidth = contentWidth * 509 / 1143
     }
@@ -70,9 +72,9 @@ struct DashboardMetrics {
     }
 
     var topPadding: CGFloat { lerp(16, 29) }
-    var headerToCards: CGFloat { lerp(14, 25) }
-    var cardsToSummary: CGFloat { lerp(16, 24) }
-    var bottomPadding: CGFloat { lerp(16, 26) }
+    var headerToCards: CGFloat { CardSpacing.gap }
+    var cardsToSummary: CGFloat { CardSpacing.gap }
+    var bottomPadding: CGFloat { CardSpacing.gap }
     var cardsToAnalysis: CGFloat { lerp(16, 26) }
     var titleToTabs: CGFloat { lerp(12, 20) }
     var tabsToLower: CGFloat { lerp(16, 29) }

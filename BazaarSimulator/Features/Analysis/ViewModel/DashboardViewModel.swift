@@ -30,6 +30,8 @@ final class DashboardViewModel {
     var tab: AnalysisTab = .congestionPoints
     var isParametersPresented: Bool = false
     var isInsightsPresented: Bool = false
+    /// Insights or Parameters is open over the window.
+    var isCoveredByModal: Bool { isInsightsPresented || isParametersPresented }
     private(set) var phase: Phase = .loading
     private(set) var isRunning = false
     private(set) var simulationResult: SimulationResult?
@@ -344,6 +346,14 @@ final class DashboardViewModel {
             ),
             outcomes: result.outcomes
         )
+    }
+
+    /// Which of the two cards holds the best layout, when the page compares two. Nil with one layout.
+    var bestLayoutID: LayoutID? { bestLayout?.best }
+
+    /// The project layout the best card shows, so a list of the project's layouts can mark it.
+    var bestLayoutPlanID: Layout.ID? {
+        bestLayoutID.flatMap { simulationResult?.layouts[$0]?.id }
     }
 
     /// The three headline numbers when the project has one layout.

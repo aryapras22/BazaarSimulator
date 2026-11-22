@@ -92,19 +92,14 @@ struct BestLayoutSummary {
         }
     }
 
-    /// A layout's average for one check over the whole simulation: spots stuck at once, the density at the worst
-    /// spot, or minutes stuck at the worst spot, each averaged over the day's sampled windows. When a layout has
-    /// no day samples its busiest-moment value stands in.
+    /// A layout's average for one check over the whole simulation, to one decimal as the page shows it. These are the
+    /// same numbers the Insights tabs decide on, so the two always name the same winner.
     private static func average(for tab: AnalysisTab, outcome: LayoutOutcome?) -> Double {
         guard let outcome else { return 0 }
-        let days = outcome.dayPoints
-        func mean(_ pick: (DayPoint) -> Double) -> Double {
-            days.map(pick).reduce(0, +) / Double(days.count)
-        }
         switch tab {
-        case .congestionPoints: return days.isEmpty ? Double(outcome.C) : mean { Double($0.jammedSpots) }
-        case .congestionDuration: return days.isEmpty ? outcome.M : mean(\.heavyMinutes)
-        default: return days.isEmpty ? outcome.D : mean(\.worstDensity)
+        case .congestionPoints: return CompareRulesEngine.rounded1(outcome.averageStuckSpots)
+        case .congestionDuration: return CompareRulesEngine.rounded1(outcome.averageStuckMinutes)
+        default: return outcome.averageDensity
         }
     }
 
