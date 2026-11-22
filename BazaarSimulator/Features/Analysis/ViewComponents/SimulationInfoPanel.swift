@@ -37,9 +37,19 @@ struct SimulationInfoPanel: View {
 
             Group {
                 switch mode {
-                case .congestion: congestionLegend
-                case .density: scaleLegend(labels: ["Calm", "Crowded", "Jammed"])
-                case .footfall: scaleLegend(labels: ["Rarely walked", "", "Most walked"])
+                case .congestion:
+                    congestionLegend
+                case .density:
+                    scaleLegend(labels: ["Calm", "Crowded", "Jammed"], colors: HeatScale.colors)
+                case .footfall:
+                    scaleLegend(
+                        labels: ["Rarely walked", "", "Most walked"],
+                        colors: [
+                            HeatScale.footfallColors[0].opacity(0.30),
+                            HeatScale.footfallColors[1].opacity(0.65),
+                            HeatScale.footfallColors[2]
+                        ]
+                    )
                 }
             }
             .padding(.top, 13)
@@ -98,9 +108,9 @@ struct SimulationInfoPanel: View {
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: showsGradeRanges)
     }
 
-    private func scaleLegend(labels: [String]) -> some View {
+    private func scaleLegend(labels: [String], colors: [Color]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            LinearGradient(colors: HeatScale.colors, startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
                 .frame(height: 7)
                 .clipShape(Capsule())
             ZStack {

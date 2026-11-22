@@ -285,12 +285,11 @@ final class SimulationPlayerViewModel {
             )
         case .footfall:
             guard let replay else { break }
-            let counts = footfall(at: playback)
-            let busiest = Float(max(counts.max() ?? 1, 1))
+            let normalized = Self.normalizedFootfall(for: footfall(at: playback))
             let tile = replay.footfallTileM
             frame.overlay = FieldImage.pixels(
                 kind: .footfall,
-                values: counts.map { Float($0) / busiest },
+                values: normalized.map(Float.init),
                 columns: replay.footfallColumns,
                 rows: replay.footfallRows,
                 scale: SIMD2(
@@ -301,6 +300,20 @@ final class SimulationPlayerViewModel {
             )
         }
         return frame
+    }
+
+    /// Normalizes cumulative footfall tiles to `0...1` against the 95th percentile of walked tiles so main routes
+    /// stand out clearly without being flattened by a single doorway peak.
+    static func normalizedFootfall(for counts: [UInt16]) -> [Double] {
+        let nonZero = counts.filter { $0 > 0 }.sorted()
+        guard !nonZero.isEmpty else { return Array(repeating: 0, count: counts.count) }
+        let percentileIndex = Int((Double(nonZero.count - 1) * 0.95).rounded(.down))
+        let reference = Double(max(nonZero[percentileIndex], 1))
+        return counts.map { count in
+            guard count > 0 else { return 0 }
+            let ratio = min(Double(count) / reference, 1.0)
+            return pow(ratio, 0.75)
+        }
     }
 
     /// How often each tile of floor has been walked by `playback`.
@@ -375,21 +388,19 @@ final class SimulationPlayerViewModel {
             return spriteDensityCells(at: playback)
         case .footfall:
             guard let replay else { return [] }
-            let counts = footfall(at: playback)
-            let busiest = Double(max(counts.max() ?? 1, 1))
+            let normalized = Self.normalizedFootfall(for: footfall(at: playback))
             let tileM = replay.footfallTileM
             let cols = max(replay.footfallColumns, 1)
             let origin = plan.origin
             var cells: [DensityCell] = []
-            for index in counts.indices where counts[index] > 0 {
+            for index in normalized.indices where normalized[index] > 0 {
                 let col = index % cols
                 let row = index / cols
                 let center = SIMD2(
                     origin.x + (Double(col) + 0.5) * tileM,
                     origin.y + (Double(row) + 0.5) * tileM
                 )
-                let share = Double(counts[index]) / busiest
-                cells.append(DensityCell(id: index, center: center, peoplePerSquareMetre: share * 1.9))
+                cells.append(DensityCell(id: index, center: center, peoplePerSquareMetre: normalized[index]))
             }
             return cells
         case .congestion:

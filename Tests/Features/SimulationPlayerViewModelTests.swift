@@ -342,6 +342,20 @@ struct SimulationPlayerSceneTests {
         }
     }
 
+    @Test("Normalized walking routes separate low-traffic aisles from busy arteries even with an outlier spike")
+    func normalizedFootfallResistsOutliers() {
+        var counts: [UInt16] = [0, 5, 10, 20, 40, 80, 90, 95, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 900]
+        let normalized = SimulationPlayerViewModel.normalizedFootfall(for: counts)
+        #expect(normalized[0] == 0)
+        #expect(normalized[1] > 0 && normalized[1] < 0.2)
+        #expect(normalized[5] > 0.7)
+        #expect(normalized[19] == 1.0)
+        #expect(normalized[1] < normalized[3] && normalized[3] < normalized[5])
+
+        counts = [0, 0, 0]
+        #expect(SimulationPlayerViewModel.normalizedFootfall(for: counts) == [0, 0, 0])
+    }
+
     @Test("Simulation modes expose Congestion Spots, Crowd Level, and Walking Routes tabs")
     func modeTitles() {
         #expect(SimulationMode.allCases.map(\.title) == ["Congestion Spots", "Crowd Level", "Walking Routes"])

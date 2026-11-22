@@ -29,11 +29,17 @@ struct SpriteCameraTransform: Equatable {
 /// A lightweight 2D SpriteKit view that renders the venue floor plan, smooth radial heatmap, and moving visitors.
 /// Supports dragging to pan/scroll and scrolling or pinching to zoom.
 struct Simulation2DSpriteView: NSViewRepresentable {
+    enum OverlayStyle: Equatable {
+        case heatmap
+        case walkingRoutes
+    }
+
     let layout: Layout
     var legend: Legend = Legend()
     var visitors: [SimulatedVisitor] = []
     var densityCells: [DensityCell] = []
     var showHeatmap = false
+    var overlayStyle: OverlayStyle = .heatmap
     var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     func makeNSView(context: Context) -> InteractiveSKView {
@@ -56,7 +62,8 @@ struct Simulation2DSpriteView: NSViewRepresentable {
             legend: legend,
             visitors: visitors,
             densityCells: densityCells,
-            showHeatmap: showHeatmap
+            showHeatmap: showHeatmap,
+            overlayStyle: overlayStyle
         )
     }
 
@@ -109,6 +116,7 @@ final class Venue2DScene: SKScene {
     private let visitorLayer = SKNode()
     private var visitorNodes: [Int: SKSpriteNode] = [:]
     private var lastHeatmapCells: [DensityCell] = []
+    private var lastOverlayStyle: Simulation2DSpriteView.OverlayStyle = .heatmap
     private lazy var visitorDotTexture = VisitorDots.makeTexture()
 
     override func didMove(to view: SKView) {
@@ -145,7 +153,8 @@ final class Venue2DScene: SKScene {
         legend: Legend = Legend(),
         visitors: [SimulatedVisitor],
         densityCells: [DensityCell],
-        showHeatmap: Bool
+        showHeatmap: Bool,
+        overlayStyle: Simulation2DSpriteView.OverlayStyle = .heatmap
     ) {
         if currentLayout?.id != layout.id || currentLegend != legend {
             let layoutChanged = currentLayout?.id != layout.id
@@ -163,7 +172,7 @@ final class Venue2DScene: SKScene {
         }
 
         ensureCameraFitted(viewSize: size)
-        updateSmoothHeatmap(cells: densityCells, showHeatmap: showHeatmap, layout: layout)
+        updateSmoothHeatmap(cells: densityCells, showHeatmap: showHeatmap, style: overlayStyle, layout: layout)
         updateVisitors(visitors, layout: layout)
     }
 
@@ -310,15 +319,21 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Smooth Radial Heatmap Overlay (Matching 3D View)
 
-    private func updateSmoothHeatmap(cells: [DensityCell], showHeatmap: Bool, layout: Layout) {
+    private func updateSmoothHeatmap(
+        cells: [DensityCell],
+        showHeatmap: Bool,
+        style: Simulation2DSpriteView.OverlayStyle,
+        layout: Layout
+    ) {
         guard showHeatmap, !cells.isEmpty else {
             heatmapSprite.isHidden = true
             return
         }
         heatmapSprite.isHidden = false
-        guard cells != lastHeatmapCells else { return }
+        guard cells != lastHeatmapCells || style != lastOverlayStyle else { return }
         lastHeatmapCells = cells
-        guard let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells) else {
+        lastOverlayStyle = style
+        guard let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells, style: style) else {
             heatmapSprite.isHidden = true
             return
         }
@@ -333,7 +348,11 @@ final class Venue2DScene: SKScene {
         heatmapSprite.position = CGPoint(x: worldW / 2, y: worldH / 2)
     }
 
-    private func renderSmoothHeatmapCGImage(for layout: Layout, cells: [DensityCell]) -> CGImage? {
+    private func renderSmoothHeatmapCGImage(
+        for layout: Layout,
+        cells: [DensityCell],
+        style: Simulation2DSpriteView.OverlayStyle
+    ) -> CGImage? {
         let pixelsPerMetre = 5.0
         let texWidth = max(10, Int(ceil(layout.sizeM.x * pixelsPerMetre)))
         let texHeight = max(10, Int(ceil(layout.sizeM.y * pixelsPerMetre)))
@@ -351,7 +370,7 @@ final class Venue2DScene: SKScene {
             return nil
         }
 
-        let blobRadiusPx = CGFloat(1.35 * pixelsPerMetre)
+        let blobRadiusPx = CGFloat((style == .walkingRoutes ? 0.95 : 1.35) * pixelsPerMetre)
         let sortedCells = cells.sorted { $0.peoplePerSquareMetre < $1.peoplePerSquareMetre }
 
         for cell in sortedCells {
@@ -359,9 +378,18 @@ final class Venue2DScene: SKScene {
                 x: CGFloat(cell.center.x * pixelsPerMetre),
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
-            let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
-            let peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
+            let rgb: (r: CGFloat, g: CGFloat, b: CGFloat)
+            let peakAlpha: CGFloat
+            switch style {
+            case .heatmap:
+                rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
+                let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
+                peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
+            case .walkingRoutes:
+                let level = min(max(cell.peoplePerSquareMetre, 0), 1)
+                rgb = walkingRouteRGB(for: level)
+                peakAlpha = CGFloat(HeatScale.footfallAlpha(forLevel: level))
+            }
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
@@ -397,6 +425,11 @@ final class Venue2DScene: SKScene {
         }
 
         return context.makeImage()
+    }
+
+    private func walkingRouteRGB(for level: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
+        let color = NSColor(HeatScale.footfallColor(forLevel: level)).usingColorSpace(.sRGB) ?? .systemGreen
+        return (color.redComponent, color.greenComponent, color.blueComponent)
     }
 
     private func heatmapRGB(for density: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {

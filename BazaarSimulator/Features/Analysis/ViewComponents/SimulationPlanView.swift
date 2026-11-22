@@ -18,6 +18,7 @@ struct SimulationPlanView: View {
                 visitors: viewModel.spriteVisitors(at: time),
                 densityCells: viewModel.spriteOverlayCells(at: time),
                 showHeatmap: true,
+                overlayStyle: viewModel.mode == .footfall ? .walkingRoutes : .heatmap,
                 onCameraChange: { transform in
                     if cameraTransform != transform {
                         cameraTransform = transform

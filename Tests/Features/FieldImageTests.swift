@@ -63,15 +63,23 @@ struct FieldImageTests {
         #expect(pixel(image, 1, 0).alpha == 0)
     }
 
-    @Test("Walked paths run from green to red with how often they were walked")
+    private func expectedFootfall(_ level: Double) -> SIMD3<Double> {
+        let color = NSColor(HeatScale.footfallColor(forLevel: level)).usingColorSpace(.sRGB)!
+        return SIMD3(Double(color.redComponent), Double(color.greenComponent), Double(color.blueComponent))
+    }
+
+    @Test("Walked paths run from low-opacity green to bright high-opacity greenish-red")
     func footfallColors() throws {
+        var previousAlpha = 0.0
         for share in [Float(0.25), 0.5, 1] {
             let image = try #require(uniform(share, kind: .footfall))
             let drawn = pixel(image, 4, 4)
-            let want = expected(Double(share))
+            let want = expectedFootfall(Double(share))
             #expect(abs(drawn.color.x - want.x) < 0.03 && abs(drawn.color.y - want.y) < 0.03 && abs(drawn.color.z - want.z) < 0.03,
                     "share \(share)")
-            #expect(abs(drawn.alpha - 0.85) < 0.02)
+            #expect(abs(drawn.alpha - HeatScale.footfallAlpha(forLevel: Double(share))) < 0.03)
+            #expect(drawn.alpha > previousAlpha)
+            previousAlpha = drawn.alpha
         }
         #expect(pixel(try #require(uniform(0, kind: .footfall)), 4, 4).alpha == 0)
     }
