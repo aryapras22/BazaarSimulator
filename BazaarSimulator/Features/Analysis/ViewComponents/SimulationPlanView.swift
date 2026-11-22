@@ -23,7 +23,6 @@ struct SimulationPlanView: View {
                     }
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay {
                 if viewModel.mode == .congestion {
                     markers(outcome: outcome, layout: layout)
