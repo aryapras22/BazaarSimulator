@@ -15,8 +15,8 @@ struct DrawnVisitor {
 @Observable
 @MainActor
 final class SimulationPlayerViewModel {
-    /// The window is played back in this many seconds at normal speed.
-    static let playbackSeconds = 120.0
+    /// The window is played back in this many seconds at 1x speed (4x slower than the original 120s rate).
+    static let playbackSeconds = 480.0
     static let heatColumns = 36
 
     enum Phase: Equatable {
@@ -32,6 +32,7 @@ final class SimulationPlayerViewModel {
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
+    let onBack: () -> Void
 
     var mode: SimulationMode = .congestion
     var viewStyle: SimulationViewStyle = .twoD
@@ -48,7 +49,8 @@ final class SimulationPlayerViewModel {
         analysisID: UUID? = nil,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
-        catalog: PresetCatalog
+        catalog: PresetCatalog,
+        onBack: @escaping () -> Void = {}
     ) {
         self.projectID = projectID
         self.layoutID = layoutID
@@ -56,6 +58,7 @@ final class SimulationPlayerViewModel {
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
+        self.onBack = onBack
     }
 
     func load() async {
@@ -79,6 +82,8 @@ final class SimulationPlayerViewModel {
 
     var outcome: LayoutOutcome? { result?.outcomes[layoutID] }
     var layout: Layout? { result?.layouts[layoutID] }
+    var legend: Legend { session.draft(for: projectID)?.legend ?? Legend() }
+    var tenantTypes: [TenantLegendItem] { TenantColors.legendItems(for: layout, legend: legend) }
     var replay: SimulationReplay? { result?.replay(for: layoutID) }
     var visitorTypes: [VisitorType] { result?.visitorTypes ?? [] }
     var plan: PlanFrame { result?.analyses[layoutID]?.plan ?? .unit }
@@ -235,7 +240,7 @@ final class SimulationPlayerViewModel {
         if let cachedVenue { return cachedVenue }
         guard let layout else { return nil }
         let venue = SimulationVenue(
-            id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan,
+            id: UUID(), blocks: VenueGeometry.blocks(for: layout, legend: legend), plan: plan,
             attractions: VenueGeometry.attractions(in: layout), seats: VenueGeometry.seats(in: layout)
         )
         cachedVenue = venue
@@ -280,12 +285,15 @@ final class SimulationPlayerViewModel {
             )
         case .footfall:
             guard let replay else { break }
-            let counts = footfall(at: playback)
-            let busiest = Float(max(counts.max() ?? 1, 1))
+            let smoothed = Self.smoothedFootfall(
+                for: footfall(at: playback),
+                columns: replay.footfallColumns,
+                rows: replay.footfallRows
+            )
             let tile = replay.footfallTileM
             frame.overlay = FieldImage.pixels(
                 kind: .footfall,
-                values: counts.map { Float($0) / busiest },
+                values: smoothed.map(Float.init),
                 columns: replay.footfallColumns,
                 rows: replay.footfallRows,
                 scale: SIMD2(
@@ -296,6 +304,75 @@ final class SimulationPlayerViewModel {
             )
         }
         return frame
+    }
+
+    /// Normalizes cumulative footfall tiles to `0...1` against the 95th percentile of walked tiles so main routes
+    /// stand out clearly without being flattened by a single doorway peak.
+    static func normalizedFootfall(for counts: [UInt16]) -> [Double] {
+        let nonZero = counts.filter { $0 > 0 }.sorted()
+        guard !nonZero.isEmpty else { return Array(repeating: 0, count: counts.count) }
+        let percentileIndex = Int((Double(nonZero.count - 1) * 0.95).rounded(.down))
+        let reference = Double(max(nonZero[percentileIndex], 1))
+        return counts.map { count in
+            guard count > 0 else { return 0 }
+            let ratio = min(Double(count) / reference, 1.0)
+            return pow(ratio, 0.75)
+        }
+    }
+
+    /// Lightly blurs the fine footfall grid along adjacent tiles and normalizes to `0...1` so routes read as
+    /// continuous flowing paths instead of isolated grid points.
+    static func smoothedFootfall(for counts: [UInt16], columns: Int, rows: Int) -> [Double] {
+        guard columns > 0, rows > 0, counts.count == columns * rows else {
+            return normalizedFootfall(for: counts)
+        }
+        var horizontal = Array(repeating: 0.0, count: counts.count)
+        for row in 0..<rows {
+            let rowOffset = row * columns
+            for col in 0..<columns {
+                let center = Double(counts[rowOffset + col])
+                let left = col > 0 ? Double(counts[rowOffset + col - 1]) : center
+                let right = col + 1 < columns ? Double(counts[rowOffset + col + 1]) : center
+                horizontal[rowOffset + col] = left * 0.22 + center * 0.56 + right * 0.22
+            }
+        }
+        var smoothed = Array(repeating: 0.0, count: counts.count)
+        for row in 0..<rows {
+            let rowOffset = row * columns
+            let upOffset = max(row - 1, 0) * columns
+            let downOffset = min(row + 1, rows - 1) * columns
+            for col in 0..<columns {
+                smoothed[rowOffset + col] = horizontal[upOffset + col] * 0.22
+                    + horizontal[rowOffset + col] * 0.56
+                    + horizontal[downOffset + col] * 0.22
+            }
+        }
+        let nonZero = smoothed.filter { $0 > 0.01 }.sorted()
+        guard !nonZero.isEmpty else { return Array(repeating: 0, count: counts.count) }
+        let percentileIndex = Int((Double(nonZero.count - 1) * 0.95).rounded(.down))
+        let reference = max(nonZero[percentileIndex], 0.01)
+        return smoothed.map { value in
+            guard value > 0.01 else { return 0 }
+            let ratio = min(value / reference, 1.0)
+            return pow(ratio, 0.78)
+        }
+    }
+
+    /// Continuous smoothed footfall field for the 2D Walking Routes overlay.
+    func walkingRoutesGrid(at playback: Double) -> WalkingRoutesGrid? {
+        guard let replay else { return nil }
+        let values = Self.smoothedFootfall(
+            for: footfall(at: playback),
+            columns: replay.footfallColumns,
+            rows: replay.footfallRows
+        )
+        return WalkingRoutesGrid(
+            origin: plan.origin,
+            tileM: replay.footfallTileM,
+            columns: replay.footfallColumns,
+            rows: replay.footfallRows,
+            values: values
+        )
     }
 
     /// How often each tile of floor has been walked by `playback`.
@@ -370,21 +447,19 @@ final class SimulationPlayerViewModel {
             return spriteDensityCells(at: playback)
         case .footfall:
             guard let replay else { return [] }
-            let counts = footfall(at: playback)
-            let busiest = Double(max(counts.max() ?? 1, 1))
+            let normalized = Self.normalizedFootfall(for: footfall(at: playback))
             let tileM = replay.footfallTileM
             let cols = max(replay.footfallColumns, 1)
             let origin = plan.origin
             var cells: [DensityCell] = []
-            for index in counts.indices where counts[index] > 0 {
+            for index in normalized.indices where normalized[index] > 0 {
                 let col = index % cols
                 let row = index / cols
                 let center = SIMD2(
                     origin.x + (Double(col) + 0.5) * tileM,
                     origin.y + (Double(row) + 0.5) * tileM
                 )
-                let share = Double(counts[index]) / busiest
-                cells.append(DensityCell(id: index, center: center, peoplePerSquareMetre: share * 1.9))
+                cells.append(DensityCell(id: index, center: center, peoplePerSquareMetre: normalized[index]))
             }
             return cells
         case .congestion:

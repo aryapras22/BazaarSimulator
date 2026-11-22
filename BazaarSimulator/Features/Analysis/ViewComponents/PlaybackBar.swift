@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Where playback is. Time is seconds of playback, which the view model turns into a time in the window.
 struct PlaybackClock {
-    static let speeds: [Double] = [0.5, 1, 2, 4]
+    static let speeds: [Double] = [1, 2, 4]
 
     let duration: Double
     private(set) var isRunning = false
@@ -28,6 +28,16 @@ struct PlaybackClock {
     mutating func pause(at date: Date = Date()) {
         anchorTime = time(at: date)
         isRunning = false
+    }
+
+    mutating func toggle(at date: Date = Date()) {
+        let current = time(at: date)
+        if isRunning && current < duration {
+            pause(at: date)
+        } else {
+            if current >= duration { anchorTime = 0 }
+            play(from: date)
+        }
     }
 
     mutating func setSpeed(_ newSpeed: Double, at date: Date = Date()) {
@@ -62,7 +72,7 @@ struct PlaybackBar: View {
 
         HStack(spacing: 14) {
             Button {
-                if isPlaying { clock.pause() } else { clock.play() }
+                clock.toggle()
             } label: {
                 Image(systemName: isPlaying ? "pause.fill" : finished ? "arrow.counterclockwise" : "play.fill")
                     .font(.system(size: 17, weight: .black))
@@ -73,7 +83,6 @@ struct PlaybackBar: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .keyboardShortcut(.space, modifiers: [])
             .help(isPlaying ? "Pause (Space)" : "Play (Space)")
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
@@ -150,6 +159,6 @@ struct PlaybackBar: View {
     }
 
     static func speedLabel(_ speed: Double) -> String {
-        speed == 0.5 ? "0.5x" : "\(Int(speed))x"
+        "\(Int(speed))x"
     }
 }

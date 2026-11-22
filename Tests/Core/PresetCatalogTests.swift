@@ -8,7 +8,13 @@ struct PresetCatalogTests {
     func bundledPresets() {
         let catalog = PresetCatalog.bundled()
         #expect(catalog.visitorTypes.map(\.id) == ["socializer", "family", "explorer", "buyer"])
-        #expect(catalog.visitorTypes.map(\.name) == ["Socializer", "Family Member", "Explorer", "Purpose Buyer"])
+        #expect(catalog.visitorTypes.map(\.name) == ["Socializer", "Family", "Explorer", "Shopper"])
+        #expect(catalog.visitorTypes.map(\.summary) == [
+            "Hangs out and stays longer",
+            "Moves slowly in groups",
+            "Browses at a relaxed pace",
+            "Buys quickly and directly"
+        ])
         #expect(catalog.bazaarTypes.count == 5)
         #expect(catalog.bazaarTypes.map(\.name) == [
             "Family & Kids", "Creative Exhibition", "Culinary", "Fashion", "Seasonal"

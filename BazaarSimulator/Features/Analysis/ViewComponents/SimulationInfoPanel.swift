@@ -36,9 +36,19 @@ struct SimulationInfoPanel: View {
 
             Group {
                 switch mode {
-                case .congestion: congestionLegend
-                case .density: scaleLegend(labels: ["Calm", "Crowded", "Jammed"])
-                case .footfall: scaleLegend(labels: ["Rarely walked", "", "Most walked"])
+                case .congestion:
+                    congestionLegend
+                case .density:
+                    scaleLegend(labels: ["Calm", "Crowded", "Jammed"], colors: HeatScale.colors)
+                case .footfall:
+                    scaleLegend(
+                        labels: ["Rarely walked", "", "Most walked"],
+                        colors: [
+                            HeatScale.footfallColors[0].opacity(0.30),
+                            HeatScale.footfallColors[1].opacity(0.65),
+                            HeatScale.footfallColors[2]
+                        ]
+                    )
                 }
             }
             .padding(.top, 13)
@@ -64,19 +74,13 @@ struct SimulationInfoPanel: View {
         .padding(.top, 16.5)
         .padding(.bottom, 12.5)
         .frame(width: Self.width, alignment: .leading)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-            shape
-                .fill(Color(hex: 0x2E405C))
-                .overlay { shape.strokeBorder(Color(hex: 0x4A5D78).opacity(0.8), lineWidth: 1) }
-                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
-        }
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: showsGradeRanges)
     }
 
-    private func scaleLegend(labels: [String]) -> some View {
+    private func scaleLegend(labels: [String], colors: [Color]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            LinearGradient(colors: HeatScale.colors, startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
                 .frame(height: 7)
                 .clipShape(Capsule())
             ZStack {
@@ -97,7 +101,9 @@ struct SimulationInfoPanel: View {
             SeverityScaleView(labelBelow: true, cellWidth: 40, barHeight: 26, barRadius: 8, labelSpacing: 5, letterSize: 11.5)
 
             Button {
-                showsGradeRanges.toggle()
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
+                    showsGradeRanges.toggle()
+                }
             } label: {
                 HStack(spacing: 4) {
                     Text(showsGradeRanges ? "Hide what the grades mean" : "What do the grades mean?")
@@ -154,6 +160,38 @@ struct SimulationInfoPanel: View {
                 .fixedSize()
         }
         .frame(width: 141.8, height: 18, alignment: .leading)
+    }
+}
+
+/// Separate floating card below `SimulationInfoPanel` listing each tenant category and its booth color.
+struct SimulationTenantLegendPanel: View {
+    let tenantTypes: [TenantLegendItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Tenant types")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.textSecondary)
+
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(tenantTypes) { tenant in
+                    HStack(spacing: 10.5) {
+                        Circle()
+                            .fill(tenant.color)
+                            .frame(width: 13, height: 13)
+                        Text(tenant.name)
+                            .font(.system(size: 12.25, weight: .bold))
+                            .foregroundStyle(.textPrimary)
+                            .lineLimit(1)
+                    }
+                    .frame(height: 18, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .frame(width: SimulationInfoPanel.width, alignment: .leading)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

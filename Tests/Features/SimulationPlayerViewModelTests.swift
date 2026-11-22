@@ -61,12 +61,13 @@ struct SimulationPlayerViewModelTests {
     func clockText() async {
         let model = makeModel()
         await model.load()
+        #expect(SimulationPlayerViewModel.playbackSeconds == 480)
         #expect(model.clockText(at: 0) == "10:00")
-        #expect(model.clockText(at: 60) == "11:30")
-        #expect(model.clockText(at: 120) == "13:00")
-        #expect(model.progress(at: 60) == 0.5)
-        #expect(model.progress(at: 500) == 1)
-        #expect(model.windowSeconds(at: 120) == 10_800)
+        #expect(model.clockText(at: 240) == "11:30")
+        #expect(model.clockText(at: 480) == "13:00")
+        #expect(model.progress(at: 240) == 0.5)
+        #expect(model.progress(at: 600) == 1)
+        #expect(model.windowSeconds(at: 480) == 10_800)
     }
 
     @Test("Visitors are drawn on the plan, and are counted by the people in them")
@@ -77,7 +78,7 @@ struct SimulationPlayerViewModelTests {
         var busiest = 0.0
         var most = 0
         for step in 0...20 {
-            let time = Double(step) * 6
+            let time = Double(step) * (SimulationPlayerViewModel.playbackSeconds / 20)
             let count = model.visitorsInside(at: time)
             if count > most { most = count; busiest = time }
         }
@@ -116,8 +117,8 @@ struct SimulationPlayerViewModelTests {
     func footfall() async {
         let model = makeModel()
         await model.load()
-        let early = model.footfallSummary(at: 10)
-        let late = model.footfallSummary(at: 120)
+        let early = model.footfallSummary(at: 40)
+        let late = model.footfallSummary(at: SimulationPlayerViewModel.playbackSeconds)
         #expect(late.total >= early.total)
         #expect(late.busiest >= early.busiest)
         #expect(late.total > 0)
@@ -217,6 +218,32 @@ struct PlaybackClockTests {
         #expect(clock.time(at: start.addingTimeInterval(20)) == 30)
     }
 
+    @Test("Playback speed options are 1x, 2x, and 4x only")
+    func speedOptions() {
+        #expect(PlaybackClock.speeds == [1, 2, 4])
+        #expect(PlaybackClock.speeds.map(PlaybackBar.speedLabel) == ["1x", "2x", "4x"])
+    }
+
+    @Test("Toggle starts, pauses, resumes, and restarts after finishing")
+    func togglePlayback() {
+        var clock = PlaybackClock(duration: 120)
+        let start = Date()
+        clock.toggle(at: start)
+        #expect(clock.isRunning)
+
+        clock.toggle(at: start.addingTimeInterval(20))
+        #expect(!clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(40)) == 20)
+
+        clock.toggle(at: start.addingTimeInterval(40))
+        #expect(clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(50)) == 30)
+
+        clock.toggle(at: start.addingTimeInterval(300))
+        #expect(clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(305)) == 5)
+    }
+
     @Test("It stops at the end, and playing again starts over")
     func end() {
         var clock = PlaybackClock(duration: 120)
@@ -313,5 +340,60 @@ struct SimulationPlayerSceneTests {
             model.mode = mode
             #expect(!model.sceneFrame(at: 60).visitors.isEmpty, "\(mode)")
         }
+    }
+
+    @Test("Normalized walking routes separate low-traffic aisles from busy arteries even with an outlier spike")
+    func normalizedFootfallResistsOutliers() {
+        var counts: [UInt16] = [0, 5, 10, 20, 40, 80, 90, 95, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 900]
+        let normalized = SimulationPlayerViewModel.normalizedFootfall(for: counts)
+        #expect(normalized[0] == 0)
+        #expect(normalized[1] > 0 && normalized[1] < 0.2)
+        #expect(normalized[5] > 0.7)
+        #expect(normalized[19] == 1.0)
+        #expect(normalized[1] < normalized[3] && normalized[3] < normalized[5])
+
+        counts = [0, 0, 0]
+        #expect(SimulationPlayerViewModel.normalizedFootfall(for: counts) == [0, 0, 0])
+        #expect(CrowdMeasuringRun.tileCells == 1)
+
+        // Smoothing bridges adjacent tiles into continuous paths rather than isolated grid points.
+        let line: [UInt16] = [
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            50, 50, 50, 50, 50,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+        ]
+        let smoothed = SimulationPlayerViewModel.smoothedFootfall(for: line, columns: 5, rows: 5)
+        #expect(smoothed[12] > 0.8)
+        #expect(smoothed[7] > 0 && smoothed[7] < smoothed[12])
+        #expect(smoothed[0] == 0)
+    }
+
+    @Test("Simulation modes expose Congestion Spots, Crowd Level, and Walking Routes tabs")
+    func modeTitles() {
+        #expect(SimulationMode.allCases.map(\.title) == ["Congestion Spots", "Crowd Level", "Walking Routes"])
+    }
+
+    @Test("Tenant categories receive distinct colors for the legend and booths")
+    func tenantColorsDifferentiateCategories() {
+        let fnb = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let fashion = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let hobbies = LegendEntry(name: "Lifestyle & Hobbies", color: LegendColor(red: 1, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [fnb, fashion, hobbies])
+
+        let items = TenantColors.legendItems(for: nil, legend: legend)
+        #expect(items.map(\.name) == ["FNB", "Fashion", "Lifestyle & Hobbies"])
+        #expect(Set(items.map(\.rgba)).count == 3)
+
+        let fnbBooth = LayoutObject(
+            kind: .booth, label: "F1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fnb.id
+        )
+        let fashionBooth = LayoutObject(
+            kind: .booth, label: "B1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fashion.id
+        )
+        #expect(TenantColors.boothRGBA(for: fnbBooth, legend: legend) == items[0].rgba)
+        #expect(TenantColors.boothRGBA(for: fashionBooth, legend: legend) == items[1].rgba)
+        #expect(items[0].rgba != items[1].rgba)
     }
 }

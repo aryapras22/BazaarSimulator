@@ -15,6 +15,10 @@ enum FieldImage {
         let color = NSColor(HeatScale.color(forLevel: Double(step) / Double(rampSteps - 1))).usingColorSpace(.sRGB) ?? .white
         return SIMD3(Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent))
     }
+    private static let footfallRamp: [SIMD3<Float>] = (0..<rampSteps).map { step in
+        let color = NSColor(HeatScale.footfallColor(forLevel: Double(step) / Double(rampSteps - 1))).usingColorSpace(.sRGB) ?? .white
+        return SIMD3(Float(color.redComponent), Float(color.greenComponent), Float(color.blueComponent))
+    }
 
     /// The painted floor as raw bytes: red, green, blue, alpha for each cell, row by row, with each color
     /// already multiplied by its alpha.
@@ -70,7 +74,8 @@ enum FieldImage {
                 let value = sample(values, columns: columns, rows: rows, at: share)
                 let (level, alpha) = paint(kind, value)
                 guard alpha > 0 else { continue }
-                let color = ramp[min(max(Int(level * Float(rampSteps - 1) + 0.5), 0), rampSteps - 1)]
+                let palette = kind == .footfall ? footfallRamp : ramp
+                let color = palette[min(max(Int(level * Float(rampSteps - 1) + 0.5), 0), rampSteps - 1)]
                 let index = (row * mask.columns + column) * 4
                 // Premultiplied by alpha, as the image format expects.
                 pixels[index] = UInt8(min(color.x * alpha, 1) * 255 + 0.5)
@@ -89,7 +94,9 @@ enum FieldImage {
             let level = Float(HeatScale.level(forDensity: Double(value)))
             return (level, (0.4 + 0.45 * level) * smoothstep(0, 0.15, value))
         case .footfall:
-            return (min(max(value, 0), 1), 0.85 * smoothstep(0, 0.05, value))
+            let level = min(max(value, 0), 1)
+            let alpha = Float(HeatScale.footfallAlpha(forLevel: Double(level))) * smoothstep(0, 0.02, level)
+            return (level, alpha)
         }
     }
 

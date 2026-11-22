@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The simulator: the busiest window of one layout, played over its floor plan.
@@ -5,63 +6,114 @@ struct SimulationPlayerView: View {
     @Bindable var viewModel: SimulationPlayerViewModel
 
     @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.playbackSeconds)
+    @State private var keyMonitor: Any?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.pageClearsToolbar) private var pageClearsToolbar
 
     var body: some View {
-        Group {
+        ZStack(alignment: .topLeading) {
             switch viewModel.phase {
-            case .ready: player
-            case .loading: notice("Running the simulation…", showsProgress: true)
-            case .needsLayouts: notice("Add a floor plan to see the simulation.", showsProgress: false)
+            case .ready:
+                player
+            case .loading:
+                notice("Running the simulation…", showsProgress: true)
+            case .needsLayouts:
+                notice("Add a floor plan to see the simulation.", showsProgress: false)
+            }
+
+            if viewModel.phase != .ready {
+                backButton
+                    .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
+                    .padding(.top, Spacing.m)
             }
         }
-        // Room for the window's top controls, the same in a window and in full screen where they are hidden.
-        .padding(.top, 28)
-        .ignoresSafeArea(.container, edges: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .underToolbarInWindow()
         .background(Color.backgroundMain.ignoresSafeArea())
         .task { await viewModel.load() }
+        .onAppear { installSpaceMonitor() }
+        .onDisappear { removeSpaceMonitor() }
+    }
+
+    private func installSpaceMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let isPlainSpace = event.keyCode == 49
+                && !event.isARepeat
+                && event.modifierFlags.intersection([.command, .control, .option]).isEmpty
+            guard isPlainSpace, viewModel.phase == .ready,
+                  !(event.window?.firstResponder is NSText) else {
+                return event
+            }
+            clock.toggle()
+            return nil
+        }
+    }
+
+    private func removeSpaceMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 
     private var player: some View {
         TimelineView(.animation(minimumInterval: 1 / 30, paused: !clock.isRunning)) { context in
             let time = clock.time(at: context.date)
+            let topInset: CGFloat = pageClearsToolbar ? Spacing.m : 44
 
-            GeometryReader { geometry in
-                let frame = PlayerFrame(size: geometry.size, planAspect: viewModel.planAspect)
+            stage(at: time)
+                .ignoresSafeArea()
+                .overlay(alignment: .top) { topOverlay(topInset: topInset) }
+                .overlay(alignment: .topLeading) {
+                    GlassEffectContainer(spacing: Spacing.m) {
+                        VStack(alignment: .leading, spacing: Spacing.m) {
+                            SimulationInfoPanel(
+                                layoutName: viewModel.layoutID.name,
+                                visitorsInside: viewModel.visitorsInside(at: time),
+                                mode: viewModel.mode,
+                                visitorTypes: viewModel.visitorTypes
+                            )
 
-                ZStack(alignment: .topLeading) {
-                    switch viewModel.viewStyle {
-                    case .twoD:
-                        SimulationPlanView(viewModel: viewModel, time: time)
-                            .frame(width: frame.stage.width, height: frame.stage.height)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .position(x: frame.stage.midX, y: frame.stage.midY)
-                    case .threeD:
-                        scene(at: time)
-                            .frame(width: frame.stage.width, height: frame.stage.height)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .position(x: frame.stage.midX, y: frame.stage.midY)
+                            if !viewModel.tenantTypes.isEmpty {
+                                SimulationTenantLegendPanel(tenantTypes: viewModel.tenantTypes)
+                            }
+                        }
                     }
-
-                    SimulationInfoPanel(
-                        layoutName: viewModel.layoutID.name,
-                        visitorsInside: viewModel.visitorsInside(at: time),
-                        mode: viewModel.mode,
-                        visitorTypes: viewModel.visitorTypes
+                    .padding(.leading, Spacing.l)
+                    .padding(.top, topInset + 58)
+                }
+                .overlay(alignment: .bottom) {
+                    PlaybackBar(
+                        clock: $clock,
+                        time: time,
+                        eventDurationSeconds: viewModel.replay?.durationSeconds ?? 39_600
                     )
-                    .padding(.leading, PlayerFrame.panelOrigin.x)
-                    .padding(.top, PlayerFrame.panelOrigin.y)
+                    .padding(.bottom, Spacing.l)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
+        }
+    }
 
-                    SegmentedTabBar(
-                        options: SimulationMode.allCases,
-                        selection: $viewModel.mode,
-                        title: \.title,
-                        style: .simulation
-                    )
-                    .accessibilityLabel("Simulation overlay")
-                    .frame(width: frame.tabs.width, height: frame.tabs.height)
-                    .position(x: frame.tabs.midX, y: frame.tabs.midY)
+    @ViewBuilder
+    private func stage(at time: Double) -> some View {
+        switch viewModel.viewStyle {
+        case .twoD:
+            SimulationPlanView(viewModel: viewModel, time: time)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .threeD:
+            scene(at: time)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
 
+    private func topOverlay(topInset: CGFloat) -> some View {
+        VStack(spacing: Spacing.s) {
+            ZStack {
+                HStack(spacing: Spacing.m) {
+                    backButton
+                    Spacer(minLength: Spacing.m)
                     SegmentedTabBar(
                         options: SimulationViewStyle.allCases,
                         selection: $viewModel.viewStyle,
@@ -69,42 +121,54 @@ struct SimulationPlayerView: View {
                         style: .simulation
                     )
                     .accessibilityLabel("View style")
-                    .frame(width: frame.styleSwitch.width, height: frame.styleSwitch.height)
-                    .position(x: frame.styleSwitch.midX, y: frame.styleSwitch.midY)
-
-                    Text(viewModel.mode.summary(windowText: viewModel.windowText))
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(.textMuted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(width: frame.tabs.width)
-                        .position(x: frame.tabs.midX, y: PlayerFrame.summaryCenterY)
-                        .id(viewModel.mode)
-                        .transition(.opacity)
-
-                    PlaybackBar(
-                        clock: $clock,
-                        time: time,
-                        eventDurationSeconds: viewModel.replay?.durationSeconds ?? 39_600
-                    )
-                        .frame(width: frame.bar.width, height: frame.bar.height)
-                        .position(x: frame.bar.midX, y: frame.bar.midY)
+                    .frame(width: 132, height: 44.5)
                 }
-                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
+
+                SegmentedTabBar(
+                    options: SimulationMode.allCases,
+                    selection: $viewModel.mode,
+                    title: \.title,
+                    style: .simulation
+                )
+                .accessibilityLabel("Simulation overlay")
+                .frame(maxWidth: 540)
+                .frame(height: 44.5)
+                .padding(.horizontal, 160)
             }
+
+            Text(viewModel.mode.summary(windowText: viewModel.windowText))
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(.textPrimary.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .glassEffect(.regular, in: Capsule())
+                .id(viewModel.mode)
+                .transition(.opacity)
+                .allowsHitTesting(false)
         }
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-            // A plain fill: the grid of lines that used to run behind the stage is gone.
-            shape.fill(Color(hex: 0x142741))
-                .overlay { shape.strokeBorder(Color(hex: 0x34465F), lineWidth: 1) }
+        .padding(.horizontal, Spacing.l)
+        .padding(.top, topInset)
+    }
+
+    private var backButton: some View {
+        Button(action: viewModel.onBack) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.textPrimary)
+                .frame(width: 40, height: 40)
+                .background {
+                    Circle()
+                        .fill(Color.backButtonFill)
+                        .overlay { Circle().strokeBorder(.white.opacity(0.14), lineWidth: 0.75) }
+                        .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                }
+                .contentShape(Circle())
         }
-        .padding(.top, 17)
-        .padding(.leading, 17)
-        .padding(.trailing, 19)
-        .padding(.bottom, 23)
-        .onAppear { if !reduceMotion { clock.play() } }
+        .buttonStyle(.plain)
+        .help("Back")
+        .accessibilityLabel("Back")
     }
 
     @ViewBuilder
@@ -124,49 +188,6 @@ struct SimulationPlayerView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct PlayerFrame {
-    static let panelOrigin = CGPoint(x: 23.5, y: 19.5)
-    static let panelWidth = SimulationInfoPanel.width
-    static let summaryCenterY: CGFloat = 79
-
-    static let styleSwitchWidth: CGFloat = 132
-
-    let plan: CGRect
-    /// The 3D scene: everything to the right of the panel, above the playback bar.
-    let stage: CGRect
-    let tabs: CGRect
-    let styleSwitch: CGRect
-    let bar: CGRect
-
-    init(size: CGSize, planAspect: CGFloat) {
-        let mid = size.width / 2
-        let panelRight = Self.panelOrigin.x + Self.panelWidth
-
-        let planHeight = max(min(788.5, size.height - 150.5), 240)
-        let stageLeft = panelRight + 16
-        let stageWidth = max(size.width - stageLeft - 20, 240)
-        stage = CGRect(x: stageLeft, y: 103, width: stageWidth, height: planHeight)
-
-        let fittedWidth = min(planHeight * planAspect, stageWidth)
-        let fittedHeight = fittedWidth / max(planAspect, 0.01)
-        let planCenter = stage.midX
-        plan = CGRect(x: planCenter - fittedWidth / 2, y: 103 + (planHeight - fittedHeight) / 2, width: fittedWidth, height: fittedHeight)
-
-        styleSwitch = CGRect(x: size.width - 20 - Self.styleSwitchWidth, y: 16, width: Self.styleSwitchWidth, height: 44.5)
-        let tabCenter = mid + 69.5
-        let tabRoom = min(2 * (tabCenter - panelRight - 24), 2 * (styleSwitch.minX - 16 - tabCenter))
-        let tabWidth = max(min(919, tabRoom), 360)
-        tabs = CGRect(x: tabCenter - tabWidth / 2, y: 16, width: tabWidth, height: 44.5)
-
-        bar = CGRect(
-            x: mid - 9.5 - PlaybackBar.width / 2,
-            y: size.height - 47.5 - PlaybackBar.height,
-            width: PlaybackBar.width,
-            height: PlaybackBar.height
-        )
     }
 }
 

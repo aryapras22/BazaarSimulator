@@ -6,7 +6,6 @@ struct RootView: View {
     @State private var factory: ProjectScreenFactory
     @State private var libraryViewModel: ProjectLibraryViewModel
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
-    @Environment(\.openWindow) private var openWindow
     @State private var isFullScreen = false
 
     init(services: AppServices? = nil) {
@@ -19,7 +18,7 @@ struct RootView: View {
         _factory = State(initialValue: factory)
         _libraryViewModel = State(initialValue: factory.makeLibraryViewModel())
         switch initialDestination {
-        case .editor:
+        case .editor, .simulation:
             _columnVisibility = State(initialValue: .detailOnly)
         default:
             _columnVisibility = State(initialValue: .all)
@@ -83,14 +82,9 @@ struct RootView: View {
             }
         }
         .animation(.easeOut(duration: 0.15), value: parametersRequest)
-        .onChange(of: router.simulationRequest) { _, request in
-            guard let request else { return }
-            openWindow(id: SimulationWindowContent.windowID, value: request)
-            router.clearSimulationRequest()
-        }
         .onChange(of: router.destination) { _, newDestination in
             switch newDestination {
-            case .editor:
+            case .editor, .simulation:
                 columnVisibility = .detailOnly
             default:
                 columnVisibility = .all
@@ -153,6 +147,13 @@ struct RootView: View {
         case .editor(let projectID):
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)
+        case .simulation(let projectID, let layout, let analysisID):
+            SimulationPlayerView(
+                viewModel: factory.makeSimulationPlayerViewModel(
+                    projectID: projectID, layout: layout, analysisID: analysisID
+                )
+            )
+            .id("\(projectID.uuidString)-\(layout.rawValue)-\(analysisID?.uuidString ?? "latest")")
         }
     }
 }

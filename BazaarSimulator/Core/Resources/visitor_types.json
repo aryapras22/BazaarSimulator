@@ -1,10 +1,10 @@
 [
-  { "id": "socializer", "name": "Socializer", "summary": "Buys and stays longer.",
+  { "id": "socializer", "name": "Socializer", "summary": "Hangs out and stays longer",
     "walkingSpeedMps": 1.0, "plannedStops": 6, "dwellMinutes": 4 },
-  { "id": "family", "name": "Family Member", "summary": "Moves slow and in group.",
+  { "id": "family", "name": "Family", "summary": "Moves slowly in groups",
     "walkingSpeedMps": 0.9, "plannedStops": 5, "dwellMinutes": 3 },
-  { "id": "explorer", "name": "Explorer", "summary": "Moves around leisurely",
+  { "id": "explorer", "name": "Explorer", "summary": "Browses at a relaxed pace",
     "walkingSpeedMps": 1.1, "plannedStops": 4, "dwellMinutes": 2 },
-  { "id": "buyer", "name": "Purpose Buyer", "summary": "Quick and straightforward",
+  { "id": "buyer", "name": "Shopper", "summary": "Buys quickly and directly",
     "walkingSpeedMps": 1.5, "plannedStops": 2, "dwellMinutes": 1.5 }
 ]

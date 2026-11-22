@@ -102,7 +102,7 @@ final class ProjectScreenFactory {
             catalog: services.presetCatalog,
             onBack: { [weak router] in router?.showSetup(projectID: projectID) },
             onSimulate: { [weak router] layout in
-                router?.requestSimulation(projectID: projectID, layout: layout, analysisID: analysisID)
+                router?.showSimulation(projectID: projectID, layout: layout, analysisID: analysisID)
             },
             onOpenParameters: { [weak router] in
                 router?.showParameters(projectID: projectID, analysisID: analysisID)
@@ -134,7 +134,7 @@ final class ProjectScreenFactory {
                 router?.showSetup(projectID: projectID)
             },
             onSimulate: { [weak router] layout in
-                router?.requestSimulation(projectID: projectID, layout: layout)
+                router?.showSimulation(projectID: projectID, layout: layout)
             },
             onEdit: { [weak router] layout in
                 open(layout) { router?.showEditor(projectID: $0) }
@@ -145,6 +145,24 @@ final class ProjectScreenFactory {
         )
         dashboardViewModels[projectID] = created
         return created
+    }
+
+    func makeSimulationPlayerViewModel(
+        projectID: UUID,
+        layout: LayoutID,
+        analysisID: UUID? = nil
+    ) -> SimulationPlayerViewModel {
+        SimulationPlayerViewModel(
+            projectID: projectID,
+            layoutID: layout,
+            analysisID: analysisID,
+            session: services.projectSession,
+            analysisService: services.analysisService,
+            catalog: services.presetCatalog,
+            onBack: { [weak router] in
+                router?.closeSimulation(projectID: projectID, analysisID: analysisID)
+            }
+        )
     }
 
     func makeParametersViewModel(

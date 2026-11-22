@@ -15,14 +15,14 @@ extension VenueGeometry {
     /// A stall: posts at the corners, an awning on top, a low counter along each open side, and a tall panel
     /// along each closed side, over a mat on the floor. Each open side also has a striped valance hanging
     /// from the awning and goods laid out on the counter.
-    static func booth(_ object: LayoutObject) -> [VenueBlock] {
+    static func booth(_ object: LayoutObject, legend: Legend = Legend()) -> [VenueBlock] {
         let (width, depth) = size(of: object)
         let frame = Frame(object)
-        let awning = boothColor(for: object)
+        let awning = boothColor(for: object, legend: legend)
         let panel = SIMD4(awning.x * 0.55, awning.y * 0.55, awning.z * 0.55, 1)
         let postSize = boothPostSize
         let postHeight = boothPostHeight
-        let isFood = awning == vermilionColor
+        let isFood = TenantColors.isFood(object, legend: legend)
 
         var parts = [
             frame.part(
@@ -126,11 +126,7 @@ extension VenueGeometry {
         )
     }
 
-    static func boothColor(for object: LayoutObject) -> SIMD4<Float> {
-        let label = object.label.lowercased()
-        if label.contains("food") || label.contains("f&b") || label.hasPrefix("f") {
-            return vermilionColor
-        }
-        return cobaltColor
+    static func boothColor(for object: LayoutObject, legend: Legend = Legend()) -> SIMD4<Float> {
+        TenantColors.boothRGBA(for: object, legend: legend)
     }
 }

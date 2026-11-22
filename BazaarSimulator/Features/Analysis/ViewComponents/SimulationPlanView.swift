@@ -14,16 +14,18 @@ struct SimulationPlanView: View {
         if let layout = viewModel.layout, let outcome = viewModel.outcome {
             Simulation2DSpriteView(
                 layout: layout,
+                legend: viewModel.legend,
                 visitors: viewModel.spriteVisitors(at: time),
                 densityCells: viewModel.spriteOverlayCells(at: time),
+                walkingRoutesGrid: viewModel.mode == .footfall ? viewModel.walkingRoutesGrid(at: time) : nil,
                 showHeatmap: true,
+                overlayStyle: viewModel.mode == .footfall ? .walkingRoutes : .heatmap,
                 onCameraChange: { transform in
                     if cameraTransform != transform {
                         cameraTransform = transform
                     }
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .overlay {
                 if viewModel.mode == .congestion {
                     markers(outcome: outcome, layout: layout)

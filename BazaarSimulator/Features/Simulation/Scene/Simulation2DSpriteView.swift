@@ -26,13 +26,30 @@ struct SpriteCameraTransform: Equatable {
     }
 }
 
+/// Continuous smoothed footfall field rendered as smooth path ribbons in 2D Walking Routes mode.
+struct WalkingRoutesGrid: Equatable {
+    let origin: SIMD2<Double>
+    let tileM: Double
+    let columns: Int
+    let rows: Int
+    let values: [Double]
+}
+
 /// A lightweight 2D SpriteKit view that renders the venue floor plan, smooth radial heatmap, and moving visitors.
 /// Supports dragging to pan/scroll and scrolling or pinching to zoom.
 struct Simulation2DSpriteView: NSViewRepresentable {
+    enum OverlayStyle: Equatable {
+        case heatmap
+        case walkingRoutes
+    }
+
     let layout: Layout
+    var legend: Legend = Legend()
     var visitors: [SimulatedVisitor] = []
     var densityCells: [DensityCell] = []
+    var walkingRoutesGrid: WalkingRoutesGrid?
     var showHeatmap = false
+    var overlayStyle: OverlayStyle = .heatmap
     var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     func makeNSView(context: Context) -> InteractiveSKView {
@@ -52,9 +69,12 @@ struct Simulation2DSpriteView: NSViewRepresentable {
         context.coordinator.scene?.onCameraChange = onCameraChange
         context.coordinator.scene?.updateScene(
             layout: layout,
+            legend: legend,
             visitors: visitors,
             densityCells: densityCells,
-            showHeatmap: showHeatmap
+            walkingRoutesGrid: walkingRoutesGrid,
+            showHeatmap: showHeatmap,
+            overlayStyle: overlayStyle
         )
     }
 
@@ -95,6 +115,7 @@ final class InteractiveSKView: SKView {
 final class Venue2DScene: SKScene {
     private let pointsPerMetre: CGFloat = SpriteCameraTransform.pointsPerMetre
     private var currentLayout: Layout?
+    private var currentLegend: Legend = Legend()
     private var hasFittedCamera = false
     private var baseFitScale: CGFloat = 1.0
     var onCameraChange: ((SpriteCameraTransform) -> Void)?
@@ -106,7 +127,13 @@ final class Venue2DScene: SKScene {
     private let visitorLayer = SKNode()
     private var visitorNodes: [Int: SKSpriteNode] = [:]
     private var lastHeatmapCells: [DensityCell] = []
+    private var lastWalkingRoutesGrid: WalkingRoutesGrid?
+    private var lastOverlayStyle: Simulation2DSpriteView.OverlayStyle = .heatmap
     private lazy var visitorDotTexture = VisitorDots.makeTexture()
+    private static let footfallRamp: [SIMD3<Double>] = (0..<256).map { step in
+        let color = NSColor(HeatScale.footfallColor(forLevel: Double(step) / 255.0)).usingColorSpace(.sRGB) ?? .systemGreen
+        return SIMD3(Double(color.redComponent), Double(color.greenComponent), Double(color.blueComponent))
+    }
 
     override func didMove(to view: SKView) {
         backgroundColor = NSColor(calibratedRed: 0.06, green: 0.08, blue: 0.14, alpha: 1.0)
@@ -139,23 +166,37 @@ final class Venue2DScene: SKScene {
 
     func updateScene(
         layout: Layout,
+        legend: Legend = Legend(),
         visitors: [SimulatedVisitor],
         densityCells: [DensityCell],
-        showHeatmap: Bool
+        walkingRoutesGrid: WalkingRoutesGrid? = nil,
+        showHeatmap: Bool,
+        overlayStyle: Simulation2DSpriteView.OverlayStyle = .heatmap
     ) {
-        if currentLayout?.id != layout.id {
+        if currentLayout?.id != layout.id || currentLegend != legend {
+            let layoutChanged = currentLayout?.id != layout.id
             currentLayout = layout
-            hasFittedCamera = false
-            rebuildStaticLayout(layout)
-            visitorNodes.removeAll()
-            visitorLayer.removeAllChildren()
-            lastHeatmapCells = []
-            let fallbackSize = (size.width > 80 && size.height > 80) ? size : CGSize(width: 1000, height: 700)
-            fitCamera(to: layout, viewSize: fallbackSize)
+            currentLegend = legend
+            rebuildStaticLayout(layout, legend: legend)
+            if layoutChanged {
+                hasFittedCamera = false
+                visitorNodes.removeAll()
+                visitorLayer.removeAllChildren()
+                lastHeatmapCells = []
+                lastWalkingRoutesGrid = nil
+                let fallbackSize = (size.width > 80 && size.height > 80) ? size : CGSize(width: 1000, height: 700)
+                fitCamera(to: layout, viewSize: fallbackSize)
+            }
         }
 
         ensureCameraFitted(viewSize: size)
-        updateSmoothHeatmap(cells: densityCells, showHeatmap: showHeatmap, layout: layout)
+        updateSmoothHeatmap(
+            cells: densityCells,
+            walkingRoutesGrid: walkingRoutesGrid,
+            showHeatmap: showHeatmap,
+            style: overlayStyle,
+            layout: layout
+        )
         updateVisitors(visitors, layout: layout)
     }
 
@@ -164,12 +205,14 @@ final class Venue2DScene: SKScene {
     func fitCamera(to layout: Layout, viewSize: CGSize) {
         let worldW = CGFloat(max(1.0, layout.sizeM.x)) * pointsPerMetre
         let worldH = CGFloat(max(1.0, layout.sizeM.y)) * pointsPerMetre
-        cameraNode.position = CGPoint(x: worldW / 2, y: worldH / 2)
 
         let viewW = max(200, viewSize.width * 0.78)
-        let viewH = max(200, viewSize.height * 0.75)
+        let viewH = max(200, viewSize.height * 0.68)
         let scale = max(worldW / viewW, worldH / viewH)
         baseFitScale = max(0.1, scale)
+        // Shift camera slightly upward in SpriteKit coordinates so the venue sits below the top overlay pill.
+        let verticalOffsetPt: CGFloat = 28
+        cameraNode.position = CGPoint(x: worldW / 2, y: worldH / 2 + verticalOffsetPt * baseFitScale)
         cameraNode.setScale(baseFitScale)
         publishCameraTransform(viewSize: viewSize)
     }
@@ -209,7 +252,7 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Static Floor & Booths
 
-    private func rebuildStaticLayout(_ layout: Layout) {
+    private func rebuildStaticLayout(_ layout: Layout, legend: Legend) {
         floorLayer.removeAllChildren()
         objectLayer.removeAllChildren()
 
@@ -238,7 +281,7 @@ final class Venue2DScene: SKScene {
         }
 
         for object in layout.objects {
-            objectLayer.addChild(makeObjectNode(for: object, in: layout))
+            objectLayer.addChild(makeObjectNode(for: object, in: layout, legend: legend))
         }
     }
 
@@ -263,7 +306,7 @@ final class Venue2DScene: SKScene {
         return node
     }
 
-    private func makeObjectNode(for object: LayoutObject, in layout: Layout) -> SKShapeNode {
+    private func makeObjectNode(for object: LayoutObject, in layout: Layout, legend: Legend) -> SKShapeNode {
         let size = CGSize(
             width: CGFloat(object.placement.sizeM.x) * pointsPerMetre,
             height: CGFloat(object.placement.sizeM.y) * pointsPerMetre
@@ -278,7 +321,7 @@ final class Venue2DScene: SKScene {
 
         switch object.kind {
         case .booth:
-            node.fillColor = NSColor(calibratedRed: 0.22, green: 0.44, blue: 0.74, alpha: 1.0)
+            node.fillColor = TenantColors.boothNSColor(for: object, legend: legend)
             node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
         case .table:
             node.fillColor = NSColor(calibratedRed: 0.35, green: 0.38, blue: 0.45, alpha: 1.0)
@@ -302,19 +345,46 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Smooth Radial Heatmap Overlay (Matching 3D View)
 
-    private func updateSmoothHeatmap(cells: [DensityCell], showHeatmap: Bool, layout: Layout) {
+    private func updateSmoothHeatmap(
+        cells: [DensityCell],
+        walkingRoutesGrid: WalkingRoutesGrid?,
+        showHeatmap: Bool,
+        style: Simulation2DSpriteView.OverlayStyle,
+        layout: Layout
+    ) {
+        if style == .walkingRoutes, let grid = walkingRoutesGrid {
+            guard showHeatmap, grid.columns > 0, grid.rows > 0, grid.values.contains(where: { $0 > 0 }) else {
+                heatmapSprite.isHidden = true
+                return
+            }
+            heatmapSprite.isHidden = false
+            guard grid != lastWalkingRoutesGrid || style != lastOverlayStyle else { return }
+            lastWalkingRoutesGrid = grid
+            lastOverlayStyle = style
+            guard let cgImage = renderWalkingRoutesCGImage(for: layout, grid: grid) else {
+                heatmapSprite.isHidden = true
+                return
+            }
+            applyOverlayTexture(cgImage, for: layout)
+            return
+        }
+
         guard showHeatmap, !cells.isEmpty else {
             heatmapSprite.isHidden = true
             return
         }
         heatmapSprite.isHidden = false
-        guard cells != lastHeatmapCells else { return }
+        guard cells != lastHeatmapCells || style != lastOverlayStyle else { return }
         lastHeatmapCells = cells
-        guard let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells) else {
+        lastOverlayStyle = style
+        guard let cgImage = renderSmoothHeatmapCGImage(for: layout, cells: cells, style: style) else {
             heatmapSprite.isHidden = true
             return
         }
+        applyOverlayTexture(cgImage, for: layout)
+    }
 
+    private func applyOverlayTexture(_ cgImage: CGImage, for layout: Layout) {
         let worldW = CGFloat(max(1.0, layout.sizeM.x)) * pointsPerMetre
         let worldH = CGFloat(max(1.0, layout.sizeM.y)) * pointsPerMetre
         let texture = SKTexture(cgImage: cgImage)
@@ -325,7 +395,92 @@ final class Venue2DScene: SKScene {
         heatmapSprite.position = CGPoint(x: worldW / 2, y: worldH / 2)
     }
 
-    private func renderSmoothHeatmapCGImage(for layout: Layout, cells: [DensityCell]) -> CGImage? {
+    /// Renders a continuous bilinearly-interpolated walking routes ribbon texture so paths appear smooth and line-like
+    /// rather than discrete grid dots.
+    private func renderWalkingRoutesCGImage(for layout: Layout, grid: WalkingRoutesGrid) -> CGImage? {
+        let pixelsPerMetre = 6.0
+        let texWidth = max(10, Int(ceil(layout.sizeM.x * pixelsPerMetre)))
+        let texHeight = max(10, Int(ceil(layout.sizeM.y * pixelsPerMetre)))
+        let cols = grid.columns
+        let rows = grid.rows
+        let tileM = max(grid.tileM, 0.05)
+        guard grid.values.count == cols * rows else { return nil }
+
+        var pixels = [UInt8](repeating: 0, count: texWidth * texHeight * 4)
+        for py in 0..<texHeight {
+            let worldY = (Double(py) + 0.5) / pixelsPerMetre
+            let gy = (worldY - grid.origin.y) / tileM - 0.5
+            guard gy >= -0.5, gy <= Double(rows) - 0.5 else { continue }
+            let y0 = min(max(Int(floor(gy)), 0), rows - 1)
+            let y1 = min(y0 + 1, rows - 1)
+            let ty = min(max(gy - Double(y0), 0), 1)
+            let row0 = y0 * cols
+            let row1 = y1 * cols
+
+            for px in 0..<texWidth {
+                let worldX = (Double(px) + 0.5) / pixelsPerMetre
+                let gx = (worldX - grid.origin.x) / tileM - 0.5
+                guard gx >= -0.5, gx <= Double(cols) - 0.5 else { continue }
+                let x0 = min(max(Int(floor(gx)), 0), cols - 1)
+                let x1 = min(x0 + 1, cols - 1)
+                let tx = min(max(gx - Double(x0), 0), 1)
+
+                let top = grid.values[row0 + x0] * (1 - tx) + grid.values[row0 + x1] * tx
+                let bottom = grid.values[row1 + x0] * (1 - tx) + grid.values[row1 + x1] * tx
+                let level = min(max(top * (1 - ty) + bottom * ty, 0), 1)
+                guard level > 0.015 else { continue }
+
+                let fade = min(max((level - 0.015) / 0.04, 0), 1)
+                let alpha = HeatScale.footfallAlpha(forLevel: level) * (fade * fade * (3 - 2 * fade))
+                guard alpha > 0.005 else { continue }
+
+                let rgb = Self.footfallRamp[min(max(Int(level * 255.0 + 0.5), 0), 255)]
+                let index = (py * texWidth + px) * 4
+                pixels[index] = UInt8(min(rgb.x * alpha, 1) * 255 + 0.5)
+                pixels[index + 1] = UInt8(min(rgb.y * alpha, 1) * 255 + 0.5)
+                pixels[index + 2] = UInt8(min(rgb.z * alpha, 1) * 255 + 0.5)
+                pixels[index + 3] = UInt8(min(alpha, 1) * 255 + 0.5)
+            }
+        }
+
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        return pixels.withUnsafeMutableBytes { rawBuffer -> CGImage? in
+            guard let context = CGContext(
+                data: rawBuffer.baseAddress,
+                width: texWidth,
+                height: texHeight,
+                bitsPerComponent: 8,
+                bytesPerRow: texWidth * 4,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                return nil
+            }
+            clearObstacleFootprints(in: context, layout: layout, pixelsPerMetre: pixelsPerMetre)
+            return context.makeImage()
+        }
+    }
+
+    private func clearObstacleFootprints(in context: CGContext, layout: Layout, pixelsPerMetre: Double) {
+        context.setBlendMode(.clear)
+        for object in layout.objects where object.kind.blocksWalking {
+            let centerX = CGFloat(object.placement.center.x * pixelsPerMetre)
+            let centerY = CGFloat((layout.sizeM.y - object.placement.center.y) * pixelsPerMetre)
+            let width = CGFloat(object.placement.sizeM.x * pixelsPerMetre)
+            let height = CGFloat(object.placement.sizeM.y * pixelsPerMetre)
+            context.saveGState()
+            context.translateBy(x: centerX, y: centerY)
+            context.rotate(by: CGFloat(-object.placement.rotationRadians))
+            context.fill(CGRect(x: -width / 2, y: -height / 2, width: width, height: height))
+            context.restoreGState()
+        }
+    }
+
+    private func renderSmoothHeatmapCGImage(
+        for layout: Layout,
+        cells: [DensityCell],
+        style: Simulation2DSpriteView.OverlayStyle
+    ) -> CGImage? {
         let pixelsPerMetre = 5.0
         let texWidth = max(10, Int(ceil(layout.sizeM.x * pixelsPerMetre)))
         let texHeight = max(10, Int(ceil(layout.sizeM.y * pixelsPerMetre)))
@@ -343,7 +498,7 @@ final class Venue2DScene: SKScene {
             return nil
         }
 
-        let blobRadiusPx = CGFloat(1.35 * pixelsPerMetre)
+        let blobRadiusPx = CGFloat((style == .walkingRoutes ? 0.95 : 1.35) * pixelsPerMetre)
         let sortedCells = cells.sorted { $0.peoplePerSquareMetre < $1.peoplePerSquareMetre }
 
         for cell in sortedCells {
@@ -351,9 +506,18 @@ final class Venue2DScene: SKScene {
                 x: CGFloat(cell.center.x * pixelsPerMetre),
                 y: CGFloat((layout.sizeM.y - cell.center.y) * pixelsPerMetre)
             )
-            let rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
-            let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
-            let peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
+            let rgb: (r: CGFloat, g: CGFloat, b: CGFloat)
+            let peakAlpha: CGFloat
+            switch style {
+            case .heatmap:
+                rgb = heatmapRGB(for: cell.peoplePerSquareMetre)
+                let normalized = min(max((cell.peoplePerSquareMetre - 0.04) / 1.25, 0.0), 1.0)
+                peakAlpha = CGFloat(0.06 + 0.84 * pow(normalized, 0.85))
+            case .walkingRoutes:
+                let level = min(max(cell.peoplePerSquareMetre, 0), 1)
+                rgb = walkingRouteRGB(for: level)
+                peakAlpha = CGFloat(HeatScale.footfallAlpha(forLevel: level))
+            }
 
             let colors = [
                 CGColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: peakAlpha),
@@ -389,6 +553,11 @@ final class Venue2DScene: SKScene {
         }
 
         return context.makeImage()
+    }
+
+    private func walkingRouteRGB(for level: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
+        let color = NSColor(HeatScale.footfallColor(forLevel: level)).usingColorSpace(.sRGB) ?? .systemGreen
+        return (color.redComponent, color.greenComponent, color.blueComponent)
     }
 
     private func heatmapRGB(for density: Double) -> (r: CGFloat, g: CGFloat, b: CGFloat) {
