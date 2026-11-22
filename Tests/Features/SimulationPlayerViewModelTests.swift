@@ -354,6 +354,20 @@ struct SimulationPlayerSceneTests {
 
         counts = [0, 0, 0]
         #expect(SimulationPlayerViewModel.normalizedFootfall(for: counts) == [0, 0, 0])
+        #expect(CrowdMeasuringRun.tileCells == 1)
+
+        // Smoothing bridges adjacent tiles into continuous paths rather than isolated grid points.
+        let line: [UInt16] = [
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0,
+            50, 50, 50, 50, 50,
+            0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+        ]
+        let smoothed = SimulationPlayerViewModel.smoothedFootfall(for: line, columns: 5, rows: 5)
+        #expect(smoothed[12] > 0.8)
+        #expect(smoothed[7] > 0 && smoothed[7] < smoothed[12])
+        #expect(smoothed[0] == 0)
     }
 
     @Test("Simulation modes expose Congestion Spots, Crowd Level, and Walking Routes tabs")

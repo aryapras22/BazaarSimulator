@@ -285,11 +285,15 @@ final class SimulationPlayerViewModel {
             )
         case .footfall:
             guard let replay else { break }
-            let normalized = Self.normalizedFootfall(for: footfall(at: playback))
+            let smoothed = Self.smoothedFootfall(
+                for: footfall(at: playback),
+                columns: replay.footfallColumns,
+                rows: replay.footfallRows
+            )
             let tile = replay.footfallTileM
             frame.overlay = FieldImage.pixels(
                 kind: .footfall,
-                values: normalized.map(Float.init),
+                values: smoothed.map(Float.init),
                 columns: replay.footfallColumns,
                 rows: replay.footfallRows,
                 scale: SIMD2(
@@ -314,6 +318,61 @@ final class SimulationPlayerViewModel {
             let ratio = min(Double(count) / reference, 1.0)
             return pow(ratio, 0.75)
         }
+    }
+
+    /// Lightly blurs the fine footfall grid along adjacent tiles and normalizes to `0...1` so routes read as
+    /// continuous flowing paths instead of isolated grid points.
+    static func smoothedFootfall(for counts: [UInt16], columns: Int, rows: Int) -> [Double] {
+        guard columns > 0, rows > 0, counts.count == columns * rows else {
+            return normalizedFootfall(for: counts)
+        }
+        var horizontal = Array(repeating: 0.0, count: counts.count)
+        for row in 0..<rows {
+            let rowOffset = row * columns
+            for col in 0..<columns {
+                let center = Double(counts[rowOffset + col])
+                let left = col > 0 ? Double(counts[rowOffset + col - 1]) : center
+                let right = col + 1 < columns ? Double(counts[rowOffset + col + 1]) : center
+                horizontal[rowOffset + col] = left * 0.22 + center * 0.56 + right * 0.22
+            }
+        }
+        var smoothed = Array(repeating: 0.0, count: counts.count)
+        for row in 0..<rows {
+            let rowOffset = row * columns
+            let upOffset = max(row - 1, 0) * columns
+            let downOffset = min(row + 1, rows - 1) * columns
+            for col in 0..<columns {
+                smoothed[rowOffset + col] = horizontal[upOffset + col] * 0.22
+                    + horizontal[rowOffset + col] * 0.56
+                    + horizontal[downOffset + col] * 0.22
+            }
+        }
+        let nonZero = smoothed.filter { $0 > 0.01 }.sorted()
+        guard !nonZero.isEmpty else { return Array(repeating: 0, count: counts.count) }
+        let percentileIndex = Int((Double(nonZero.count - 1) * 0.95).rounded(.down))
+        let reference = max(nonZero[percentileIndex], 0.01)
+        return smoothed.map { value in
+            guard value > 0.01 else { return 0 }
+            let ratio = min(value / reference, 1.0)
+            return pow(ratio, 0.78)
+        }
+    }
+
+    /// Continuous smoothed footfall field for the 2D Walking Routes overlay.
+    func walkingRoutesGrid(at playback: Double) -> WalkingRoutesGrid? {
+        guard let replay else { return nil }
+        let values = Self.smoothedFootfall(
+            for: footfall(at: playback),
+            columns: replay.footfallColumns,
+            rows: replay.footfallRows
+        )
+        return WalkingRoutesGrid(
+            origin: plan.origin,
+            tileM: replay.footfallTileM,
+            columns: replay.footfallColumns,
+            rows: replay.footfallRows,
+            values: values
+        )
     }
 
     /// How often each tile of floor has been walked by `playback`.

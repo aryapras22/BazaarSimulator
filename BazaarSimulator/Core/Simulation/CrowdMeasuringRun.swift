@@ -57,7 +57,7 @@ nonisolated final class CrowdMeasuringRun {
     static let sampleIntervalSeconds = 10
     static let frameIntervalSeconds = 10
     static let blockCells = 6
-    static let tileCells = 3
+    static let tileCells = 1
     /// Doors and floor tiles are checked this often, so a walking visitor cannot skip a cell.
     private static let trackEverySteps = 2
     /// Visitors still inside this long after closing are left there.

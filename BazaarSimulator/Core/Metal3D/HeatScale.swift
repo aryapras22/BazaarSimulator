@@ -5,9 +5,9 @@ enum HeatScale {
     static let colors: [Color] = [.heatLow, .heatMedium, .heatOrange, .heatHigh]
 
     static let footfallColors: [Color] = [
-        Color(.sRGB, red: 0.14, green: 0.74, blue: 0.34, opacity: 1),
-        Color(.sRGB, red: 0.56, green: 0.82, blue: 0.22, opacity: 1),
-        Color(.sRGB, red: 0.94, green: 0.38, blue: 0.20, opacity: 1)
+        Color(.sRGB, red: 0.16, green: 0.74, blue: 0.36, opacity: 1),
+        Color(.sRGB, red: 0.62, green: 0.78, blue: 0.28, opacity: 1),
+        Color(.sRGB, red: 0.86, green: 0.44, blue: 0.28, opacity: 1)
     ]
 
     /// 0 up to the "restricted" grade, then rising through the stuck level to jammed.
@@ -33,6 +33,6 @@ enum HeatScale {
     static func footfallAlpha(forLevel level: Double) -> Double {
         let clamped = min(max(level, 0), 1)
         guard clamped > 0 else { return 0 }
-        return 0.12 + 0.80 * pow(clamped, 0.85)
+        return 0.10 + 0.76 * pow(clamped, 0.85)
     }
 }
