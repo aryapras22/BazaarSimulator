@@ -314,4 +314,26 @@ struct SimulationPlayerSceneTests {
             #expect(!model.sceneFrame(at: 60).visitors.isEmpty, "\(mode)")
         }
     }
+
+    @Test("Tenant categories receive distinct colors for the legend and booths")
+    func tenantColorsDifferentiateCategories() {
+        let fnb = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let fashion = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let hobbies = LegendEntry(name: "Lifestyle & Hobbies", color: LegendColor(red: 1, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [fnb, fashion, hobbies])
+
+        let items = TenantColors.legendItems(for: nil, legend: legend)
+        #expect(items.map(\.name) == ["FNB", "Fashion", "Lifestyle & Hobbies"])
+        #expect(Set(items.map(\.rgba)).count == 3)
+
+        let fnbBooth = LayoutObject(
+            kind: .booth, label: "F1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fnb.id
+        )
+        let fashionBooth = LayoutObject(
+            kind: .booth, label: "B1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fashion.id
+        )
+        #expect(TenantColors.boothRGBA(for: fnbBooth, legend: legend) == items[0].rgba)
+        #expect(TenantColors.boothRGBA(for: fashionBooth, legend: legend) == items[1].rgba)
+        #expect(items[0].rgba != items[1].rgba)
+    }
 }

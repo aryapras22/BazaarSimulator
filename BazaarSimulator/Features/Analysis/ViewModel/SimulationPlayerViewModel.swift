@@ -82,6 +82,8 @@ final class SimulationPlayerViewModel {
 
     var outcome: LayoutOutcome? { result?.outcomes[layoutID] }
     var layout: Layout? { result?.layouts[layoutID] }
+    var legend: Legend { session.draft(for: projectID)?.legend ?? Legend() }
+    var tenantTypes: [TenantLegendItem] { TenantColors.legendItems(for: layout, legend: legend) }
     var replay: SimulationReplay? { result?.replay(for: layoutID) }
     var visitorTypes: [VisitorType] { result?.visitorTypes ?? [] }
     var plan: PlanFrame { result?.analyses[layoutID]?.plan ?? .unit }
@@ -238,7 +240,7 @@ final class SimulationPlayerViewModel {
         if let cachedVenue { return cachedVenue }
         guard let layout else { return nil }
         let venue = SimulationVenue(
-            id: UUID(), blocks: VenueGeometry.blocks(for: layout), plan: plan,
+            id: UUID(), blocks: VenueGeometry.blocks(for: layout, legend: legend), plan: plan,
             attractions: VenueGeometry.attractions(in: layout), seats: VenueGeometry.seats(in: layout)
         )
         cachedVenue = venue

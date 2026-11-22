@@ -14,6 +14,7 @@ struct SimulationPlanView: View {
         if let layout = viewModel.layout, let outcome = viewModel.outcome {
             Simulation2DSpriteView(
                 layout: layout,
+                legend: viewModel.legend,
                 visitors: viewModel.spriteVisitors(at: time),
                 densityCells: viewModel.spriteOverlayCells(at: time),
                 showHeatmap: true,

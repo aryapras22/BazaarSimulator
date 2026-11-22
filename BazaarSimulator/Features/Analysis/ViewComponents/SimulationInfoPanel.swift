@@ -7,6 +7,7 @@ struct SimulationInfoPanel: View {
     let visitorsInside: Int
     let mode: SimulationMode
     let visitorTypes: [VisitorType]
+    var tenantTypes: [TenantLegendItem] = []
 
     private static let inset: CGFloat = 16
 
@@ -59,6 +60,29 @@ struct SimulationInfoPanel: View {
                 }
             }
             .padding(.top, 8)
+
+            if !tenantTypes.isEmpty {
+                Text("Tenant types")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.textSecondary)
+                    .padding(.top, 16)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(tenantTypes) { tenant in
+                        HStack(spacing: 10.5) {
+                            Circle()
+                                .fill(tenant.color)
+                                .frame(width: 13, height: 13)
+                            Text(tenant.name)
+                                .font(.system(size: 12.25, weight: .bold))
+                                .foregroundStyle(.textPrimary)
+                                .lineLimit(1)
+                        }
+                        .frame(height: 18, alignment: .leading)
+                    }
+                }
+                .padding(.top, 8)
+            }
         }
         .padding(.horizontal, Self.inset)
         .padding(.top, 16.5)

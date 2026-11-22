@@ -30,6 +30,7 @@ struct SpriteCameraTransform: Equatable {
 /// Supports dragging to pan/scroll and scrolling or pinching to zoom.
 struct Simulation2DSpriteView: NSViewRepresentable {
     let layout: Layout
+    var legend: Legend = Legend()
     var visitors: [SimulatedVisitor] = []
     var densityCells: [DensityCell] = []
     var showHeatmap = false
@@ -52,6 +53,7 @@ struct Simulation2DSpriteView: NSViewRepresentable {
         context.coordinator.scene?.onCameraChange = onCameraChange
         context.coordinator.scene?.updateScene(
             layout: layout,
+            legend: legend,
             visitors: visitors,
             densityCells: densityCells,
             showHeatmap: showHeatmap
@@ -95,6 +97,7 @@ final class InteractiveSKView: SKView {
 final class Venue2DScene: SKScene {
     private let pointsPerMetre: CGFloat = SpriteCameraTransform.pointsPerMetre
     private var currentLayout: Layout?
+    private var currentLegend: Legend = Legend()
     private var hasFittedCamera = false
     private var baseFitScale: CGFloat = 1.0
     var onCameraChange: ((SpriteCameraTransform) -> Void)?
@@ -139,19 +142,24 @@ final class Venue2DScene: SKScene {
 
     func updateScene(
         layout: Layout,
+        legend: Legend = Legend(),
         visitors: [SimulatedVisitor],
         densityCells: [DensityCell],
         showHeatmap: Bool
     ) {
-        if currentLayout?.id != layout.id {
+        if currentLayout?.id != layout.id || currentLegend != legend {
+            let layoutChanged = currentLayout?.id != layout.id
             currentLayout = layout
-            hasFittedCamera = false
-            rebuildStaticLayout(layout)
-            visitorNodes.removeAll()
-            visitorLayer.removeAllChildren()
-            lastHeatmapCells = []
-            let fallbackSize = (size.width > 80 && size.height > 80) ? size : CGSize(width: 1000, height: 700)
-            fitCamera(to: layout, viewSize: fallbackSize)
+            currentLegend = legend
+            rebuildStaticLayout(layout, legend: legend)
+            if layoutChanged {
+                hasFittedCamera = false
+                visitorNodes.removeAll()
+                visitorLayer.removeAllChildren()
+                lastHeatmapCells = []
+                let fallbackSize = (size.width > 80 && size.height > 80) ? size : CGSize(width: 1000, height: 700)
+                fitCamera(to: layout, viewSize: fallbackSize)
+            }
         }
 
         ensureCameraFitted(viewSize: size)
@@ -209,7 +217,7 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Static Floor & Booths
 
-    private func rebuildStaticLayout(_ layout: Layout) {
+    private func rebuildStaticLayout(_ layout: Layout, legend: Legend) {
         floorLayer.removeAllChildren()
         objectLayer.removeAllChildren()
 
@@ -238,7 +246,7 @@ final class Venue2DScene: SKScene {
         }
 
         for object in layout.objects {
-            objectLayer.addChild(makeObjectNode(for: object, in: layout))
+            objectLayer.addChild(makeObjectNode(for: object, in: layout, legend: legend))
         }
     }
 
@@ -263,7 +271,7 @@ final class Venue2DScene: SKScene {
         return node
     }
 
-    private func makeObjectNode(for object: LayoutObject, in layout: Layout) -> SKShapeNode {
+    private func makeObjectNode(for object: LayoutObject, in layout: Layout, legend: Legend) -> SKShapeNode {
         let size = CGSize(
             width: CGFloat(object.placement.sizeM.x) * pointsPerMetre,
             height: CGFloat(object.placement.sizeM.y) * pointsPerMetre
@@ -278,7 +286,7 @@ final class Venue2DScene: SKScene {
 
         switch object.kind {
         case .booth:
-            node.fillColor = NSColor(calibratedRed: 0.22, green: 0.44, blue: 0.74, alpha: 1.0)
+            node.fillColor = TenantColors.boothNSColor(for: object, legend: legend)
             node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
         case .table:
             node.fillColor = NSColor(calibratedRed: 0.35, green: 0.38, blue: 0.45, alpha: 1.0)

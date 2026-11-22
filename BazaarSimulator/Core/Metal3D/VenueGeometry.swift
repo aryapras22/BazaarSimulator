@@ -25,7 +25,7 @@ enum VenueGeometry {
 
     // MARK: Layout
 
-    static func blocks(for layout: Layout) -> [VenueBlock] {
+    static func blocks(for layout: Layout, legend: Legend = Legend()) -> [VenueBlock] {
         let doors = layout.objects.filter { $0.kind == .door }
         let attractions = layout.objects.filter { $0.kind == .entertainment }.map(\.placement.center)
         var result = floors(for: layout)
@@ -39,7 +39,7 @@ enum VenueGeometry {
                 }
                 result += seating(object, toward: nearest)
             default:
-                result += blocks(for: object)
+                result += blocks(for: object, legend: legend)
             }
         }
         return result
@@ -54,9 +54,9 @@ enum VenueGeometry {
 
     /// Everything one object is made of. A booth is a stall, a door is a frame with leaves, tables and
     /// seating come with their chairs, and an attraction is a stage, a photobooth or a display.
-    static func blocks(for object: LayoutObject) -> [VenueBlock] {
+    static func blocks(for object: LayoutObject, legend: Legend = Legend()) -> [VenueBlock] {
         switch object.kind {
-        case .booth: booth(object)
+        case .booth: booth(object, legend: legend)
         case .door: door(object)
         case .table: table(object)
         case .seating: seating(object)

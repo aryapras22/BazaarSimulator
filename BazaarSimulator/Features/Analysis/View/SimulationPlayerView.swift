@@ -44,7 +44,8 @@ struct SimulationPlayerView: View {
                         layoutName: viewModel.layoutID.name,
                         visitorsInside: viewModel.visitorsInside(at: time),
                         mode: viewModel.mode,
-                        visitorTypes: viewModel.visitorTypes
+                        visitorTypes: viewModel.visitorTypes,
+                        tenantTypes: viewModel.tenantTypes
                     )
                     .padding(.leading, Spacing.l)
                     .padding(.top, topInset + 58)
