@@ -61,12 +61,13 @@ struct SimulationPlayerViewModelTests {
     func clockText() async {
         let model = makeModel()
         await model.load()
+        #expect(SimulationPlayerViewModel.playbackSeconds == 480)
         #expect(model.clockText(at: 0) == "10:00")
-        #expect(model.clockText(at: 60) == "11:30")
-        #expect(model.clockText(at: 120) == "13:00")
-        #expect(model.progress(at: 60) == 0.5)
-        #expect(model.progress(at: 500) == 1)
-        #expect(model.windowSeconds(at: 120) == 10_800)
+        #expect(model.clockText(at: 240) == "11:30")
+        #expect(model.clockText(at: 480) == "13:00")
+        #expect(model.progress(at: 240) == 0.5)
+        #expect(model.progress(at: 600) == 1)
+        #expect(model.windowSeconds(at: 480) == 10_800)
     }
 
     @Test("Visitors are drawn on the plan, and are counted by the people in them")
@@ -77,7 +78,7 @@ struct SimulationPlayerViewModelTests {
         var busiest = 0.0
         var most = 0
         for step in 0...20 {
-            let time = Double(step) * 6
+            let time = Double(step) * (SimulationPlayerViewModel.playbackSeconds / 20)
             let count = model.visitorsInside(at: time)
             if count > most { most = count; busiest = time }
         }
@@ -116,8 +117,8 @@ struct SimulationPlayerViewModelTests {
     func footfall() async {
         let model = makeModel()
         await model.load()
-        let early = model.footfallSummary(at: 10)
-        let late = model.footfallSummary(at: 120)
+        let early = model.footfallSummary(at: 40)
+        let late = model.footfallSummary(at: SimulationPlayerViewModel.playbackSeconds)
         #expect(late.total >= early.total)
         #expect(late.busiest >= early.busiest)
         #expect(late.total > 0)
@@ -215,6 +216,12 @@ struct PlaybackClockTests {
         clock.setSpeed(2, at: start.addingTimeInterval(10))
         #expect(clock.time(at: start.addingTimeInterval(10)) == 10)
         #expect(clock.time(at: start.addingTimeInterval(20)) == 30)
+    }
+
+    @Test("Playback speed options are 1x, 2x, and 4x only")
+    func speedOptions() {
+        #expect(PlaybackClock.speeds == [1, 2, 4])
+        #expect(PlaybackClock.speeds.map(PlaybackBar.speedLabel) == ["1x", "2x", "4x"])
     }
 
     @Test("It stops at the end, and playing again starts over")

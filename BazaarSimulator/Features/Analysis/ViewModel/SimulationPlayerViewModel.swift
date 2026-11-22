@@ -15,8 +15,8 @@ struct DrawnVisitor {
 @Observable
 @MainActor
 final class SimulationPlayerViewModel {
-    /// The window is played back in this many seconds at normal speed.
-    static let playbackSeconds = 120.0
+    /// The window is played back in this many seconds at 1x speed (4x slower than the original 120s rate).
+    static let playbackSeconds = 480.0
     static let heatColumns = 36
 
     enum Phase: Equatable {

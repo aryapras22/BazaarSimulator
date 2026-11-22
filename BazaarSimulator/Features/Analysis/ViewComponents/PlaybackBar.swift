@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Where playback is. Time is seconds of playback, which the view model turns into a time in the window.
 struct PlaybackClock {
-    static let speeds: [Double] = [0.5, 1, 2, 4]
+    static let speeds: [Double] = [1, 2, 4]
 
     let duration: Double
     private(set) var isRunning = false
@@ -150,6 +150,6 @@ struct PlaybackBar: View {
     }
 
     static func speedLabel(_ speed: Double) -> String {
-        speed == 0.5 ? "0.5x" : "\(Int(speed))x"
+        "\(Int(speed))x"
     }
 }
