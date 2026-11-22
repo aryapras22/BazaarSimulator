@@ -74,13 +74,7 @@ struct SimulationInfoPanel: View {
         .padding(.top, 16.5)
         .padding(.bottom, 12.5)
         .frame(width: Self.width, alignment: .leading)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-            shape
-                .fill(Color(hex: 0x2E405C))
-                .overlay { shape.strokeBorder(Color(hex: 0x4A5D78).opacity(0.8), lineWidth: 1) }
-                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
-        }
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: showsGradeRanges)
     }
 
@@ -197,13 +191,7 @@ struct SimulationTenantLegendPanel: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
         .frame(width: SimulationInfoPanel.width, alignment: .leading)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-            shape
-                .fill(Color(hex: 0x2E405C))
-                .overlay { shape.strokeBorder(Color(hex: 0x4A5D78).opacity(0.8), lineWidth: 1) }
-                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
-        }
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
