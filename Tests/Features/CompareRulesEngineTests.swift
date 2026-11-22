@@ -64,7 +64,8 @@ struct CompareRulesEngineTests {
 
         #expect(content.recommended == .two)
         // Over the day layout 1 averages 1.3 spots stuck at once (0, 3 and 1), and layout 2 averages 0.3 (0, 1 and 0).
-        #expect(content.headline == "On average, people get stuck in only \(shown(0.3)) spots in Layout 2. Layout 1 has \(shown(1.3)).")
+        #expect(content.headline ==
+                "On average, people get stuck in only \(shown(0.3)) spots in Layout 2. Layout 1 has \(shown(1.3)).")
         #expect(content.chartTitle == "Stuck Spots through the day")
         #expect(content.symbol == "exclamationmark.triangle.fill")
         #expect(content.tiles.count == 2)
@@ -84,7 +85,9 @@ struct CompareRulesEngineTests {
 
         #expect(content.recommended == .two)
         // Layout 1 averages 2.7 minutes stuck (0, 6 and 2), and layout 2 averages 0.3 (0, 0.8 and 0).
-        #expect(content.headline == "On average, people at the worst spot are stuck about \(shown(0.3)) min in Layout 2. In Layout 1, about \(shown(2.7)) min.")
+        #expect(content.headline ==
+                "On average, people at the worst spot are stuck about \(shown(0.3)) min in Layout 2. "
+                + "In Layout 1, about \(shown(2.7)) min.")
         #expect(content.symbol == "clock.fill")
         #expect(content.tiles[0].value == shown(2.7))
         #expect(content.tiles[0].unit == "min")

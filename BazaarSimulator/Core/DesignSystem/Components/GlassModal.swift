@@ -15,7 +15,7 @@ struct GlassModal<Content: View>: View {
             let margin = Spacing.xl
             let width = min(maxWidth, geometry.size.width - margin * 2)
             ZStack {
-                Color.black.opacity(0.25)
+                Palette.scrim
                     .ignoresSafeArea()
                     .onTapGesture { onOutsideTap?() }
 
@@ -25,12 +25,79 @@ struct GlassModal<Content: View>: View {
                 }
                 .frame(width: width)
                 // A frosted layer under the glass, so what shows through the card is blurred more.
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
                 .padding(.vertical, margin)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .transition(.opacity)
     }
+}
+
+private struct GlassModalPreviewCard: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(title)
+                .font(Typography.title)
+                .foregroundColor(Palette.textPrimary)
+            Text(message)
+                .font(Typography.subtitle)
+                .foregroundColor(Palette.textSecondary)
+        }
+        .padding(Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+#Preview("Normal") {
+    GlassModal(maxWidth: 480) { _ in
+        GlassModalPreviewCard(title: "Insights", message: "Each tab compares the layouts on one result.")
+    }
+    .frame(width: 640, height: 420)
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Long Text") {
+    GlassModal(maxWidth: 480) { _ in
+        GlassModalPreviewCard(
+            title: "A title that is long enough to wrap onto a second line in a narrow card",
+            message: String(repeating: "A long message that goes on and on. ", count: 12)
+        )
+    }
+    .frame(width: 640, height: 420)
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Empty Value") {
+    GlassModal(maxWidth: 480) { _ in
+        GlassModalPreviewCard(title: "", message: "")
+    }
+    .frame(width: 640, height: 420)
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Dark Mode") {
+    GlassModal(maxWidth: 480, onOutsideTap: {}) { _ in
+        GlassModalPreviewCard(title: "Parameters", message: "Applies to every layout in this project.")
+    }
+    .frame(width: 640, height: 420)
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Disabled") {
+    GlassModal(maxWidth: 480) { _ in
+        GlassModalPreviewCard(title: "Insights", message: "Nothing to compare yet.")
+            .disabled(true)
+    }
+    .frame(width: 640, height: 420)
+    .background(Palette.background)
+    .preferredColorScheme(.dark)
 }

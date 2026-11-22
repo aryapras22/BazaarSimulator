@@ -5,8 +5,8 @@ import simd
 /// are. There is no fixed number. The most crowded block is always kept, so a calm layout still has a worst spot to
 /// report, and every other block is kept only when it too reaches the stuck density.
 enum SpotSelector {
-    /// People per m² from which a block counts as stuck, the same level the grades and the Stuck Spots result use.
-    static let stuckDensity = SeverityGrade.heavyThreshold
+    /// People per m² from which a block counts as stuck.
+    static let stuckDensity = CrowdParameters.stuckDensity
     static let minimumSeparationM = 8.0
     static let minimumAreaM2 = 6.0
 

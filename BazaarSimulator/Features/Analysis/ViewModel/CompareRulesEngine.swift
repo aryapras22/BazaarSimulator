@@ -133,8 +133,10 @@ struct CompareRulesEngine: Sendable {
                 ? "Nobody gets stuck in either layout, even on average."
                 : "On average, people at the worst spot are stuck about \(textWin) min in both layouts.")
             : avgWin < 0.05
-            ? "On average, nobody gets stuck in \(oWin.name). In \(oLose.name), people at the worst spot are stuck about \(textLose) min."
-            : "On average, people at the worst spot are stuck about \(textWin) min in \(oWin.name). In \(oLose.name), about \(textLose) min."
+            ? "On average, nobody gets stuck in \(oWin.name). "
+                + "In \(oLose.name), people at the worst spot are stuck about \(textLose) min."
+            : "On average, people at the worst spot are stuck about \(textWin) min in \(oWin.name). "
+                + "In \(oLose.name), about \(textLose) min."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)

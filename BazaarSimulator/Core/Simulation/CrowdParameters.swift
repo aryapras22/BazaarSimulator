@@ -216,6 +216,12 @@ nonisolated enum CrowdParameters {
     static let heatmapSmoothingRetain = 0.72
     static let heatmapSmoothingNew = 0.28
     static let heatmapMinActiveDensity = 0.004
+
+    // MARK: - 8. Monitored Spots
+
+    /// People per m² from which a block of floor counts as stuck (grade E or F). The analysis grades start from the
+    /// same level, which a test keeps in step.
+    static let stuckDensity = 0.72
     /// Sensitivity multiplier for the replay crowd-density heatmap so crowded spots reach orange/red
     /// while 1-2 people close together remain green.
     static let replayHeatmapSensitivity = 1.42
