@@ -13,7 +13,7 @@ enum AnalysisTab: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .congestionPoints: "Stuck Spots"
+        case .congestionPoints: "Congestion Spots"
         case .crowdDensity: "Crowd Level"
         case .congestionDuration: "Time Stuck"
         case .flowRate: "Flow Rate"
