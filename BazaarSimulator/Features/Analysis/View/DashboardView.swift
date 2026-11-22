@@ -184,16 +184,10 @@ private struct RunningNotice: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 18)
-            .background {
-                if showsProgress && previewVenue != nil {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.backgroundMain.opacity(0.84))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                        }
-                }
-            }
+            .glassEffect(
+                showsProgress ? .regular : .identity,
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

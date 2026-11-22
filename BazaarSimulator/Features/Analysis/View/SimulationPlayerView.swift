@@ -143,8 +143,7 @@ struct SimulationPlayerView: View {
                 .minimumScaleFactor(0.8)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
-                .background(Color.backgroundMain.opacity(0.72), in: Capsule())
-                .overlay { Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75) }
+                .glassEffect(.regular, in: Capsule())
                 .id(viewModel.mode)
                 .transition(.opacity)
                 .allowsHitTesting(false)
