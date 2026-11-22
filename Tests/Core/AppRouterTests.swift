@@ -51,31 +51,26 @@ struct AppRouterTests {
         #expect(router.destination == .editor(projectID: id))
     }
 
-    @Test("Requesting a simulation leaves the screen alone and remembers which layout")
-    func requestSimulation() {
+    @Test("Showing a simulation opens the simulation page and Back returns to analysis")
+    func showAndCloseSimulationFromAnalysis() {
         let id = UUID()
         let router = AppRouter(destination: .analysis(projectID: id))
-        router.requestSimulation(projectID: id, layout: .two)
-        #expect(router.simulationRequest == SimulationRequest(projectID: id, layout: .two))
+        router.showSimulation(projectID: id, layout: .two)
+        #expect(router.destination == .simulation(projectID: id, layout: .two, analysisID: nil))
+
+        router.closeSimulation(projectID: id)
         #expect(router.destination == .analysis(projectID: id))
     }
 
-    @Test("A simulation can be requested for a saved run")
-    func requestSimulationForSavedRun() {
+    @Test("Showing a simulation for a saved run returns to that saved run on Back")
+    func showAndCloseSimulationFromSavedRun() {
         let id = UUID(), run = UUID()
         let router = AppRouter(destination: .savedAnalysis(projectID: id, analysisID: run))
-        router.requestSimulation(projectID: id, layout: .one, analysisID: run)
-        #expect(router.simulationRequest == SimulationRequest(projectID: id, layout: .one, analysisID: run))
-        #expect(router.destination == .savedAnalysis(projectID: id, analysisID: run))
-    }
+        router.showSimulation(projectID: id, layout: .one, analysisID: run)
+        #expect(router.destination == .simulation(projectID: id, layout: .one, analysisID: run))
 
-    @Test("Clearing the simulation request empties it")
-    func clearSimulationRequest() {
-        let id = UUID()
-        let router = AppRouter()
-        router.requestSimulation(projectID: id, layout: .one)
-        router.clearSimulationRequest()
-        #expect(router.simulationRequest == nil)
+        router.closeSimulation(projectID: id, analysisID: run)
+        #expect(router.destination == .savedAnalysis(projectID: id, analysisID: run))
     }
 
     @Test("Show analysis sets destination to analysis with projectID")

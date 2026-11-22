@@ -32,6 +32,7 @@ final class SimulationPlayerViewModel {
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
+    let onBack: () -> Void
 
     var mode: SimulationMode = .congestion
     var viewStyle: SimulationViewStyle = .twoD
@@ -48,7 +49,8 @@ final class SimulationPlayerViewModel {
         analysisID: UUID? = nil,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
-        catalog: PresetCatalog
+        catalog: PresetCatalog,
+        onBack: @escaping () -> Void = {}
     ) {
         self.projectID = projectID
         self.layoutID = layoutID
@@ -56,6 +58,7 @@ final class SimulationPlayerViewModel {
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
+        self.onBack = onBack
     }
 
     func load() async {

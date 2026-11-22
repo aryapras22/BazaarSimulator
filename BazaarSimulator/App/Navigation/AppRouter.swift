@@ -8,6 +8,7 @@ enum AppDestination: Equatable, Sendable {
     case analysis(projectID: UUID)
     case editor(projectID: UUID)
     case savedAnalysis(projectID: UUID, analysisID: UUID)
+    case simulation(projectID: UUID, layout: LayoutID, analysisID: UUID?)
 }
 
 extension AppDestination {
@@ -16,17 +17,9 @@ extension AppDestination {
         switch self {
         case .empty: nil
         case .setup(let id), .review(let id), .analysis(let id), .editor(let id): id
-        case .savedAnalysis(let id, _): id
+        case .savedAnalysis(let id, _), .simulation(let id, _, _): id
         }
     }
-}
-
-/// A request to open the simulator for one layout of a project, in its own window.
-struct SimulationRequest: Codable, Hashable, Sendable {
-    let projectID: UUID
-    let layout: LayoutID
-    /// The saved run to play. Nil plays the project's layouts as they are now.
-    var analysisID: UUID?
 }
 
 @Observable
@@ -37,9 +30,8 @@ final class AppRouter {
     private(set) var parametersProjectID: UUID?
     /// When Parameters was opened from a saved run, the run whose stored values seed the form.
     private(set) var parametersAnalysisID: UUID?
-    /// Set when a layout's simulator should open. The window opens and clears it.
-    private(set) var simulationRequest: SimulationRequest?
     private var editorOrigin: AppDestination?
+    private var simulationOrigin: AppDestination?
 
     init(destination: AppDestination = .empty) {
         self.destination = destination
@@ -86,12 +78,24 @@ final class AppRouter {
         editorOrigin = nil
     }
 
-    func requestSimulation(projectID: UUID, layout: LayoutID, analysisID: UUID? = nil) {
-        simulationRequest = SimulationRequest(projectID: projectID, layout: layout, analysisID: analysisID)
+    /// Opens the simulation replay page and remembers where it was opened from, so Back returns there.
+    func showSimulation(projectID: UUID, layout: LayoutID, analysisID: UUID? = nil) {
+        if destination.projectID == projectID {
+            simulationOrigin = destination
+        }
+        destination = .simulation(projectID: projectID, layout: layout, analysisID: analysisID)
     }
 
-    func clearSimulationRequest() {
-        simulationRequest = nil
+    /// Leaves the simulation replay page for the page it was opened from.
+    func closeSimulation(projectID: UUID, analysisID: UUID? = nil) {
+        if let origin = simulationOrigin, origin.projectID == projectID {
+            destination = origin
+        } else if let analysisID {
+            destination = .savedAnalysis(projectID: projectID, analysisID: analysisID)
+        } else {
+            destination = .analysis(projectID: projectID)
+        }
+        simulationOrigin = nil
     }
 
     func showParameters(projectID: UUID, analysisID: UUID? = nil) {

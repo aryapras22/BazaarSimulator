@@ -70,7 +70,7 @@ final class ProjectLibraryViewModel {
     func isFolderSelected(_ project: ProjectSummary) -> Bool {
         switch destination() {
         case .setup(let id), .review(let id), .editor(let id): id == project.id
-        case .empty, .analysis, .savedAnalysis: false
+        case .empty, .analysis, .savedAnalysis, .simulation: false
         }
     }
 

@@ -6,20 +6,46 @@ struct SimulationPlayerView: View {
 
     @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.playbackSeconds)
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.pageClearsToolbar) private var pageClearsToolbar
 
     var body: some View {
-        Group {
-            switch viewModel.phase {
-            case .ready: player
-            case .loading: notice("Running the simulation…", showsProgress: true)
-            case .needsLayouts: notice("Add a floor plan to see the simulation.", showsProgress: false)
+        ZStack(alignment: .topLeading) {
+            Group {
+                switch viewModel.phase {
+                case .ready: player
+                case .loading: notice("Running the simulation…", showsProgress: true)
+                case .needsLayouts: notice("Add a floor plan to see the simulation.", showsProgress: false)
+                }
             }
+
+            backButton
+                .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
+                .padding(.top, Spacing.m)
         }
         // Room for the window's top controls, the same in a window and in full screen where they are hidden.
         .padding(.top, 28)
-        .ignoresSafeArea(.container, edges: .top)
+        .underToolbarInWindow()
         .background(Color.backgroundMain.ignoresSafeArea())
         .task { await viewModel.load() }
+    }
+
+    private var backButton: some View {
+        Button(action: viewModel.onBack) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.textPrimary)
+                .frame(width: 40, height: 40)
+                .background {
+                    Circle()
+                        .fill(Color.backButtonFill)
+                        .overlay { Circle().strokeBorder(.white.opacity(0.14), lineWidth: 0.75) }
+                        .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help("Back")
+        .accessibilityLabel("Back")
     }
 
     private var player: some View {
