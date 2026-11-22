@@ -171,6 +171,23 @@ struct LayoutOutcome: Sendable {
         return (counts.max() ?? 0, Double(counts.reduce(0, +)) / Double(counts.count))
     }
 
+    /// The averages over the whole simulation: every sampled window of the day, not just the busiest one. The compare
+    /// page and its Insights use these to say which layout does better. A layout with no day samples falls back on its
+    /// busiest window.
+    var averageStuckSpots: Double {
+        dayPoints.isEmpty ? Double(C) : dayPoints.map { Double($0.jammedSpots) }.reduce(0, +) / Double(dayPoints.count)
+    }
+
+    /// Minutes the worst spot stays stuck, averaged over the day's windows.
+    var averageStuckMinutes: Double {
+        dayPoints.isEmpty ? M : dayPoints.map(\.heavyMinutes).reduce(0, +) / Double(dayPoints.count)
+    }
+
+    /// People per m² at the worst spot, averaged over the day's windows.
+    var averageDensity: Double {
+        dayPoints.isEmpty ? D : dayPoints.map(\.worstDensity).reduce(0, +) / Double(dayPoints.count)
+    }
+
     var spotTotal: Int {
         spots.count
     }

@@ -17,6 +17,8 @@ struct LayoutComparisonCard: View {
     var showsWorstSpot = false
     /// The project's layouts this card can show instead. Empty when there is nothing to pick.
     var choices: [Layout] = []
+    /// The project layout that is the best one, starred in the list of choices.
+    var bestChoiceID: Layout.ID?
     var onChoose: (Layout.ID) -> Void = { _ in }
     var onSimulate: () -> Void = {}
     var onEdit: () -> Void = {}
@@ -134,6 +136,13 @@ struct LayoutComparisonCard: View {
                         Text(choice.name.isEmpty ? "Untitled layout" : choice.name)
                             .lineLimit(1)
                         Spacer(minLength: 0)
+                        if choice.id == bestChoiceID {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.yellow)
+                                .help("Best layout")
+                                .accessibilityLabel("Best layout")
+                        }
                     }
                     .font(.system(size: 13))
                     .padding(.horizontal, 10)

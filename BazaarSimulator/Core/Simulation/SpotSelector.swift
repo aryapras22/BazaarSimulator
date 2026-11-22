@@ -1,9 +1,12 @@
 import Foundation
 import simd
 
-/// Picks the monitored spots after a run: the most crowded blocks of floor in the busiest window.
+/// Picks the monitored spots after a run: the blocks of floor that get stuck in the busiest window, as many as there
+/// are. There is no fixed number. The most crowded block is always kept, so a calm layout still has a worst spot to
+/// report, and every other block is kept only when it too reaches the stuck density.
 enum SpotSelector {
-    static let maxSpots = 4
+    /// People per m² from which a block counts as stuck.
+    static let stuckDensity = CrowdParameters.stuckDensity
     static let minimumSeparationM = 8.0
     static let minimumAreaM2 = 6.0
 
@@ -21,7 +24,8 @@ enum SpotSelector {
         }
         var chosen: [Int] = []
         for candidate in ranked {
-            guard chosen.count < maxSpots else { break }
+            // Ranked from the most crowded down, so the first block that is not stuck ends the list.
+            guard chosen.isEmpty || peaks[candidate.block] >= stuckDensity else { break }
             let isFarEnough = chosen.allSatisfy {
                 simd_distance(centers[$0], centers[candidate.block]) >= minimumSeparationM
             }

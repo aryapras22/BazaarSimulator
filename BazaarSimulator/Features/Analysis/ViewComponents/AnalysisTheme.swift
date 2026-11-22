@@ -31,7 +31,9 @@ struct CardTitle: View {
 }
 
 enum CardSpacing {
-    static let gap: CGFloat = 28
+    /// The one gap between the cells of the page: between the cards, between a row of cards and the next, and from
+    /// the cards to the edges of the window.
+    static let gap: CGFloat = 24
 }
 
 extension Radius {

@@ -38,9 +38,6 @@ struct DashboardView<ParametersSheet: View>: View {
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
-        .sheet(isPresented: $viewModel.isInsightsPresented) {
-            InsightsSheet(viewModel: viewModel)
-        }
         .task { viewModel.startSimulation() }
     }
 }
@@ -94,6 +91,16 @@ struct DashboardContent: View {
 
     @ViewBuilder
     private var comparison: some View {
+        let bestPlanID = viewModel.bestLayoutPlanID
+        // The Best Layout summary comes first, then the layouts it chose from.
+        if let summary = viewModel.singleSummary {
+            SingleLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
+                .padding(.top, metrics.headerToCards)
+        } else if let summary = viewModel.bestLayout {
+            BestLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
+                .padding(.top, metrics.headerToCards)
+        }
+
         // One layout fills the page on its own. Two sit side by side and are compared.
         HStack(alignment: .top, spacing: CardSpacing.gap) {
             ForEach(viewModel.layoutIDs) { layout in
@@ -108,21 +115,14 @@ struct DashboardContent: View {
                     showsEdit: viewModel.canEdit,
                     showsWorstSpot: viewModel.isSingleLayout,
                     choices: viewModel.layoutChoices,
+                    bestChoiceID: bestPlanID,
                     onChoose: { viewModel.choose($0, for: layout) },
                     onSimulate: { viewModel.onSimulate(layout) },
                     onEdit: { viewModel.onEdit(layout) }
                 )
             }
         }
-        .padding(.top, metrics.headerToCards)
-
-        if let summary = viewModel.singleSummary {
-            SingleLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
-                .padding(.top, metrics.cardsToSummary)
-        } else if let summary = viewModel.bestLayout {
-            BestLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
-                .padding(.top, metrics.cardsToSummary)
-        }
+        .padding(.top, metrics.cardsToSummary)
 
         Spacer(minLength: 0)
     }

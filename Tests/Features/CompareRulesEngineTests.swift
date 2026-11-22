@@ -54,50 +54,61 @@ struct CompareRulesEngineTests {
         return [.one: out1, .two: out2]
     }
 
-    @Test("Congestion Points tab picks layout with lower C as winner")
+    private func shown(_ value: Double) -> String { CompareRulesEngine.formatCountOrAvg(value) }
+
+    @Test("Congestion Points tab picks the layout with fewer stuck spots on average")
     func congestionPointsWinner() {
         let outcomes = makeFixtureOutcomes()
         let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00")
         let content = engine.content(for: .congestionPoints)
 
         #expect(content.recommended == .two)
-        #expect(content.headline == "At the busiest time, people get stuck in only 1 spot. Layout 1 has 3.")
+        // Over the day layout 1 averages 1.3 spots stuck at once (0, 3 and 1), and layout 2 averages 0.3 (0, 1 and 0).
+        #expect(content.headline ==
+                "On average, people get stuck in only \(shown(0.3)) spots in Layout 2. Layout 1 has \(shown(1.3)).")
         #expect(content.chartTitle == "Stuck Spots through the day")
         #expect(content.symbol == "exclamationmark.triangle.fill")
         #expect(content.tiles.count == 2)
         #expect(content.tiles[0].bullets[0].hasPrefix("Worst at Spot"))
         #expect(content.tiles[1].bullets[0].hasPrefix("Only at Spot"))
+        #expect(content.tiles[0].value == "\(shown(1.3)) spots")
+        #expect(content.tiles[1].value == "\(shown(0.3)) spots")
         #expect(content.tiles[0].caption == "where people get stuck")
         #expect(content.facts.count == 3)
     }
 
-    @Test("Congestion Duration tab picks layout with lower M")
+    @Test("Congestion Duration tab picks the layout with less time stuck on average")
     func congestionDurationWinner() {
         let outcomes = makeFixtureOutcomes()
         let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00")
         let content = engine.content(for: .congestionDuration)
 
         #expect(content.recommended == .two)
-        #expect(content.headline.hasPrefix("In the busiest 10 minutes, people at the worst spot are stuck for about"))
-        #expect(content.headline.contains("In Layout 1, they're stuck"))
+        // Layout 1 averages 2.7 minutes stuck (0, 6 and 2), and layout 2 averages 0.3 (0, 0.8 and 0).
+        #expect(content.headline ==
+                "On average, people at the worst spot are stuck about \(shown(0.3)) min in Layout 2. "
+                + "In Layout 1, about \(shown(2.7)) min.")
         #expect(content.symbol == "clock.fill")
-        #expect(content.tiles[0].value == "6")
+        #expect(content.tiles[0].value == shown(2.7))
         #expect(content.tiles[0].unit == "min")
-        #expect(content.tiles[1].value == "1")
+        #expect(content.tiles[1].value == shown(0.3))
         #expect(content.rows.count == 2)
     }
 
-    @Test("Crowd Density tab picks layout with lower peak density")
+    @Test("Crowd Density tab picks the layout with the lower average density")
     func crowdDensityWinner() {
         let outcomes = makeFixtureOutcomes()
         let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00")
         let content = engine.content(for: .crowdDensity)
 
         #expect(content.recommended == .two)
-        let level1 = SeverityGrade.grade(forDensity: 2.9).crowdLevel
-        let level2 = SeverityGrade.grade(forDensity: 1.2).crowdLevel
+        // The densities at the worst spot average 1.63 in layout 1 and 0.77 in layout 2: lower for layout 2, and in
+        // the same crowd level.
+        let level1 = SeverityGrade.grade(forDensity: (0.8 + 2.9 + 1.2) / 3).crowdLevel
+        let level2 = SeverityGrade.grade(forDensity: (0.6 + 1.2 + 0.5) / 3).crowdLevel
+        #expect(level1 == level2)
 
-        #expect(content.headline == "At its most crowded spot, Layout 2 is \(level2), while Layout 1 is \(level1).")
+        #expect(content.headline == "On average, at its most crowded spot, both layouts are \(level1).")
         #expect(content.symbol == "person.3.fill")
         #expect(content.tiles[0].value == level1)
         #expect(content.tiles[1].value == level2)

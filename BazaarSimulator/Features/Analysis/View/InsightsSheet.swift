@@ -4,7 +4,9 @@ import SwiftUI
 /// it changes during the day.
 struct InsightsSheet: View {
     @Bindable var viewModel: DashboardViewModel
-    @Environment(\.dismiss) private var dismiss
+    /// How wide the content is laid out. It is the whole reference width unless the window is narrower.
+    var width: CGFloat = 1197
+    var onClose: () -> Void
 
     private var subtitle: String {
         viewModel.isSingleLayout
@@ -12,7 +14,9 @@ struct InsightsSheet: View {
             : "Each tab compares \(LayoutID.one.name) and \(LayoutID.two.name) on one result, then shows how it changes during the day."
     }
 
-    private let metrics = DashboardMetrics(size: CGSize(width: 1197, height: DashboardMetrics.referenceHeight))
+    private var metrics: DashboardMetrics {
+        DashboardMetrics(size: CGSize(width: width, height: DashboardMetrics.referenceHeight))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -26,7 +30,7 @@ struct InsightsSheet: View {
                         .foregroundStyle(.textSecondary)
                 }
                 Spacer()
-                Button("Close") { dismiss() }
+                Button("Close", action: onClose)
                     .buttonStyle(ControlButtonStyle())
                     .keyboardShortcut(.cancelAction)
             }
@@ -40,9 +44,7 @@ struct InsightsSheet: View {
         .padding(.trailing, DashboardMetrics.horizontalPadding.trailing)
         .padding(.top, 26)
         .padding(.bottom, 28)
-        .frame(width: 1197)
-        // The same backdrop as the Parameters sheet.
-        .background(Palette.background)
+        .frame(width: width)
         // The islands in the modal are glass too.
         .environment(\.cardsAreGlass, true)
         .preferredColorScheme(.dark)
