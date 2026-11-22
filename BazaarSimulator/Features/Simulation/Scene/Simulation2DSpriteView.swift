@@ -205,12 +205,14 @@ final class Venue2DScene: SKScene {
     func fitCamera(to layout: Layout, viewSize: CGSize) {
         let worldW = CGFloat(max(1.0, layout.sizeM.x)) * pointsPerMetre
         let worldH = CGFloat(max(1.0, layout.sizeM.y)) * pointsPerMetre
-        cameraNode.position = CGPoint(x: worldW / 2, y: worldH / 2)
 
         let viewW = max(200, viewSize.width * 0.78)
-        let viewH = max(200, viewSize.height * 0.75)
+        let viewH = max(200, viewSize.height * 0.68)
         let scale = max(worldW / viewW, worldH / viewH)
         baseFitScale = max(0.1, scale)
+        // Shift camera slightly upward in SpriteKit coordinates so the venue sits below the top overlay pill.
+        let verticalOffsetPt: CGFloat = 28
+        cameraNode.position = CGPoint(x: worldW / 2, y: worldH / 2 + verticalOffsetPt * baseFitScale)
         cameraNode.setScale(baseFitScale)
         publishCameraTransform(viewSize: viewSize)
     }
