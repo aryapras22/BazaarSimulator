@@ -224,6 +224,26 @@ struct PlaybackClockTests {
         #expect(PlaybackClock.speeds.map(PlaybackBar.speedLabel) == ["1x", "2x", "4x"])
     }
 
+    @Test("Toggle starts, pauses, resumes, and restarts after finishing")
+    func togglePlayback() {
+        var clock = PlaybackClock(duration: 120)
+        let start = Date()
+        clock.toggle(at: start)
+        #expect(clock.isRunning)
+
+        clock.toggle(at: start.addingTimeInterval(20))
+        #expect(!clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(40)) == 20)
+
+        clock.toggle(at: start.addingTimeInterval(40))
+        #expect(clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(50)) == 30)
+
+        clock.toggle(at: start.addingTimeInterval(300))
+        #expect(clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(305)) == 5)
+    }
+
     @Test("It stops at the end, and playing again starts over")
     func end() {
         var clock = PlaybackClock(duration: 120)

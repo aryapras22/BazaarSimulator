@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The simulator: the busiest window of one layout, played over its floor plan.
@@ -5,6 +6,7 @@ struct SimulationPlayerView: View {
     @Bindable var viewModel: SimulationPlayerViewModel
 
     @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.playbackSeconds)
+    @State private var keyMonitor: Any?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.pageClearsToolbar) private var pageClearsToolbar
 
@@ -29,6 +31,30 @@ struct SimulationPlayerView: View {
         .underToolbarInWindow()
         .background(Color.backgroundMain.ignoresSafeArea())
         .task { await viewModel.load() }
+        .onAppear { installSpaceMonitor() }
+        .onDisappear { removeSpaceMonitor() }
+    }
+
+    private func installSpaceMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let isPlainSpace = event.keyCode == 49
+                && !event.isARepeat
+                && event.modifierFlags.intersection([.command, .control, .option]).isEmpty
+            guard isPlainSpace, viewModel.phase == .ready,
+                  !(event.window?.firstResponder is NSText) else {
+                return event
+            }
+            clock.toggle()
+            return nil
+        }
+    }
+
+    private func removeSpaceMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 
     private var player: some View {

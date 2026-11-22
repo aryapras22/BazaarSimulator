@@ -30,6 +30,16 @@ struct PlaybackClock {
         isRunning = false
     }
 
+    mutating func toggle(at date: Date = Date()) {
+        let current = time(at: date)
+        if isRunning && current < duration {
+            pause(at: date)
+        } else {
+            if current >= duration { anchorTime = 0 }
+            play(from: date)
+        }
+    }
+
     mutating func setSpeed(_ newSpeed: Double, at date: Date = Date()) {
         anchorTime = time(at: date)
         anchorDate = date
@@ -62,7 +72,7 @@ struct PlaybackBar: View {
 
         HStack(spacing: 14) {
             Button {
-                if isPlaying { clock.pause() } else { clock.play() }
+                clock.toggle()
             } label: {
                 Image(systemName: isPlaying ? "pause.fill" : finished ? "arrow.counterclockwise" : "play.fill")
                     .font(.system(size: 17, weight: .black))
@@ -73,7 +83,6 @@ struct PlaybackBar: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .keyboardShortcut(.space, modifiers: [])
             .help(isPlaying ? "Pause (Space)" : "Play (Space)")
             .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
