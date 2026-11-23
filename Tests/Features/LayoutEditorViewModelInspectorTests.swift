@@ -315,7 +315,7 @@ struct AttractivenessAndOpenSidesTests {
         #expect(darkBuffer.luminanceRange(in: labelRect).max > 0.70)
     }
 
-    @Test("Blocked open sides draw no strip while closed sides keep their strip")
+    @Test("Blocked open sides draw no strip while closed sides are red")
     func blockedOpenSideDrawsNoStrip() throws {
         let booth = LayoutObject(
             kind: .booth,
@@ -332,7 +332,7 @@ struct AttractivenessAndOpenSidesTests {
         let buffer = try PixelBuffer.render(view)
         #expect(buffer.pixel(col: 100, row: 62).alpha == 0)
         #expect(buffer.pixel(col: 138, row: 100).alpha == 0)
-        #expect(buffer.pixel(col: 100, row: 138).isClose(to: RGBA(color: Palette.canvasOpenSide)))
+        #expect(buffer.pixel(col: 100, row: 138).isClose(to: RGBA(color: Palette.destructive)))
     }
 
     @Test("OpenSidesControl uses destructive red for closed edges and updated caption")
