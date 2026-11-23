@@ -47,16 +47,7 @@ final class AppServices {
     }
 
     private static let mockSeeds: [(name: String, layoutNames: [String])] = [
-        ("More Market", [
-            "more-market-i-layout",
-            "more-market-ii-layout",
-            "more-market-iii-layout",
-            "more-market-iv-layout",
-            "more-market-v-layout",
-            "more-market-vi-layout",
-            "more-market-viii-layout"
-        ]),
-        ("Annyeong Market", ["annyeong-market-layout", "beyond-market-layout"])
+        ("Sample Project", ["annyeong-market-layout", "beyond-market-layout"])
     ]
 
     private static func seedMockProject(
