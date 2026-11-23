@@ -25,25 +25,13 @@ enum BoothRenderer {
         let corners = LayoutGeometry.corners(of: state.booth.placement)
         let path = FloorRenderer.polygonPath(for: corners, transform: transform)
 
-        let fillColor: Color
-        let strokeColor: Color
-        if state.isSelected {
-            fillColor = Palette.canvasSelection
-            strokeColor = Palette.canvasLine
-        } else {
-            if DisabledObjectIndicator.isDisabled(state.booth) {
-                fillColor = DisabledObjectIndicator.mutedFill
-            } else if state.attractiveness == .heat {
-                fillColor = AttractivenessScale.color(for: state.booth.attractiveness)
-            } else {
-                fillColor = Palette.canvasBoothFill
-            }
-            strokeColor = Palette.canvasLine
-        }
+        let isDisabled = DisabledObjectIndicator.isDisabled(state.booth)
+        let usesHeatFill = !isDisabled && state.attractiveness == .heat
+        let strokeColor = Palette.canvasLine
 
-        context.fill(path, with: .color(fillColor))
+        context.fill(path, with: .color(fillColor(for: state, isDisabled: isDisabled, usesHeatFill: usesHeatFill)))
 
-        if DisabledObjectIndicator.isDisabled(state.booth) {
+        if isDisabled {
             DisabledObjectIndicator.drawOverlay(
                 for: state.booth.placement, isSelected: state.isSelected, in: &context, transform: transform
             )
@@ -51,9 +39,8 @@ enum BoothRenderer {
 
         drawOpenSideStrips(of: state.booth, blockedSides: state.blockedSides, in: &context, transform: transform)
 
-        let outlineColor = state.hasObjectWarning ? Palette.canvasIssue : strokeColor
-        let lineWidth: CGFloat = state.hasObjectWarning ? 2.0 : 1.0
-        context.stroke(path, with: .color(outlineColor), lineWidth: lineWidth)
+        let outline = outlineStyle(for: state, usesHeatFill: usesHeatFill, defaultColor: strokeColor)
+        context.stroke(path, with: .color(outline.color), lineWidth: outline.lineWidth)
 
         if state.isHovered && !state.isSelected {
             context.stroke(path, with: .color(Palette.accentIcon), lineWidth: 2.0)
@@ -72,15 +59,39 @@ enum BoothRenderer {
 
         if transform.scale >= 10.0 {
             let centerView = transform.toView(state.booth.placement.center)
-            let isDarkFill = !DisabledObjectIndicator.isDisabled(state.booth)
-                && state.attractiveness == .heat
-                && AttractivenessScale.isDarkStep(for: state.booth.attractiveness)
-            let labelColor = (state.isSelected || isDarkFill) ? Palette.canvasLabelOnDark : strokeColor
+            let isDarkFill = usesHeatFill
+                ? AttractivenessScale.isDarkStep(for: state.booth.attractiveness)
+                : state.isSelected
+            let labelColor = isDarkFill ? Palette.canvasLabelOnDark : strokeColor
             let text = Text(state.displayLabel)
                 .font(Typography.canvasLabel(scaledBy: transform.scale))
                 .foregroundStyle(labelColor)
             context.draw(text, at: CGPoint(x: centerView.x, y: centerView.y), anchor: .center)
         }
+    }
+
+    private static func fillColor(for state: BoothDrawState, isDisabled: Bool, usesHeatFill: Bool) -> Color {
+        if usesHeatFill {
+            return AttractivenessScale.color(for: state.booth.attractiveness)
+        }
+        if state.isSelected {
+            return Palette.canvasSelection
+        }
+        return isDisabled ? DisabledObjectIndicator.mutedFill : Palette.canvasBoothFill
+    }
+
+    private static func outlineStyle(
+        for state: BoothDrawState,
+        usesHeatFill: Bool,
+        defaultColor: Color
+    ) -> (color: Color, lineWidth: CGFloat) {
+        if state.hasObjectWarning {
+            return (Palette.canvasIssue, 2.0)
+        }
+        if state.isSelected && usesHeatFill {
+            return (Palette.canvasSelection, 2.5)
+        }
+        return (defaultColor, 1.0)
     }
 
     private static func drawAttractivenessMark(
@@ -100,7 +111,7 @@ enum BoothRenderer {
         context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
-    /// Booths and entertainment mark closed sides in orange and blocked open sides in red.
+    /// Booths and entertainment mark closed sides in red and draw no strip on open sides.
     static func drawOpenSideStrips(
         of object: LayoutObject,
         blockedSides: OpenSides,
@@ -113,16 +124,7 @@ enum BoothRenderer {
         let depth = min(stripThicknessM, min(placement.sizeM.x, placement.sizeM.y) * 0.25)
         let halfDepth = depth / 2.0
 
-        for side in OpenSides.ordered {
-            let stripColor: Color
-            if !object.openSides.contains(side) {
-                stripColor = Palette.canvasOpenSide
-            } else if blockedSides.contains(side) {
-                stripColor = Palette.canvasIssue
-            } else {
-                continue
-            }
-
+        for side in OpenSides.ordered where !object.openSides.contains(side) {
             let localCenter: SIMD2<Double>
             let stripSize: SIMD2<Double>
             if side == .top {
@@ -148,7 +150,7 @@ enum BoothRenderer {
                 for: LayoutGeometry.corners(of: stripPlacement),
                 transform: transform
             )
-            context.fill(stripPath, with: .color(stripColor))
+            context.fill(stripPath, with: .color(Palette.destructive))
         }
     }
 

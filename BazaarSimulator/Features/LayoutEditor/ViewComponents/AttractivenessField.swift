@@ -2,10 +2,13 @@ import SwiftUI
 
 struct AttractivenessField: View {
     static let range: ClosedRange<Double> = 1...5
-    static let sliderStep: Double = 1
 
     static func isValid(_ value: Double) -> Bool {
         range.contains(value) && value == value.rounded()
+    }
+
+    static func snappedSliderValue(for raw: Double) -> Double {
+        min(max(raw.rounded(), range.lowerBound), range.upperBound)
     }
 
     @Binding var value: Double
@@ -25,7 +28,7 @@ struct AttractivenessField: View {
 
             HStack(alignment: .top, spacing: Spacing.m) {
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Slider(value: sliderValue, in: Self.range, step: Self.sliderStep)
+                    Slider(value: sliderValue, in: Self.range)
                         .labelsHidden()
                         .tint(.clear)
                         .accessibilityLabel("Attractiveness")
@@ -90,7 +93,12 @@ struct AttractivenessField: View {
     private var sliderValue: Binding<Double> {
         Binding(
             get: { min(max(value, Self.range.lowerBound), Self.range.upperBound) },
-            set: { value = $0 }
+            set: { newValue in
+                let snapped = Self.snappedSliderValue(for: newValue)
+                if snapped != value {
+                    value = snapped
+                }
+            }
         )
     }
 }
