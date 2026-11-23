@@ -63,4 +63,25 @@ struct EditorRestyleTests {
         #expect(context.viewModel.tool == .place(.catalog(FurnitureModels.seatingBlockID)))
         #expect(context.viewModel.isActive(.chair))
     }
+
+    @Test("Placing audience seating from the chair button defaults to 4 chairs")
+    func placeChairToolDefaultsToFourChairs() throws {
+        let context = LayoutEditorViewModelTests.makeContext(layer: .booths)
+        context.viewModel.toggle(.chair)
+        context.viewModel.updatePlacementPreview(at: SIMD2<Double>(20, 10), free: false)
+        context.viewModel.commitPlacement(keepTool: false)
+
+        let seating = try #require(context.viewModel.selectedObject)
+        #expect(seating.kind == .seating)
+        #expect(seating.catalogID == FurnitureModels.seatingBlockID)
+        #expect(seating.placement.sizeM == SIMD2<Double>(1.0, 1.0))
+        #expect(FurnitureModels.chairs(of: seating).count == 4)
+    }
+
+    @Test("The audience seating catalog item defaults to 4 seats")
+    func seatingCatalogItemHasFourSeats() throws {
+        let item = try #require(ObjectCatalog.item(FurnitureModels.seatingBlockID))
+        #expect(item.sizeM == SIMD2<Double>(1.0, 1.0))
+        #expect(item.seats.count == 4)
+    }
 }
