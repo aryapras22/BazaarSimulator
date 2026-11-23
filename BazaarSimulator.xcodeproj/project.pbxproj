@@ -21,7 +21,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		42C7C2173094562600513D5B /* BazaarSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mospace.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42C7C2173094562600513D5B /* Mospace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mospace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		42C7C2A03094562600513D5B /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
 		42C7C2A13094562600513D5B /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BazaarSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,7 +133,7 @@
 		42C7C2183094562600513D5B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				42C7C2173094562600513D5B /* BazaarSimulator.app */,
+				42C7C2173094562600513D5B /* Mospace.app */,
 				42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */,
 			);
 			name = Products;
@@ -160,7 +160,7 @@
 				42C7C2B03094562600513D5B /* Extractor */,
 			);
 			productName = BazaarSimulator;
-			productReference = 42C7C2173094562600513D5B /* BazaarSimulator.app */;
+			productReference = 42C7C2173094562600513D5B /* Mospace.app */;
 			productType = "com.apple.product-type.application";
 		};
 		42C7C2A53094562600513D5B /* BazaarSimulatorTests */ = {
