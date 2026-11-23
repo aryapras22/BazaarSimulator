@@ -50,22 +50,29 @@ struct Simulation2DSpriteView: NSViewRepresentable {
     var walkingRoutesGrid: WalkingRoutesGrid?
     var showHeatmap = false
     var overlayStyle: OverlayStyle = .heatmap
+    var backgroundColor: Color = Palette.simulationBackground
+    var zoomRequest: CameraZoomRequest?
     var onCameraChange: ((SpriteCameraTransform) -> Void)?
 
     func makeNSView(context: Context) -> InteractiveSKView {
         let skView = InteractiveSKView()
         skView.ignoresSiblingOrder = false
         skView.preferredFramesPerSecond = 60
+        skView.allowsTransparency = true
+        skView.wantsLayer = true
+        skView.layer?.backgroundColor = NSColor(backgroundColor).usingColorSpace(.sRGB)?.cgColor
         let scene = Venue2DScene(size: CGSize(width: 1000, height: 700))
         scene.scaleMode = .resizeFill
         scene.onCameraChange = onCameraChange
         skView.presentScene(scene)
         skView.venueScene = scene
         context.coordinator.scene = scene
+        context.coordinator.lastZoomRequestID = zoomRequest?.id
         return skView
     }
 
     func updateNSView(_ skView: InteractiveSKView, context: Context) {
+        skView.layer?.backgroundColor = NSColor(backgroundColor).usingColorSpace(.sRGB)?.cgColor
         context.coordinator.scene?.onCameraChange = onCameraChange
         context.coordinator.scene?.updateScene(
             layout: layout,
@@ -76,12 +83,18 @@ struct Simulation2DSpriteView: NSViewRepresentable {
             showHeatmap: showHeatmap,
             overlayStyle: overlayStyle
         )
+        if let zoomRequest, context.coordinator.lastZoomRequestID != zoomRequest.id {
+            context.coordinator.lastZoomRequestID = zoomRequest.id
+            let factor: CGFloat = zoomRequest.direction == .zoomIn ? 0.8 : 1.25
+            context.coordinator.scene?.zoomCamera(by: factor)
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     final class Coordinator {
         var scene: Venue2DScene?
+        var lastZoomRequestID: Int?
     }
 }
 
@@ -136,7 +149,7 @@ final class Venue2DScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
-        backgroundColor = NSColor(calibratedRed: 0.06, green: 0.08, blue: 0.14, alpha: 1.0)
+        backgroundColor = .clear
         camera = cameraNode
         floorLayer.zPosition = 0
         heatmapSprite.zPosition = 1
@@ -252,12 +265,16 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Static Floor & Booths
 
+    private static func srgbColor(_ rgba: SIMD4<Float>) -> NSColor {
+        NSColor(srgbRed: CGFloat(rgba.x), green: CGFloat(rgba.y), blue: CGFloat(rgba.z), alpha: CGFloat(rgba.w))
+    }
+
     private func rebuildStaticLayout(_ layout: Layout, legend: Legend) {
         floorLayer.removeAllChildren()
         objectLayer.removeAllChildren()
 
-        let floorColor = NSColor(calibratedRed: 0.12, green: 0.15, blue: 0.23, alpha: 1.0)
-        let borderColor = NSColor(calibratedWhite: 1.0, alpha: 0.22)
+        let floorColor = Self.srgbColor(VenueGeometry.hallFloorColor)
+        let borderColor = Self.srgbColor(VenueGeometry.frameColor)
 
         if layout.hall.count >= 3 {
             floorLayer.addChild(makePolygonNode(points: layout.hall, in: layout, fill: floorColor, stroke: borderColor))
@@ -276,7 +293,7 @@ final class Venue2DScene: SKScene {
         }
 
         if layout.lobby.count >= 3 {
-            let lobbyColor = NSColor(calibratedRed: 0.10, green: 0.13, blue: 0.20, alpha: 1.0)
+            let lobbyColor = Self.srgbColor(VenueGeometry.lobbyFloorColor)
             floorLayer.addChild(makePolygonNode(points: layout.lobby, in: layout, fill: lobbyColor, stroke: borderColor))
         }
 
@@ -311,36 +328,78 @@ final class Venue2DScene: SKScene {
             width: CGFloat(object.placement.sizeM.x) * pointsPerMetre,
             height: CGFloat(object.placement.sizeM.y) * pointsPerMetre
         )
-        let node = object.kind == .table
-            ? SKShapeNode(ellipseOf: size)
-            : SKShapeNode(rectOf: size, cornerRadius: 2)
+        let inkColor = Self.srgbColor(VenueGeometry.frameColor)
+        let node: SKShapeNode
+        if object.kind == .table {
+            let model = FurnitureModels.table(object.catalogID)
+            let isRound = model.map { $0.shape == .round } ?? (object.placement.shape == .round)
+            if isRound {
+                let diameter = min(size.width, size.height)
+                node = SKShapeNode(ellipseOf: CGSize(width: diameter, height: diameter))
+            } else {
+                node = SKShapeNode(rectOf: size, cornerRadius: 2)
+            }
+        } else if object.kind == .block, object.isColumn {
+            let diameter = min(size.width, size.height)
+            node = SKShapeNode(ellipseOf: CGSize(width: diameter, height: diameter))
+        } else {
+            node = SKShapeNode(rectOf: size, cornerRadius: 2)
+        }
 
         node.position = toScene(object.placement.center, in: layout)
         node.zRotation = CGFloat(-object.placement.rotationRadians)
-        node.lineWidth = 1.0
+        node.strokeColor = inkColor
+        node.lineWidth = 1.2
 
         switch object.kind {
         case .booth:
             node.fillColor = TenantColors.boothNSColor(for: object, legend: legend)
-            node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
+            node.zPosition = 1
         case .table:
-            node.fillColor = NSColor(calibratedRed: 0.35, green: 0.38, blue: 0.45, alpha: 1.0)
-            node.strokeColor = .clear
+            node.fillColor = Self.srgbColor(VenueGeometry.yellowColor)
+            node.zPosition = 1
         case .seating:
-            node.fillColor = NSColor(calibratedRed: 0.35, green: 0.24, blue: 0.50, alpha: 0.75)
-            node.strokeColor = .clear
+            node.fillColor = Self.srgbColor(VenueGeometry.paleBlueColor)
+            node.zPosition = 1
+            addSeatingChairNodes(to: node, for: object, inkColor: inkColor)
         case .entertainment:
-            node.fillColor = NSColor(calibratedRed: 0.90, green: 0.55, blue: 0.20, alpha: 1.0)
-            node.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.55)
+            node.fillColor = Self.srgbColor(VenueGeometry.entertainmentColor(for: object))
+            node.zPosition = 1
         case .door:
-            let isExit = object.doorFlow?.direction == .exit
-            node.fillColor = isExit ? NSColor.systemRed : NSColor.systemGreen
-            node.strokeColor = .clear
-        case .wall, .block, .closedArea:
-            node.fillColor = NSColor(calibratedRed: 0.28, green: 0.32, blue: 0.40, alpha: 1.0)
-            node.strokeColor = .clear
+            node.fillColor = Self.srgbColor(VenueGeometry.doorColor(for: object))
+            node.zPosition = 2
+        case .wall:
+            node.fillColor = Self.srgbColor(VenueGeometry.whiteColor)
+            node.lineWidth = 1.4
+            node.zPosition = 0
+        case .block where object.isColumn:
+            node.fillColor = Self.srgbColor(VenueGeometry.cobaltColor)
+            node.zPosition = 1
+        case .block:
+            node.fillColor = Self.srgbColor(VenueGeometry.blockColor)
+            node.zPosition = 1
+        case .closedArea:
+            node.fillColor = Self.srgbColor(VenueGeometry.paleBlueColor)
+            node.zPosition = 0
         }
         return node
+    }
+
+    private func addSeatingChairNodes(to parent: SKNode, for object: LayoutObject, inkColor: NSColor) {
+        let chairSide = CGFloat(FurnitureModels.chairSizeM.x) * pointsPerMetre
+        let chairSize = CGSize(width: chairSide, height: chairSide)
+        let chairFill = Self.srgbColor(VenueGeometry.creamColor)
+        for offset in FurnitureModels.gridOffsets(for: object.placement.sizeM) {
+            let chair = SKShapeNode(rectOf: chairSize, cornerRadius: 1)
+            chair.position = CGPoint(
+                x: CGFloat(offset.x) * pointsPerMetre,
+                y: CGFloat(-offset.y) * pointsPerMetre
+            )
+            chair.fillColor = chairFill
+            chair.strokeColor = inkColor
+            chair.lineWidth = 0.8
+            parent.addChild(chair)
+        }
     }
 
     // MARK: - Smooth Radial Heatmap Overlay (Matching 3D View)

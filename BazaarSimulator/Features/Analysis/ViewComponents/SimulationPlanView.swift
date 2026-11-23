@@ -6,6 +6,7 @@ import simd
 struct SimulationPlanView: View {
     @Bindable var viewModel: SimulationPlayerViewModel
     let time: Double
+    var zoomRequest: CameraZoomRequest?
 
     @State private var cameraTransform = SpriteCameraTransform()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,6 +21,8 @@ struct SimulationPlanView: View {
                 walkingRoutesGrid: viewModel.mode == .footfall ? viewModel.walkingRoutesGrid(at: time) : nil,
                 showHeatmap: true,
                 overlayStyle: viewModel.mode == .footfall ? .walkingRoutes : .heatmap,
+                backgroundColor: Palette.simulationBackground,
+                zoomRequest: zoomRequest,
                 onCameraChange: { transform in
                     if cameraTransform != transform {
                         cameraTransform = transform
@@ -40,12 +43,19 @@ struct SimulationPlanView: View {
 
     private func markers(outcome: LayoutOutcome, layout: Layout) -> some View {
         GeometryReader { geometry in
+            let activeSpots = outcome.spots.compactMap { spot -> (spot: SpotOutcome, grade: SeverityGrade)? in
+                guard viewModel.isCongestedSpot(spot, at: time) else { return nil }
+                let grade = SeverityGrade.grade(forDensity: viewModel.spotDensity(for: spot, at: time))
+                return (spot, grade)
+            }
+
             ZStack(alignment: .topLeading) {
-                ForEach(outcome.spots, id: \.number) { spot in
+                ForEach(activeSpots, id: \.spot.number) { entry in
+                    let spot = entry.spot
                     let point = spotViewPosition(for: spot, in: layout, viewSize: geometry.size)
                     SpotMarker(
                         number: spot.number,
-                        grade: .grade(forDensity: viewModel.spotDensity(for: spot, at: time))
+                        grade: entry.grade
                     )
                     .fixedSize()
                     .frame(width: 0, height: 0, alignment: .leading)

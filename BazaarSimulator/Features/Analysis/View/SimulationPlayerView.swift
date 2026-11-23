@@ -5,7 +5,8 @@ import SwiftUI
 struct SimulationPlayerView: View {
     @Bindable var viewModel: SimulationPlayerViewModel
 
-    @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.playbackSeconds)
+    @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.defaultPlaybackSeconds)
+    @State private var zoomRequest: CameraZoomRequest?
     @State private var keyMonitor: Any?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.pageClearsToolbar) private var pageClearsToolbar
@@ -29,8 +30,17 @@ struct SimulationPlayerView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .underToolbarInWindow()
-        .background(Color.backgroundMain.ignoresSafeArea())
-        .task { await viewModel.load() }
+        .background(Palette.simulationBackground.ignoresSafeArea())
+        .task {
+            await viewModel.load()
+            clock = PlaybackClock(duration: viewModel.playbackDuration)
+        }
+        .onChange(of: viewModel.playbackDuration) { _, newDuration in
+            clock = PlaybackClock(duration: newDuration)
+        }
+        .onChange(of: viewModel.viewStyle) { _, _ in
+            zoomRequest = nil
+        }
         .onAppear { installSpaceMonitor() }
         .onDisappear { removeSpaceMonitor() }
     }
@@ -91,6 +101,11 @@ struct SimulationPlayerView: View {
                     )
                     .padding(.bottom, Spacing.l)
                 }
+                .overlay(alignment: .bottomTrailing) {
+                    zoomControls
+                        .padding(.trailing, Spacing.l)
+                        .padding(.bottom, Spacing.l)
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: viewModel.mode)
         }
@@ -100,12 +115,42 @@ struct SimulationPlayerView: View {
     private func stage(at time: Double) -> some View {
         switch viewModel.viewStyle {
         case .twoD:
-            SimulationPlanView(viewModel: viewModel, time: time)
+            SimulationPlanView(viewModel: viewModel, time: time, zoomRequest: zoomRequest)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .threeD:
             scene(at: time)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var zoomControls: some View {
+        VStack(spacing: 0) {
+            zoomButton(systemName: "plus", help: "Zoom in", direction: .zoomIn)
+            Rectangle()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 24, height: 1)
+            zoomButton(systemName: "minus", help: "Zoom out", direction: .zoomOut)
+        }
+        .glassCardSurface(in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func zoomButton(
+        systemName: String,
+        help: String,
+        direction: CameraZoomRequest.Direction
+    ) -> some View {
+        Button {
+            zoomRequest = CameraZoomRequest(id: (zoomRequest?.id ?? 0) + 1, direction: direction)
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.textPrimary)
+                .frame(width: 38, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
     }
 
     private func topOverlay(topInset: CGFloat) -> some View {
@@ -143,7 +188,7 @@ struct SimulationPlayerView: View {
                 .minimumScaleFactor(0.8)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
-                .glassEffect(.regular, in: Capsule())
+                .glassCardSurface(in: Capsule())
                 .id(viewModel.mode)
                 .transition(.opacity)
                 .allowsHitTesting(false)
@@ -174,8 +219,14 @@ struct SimulationPlayerView: View {
     @ViewBuilder
     private func scene(at time: Double) -> some View {
         if let venue = viewModel.venue() {
-            Metal3DSceneView(venue: venue, frame: viewModel.sceneFrame(at: time))
-                .accessibilityLabel("\(viewModel.layoutID.name) in 3D")
+            Metal3DSceneView(
+                venue: venue,
+                frame: viewModel.sceneFrame(at: time),
+                backgroundColor: Palette.simulationBackground,
+                zoomRequest: zoomRequest
+            )
+            .background(Palette.simulationBackground)
+            .accessibilityLabel("\(viewModel.layoutID.name) in 3D")
         }
     }
 

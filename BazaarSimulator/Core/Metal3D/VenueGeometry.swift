@@ -69,17 +69,15 @@ enum VenueGeometry {
 
     private static func floors(for layout: Layout) -> [VenueBlock] {
         var result: [VenueBlock] = []
-        let hallColor = SIMD4<Float>(0.99, 0.98, 0.95, 1)
-        let lobbyColor = SIMD4<Float>(0.94, 0.80, 0.33, 1)
         if layout.hall.count >= 3 {
-            result.append(floor(of: LayoutGeometry.bounds(of: layout.hall), color: hallColor))
+            result.append(floor(of: LayoutGeometry.bounds(of: layout.hall), color: hallFloorColor))
         } else {
             result.append(floor(
-                of: BoundingBox(minX: 0, maxX: layout.sizeM.x, minY: 0, maxY: layout.sizeM.y), color: hallColor
+                of: BoundingBox(minX: 0, maxX: layout.sizeM.x, minY: 0, maxY: layout.sizeM.y), color: hallFloorColor
             ))
         }
         if layout.lobby.count >= 3 {
-            result.append(floor(of: LayoutGeometry.bounds(of: layout.lobby), color: lobbyColor))
+            result.append(floor(of: LayoutGeometry.bounds(of: layout.lobby), color: lobbyFloorColor))
         }
         return result
     }
@@ -136,6 +134,9 @@ enum VenueGeometry {
 
     // MARK: Plain objects
 
+    static let hallFloorColor = SIMD4<Float>(0.99, 0.98, 0.95, 1)
+    static let lobbyFloorColor = SIMD4<Float>(0.94, 0.80, 0.33, 1)
+    static let blockColor = SIMD4<Float>(0.56, 0.63, 0.82, 1)
     static let frameColor = SIMD4<Float>(0.11, 0.15, 0.34, 1)
     static let creamColor = SIMD4<Float>(0.99, 0.97, 0.92, 1)
     static let whiteColor = SIMD4<Float>(1, 1, 1, 1)
@@ -144,6 +145,13 @@ enum VenueGeometry {
     static let yellowColor = SIMD4<Float>(0.94, 0.78, 0.25, 1)
     static let coralColor = SIMD4<Float>(0.96, 0.60, 0.50, 1)
     static let paleBlueColor = SIMD4<Float>(0.80, 0.85, 0.94, 1)
+
+    static func entertainmentColor(for object: LayoutObject) -> SIMD4<Float> {
+        switch EntertainmentType.resolve(catalogID: object.catalogID, label: object.label) {
+        case .photobooth: vermilionColor
+        case .stage, .other, .informationDesk, .disabled: coralColor
+        }
+    }
 
     static func solid(_ object: LayoutObject) -> VenueBlock {
         let (width, depth) = size(of: object)
@@ -158,10 +166,10 @@ enum VenueGeometry {
         }
 
         switch object.kind {
-        case .wall: return box(wallHeight, SIMD4(1, 1, 1, 1))
-        case .block where object.isColumn: return cylinder(Float(object.heightM ?? 3.5), SIMD4(0.20, 0.38, 0.75, 1))
-        case .block: return box(Float(object.heightM ?? 0.8), SIMD4(0.56, 0.63, 0.82, 1))
-        default: return box(0.15, SIMD4(0.80, 0.85, 0.94, 1))
+        case .wall: return box(wallHeight, whiteColor)
+        case .block where object.isColumn: return cylinder(Float(object.heightM ?? 3.5), cobaltColor)
+        case .block: return box(Float(object.heightM ?? 0.8), blockColor)
+        default: return box(0.15, paleBlueColor)
         }
     }
 

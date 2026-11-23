@@ -26,15 +26,10 @@ struct DashboardView<ParametersSheet: View>: View {
         .background { DashboardBackground().ignoresSafeArea() }
         .overlay {
             if viewModel.isParametersPresented {
-                ZStack {
-                    Color.black.opacity(0.35)
-                        .ignoresSafeArea()
-                        .onTapGesture { viewModel.closeParameters() }
+                GlassModal(maxWidth: 860, onOutsideTap: { viewModel.closeParameters() }) { _ in
                     SheetHost { parametersSheet(viewModel.closeParameters) }
-                        .padding(Spacing.xl)
                         .onExitCommand { viewModel.closeParameters() }
                 }
-                .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
@@ -140,7 +135,12 @@ private struct RunningNotice: View {
     var body: some View {
         ZStack {
             if showsProgress, let previewVenue {
-                Metal3DSceneView(venue: previewVenue, frame: previewFrame)
+                Metal3DSceneView(
+                    venue: previewVenue,
+                    frame: previewFrame,
+                    backgroundColor: Palette.simulationBackground,
+                    initialDistanceScale: 0.72
+                )
                     .allowsHitTesting(false)
                     .overlay {
                         Color.backgroundMain.opacity(0.62)
@@ -153,7 +153,7 @@ private struct RunningNotice: View {
                     .padding(.vertical, 18)
             }
 
-            VStack(spacing: 12) {
+            let card = VStack(spacing: 12) {
                 VStack(spacing: 12) {
                     if showsProgress {
                         ProgressView()
@@ -184,10 +184,12 @@ private struct RunningNotice: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 18)
-            .glassEffect(
-                showsProgress ? .regular : .identity,
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
+
+            if showsProgress {
+                card.glassCardSurface(in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+            } else {
+                card
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

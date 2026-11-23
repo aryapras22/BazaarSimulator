@@ -1,6 +1,14 @@
 import Foundation
 import simd
 
+/// A one-shot zoom step triggered by UI controls, keyed by a monotonic `id` so repeated taps re-trigger.
+struct CameraZoomRequest: Equatable {
+    enum Direction: Equatable { case zoomIn, zoomOut }
+
+    let id: Int
+    let direction: Direction
+}
+
 /// A camera that circles a point: drag to orbit, scroll to zoom, shift-drag to move.
 struct OrbitCamera: Equatable {
     /// Narrow, so the venue reads like an axonometric drawing: far things barely shrink and uprights stay upright.
@@ -18,13 +26,13 @@ struct OrbitCamera: Equatable {
     var distance: Float
 
     /// Starts back and above the plan, looking at the middle of it, so the whole plan fits.
-    static func framing(plan: PlanFrame) -> OrbitCamera {
+    static func framing(plan: PlanFrame, distanceScale: Float = 1.0) -> OrbitCamera {
         let span = Float(max(plan.size.x, plan.size.y))
         return OrbitCamera(
             target: SIMD3(Float(plan.origin.x + plan.size.x / 2), 0, Float(plan.origin.y + plan.size.y / 2)),
             yaw: 0,
             pitch: atan2(0.85, 0.5),
-            distance: span * 0.57 / tan(fieldOfView / 2)
+            distance: max(span * 0.57 / tan(fieldOfView / 2) * distanceScale, 15)
         )
     }
 
