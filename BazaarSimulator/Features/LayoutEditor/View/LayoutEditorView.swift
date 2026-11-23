@@ -47,7 +47,9 @@ struct LayoutEditorView: View {
                     layer: viewModel.activeLayer,
                     isActive: { viewModel.isActive($0) },
                     isAvailable: { viewModel.tool(for: $0) != nil },
-                    onSelect: { viewModel.toggle($0) }
+                    onSelect: { viewModel.toggle($0) },
+                    isPopularityActive: viewModel.showsAttractiveness,
+                    onTogglePopularity: { viewModel.toggleAttractiveness() }
                 )
                 .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
                 .padding(.trailing, Self.rightColumnInset)
@@ -182,7 +184,7 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 background: $viewModel.canvasBackground,
-                showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
+                showsAttractiveness: viewModel.activeLayer == .booths && viewModel.showsAttractiveness,
                 onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }
