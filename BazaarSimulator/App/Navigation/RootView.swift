@@ -39,8 +39,16 @@ struct RootView: View {
         }
         // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
         .frame(minWidth: 1280, minHeight: 800)
+        // Insights covers the whole window, so the window is blurred behind it, the sidebar too.
+        .blur(radius: analysisViewModel?.isInsightsPresented == true ? 14 : 0)
         .appDialog(deletionDialog)
         .appBackground()
+        .overlay {
+            if let analysisViewModel {
+                InsightsOverlay(viewModel: analysisViewModel)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: analysisViewModel?.isInsightsPresented)
         .preferredColorScheme(.dark)
         // In full screen the toolbar, and the sidebar button in it, stays showing like in a window. The window's own
         // buttons appear only when the pointer goes to the top left, as in Notes.
@@ -89,6 +97,18 @@ struct RootView: View {
             default:
                 columnVisibility = .all
             }
+        }
+    }
+
+    /// The page on screen, when it is an analysis. Its Insights are drawn over the whole window from here.
+    private var analysisViewModel: DashboardViewModel? {
+        switch router.destination {
+        case .analysis(let projectID), .review(let projectID):
+            factory.makeDashboardViewModel(projectID: projectID)
+        case .savedAnalysis(let projectID, let analysisID):
+            factory.makeSavedDashboardViewModel(projectID: projectID, analysisID: analysisID)
+        default:
+            nil
         }
     }
 

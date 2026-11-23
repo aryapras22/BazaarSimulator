@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One PDF in a list on the upload page. What it shows on the right follows how far reading has got: a progress bar
-/// and a cancel button, the counts and a menu, or a failed scan with retry and delete.
+/// and a cancel button, the counts and edit, preview and delete buttons, or a failed scan with retry and delete.
 struct PlanFileRow: View {
     let display: PlanRowDisplay
     var onEdit: (() -> Void)?
@@ -46,7 +46,7 @@ struct PlanFileRow: View {
                 iconButton("trash.fill", label: "Delete", color: Palette.destructive, action: onDelete)
             }
         case .done, .cancelled:
-            menuButton
+            actionButtons
         }
     }
 
@@ -63,28 +63,20 @@ struct PlanFileRow: View {
         .accessibilityLabel(label)
     }
 
-    private var menuButton: some View {
-        Menu {
+    /// Edit, preview and delete as icons on the right, in place of the menu behind three dots. A legend has no edit or
+    /// preview, so it only has delete.
+    private var actionButtons: some View {
+        HStack(spacing: Spacing.s) {
             if let onEdit {
-                Button(action: onEdit) { Label("Edit", systemImage: "pencil") }
+                iconButton("pencil", label: "Edit", color: Palette.textSecondary, action: onEdit)
                     .disabled(!display.isDone)
             }
             if let onPreview {
-                Button(action: onPreview) { Label("Preview", systemImage: "eye") }
+                iconButton("eye", label: "Preview", color: Palette.textSecondary, action: onPreview)
                     .disabled(!display.isDone)
             }
-            Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Palette.textSecondary)
-                .frame(width: 20, height: 20)
-                .contentShape(Rectangle())
+            iconButton("trash", label: "Delete", color: Palette.destructive, action: onDelete)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .accessibilityLabel("More for \(display.title)")
     }
 }
 

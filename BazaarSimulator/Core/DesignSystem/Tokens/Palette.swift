@@ -6,6 +6,8 @@ enum Palette {
     static let glowBlue = Color(hex: 0x0E264F)
     static let glowOrange = Color(hex: 0x3C2A2B)
     static let surface = Color(hex: 0x121F36)
+    /// The dim over the window behind a card that floats over it.
+    static let scrim = Color.black.opacity(0.25)
     static let surfaceBorder = Color(hex: 0x223046)
     static let surfaceDisabled = Color(hex: 0x071329)
     static let surfaceDisabledBorder = Color(hex: 0x0E1A2F)

@@ -784,6 +784,7 @@ struct Panel<Content: View>: View {
 | `Chip` | Zone badges, time range chips in Parameters | `Core/DesignSystem/Components/` |
 | `ProgressBar` | Import rows, Preparing Layout screen | `Core/DesignSystem/Components/` |
 | `MetricTile` | Headline values in the recommendation card | `Core/DesignSystem/Components/` |
+| `GlassModal` | Insights over the whole window: a glass card, centered, over a dimmed window that the app root blurs | `Core/DesignSystem/Components/` |
 | `DropZone` | Legend and floor plan drop areas (both uses are in one feature) | `Features/ProjectSetup/ViewComponents/` |
 | `InspectorPanel` | Floating rounded inspector with a renamable title, notes and tip cards, and Save Changes | `Features/LayoutEditor/ViewComponents/` |
 | `EditorHeaderBar` | Editor top bar: back, layout name, Floor Plan / Structure tabs, undo and redo | `Features/LayoutEditor/ViewComponents/` |

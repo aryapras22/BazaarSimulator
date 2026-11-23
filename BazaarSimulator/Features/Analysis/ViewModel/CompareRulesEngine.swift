@@ -31,26 +31,30 @@ struct CompareRulesEngine: Sendable {
     // MARK: - 1. Stuck Spots
 
     private func buildCongestionPoints() -> AnalysisContent {
+        // On the average over the whole simulation, the same as the Best Layout summary.
         let win = pickWinner(
-            primary: { Double($0.C) },
+            primary: { Self.rounded1($0.averageStuckSpots) },
             tieBreak: { $0.Cavg },
             lowerIsBetter: true
         )
         let lose = win.other
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
+        let avgWin = Self.formatCountOrAvg(Self.rounded1(oWin.averageStuckSpots))
+        let avgLose = Self.formatCountOrAvg(Self.rounded1(oLose.averageStuckSpots))
 
-        let headline = oWin.C == oLose.C
-            ? (oWin.C == 0
-                ? "Neither layout has spots where people get stuck, even at the busiest time."
-                : "Both layouts have \(oWin.C) \(spotsWord(oWin.C)) where people get stuck\(atOnce(oWin.C)) at the busiest time.")
-            : oWin.C == 0
-            ? "At the busiest time, nobody gets stuck in \(oWin.name). \(oLose.name) has \(oLose.C)."
-            : "At the busiest time, people get stuck in only \(oWin.C) \(spotsWord(oWin.C)). \(oLose.name) has \(oLose.C)."
+        let headline = avgWin == avgLose
+            ? (Self.rounded1(oWin.averageStuckSpots) == 0
+                ? "Neither layout has spots where people get stuck, even on average."
+                : "On average, both layouts have \(avgWin) spots where people get stuck at once.")
+            : Self.rounded1(oWin.averageStuckSpots) == 0
+            ? "On average, nobody gets stuck in \(oWin.name). \(oLose.name) has \(avgLose)."
+            : "On average, people get stuck in only \(avgWin) spots in \(oWin.name). \(oLose.name) has \(avgLose)."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
             let c = out.C
+            let average = Self.rounded1(out.averageStuckSpots)
             let worst = out.worstSpot
             let bullets: [String]
             if c == 0 {
@@ -62,7 +66,7 @@ struct CompareRulesEngine: Sendable {
             }
             return AnalysisContent.Tile(
                 layout: layout,
-                value: "\(c) \(spotsWord(c))",
+                value: "\(Self.formatCountOrAvg(average)) \(average == 1 ? "spot" : "spots")",
                 caption: "where people get stuck",
                 bullets: bullets,
                 unit: ""
@@ -109,8 +113,9 @@ struct CompareRulesEngine: Sendable {
     // MARK: - 2. Time Stuck
 
     private func buildCongestionDuration() -> AnalysisContent {
+        // On the average over the whole simulation, the same as the Best Layout summary.
         let win = pickWinner(
-            primary: { $0.M },
+            primary: { Self.rounded1($0.averageStuckMinutes) },
             tieBreak: { $0.Msum },
             lowerIsBetter: true
         )
@@ -119,18 +124,19 @@ struct CompareRulesEngine: Sendable {
         let oLose = outcome(for: lose)
 
         let window = Self.formatHalfMinutes(windowMinutes)
-        func stuckFor(_ minutes: Double) -> String {
-            minutes >= windowMinutes - 0.25 ? "the whole \(window) minutes" : "about \(Self.minutesText(minutes))"
-        }
+        let avgWin = Self.rounded1(oWin.averageStuckMinutes)
+        let avgLose = Self.rounded1(oLose.averageStuckMinutes)
+        let textWin = Self.formatCountOrAvg(avgWin), textLose = Self.formatCountOrAvg(avgLose)
 
-        let sameTime = Self.formatHalfMinutes(oWin.M) == Self.formatHalfMinutes(oLose.M)
-        let headline = sameTime
-            ? (oLose.M < 0.25
-                ? "Nobody gets stuck in either layout in the busiest \(window) minutes."
-                : "In the busiest \(window) minutes, people at the worst spot are stuck \(stuckFor(oWin.M)) in both layouts.")
-            : oWin.M < 0.25
-            ? "In the busiest \(window) minutes, nobody gets stuck in \(oWin.name). In \(oLose.name), people at the worst spot are stuck \(stuckFor(oLose.M))."
-            : "In the busiest \(window) minutes, people at the worst spot are stuck for \(stuckFor(oWin.M)). In \(oLose.name), they're stuck \(stuckFor(oLose.M))."
+        let headline = textWin == textLose
+            ? (avgLose < 0.05
+                ? "Nobody gets stuck in either layout, even on average."
+                : "On average, people at the worst spot are stuck about \(textWin) min in both layouts.")
+            : avgWin < 0.05
+            ? "On average, nobody gets stuck in \(oWin.name). "
+                + "In \(oLose.name), people at the worst spot are stuck about \(textLose) min."
+            : "On average, people at the worst spot are stuck about \(textWin) min in \(oWin.name). "
+                + "In \(oLose.name), about \(textLose) min."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -142,7 +148,7 @@ struct CompareRulesEngine: Sendable {
             let bullets = qualifying.isEmpty ? ["Nobody gets stuck"] : Array(qualifying)
             return AnalysisContent.Tile(
                 layout: layout,
-                value: Self.formatHalfMinutes(out.M),
+                value: Self.formatCountOrAvg(Self.rounded1(out.averageStuckMinutes)),
                 caption: "stuck at the worst spot",
                 bullets: bullets,
                 unit: "min"
@@ -187,29 +193,31 @@ struct CompareRulesEngine: Sendable {
     // MARK: - 3. Crowd Density
 
     private func buildCrowdDensity() -> AnalysisContent {
+        // On the average over the whole simulation, the same as the Best Layout summary.
         let win = pickWinner(
-            primary: { $0.D },
+            primary: { $0.averageDensity },
             tieBreak: { _ in 0 },
             lowerIsBetter: true
         )
         let lose = win.other
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
-        let winLevel = oWin.worstSpot.grade.crowdLevel
-        let loseLevel = oLose.worstSpot.grade.crowdLevel
+        let winLevel = SeverityGrade.grade(forDensity: oWin.averageDensity).crowdLevel
+        let loseLevel = SeverityGrade.grade(forDensity: oLose.averageDensity).crowdLevel
 
         let headline = winLevel == loseLevel
-            ? "At its most crowded spot, both layouts are \(winLevel)."
-            : "At its most crowded spot, \(oWin.name) is \(winLevel), while \(oLose.name) is \(loseLevel)."
+            ? "On average, at its most crowded spot, both layouts are \(winLevel)."
+            : "On average, at its most crowded spot, \(oWin.name) is \(winLevel), while \(oLose.name) is \(loseLevel)."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
+            let grade = SeverityGrade.grade(forDensity: out.averageDensity)
             return AnalysisContent.Tile(
                 layout: layout,
-                value: out.worstSpot.grade.crowdLevel,
+                value: grade.crowdLevel,
                 caption: "at its most crowded spot",
                 bullets: [
-                    out.worstSpot.grade.crowdMeaning,
+                    grade.crowdMeaning,
                     "Up to \(out.worstSpot.peakVisitors) people there"
                 ],
                 unit: ""
@@ -517,6 +525,11 @@ struct CompareRulesEngine: Sendable {
         } else {
             return "Nobody gets stuck"
         }
+    }
+
+    /// Rounded to one decimal, as the page shows an average, so the winner is chosen on what is shown.
+    static func rounded1(_ value: Double) -> Double {
+        (value * 10).rounded() / 10
     }
 
     static func formatCountOrAvg(_ value: Double) -> String {

@@ -25,6 +25,8 @@ struct SeverityGradeTests {
     @Test("People are stuck from grade E, above 0.72 per m²")
     func stuckStartsAtE() {
         #expect(SeverityGrade.heavyThreshold == 0.72)
+        // The simulation engine cannot import the grades, so it keeps its own copy of the level.
+        #expect(SeverityGrade.heavyThreshold == CrowdParameters.stuckDensity)
         #expect(SeverityGrade.grade(forDensity: SeverityGrade.heavyThreshold + 0.01) == .e)
     }
 
