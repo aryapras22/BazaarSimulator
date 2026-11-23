@@ -56,8 +56,7 @@ struct EditorToolButtons: View {
         switch item.icon {
         case .system(let name) where item == .chair:
             Image(systemName: name)
-                .resizable()
-                .scaledToFit()
+                .font(.system(size: 17, weight: .medium))
                 .frame(width: 18, height: 18)
         case .system(let name):
             Image(systemName: name)
