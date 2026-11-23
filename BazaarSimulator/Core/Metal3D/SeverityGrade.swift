@@ -34,12 +34,12 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .a: "Empty"
-        case .b: "Calm"
-        case .c: "Moderate"
-        case .d: "Busy"
-        case .e: "Crowded"
-        case .f: "Jammed"
+        case .a: "Very Low"
+        case .b: "Lower"
+        case .c: "Low"
+        case .d: "Medium"
+        case .e: "High"
+        case .f: "Very High"
         }
     }
 
@@ -107,11 +107,11 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 //        case .d: Color(hex: 0xB24A1C)
 //        case .e: Color(hex: 0xCE2A0E)
 //        case .f: Color(hex: 0xA00700)
-        case .a: Color(hex: 0x4C9C32)
+        case .a: Color(hex: 0x1D9201)
         case .b: Color(hex: 0x8D9F28)
         case .c: Color(hex: 0xD0A122)
-        case .d: Color(hex: 0xDC8212)
-        case .e: Color(hex: 0xDB5015)
+        case .d: Color(hex: 0xDC8114)
+        case .e: Color(hex: 0xE66315)
         case .f: Color(hex: 0xCF0505)
         }
     }

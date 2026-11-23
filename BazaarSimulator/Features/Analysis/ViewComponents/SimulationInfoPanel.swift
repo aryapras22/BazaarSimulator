@@ -53,7 +53,7 @@ struct SimulationInfoPanel: View {
             }
             .padding(.top, 13)
 
-            Text("Visitor types")
+            Text("Visitor Types")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.textSecondary)
                 .padding(.top, 20)
@@ -74,7 +74,7 @@ struct SimulationInfoPanel: View {
         .padding(.top, 16.5)
         .padding(.bottom, 12.5)
         .frame(width: Self.width, alignment: .leading)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .glassCardSurface(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: showsGradeRanges)
     }
 
@@ -169,7 +169,7 @@ struct SimulationTenantLegendPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tenant types")
+            Text("Tenant Types")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.textSecondary)
 
@@ -191,7 +191,7 @@ struct SimulationTenantLegendPanel: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
         .frame(width: SimulationInfoPanel.width, alignment: .leading)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .glassCardSurface(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
