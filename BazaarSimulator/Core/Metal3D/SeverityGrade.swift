@@ -101,12 +101,18 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
 
     var color: Color {
         switch self {
-        case .a: Color(hex: 0x55B049)
-        case .b: Color(hex: 0x788938)
-        case .c: Color(hex: 0x926C2B)
-        case .d: Color(hex: 0xB24A1C)
-        case .e: Color(hex: 0xCE2A0E)
-        case .f: Color(hex: 0xA00700)
+//        case .a: Color(hex: 0x55B049)
+//        case .b: Color(hex: 0x788938)
+//        case .c: Color(hex: 0x926C2B)
+//        case .d: Color(hex: 0xB24A1C)
+//        case .e: Color(hex: 0xCE2A0E)
+//        case .f: Color(hex: 0xA00700)
+        case .a: Color(hex: 0x4C9C32)
+        case .b: Color(hex: 0x8D9F28)
+        case .c: Color(hex: 0xD0A122)
+        case .d: Color(hex: 0xDC8212)
+        case .e: Color(hex: 0xDB5015)
+        case .f: Color(hex: 0xCF0505)
         }
     }
 }

@@ -104,6 +104,50 @@ private struct HotspotTarget: View {
     let isHovered: Bool
     let diameter: CGFloat
 
+//    var body: some View {
+//        ZStack {
+//            if let grade {
+//                Circle()
+//                    .fill(
+//                        RadialGradient(
+//                            stops: [
+//                                .init(color: Color.hotspotSevere.opacity(0.85), location: 0),
+//                                .init(color: Color.hotspotSevere.opacity(0.45), location: 0.55),
+//                                .init(color: Color.hotspotSevere.opacity(0), location: 1)
+//                            ],
+//                            center: .center,
+//                            startRadius: 0,
+//                            endRadius: diameter * 1.3
+//                        )
+//                    )
+//                    .frame(width: diameter * 2.6, height: diameter * 2.6)
+//                    .allowsHitTesting(false)
+//                Circle()
+//                    .fill(grade.color)
+//                    .overlay {
+//                        Text("\(number)")
+//                            .font(.system(size: diameter * 0.4))
+//                            .foregroundStyle(.white)
+//                    }
+//                    .overlay {
+//                        Circle().strokeBorder(
+//                            .white.opacity(isHovered ? 1 : 0.85),
+//                            lineWidth: isHovered ? 2 : 1.25
+//                        )
+//                    }
+//                    .frame(width: diameter, height: diameter)
+//            } else {
+//                Circle()
+//                    .strokeBorder(Color.white.opacity(isHovered ? 0.95 : 0), lineWidth: 2)
+//                    .background(Circle().fill(Color.hotspotSevere.opacity(isHovered ? 0.25 : 0.001)))
+//                    .frame(width: diameter * 1.6, height: diameter * 1.6)
+//            }
+//        }
+//        .scaleEffect(isHovered ? 1.15 : 1)
+//        .frame(width: diameter * 1.6, height: diameter * 1.6)
+//        .contentShape(Circle())
+//        .pointerStyle(.link)
+//    }
     var body: some View {
         ZStack {
             if let grade {
@@ -111,22 +155,24 @@ private struct HotspotTarget: View {
                     .fill(
                         RadialGradient(
                             stops: [
-                                .init(color: Color.hotspotSevere.opacity(0.85), location: 0),
-                                .init(color: Color.hotspotSevere.opacity(0.45), location: 0.55),
-                                .init(color: Color.hotspotSevere.opacity(0), location: 1)
+                                .init(color: grade.color, location: 0),
+                                .init(color: grade.color.opacity(0.5), location: 0.55),
+                                .init(color: grade.color.opacity(0), location: 1)
                             ],
                             center: .center,
                             startRadius: 0,
-                            endRadius: diameter * 1.3
+                            endRadius: diameter * 0.9
                         )
                     )
-                    .frame(width: diameter * 2.6, height: diameter * 2.6)
+                    .frame(width: diameter * 1.8, height: diameter * 1.8)
+                    .opacity(0.5)
                     .allowsHitTesting(false)
+
                 Circle()
                     .fill(grade.color)
                     .overlay {
                         Text("\(number)")
-                            .font(.system(size: diameter * 0.58, weight: .bold))
+                            .font(.system(size: diameter * 0.45, weight: .bold))
                             .foregroundStyle(.white)
                     }
                     .overlay {
@@ -139,7 +185,7 @@ private struct HotspotTarget: View {
             } else {
                 Circle()
                     .strokeBorder(Color.white.opacity(isHovered ? 0.95 : 0), lineWidth: 2)
-                    .background(Circle().fill(Color.hotspotSevere.opacity(isHovered ? 0.25 : 0.001)))
+                    .background(Circle().fill(Color.gradeE.opacity(isHovered ? 0.25 : 0.001)))
                     .frame(width: diameter * 1.6, height: diameter * 1.6)
             }
         }
@@ -149,6 +195,7 @@ private struct HotspotTarget: View {
         .pointerStyle(.link)
     }
 }
+
 
 struct HotspotCallout: View {
     static let width: CGFloat = 250
