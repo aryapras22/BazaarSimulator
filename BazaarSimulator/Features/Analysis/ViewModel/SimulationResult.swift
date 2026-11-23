@@ -7,6 +7,13 @@ struct SimulationResult: Sendable {
     let analyses: [LayoutID: LayoutAnalysis]
     let visitorTypes: [VisitorType]
     let schedule: DaySchedule
+    /// The best of all the project's layouts, when the run covered them all. Nil for a saved run, which has only its
+    /// own.
+    var bestProjectLayoutID: Layout.ID?
+    /// How every layout of the project did, the two on the page and the others, when the run covered them all.
+    var projectOutcomes: [ProjectOutcome] = []
+    /// Every layout of the project simulated together, which lets the cards switch layouts without simulating again.
+    var projectRun: ProjectRun?
 
     var peakHourText: String { schedule.peakText }
     var windowMinutes: Double { schedule.windowMinutes }

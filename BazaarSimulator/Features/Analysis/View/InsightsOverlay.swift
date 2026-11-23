@@ -9,6 +9,7 @@ struct InsightsOverlay: View {
         if viewModel.isInsightsPresented {
             GlassModal(maxWidth: 1197, onOutsideTap: { viewModel.isInsightsPresented = false }) { width in
                 InsightsSheet(viewModel: viewModel, width: width) { viewModel.isInsightsPresented = false }
+                    .environment(\.layoutNames, viewModel.layoutNames)
             }
         }
     }

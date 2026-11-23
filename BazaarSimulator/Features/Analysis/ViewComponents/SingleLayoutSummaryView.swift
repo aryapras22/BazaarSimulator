@@ -3,6 +3,7 @@ import SwiftUI
 /// The bar under a project's only layout: its three headline numbers, with the Insights button for the full results.
 struct SingleLayoutSummaryView: View {
     let summary: SingleLayoutSummary
+    @Environment(\.layoutNames) private var names
     var onInsights: () -> Void = {}
 
     var body: some View {
@@ -19,7 +20,7 @@ struct SingleLayoutSummaryView: View {
                     Text("Result")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.textSecondary)
-                    Text(summary.layout.name)
+                    Text(names.name(summary.layout))
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(.textPrimary)
                     Button("Insights", action: onInsights)

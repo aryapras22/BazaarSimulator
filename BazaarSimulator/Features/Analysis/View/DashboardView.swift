@@ -22,18 +22,29 @@ struct DashboardView<ParametersSheet: View>: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .clipped()
         }
+        // What is behind Parameters is blurred, as behind Insights.
+        .blur(radius: viewModel.isParametersPresented ? 14 : 0)
         .underToolbarInWindow()
-        .background { DashboardBackground().ignoresSafeArea() }
+        .background { Color.backgroundMain.ignoresSafeArea() }
+        .environment(\.layoutNames, viewModel.layoutNames)
         .overlay {
             if viewModel.isParametersPresented {
-                GlassModal(maxWidth: 860, onOutsideTap: { viewModel.closeParameters() }) { _ in
+                ZStack {
+                    Palette.scrim
+                        .ignoresSafeArea()
+                        .onTapGesture { viewModel.closeParameters() }
                     SheetHost { parametersSheet(viewModel.closeParameters) }
+                        .padding(Spacing.xl)
                         .onExitCommand { viewModel.closeParameters() }
                 }
+                .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
-        .task { viewModel.startSimulation() }
+        .task {
+            viewModel.startSimulation()
+            viewModel.refreshProjectBest()
+        }
     }
 }
 
@@ -86,7 +97,7 @@ struct DashboardContent: View {
 
     @ViewBuilder
     private var comparison: some View {
-        let bestPlanID = viewModel.bestLayoutPlanID
+        let bestPlanID = viewModel.bestChoiceLayoutID
         // The Best Layout summary comes first, then the layouts it chose from.
         if let summary = viewModel.singleSummary {
             SingleLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
@@ -106,7 +117,7 @@ struct DashboardContent: View {
                     plan: viewModel.plan(for: layout),
                     peakHourText: viewModel.peakHourText,
                     metrics: metrics,
-                    showsSimulate: true,
+                    showsSimulate: viewModel.canSimulate,
                     showsEdit: viewModel.canEdit,
                     showsWorstSpot: viewModel.isSingleLayout,
                     choices: viewModel.layoutChoices,
@@ -135,12 +146,7 @@ private struct RunningNotice: View {
     var body: some View {
         ZStack {
             if showsProgress, let previewVenue {
-                Metal3DSceneView(
-                    venue: previewVenue,
-                    frame: previewFrame,
-                    backgroundColor: Palette.simulationBackground,
-                    initialDistanceScale: 0.72
-                )
+                Metal3DSceneView(venue: previewVenue, frame: previewFrame)
                     .allowsHitTesting(false)
                     .overlay {
                         Color.backgroundMain.opacity(0.62)
@@ -153,7 +159,7 @@ private struct RunningNotice: View {
                     .padding(.vertical, 18)
             }
 
-            let card = VStack(spacing: 12) {
+            VStack(spacing: 12) {
                 VStack(spacing: 12) {
                     if showsProgress {
                         ProgressView()
@@ -184,12 +190,10 @@ private struct RunningNotice: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 18)
-
-            if showsProgress {
-                card.glassCardSurface(in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
-            } else {
-                card
-            }
+            .glassEffect(
+                showsProgress ? .regular : .identity,
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)

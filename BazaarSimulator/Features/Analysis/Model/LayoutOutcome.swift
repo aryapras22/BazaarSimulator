@@ -121,6 +121,16 @@ struct LayoutOutcome: Sendable {
     let spots: [SpotOutcome]
     let dayPoints: [DayPoint]
 
+    /// The same outcome, with its name, at another place on the page.
+    func placed(at place: LayoutID) -> LayoutOutcome {
+        LayoutOutcome(layout: place, name: name, windowMinutes: windowMinutes, spots: spots, dayPoints: dayPoints)
+    }
+
+    /// The same outcome under another place on the page, so any two layouts of a project can be compared as a pair.
+    func relabeled(as other: LayoutID) -> LayoutOutcome {
+        LayoutOutcome(layout: other, name: other.name, windowMinutes: windowMinutes, spots: spots, dayPoints: dayPoints)
+    }
+
     var worstSpotIndex: Int {
         spots.indices.max {
             if spots[$0].peakDensity == spots[$1].peakDensity {

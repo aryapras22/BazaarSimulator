@@ -5,6 +5,7 @@ struct RecommendationCard: View {
     let content: AnalysisContent
     var metrics: DashboardMetrics = .reference
 
+    @Environment(\.layoutNames) private var names
     @State private var showsExplanation = false
 
     static let fixedHeight: CGFloat = inset.top + titleHeight + 16 + nameHeight + 14 + headlineHeight + linkHeight + inset.bottom
@@ -26,7 +27,7 @@ struct RecommendationCard: View {
                     .fill(content.recommended.accent)
                     .frame(width: 10, height: 10)
                     .shadow(color: content.recommended.accent.opacity(0.8), radius: 4)
-                Text(content.recommended.name)
+                Text(names.name(content.recommended))
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.textPrimary)
             }
@@ -82,6 +83,7 @@ struct RecommendationCard: View {
 }
 
 struct OutcomeTileView: View {
+    @Environment(\.layoutNames) private var names
     let tile: AnalysisContent.Tile
     let isRecommended: Bool
 
@@ -98,7 +100,7 @@ struct OutcomeTileView: View {
         let foreground: Color = isRecommended ? tile.layout.onTileFill : .textPrimary
 
         VStack(alignment: .leading, spacing: 0) {
-            Text(tile.layout.name)
+            Text(names.name(tile.layout))
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
 

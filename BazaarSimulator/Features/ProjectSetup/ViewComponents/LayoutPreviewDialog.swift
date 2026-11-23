@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// A floor plan shown larger, over the page: the layout as it was read, with zoom buttons and a close button.
+/// A floor plan shown larger, over the page: the layout with the edits made in the editor and each booth in its
+/// category's color, with zoom buttons and a close button.
 struct LayoutPreviewDialog: View {
     let layout: Layout
+    /// Colors each booth by its category.
+    var legend: Legend?
     let dismiss: () -> Void
 
     @State private var zoom: CGFloat = 1
@@ -30,7 +33,7 @@ struct LayoutPreviewDialog: View {
             }
 
             ZoomablePlan(zoom: $zoom) {
-                LayoutPlanCanvas(layout: layout, plan: plan)
+                LayoutPlanCanvas(layout: layout, plan: plan, legend: legend)
                     .equatable()
             }
             .aspectRatio(planAspect, contentMode: .fit)
@@ -48,12 +51,7 @@ struct LayoutPreviewDialog: View {
         }
         .padding(Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Palette.surfaceBorder, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
+        .glassModalSurface()
         .accessibilityElement(children: .contain)
     }
 
@@ -80,15 +78,19 @@ struct LayoutPreviewDialog: View {
 
 extension View {
     /// Shows a layout preview over this view, with the rest dimmed.
-    func layoutPreview(_ layout: Layout?, onDismiss: @escaping () -> Void) -> some View {
-        overlay {
+    func layoutPreview(
+        _ layout: Layout?, legend: Legend? = nil, onDismiss: @escaping () -> Void
+    ) -> some View {
+        // What is behind the preview is blurred, as behind Insights.
+        blur(radius: layout == nil ? 0 : 14)
+        .overlay {
             if let shown = layout {
                 ZStack {
-                    Color.black.opacity(0.3)
+                    Palette.scrim
                         .ignoresSafeArea()
                         .onTapGesture(perform: onDismiss)
                     // Nearly the whole window, the page still showing around it.
-                    LayoutPreviewDialog(layout: shown, dismiss: onDismiss)
+                    LayoutPreviewDialog(layout: shown, legend: legend, dismiss: onDismiss)
                         .padding(Spacing.xl)
                         .padding(.top, Spacing.xl)
                 }

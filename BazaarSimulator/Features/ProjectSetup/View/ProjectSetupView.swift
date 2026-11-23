@@ -9,9 +9,6 @@ struct ProjectSetupView: View {
     @State private var previewedFileID: UUID?
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
-    /// Wide enough that the side margins stay small; only very wide windows center the content.
-    private static let maxContentWidth: CGFloat = 1400
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerView
@@ -34,9 +31,9 @@ struct ProjectSetupView: View {
         // The title bar only reserves room in a window, not in full screen. Ignoring it and padding by a fixed
         // amount keeps the name field at the same height in both.
         .padding(.top, Spacing.m)
-        // Capped, so with the sidebar hidden the content stays centered instead of stretching across the window.
-        .frame(maxWidth: Self.maxContentWidth)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // The content stretches across the whole page. Only the background and the top run under the toolbar, so the
+        // sides keep the safe area and the content never sits behind the sidebar, whether it is shown or hidden.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Palette.background.ignoresSafeArea())
         .underToolbarInWindow()
         .fileImporter(
@@ -68,7 +65,10 @@ struct ProjectSetupView: View {
             viewModel.clearUnsupportedFile()
         }
         .appDialog($dialog)
-        .layoutPreview(previewedFileID.flatMap(viewModel.previewLayout)) {
+        .layoutPreview(
+            previewedFileID.flatMap(viewModel.previewLayout),
+            legend: Legend(entries: viewModel.legendEntries)
+        ) {
             previewedFileID = nil
         }
     }

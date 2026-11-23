@@ -4,14 +4,18 @@ struct ProjectRow: View {
     let name: String
     let isSelected: Bool
     var isExpanded: Bool = false
+    /// The chevron of a folder that opens. A list of projects that only select one has none.
+    var showsChevron = true
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Image(systemName: "chevron.right")
-                .font(Typography.caption)
-                .foregroundColor(Palette.textTertiary)
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .frame(width: 10)
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(Typography.caption)
+                    .foregroundColor(Palette.textTertiary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: 10)
+            }
 
             Image(systemName: isExpanded ? "folder.fill" : "folder")
                 .foregroundColor(Palette.textSecondary)

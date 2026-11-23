@@ -5,6 +5,8 @@ import SwiftUI
 struct LayoutPlanCanvas: View, Equatable {
     let layout: Layout
     let plan: PlanFrame
+    /// With a legend, a booth is filled with the color of its category. Without one, every booth is the same beige.
+    var legend: Legend?
 
     var body: some View {
         Canvas { context, size in
@@ -27,7 +29,7 @@ struct LayoutPlanCanvas: View, Equatable {
             for kind in Style.drawOrder {
                 for object in layout.objects where object.kind == kind {
                     let shape = path(LayoutGeometry.corners(of: object.placement))
-                    context.fill(shape, with: .color(Style.fill(for: object)))
+                    context.fill(shape, with: .color(Style.fill(for: object, legend: legend)))
                     if let outline = Style.outline(for: kind) {
                         context.stroke(shape, with: .color(outline), lineWidth: 1)
                     }
@@ -48,9 +50,9 @@ struct LayoutPlanCanvas: View, Equatable {
             .closedArea, .seating, .table, .booth, .entertainment, .block, .wall, .door
         ]
 
-        static func fill(for object: LayoutObject) -> Color {
+        static func fill(for object: LayoutObject, legend: Legend?) -> Color {
             switch object.kind {
-            case .booth: object.isDisabled ? Color(hex: 0xD3D6DB) : Color(hex: 0xE4DBC8)
+            case .booth: boothFill(for: object, legend: legend)
             case .table: Color(hex: 0xC3C9D2)
             case .entertainment: Color(hex: 0x9AA2AF)
             case .wall, .block: Color(hex: 0x5E6775)
@@ -59,6 +61,16 @@ struct LayoutPlanCanvas: View, Equatable {
             case .door:
                 object.doorFlow?.direction == .entrance ? Color(hex: 0x3FA66B) : Color(hex: 0xE5483B)
             }
+        }
+
+        /// A disabled booth is gray. Otherwise it takes its category's color from the legend, and the plain beige when
+        /// it has no category or there is no legend.
+        private static func boothFill(for object: LayoutObject, legend: Legend?) -> Color {
+            if object.isDisabled { return Color(hex: 0xD3D6DB) }
+            guard let categoryID = object.categoryID,
+                  let entry = legend?.entries.first(where: { $0.id == categoryID })
+            else { return Color(hex: 0xE4DBC8) }
+            return Color(.sRGB, red: entry.color.red, green: entry.color.green, blue: entry.color.blue, opacity: 0.9)
         }
 
         static func outline(for kind: LayoutObjectKind) -> Color? {

@@ -2,36 +2,41 @@
 import SwiftUI
 
 struct BestLayoutSummaryView: View {
-    let summary: BestLayoutSummary
+    let summary: ProjectBestSummary
     var onInsights: () -> Void = {}
+
+    /// The best layout's color: its card's, or a neutral one when it is not on a card.
+    private var tint: Color {
+        summary.place?.chartColor ?? Color.cardButtonFill
+    }
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 20) {
-                TrophyTile(layout: summary.best)
+            HStack(alignment: .center, spacing: 24) {
+                TrophyTile(tint: tint)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Best layout")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.textSecondary)
-                    // In the layout's own color, the same as its tile and chart line.
-                    Text(summary.best.name)
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundStyle(summary.best.chartColor)
+                    // In the layout's own color when it is on a card, the same as its tile and chart line.
+                    Text(summary.name)
+                        .font(.system(size: 42, weight: .bold))
+                        .foregroundStyle(summary.place == nil ? Color.textPrimary : tint)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Text("Based on the average across the whole event.")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(.textSecondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("See full insights", action: onInsights)
                         .buttonStyle(ControlButtonStyle())
-                        .help("Compare both layouts on stuck spots, crowd level and time stuck")
+                        .help("Compare the layouts on stuck spots, crowd level and time stuck")
                         .padding(.top, 4)
                 }
-                .frame(width: 190, alignment: .leading)
+                .frame(width: 250, alignment: .leading)
             }
-            .padding(.trailing, 22)
+            .padding(.trailing, 28)
             .frame(maxHeight: .infinity)
 
             Rectangle()
@@ -44,15 +49,15 @@ struct BestLayoutSummaryView: View {
                 HStack(alignment: .top, spacing: 0) {
                     ForEach(Array(summary.checks.enumerated()), id: \.element.id) { index, check in
                         if index > 0 {
+                            // As tall as the columns' content, not shorter by a margin at each end.
                             Rectangle()
                                 .fill(Color.divider)
                                 .frame(width: 1)
-                                .padding(.vertical, 16)
                         }
-                        CheckColumn(check: check, best: summary.best, caption: summary.caption(for: check))
+                        CheckColumn(check: check, tint: tint)
                     }
                 }
-                // Only as tall as its tallest column, so the dividers match it and the row can be centered.
+                // Only as tall as its tallest column, so the dividers match the content and the row can be centered.
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxHeight: .infinity)
             }
@@ -66,69 +71,62 @@ struct BestLayoutSummaryView: View {
 }
 
 private struct TrophyTile: View {
-    let layout: LayoutID
+    let tint: Color
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-        let tint = layout.chartColor
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
         Image(systemName: "trophy.fill")
-            .font(.system(size: 32, weight: .semibold))
+            .font(.system(size: 40, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: 80, height: 80)
+            .frame(width: 100, height: 100)
             .background(tint, in: shape)
             .accessibilityHidden(true)
     }
 }
 
 private struct CheckColumn: View {
-    let check: BestLayoutSummary.Check
-    let best: LayoutID
-    let caption: String
+    let check: ProjectBestSummary.Check
+    let tint: Color
 
     var body: some View {
-        let mine = check.values[best] ?? (text: "", unit: "")
-        let isBetter = check.winner == best
-
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: check.symbol)
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .fixedSize()
                 Text(check.label)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
             .foregroundStyle(.textPrimary)
             .frame(height: 24)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(mine.text)
-                    .font(.system(size: mine.unit.isEmpty ? 26 : 30, weight: .bold))
-                if !mine.unit.isEmpty {
-                    Text(mine.unit)
-                        .font(.system(size: 14, weight: .semibold))
+                Text(check.value.text)
+                    .font(.system(size: check.value.unit.isEmpty ? 30 : 36, weight: .bold))
+                if !check.value.unit.isEmpty {
+                    Text(check.value.unit)
+                        .font(.system(size: 15, weight: .semibold))
                 }
             }
-            .foregroundStyle(isBetter ? best.chartColor : Color.textSecondary)
+            .foregroundStyle(check.isBest ? tint : Color.textSecondary)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .frame(height: 38, alignment: .bottomLeading)
+            .frame(height: 44, alignment: .bottomLeading)
             .padding(.top, 2)
-            // Under a grayed value: the best layout is not the better one on this check, so say which layout is and why.
-            // The values can read the same (both Jammed) while the averages differ, so it goes by the gap, not the text.
-            if !isBetter, check.margin > 0 {
-                Text("\(check.winner.name) has \(check.strength).")
-                    .font(.system(size: 12))
+            // Under a grayed value: another layout does better on this check, so say which one and why.
+            if let note = check.note {
+                Text(note)
+                    .font(.system(size: 13))
                     .foregroundStyle(.textSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
             }
         }
-        .padding(.leading, 24)
+        .padding(.leading, 18)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(check.label): \(mine.text) \(mine.unit) in \(best.name). \(caption). \(isBetter ? "Better" : "Worse").")
-        .help(isBetter ? "\(best.name) is better here" : "\(best.other.name) is better here")
+        .accessibilityLabel("\(check.label): \(check.value.text) \(check.value.unit). \(check.note ?? "Best")")
     }
 }

@@ -129,41 +129,12 @@ struct ControlButtonStyle: ButtonStyle {
     }
 }
 
-struct DashboardBackground: View {
-    var spacing: CGFloat = 44
-    var fill = Color.backgroundMain
-    var line = Color.gridLine
-    var lineWidth: CGFloat = 1
-
-    var body: some View {
-        Canvas { context, size in
-            var path = Path()
-            var x: CGFloat = 0
-            while x <= size.width {
-                path.move(to: CGPoint(x: x, y: 0))
-                path.addLine(to: CGPoint(x: x, y: size.height))
-                x += spacing
-            }
-            var y: CGFloat = 0
-            while y <= size.height {
-                path.move(to: CGPoint(x: 0, y: y))
-                path.addLine(to: CGPoint(x: size.width, y: y))
-                y += spacing
-            }
-            context.stroke(path, with: .color(line), lineWidth: lineWidth)
-        }
-        .background(fill)
-        .accessibilityHidden(true)
-    }
-}
-
 extension ShapeStyle where Self == Color {
     static var backgroundMain: Color { Color(hex: 0x000E29) }
     static var cardSurface: Color { Color(hex: 0x162B46) }
     static var cardSurfaceSecondary: Color { Color(hex: 0x3E4958) }
     static var cardBorder: Color { Color(hex: 0x223955) }
     static var divider: Color { Color(hex: 0x324053) }
-    static var gridLine: Color { Color(hex: 0x0B1B36) }
 
     static var headerButtonFill: Color { Color(hex: 0x3A4A5F) }
     static var cardButtonFill: Color { Color(hex: 0x354860) }

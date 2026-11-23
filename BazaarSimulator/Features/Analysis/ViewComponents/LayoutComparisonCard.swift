@@ -17,12 +17,13 @@ struct LayoutComparisonCard: View {
     var showsWorstSpot = false
     /// The project's layouts this card can show instead. Empty when there is nothing to pick.
     var choices: [Layout] = []
-    /// The project layout that is the best one, starred in the list of choices.
+    /// The project layout that is the best one, marked with a trophy in the list of choices.
     var bestChoiceID: Layout.ID?
     var onChoose: (Layout.ID) -> Void = { _ in }
     var onSimulate: () -> Void = {}
     var onEdit: () -> Void = {}
 
+    @Environment(\.layoutNames) private var names
     @State private var hoveredSpot: Int?
     @State private var showsChoices = false
 
@@ -78,7 +79,7 @@ struct LayoutComparisonCard: View {
                         .fill(layout.accent)
                         .frame(width: 10, height: 10)
                         .layoutPriority(1)
-                    Text(layout.name)
+                    Text(names.name(layout))
                         .layoutPriority(1)
                     if let planName = floorPlan?.name, !planName.isEmpty {
                         Text(planName)
@@ -98,7 +99,7 @@ struct LayoutComparisonCard: View {
             .allowsHitTesting(!choices.isEmpty)
             .help(choices.isEmpty ? "" : "Show another of the project's layouts here")
             .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
-            .accessibilityLabel("Layout selector, \(layout.name)")
+            .accessibilityLabel("Layout selector, \(names.name(layout))")
 
             Spacer(minLength: 0)
 
@@ -108,7 +109,7 @@ struct LayoutComparisonCard: View {
                         .labelStyle(ControlLabelStyle())
                 }
                 .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
-                .help("Watch visitors move through \(layout.name)")
+                .help("Watch visitors move through \(names.name(layout))")
             }
 
             if showsEdit {
@@ -117,14 +118,14 @@ struct LayoutComparisonCard: View {
                         .labelStyle(ControlLabelStyle())
                 }
                 .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
-                .help("Change \(layout.name) in the layout editor")
+                .help("Change \(names.name(layout)) in the layout editor")
             }
         }
     }
 
     private var choiceList: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ForEach(choices) { choice in
+            ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
                 Button {
                     showsChoices = false
                     onChoose(choice.id)
@@ -133,13 +134,16 @@ struct LayoutComparisonCard: View {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .semibold))
                             .opacity(choice.id == floorPlan?.id ? 1 : 0)
+                        // Numbered as the project numbers it, whichever card shows it.
+                        Text("Layout \(index + 1)")
                         Text(choice.name.isEmpty ? "Untitled layout" : choice.name)
+                            .foregroundStyle(.textMuted)
                             .lineLimit(1)
                         Spacer(minLength: 0)
                         if choice.id == bestChoiceID {
-                            Image(systemName: "star.fill")
+                            Image(systemName: "trophy.fill")
                                 .font(.system(size: 11))
-                                .foregroundStyle(Color.yellow)
+                                .foregroundStyle(Color.white)
                                 .help("Best layout")
                                 .accessibilityLabel("Best layout")
                         }

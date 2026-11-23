@@ -45,12 +45,7 @@ struct AppDialog: View {
         }
         .padding(Spacing.l)
         .frame(width: 300)
-        .background(Palette.menu.opacity(0.96), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Palette.surfaceBorder, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
+        .glassModalSurface()
         .accessibilityElement(children: .contain)
     }
 
@@ -95,10 +90,12 @@ private struct DialogButtonStyle: ButtonStyle {
 extension View {
     /// Shows the dialog over this view, with the rest of the window dimmed and out of reach until it is answered.
     func appDialog(_ content: Binding<AppDialogContent?>) -> some View {
-        overlay {
+        // What is behind the dialog is blurred, as behind Insights.
+        blur(radius: content.wrappedValue == nil ? 0 : 14)
+        .overlay {
             if let shown = content.wrappedValue {
                 ZStack {
-                    Color.black.opacity(0.45)
+                    Palette.scrim
                         .ignoresSafeArea()
                         .onTapGesture { content.wrappedValue = nil }
                     AppDialog(content: shown) { content.wrappedValue = nil }

@@ -33,6 +33,15 @@ struct DashboardViewModelTests {
         }
     }
 
+    /// Waits for a switch between layouts to finish. The page stays ready the whole time, so the loading phase cannot
+    /// be waited on.
+    private func untilShowing(_ model: DashboardViewModel, _ layout: LayoutID, _ id: Layout.ID) async {
+        for _ in 0..<500 {
+            if model.floorPlan(for: layout)?.id == id, !model.isRunning { return }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     private var twoLayouts: [Layout] {
         [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]
     }
@@ -94,9 +103,10 @@ struct DashboardViewModelTests {
         for tab in AnalysisTab.shown {
             let content = try #require(model.content(for: tab))
             #expect(content.tiles.count == 2)
-            // The chart shows the morning, the busiest time and the evening.
-            #expect(content.series.allSatisfy { $0.points.count <= 3 && $0.points.count >= 1 })
-            #expect(content.hourLabels.count == content.series.first?.points.count)
+            // The chart plots every sampled hour, and names the morning, the busiest time and the evening.
+            #expect(content.series.allSatisfy { $0.points.count >= 1 })
+            #expect(content.hourLabels.count <= 3)
+            #expect(content.hourLabels.count <= (content.series.first?.points.count ?? 0))
         }
     }
 
@@ -164,14 +174,126 @@ struct DashboardViewModelTests {
         #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[1].id)
         #expect(model.layoutChoices.map(\.id) == layouts.map(\.id))
 
+        let peakBefore = model.simulationResult?.schedule.peakMinute
         model.choose(layouts[2].id, for: .two)
-        #expect(model.phase == .loading)
-        await untilReady(model)
+        // Every layout was simulated in the first run, so the new pair is on the cards at once, in the same window.
+        #expect(model.phase == .ready)
+        #expect(!model.isRunning)
+        #expect(model.floorPlan(for: .two)?.id == layouts[2].id)
+        #expect(model.simulationResult?.schedule.peakMinute == peakBefore)
+        await untilShowing(model, .two, layouts[2].id)
         #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[2].id)
 
         model.choose(layouts[0].id, for: .two)
-        await untilReady(model)
+        await untilShowing(model, .two, layouts[0].id)
         #expect(model.floorPlan(for: .one)?.id == layouts[2].id && model.floorPlan(for: .two)?.id == layouts[0].id)
+    }
+
+    @Test("Switching a card's layout makes no new run, and switching back shows the pair at once")
+    func switchingLayoutsMakesNoNewRun() async {
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: AnalysisService(), catalog: catalog, onBack: {}
+        )
+        await model.runSimulation()
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+
+        model.choose(layouts[2].id, for: .two)
+        await untilShowing(model, .two, layouts[2].id)
+        #expect(model.floorPlan(for: .two)?.id == layouts[2].id)
+        // The switch is not saved as a run, and the sidebar never showed one under way.
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        #expect(!session.isSimulating(project.id))
+
+        // The first pair was worked out already, so it comes back without loading.
+        model.choose(layouts[1].id, for: .two)
+        #expect(model.phase == .ready)
+        #expect(model.floorPlan(for: .two)?.id == layouts[1].id)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+    }
+
+    @Test("The best layout is the same whichever pair of layouts is on the cards")
+    func bestLayoutDoesNotDependOnThePair() async {
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+        let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        let best = model.bestChoiceLayoutID
+        #expect(best != nil)
+        #expect(model.bestLayout?.name != nil)
+        let name = model.bestLayout?.name
+
+        model.choose(layouts[2].id, for: .two)
+        await untilShowing(model, .two, layouts[2].id)
+        #expect(model.bestChoiceLayoutID == best)
+        #expect(model.bestLayout?.name == name)
+
+        model.choose(layouts[0].id, for: .two)
+        await untilShowing(model, .two, layouts[0].id)
+        #expect(model.bestChoiceLayoutID == best)
+        #expect(model.bestLayout?.name == name)
+    }
+
+    @Test("A layout keeps its project number whichever card it is switched onto")
+    func layoutNumbersFollowTheProject() async {
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+        let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        #expect(model.layoutNames.name(.one) == "Layout 1")
+        #expect(model.layoutNames.name(.two) == "Layout 2")
+
+        // The project's third layout on the second card is "Layout 3", not "Layout 2".
+        model.choose(layouts[2].id, for: .two)
+        await untilShowing(model, .two, layouts[2].id)
+        #expect(model.layoutNames.name(.one) == "Layout 1")
+        #expect(model.layoutNames.name(.two) == "Layout 3")
+
+        // The project's first layout moved to the second card is still "Layout 1".
+        model.choose(layouts[0].id, for: .two)
+        await untilShowing(model, .two, layouts[0].id)
+        #expect(model.layoutNames.name(.two) == "Layout 1")
+        #expect(model.layoutNames.name(.one) == "Layout 3")
+    }
+
+    @Test("A saved run switches a layout in place, stays on that run, and saves nothing")
+    func savedRunSwitchesLayoutsInPlace() async throws {
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+        let live = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: AnalysisService(), catalog: catalog, onBack: {}
+        )
+        await live.runSimulation()
+        let saved = try #require(session.savedAnalyses(for: project.id).first)
+        let comparedBefore = session.comparedLayouts(for: project.id).map(\.id)
+
+        let record = DashboardViewModel(
+            projectID: project.id, source: .saved(saved.id), session: session, analysisService: AnalysisService(),
+            catalog: catalog
+        )
+        #expect(record.layoutChoices.map(\.id) == layouts.map(\.id))
+        #expect(record.canSimulate)
+
+        record.choose(layouts[2].id, for: .two)
+        await untilShowing(record, .two, layouts[2].id)
+
+        // The record shows the other pair in place. It is not replayable, and the live analysis is untouched.
+        #expect(record.floorPlan(for: .one)?.id == layouts[0].id)
+        #expect(record.floorPlan(for: .two)?.id == layouts[2].id)
+        #expect(!record.canSimulate)
+        #expect(session.comparedLayouts(for: project.id).map(\.id) == comparedBefore)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        #expect(!session.isSimulating(project.id))
+
+        // Picking the run's own layout again brings the run back as it was.
+        record.choose(layouts[1].id, for: .two)
+        #expect(record.floorPlan(for: .two)?.id == layouts[1].id)
+        #expect(record.canSimulate)
     }
 
     @Test("Cancelling during loading stops the simulation, clears running state, saves no run, and navigates back")

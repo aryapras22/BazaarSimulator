@@ -39,8 +39,8 @@ struct RootView: View {
         }
         // The Analysis page is laid out for this much room, so the window cannot be dragged smaller.
         .frame(minWidth: 1280, minHeight: 800)
-        // Insights and Parameters cover the whole window, so the window is blurred behind them, the sidebar too.
-        .blur(radius: isCoveredByModal ? 14 : 0)
+        // Insights covers the whole window, so the window is blurred behind it, the sidebar too.
+        .blur(radius: analysisViewModel?.isInsightsPresented == true || parametersRequest != nil ? 14 : 0)
         .appDialog(deletionDialog)
         .appBackground()
         .overlay {
@@ -48,7 +48,7 @@ struct RootView: View {
                 InsightsOverlay(viewModel: analysisViewModel)
             }
         }
-        .animation(.easeOut(duration: 0.15), value: isCoveredByModal)
+        .animation(.easeOut(duration: 0.15), value: analysisViewModel?.isInsightsPresented)
         .preferredColorScheme(.dark)
         // In full screen the toolbar, and the sidebar button in it, stays showing like in a window. The window's own
         // buttons appear only when the pointer goes to the top left, as in Notes.
@@ -67,8 +67,11 @@ struct RootView: View {
         }
         .overlay {
             if let request = parametersRequest {
-                GlassModal(maxWidth: 860, onOutsideTap: { router.dismissParameters() }) { width in
-                    ParametersSheet(width: width, showsBackground: false) {
+                ZStack {
+                    Palette.scrim
+                        .ignoresSafeArea()
+                        .onTapGesture { router.dismissParameters() }
+                    ParametersSheet {
                         factory.makeParametersViewModel(
                             projectID: request.projectID,
                             analysisID: request.analysisID,
@@ -80,8 +83,10 @@ struct RootView: View {
                         )
                     }
                     .id(request.id)
+                    .padding(Spacing.xl)
                     .onExitCommand { router.dismissParameters() }
                 }
+                .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.15), value: parametersRequest)
@@ -123,10 +128,6 @@ struct RootView: View {
         )
     }
 
-    private var isCoveredByModal: Bool {
-        analysisViewModel?.isInsightsPresented == true || parametersRequest != nil
-    }
-
     private var parametersRequest: ParametersRequest? {
         router.parametersProjectID.map {
             ParametersRequest(projectID: $0, analysisID: router.parametersAnalysisID)
@@ -146,10 +147,7 @@ struct RootView: View {
                 .id(projectID)
         case .analysis(let projectID), .review(let projectID):
             DashboardView(viewModel: factory.makeDashboardViewModel(projectID: projectID)) { close in
-                ParametersView(
-                    viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close),
-                    showsBackground: false
-                )
+                ParametersView(viewModel: factory.makeParametersViewModel(projectID: projectID, onClose: close))
             }
             .id(projectID)
         case .savedAnalysis(let projectID, let analysisID):
@@ -162,8 +160,7 @@ struct RootView: View {
                         analysisID: analysisID, //only diff from dev btw
                         onClose: close,
                         onApply: { router.showAnalysis(projectID: projectID) }
-                    ),
-                    showsBackground: false
+                    )
                 )
             }
             .id(analysisID)
@@ -190,17 +187,13 @@ private struct ParametersRequest: Identifiable, Equatable {
 /// Builds the Parameters view model once per presentation, so a redraw of the app does not reset it.
 private struct ParametersSheet: View {
     @State private var viewModel: ParametersViewModel
-    private let width: CGFloat
-    private let showsBackground: Bool
 
-    init(width: CGFloat = 860, showsBackground: Bool = true, make: () -> ParametersViewModel) {
-        self.width = width
-        self.showsBackground = showsBackground
+    init(make: () -> ParametersViewModel) {
         _viewModel = State(initialValue: make())
     }
 
     var body: some View {
-        ParametersView(viewModel: viewModel, width: width, showsBackground: showsBackground)
+        ParametersView(viewModel: viewModel)
     }
 }
 

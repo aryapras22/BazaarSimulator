@@ -2,12 +2,10 @@ import SwiftUI
 
 struct ParametersView: View {
     @Bindable var viewModel: ParametersViewModel
-    var width: CGFloat = 860
-    var showsBackground: Bool = true
     @State private var commitScope = FormCommitScope()
 
     var body: some View {
-        let content = VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             headerView
                 .padding(.bottom, Spacing.l)
 
@@ -26,16 +24,15 @@ struct ParametersView: View {
         }
         .environment(\.formCommitScope, commitScope)
         .padding(Spacing.xl)
-        .frame(width: width)
+        .frame(width: 860)
         .fixedSize(horizontal: false, vertical: true)
-
-        Group {
-            if showsBackground {
-                content.glassCardSurface(in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
-            } else {
-                content
-            }
-        }
+        .glassModalSurface()
+//        .glassEffect(
+//            .clear
+//                .tint(.black.opacity(0.55)),
+////            .regular
+////                .tint(.white.opacity(0.015)),
+//            in: .rect(cornerRadius: 15)
         .preferredColorScheme(.dark)
     }
 

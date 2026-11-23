@@ -3,17 +3,17 @@ import SwiftUI
 struct ProjectLibraryView: View {
     @Bindable var viewModel: ProjectLibraryViewModel
 
+    /// What a row of the projects list takes, with the gap under it, and the most the list grows to before it scrolls.
+    private static let projectRowHeight: CGFloat = 40
+    private static let projectsListLimit: CGFloat = 280
+
     var body: some View {
         VStack(spacing: Spacing.m) {
             headerView
 
-            ScrollView {
-                LazyVStack(spacing: Spacing.xs) {
-                    ForEach(viewModel.filteredProjects) { project in
-                        projectFolder(project)
-                    }
-                }
-            }
+            projectsList
+
+            runsSection
 
             Spacer(minLength: 0)
 
@@ -23,22 +23,37 @@ struct ProjectLibraryView: View {
         }
         .padding(Spacing.m)
         .frame(minWidth: 240, maxWidth: .infinity, maxHeight: .infinity)
+        .sidebarBackground()
     }
 
-    @ViewBuilder
-    private func projectFolder(_ project: ProjectSummary) -> some View {
-        HStack(spacing: 0) {
-            Button {
-                viewModel.selectProject(project)
-            } label: {
-                ProjectRow(
-                    name: project.name,
-                    isSelected: viewModel.isFolderSelected(project),
-                    isExpanded: viewModel.isExpanded(project)
-                )
+    // MARK: Projects
+
+    /// The projects on top, one row each. Clicking one opens it, and its runs show under the list.
+    private var projectsList: some View {
+        let count = viewModel.filteredProjects.count
+        return ScrollView {
+            LazyVStack(spacing: Spacing.xs) {
+                ForEach(viewModel.filteredProjects) { project in
+                    projectRow(project)
+                }
             }
-            .buttonStyle(.plain)
         }
+        .frame(maxHeight: min(CGFloat(count) * Self.projectRowHeight, Self.projectsListLimit))
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private func projectRow(_ project: ProjectSummary) -> some View {
+        Button {
+            viewModel.selectProject(project)
+        } label: {
+            ProjectRow(
+                name: project.name,
+                isSelected: viewModel.isProjectSelected(project),
+                isExpanded: viewModel.isProjectSelected(project),
+                showsChevron: false
+            )
+        }
+        .buttonStyle(.plain)
         .overlay {
             SidebarContextMenu(items: [
                 SidebarMenuItem(title: "Delete", symbol: "trash", isDestructive: true) {
@@ -46,23 +61,50 @@ struct ProjectLibraryView: View {
                 }
             ])
         }
-        .overlay(alignment: .leading) {
-            // The chevron toggles the folder without opening the project.
-            Color.clear
-                .frame(width: 36)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.15)) { viewModel.toggleExpanded(project) }
-                }
-        }
+    }
 
-        if viewModel.isExpanded(project) {
-            let analyses = viewModel.savedAnalyses(in: project)
-            ForEach(analyses) { analysis in
-                analysisRow(analysis, in: project)
-            }
-            if viewModel.isRunning(project) {
-                runningRow(in: project)
+    // MARK: Runs
+
+    /// The selected project's runs, under the projects, like the pages under a tab bar.
+    @ViewBuilder
+    private var runsSection: some View {
+        if let project = viewModel.selectedProject {
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                Rectangle()
+                    .fill(Palette.surfaceBorder)
+                    .frame(height: 1)
+
+                HStack(spacing: Spacing.xs) {
+                    Text("Runs")
+                        .font(Typography.fieldLabel)
+                        .foregroundColor(Palette.textPrimary)
+                    Text(project.name)
+                        .font(Typography.caption)
+                        .foregroundColor(Palette.textSecondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, Spacing.xs)
+
+                let analyses = viewModel.savedAnalyses(in: project)
+                if analyses.isEmpty, !viewModel.isRunning(project) {
+                    Text("No runs yet")
+                        .font(Typography.caption)
+                        .foregroundColor(Palette.textTertiary)
+                        .padding(.horizontal, Spacing.xs)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: Spacing.xs) {
+                            ForEach(analyses) { analysis in
+                                analysisRow(analysis, in: project)
+                            }
+                            if viewModel.isRunning(project) {
+                                runningRow(in: project)
+                            }
+                        }
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                }
             }
         }
     }
@@ -75,13 +117,6 @@ struct ProjectLibraryView: View {
             isRenaming: viewModel.renamingAnalysisID == analysis.id,
             onCommitRename: { viewModel.renameAnalysis(analysis, in: project, to: $0) }
         )
-        .padding(.leading, Spacing.l)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Palette.surfaceBorder)
-                .frame(width: 1)
-                .padding(.leading, Spacing.m + 5)
-        }
         .onTapGesture { viewModel.selectAnalysis(analysis, in: project) }
         .overlay {
             SidebarContextMenu(items: [
@@ -104,13 +139,6 @@ struct ProjectLibraryView: View {
             isLoading: true,
             onCommitRename: { _ in }
         )
-        .padding(.leading, Spacing.l)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Palette.surfaceBorder)
-                .frame(width: 1)
-                .padding(.leading, Spacing.m + 5)
-        }
         .onTapGesture { viewModel.openRunning(project) }
     }
 
