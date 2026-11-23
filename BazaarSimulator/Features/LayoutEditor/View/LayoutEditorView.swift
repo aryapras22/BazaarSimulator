@@ -148,8 +148,7 @@ extension LayoutEditorView {
     @ViewBuilder
     private var editorHeader: some View {
         if is3DPreview {
-            let index = (viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0) + 1
-            Editor3DHeaderBar(layoutIndex: index, onBack: { viewModel.requestBack() })
+            Editor3DHeaderBar(layoutTitle: viewModel.activeLayoutTitle, onBack: { viewModel.requestBack() })
         } else {
             EditorHeaderBar(viewModel: viewModel)
         }

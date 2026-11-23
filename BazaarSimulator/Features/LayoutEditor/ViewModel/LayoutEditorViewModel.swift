@@ -111,6 +111,15 @@ final class LayoutEditorViewModel {
         return session.layout(id: activeLayoutID, in: projectID) ?? layouts.first
     }
 
+    var activeLayoutTitle: String {
+        if let name = activeLayout?.name.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        let index = (layouts.firstIndex { $0.id == activeLayoutID } ?? 0) + 1
+        return "Layout \(index)"
+    }
+
     var selectedObject: LayoutObject? {
         guard let selectionID, let activeLayout else { return nil }
         return activeLayout.objects.first { $0.id == selectionID }

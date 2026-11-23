@@ -63,7 +63,7 @@ struct EditorViewportContainer<TwoDContent: View>: View {
 
 /// Read-only header bar shown while the layout editor is in 3D preview, keeping Back active while disabling Undo/Redo.
 struct Editor3DHeaderBar: View {
-    let layoutIndex: Int
+    let layoutTitle: String
     let onBack: () -> Void
 
     var body: some View {
@@ -76,7 +76,7 @@ struct Editor3DHeaderBar: View {
                 action: onBack
             )
 
-            Text("Layout \(layoutIndex)")
+            Text(layoutTitle)
                 .font(Typography.panelTitle)
                 .foregroundStyle(Palette.textPrimary)
 
