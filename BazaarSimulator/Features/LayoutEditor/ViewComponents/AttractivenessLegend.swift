@@ -12,8 +12,7 @@ struct AttractivenessLegend: View {
             isOn.toggle()
         } label: {
             HStack(spacing: Spacing.s) {
-                Text("Attractiveness")
-                    .font(Typography.caption)
+                popularityIcon
                 if isOn {
                     Text("\(Int(AttractivenessField.range.lowerBound.rounded()))")
                         .font(Typography.caption)
@@ -32,9 +31,21 @@ struct AttractivenessLegend: View {
             .glassEffect(glass, in: Capsule())
         }
         .buttonStyle(.plain)
-        .help(isOn ? "Hide attractiveness colours" : "Colour booths by attractiveness")
-        .accessibilityLabel("Show attractiveness on booths")
+        .help(isOn ? "Hide popularity colours" : "Colour booths by popularity")
+        .accessibilityLabel("Show popularity on booths")
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
+    // SF Symbols has no person-with-star glyph, so the star is stacked above a person.
+    private var popularityIcon: some View {
+        VStack(spacing: 0) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 7, weight: .bold))
+            Image(systemName: "person.fill")
+                .font(.system(size: 13, weight: .medium))
+        }
+        .frame(width: 18, height: 18)
+        .accessibilityHidden(true)
     }
 }
 

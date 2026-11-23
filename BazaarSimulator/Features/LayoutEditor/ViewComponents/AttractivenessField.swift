@@ -20,7 +20,7 @@ struct AttractivenessField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(spacing: Spacing.xs) {
-                Text("Attractiveness")
+                Text("Popularity")
                     .font(Typography.inspectorLabel)
                     .foregroundStyle(Palette.textPrimary)
                 helpIcon
@@ -31,7 +31,7 @@ struct AttractivenessField: View {
                     Slider(value: sliderValue, in: Self.range)
                         .labelsHidden()
                         .tint(.clear)
-                        .accessibilityLabel("Attractiveness")
+                        .accessibilityLabel("Popularity")
                         .background {
                             Capsule()
                                 .fill(AttractivenessScale.gradient)
@@ -47,7 +47,7 @@ struct AttractivenessField: View {
                     .foregroundStyle(Palette.textSecondary)
                 }
 
-                TextField("Attractiveness", text: $text)
+                TextField("Popularity", text: $text)
                     .textFieldStyle(FieldOnSurfaceStyle(isInvalid: !Self.isValid(value)))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 64)
@@ -72,11 +72,11 @@ struct AttractivenessField: View {
             .font(Typography.caption)
             .foregroundStyle(Palette.textSecondary)
             .contentShape(Rectangle())
-            .accessibilityLabel("What is attractiveness?")
+            .accessibilityLabel("What is popularity?")
             .onHover { showsHelp = $0 }
             .popover(isPresented: $showsHelp, arrowEdge: .top) {
                 VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text("What is Attractiveness?")
+                    Text("What is Popularity?")
                         .font(Typography.inspectorLabel)
                         .foregroundStyle(Palette.textPrimary)
                     Text("A behavior that sets the chances of a visitor to stop by a booth")
