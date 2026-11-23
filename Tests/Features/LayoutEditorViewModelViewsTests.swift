@@ -158,6 +158,53 @@ struct LayoutEditorViewModelViewsTests {
         #expect(interior.isClose(to: CanvasRGBA(color: Palette.canvasBoothFill)))
         #expect(hasDarkBlueLabel)
     }
+
+    @Test("Attractiveness filter defaults to off and toggles on and back off")
+    func attractivenessToggleDefaultsOffAndToggles() {
+        let viewModel = Self.makeViewModel()
+        #expect(!viewModel.showsAttractiveness)
+
+        viewModel.toggleAttractiveness()
+        #expect(viewModel.showsAttractiveness)
+
+        viewModel.toggleAttractiveness()
+        #expect(!viewModel.showsAttractiveness)
+    }
+
+    @Test("CanvasDisplaySnapshot defaults showsAttractiveness to false")
+    func canvasDisplaySnapshotDefaultsAttractivenessOff() {
+        let (layout, _) = Self.makeSingleBoothLayout(attractiveness: 5)
+        let snapshot = CanvasDisplaySnapshot(layout: layout, legend: Legend(), activeLayer: .booths)
+        #expect(!snapshot.showsAttractiveness)
+    }
+
+    @Test("CanvasSceneRenderer enables attractiveness heat only when filter is on in the booths layer")
+    func attractivenessDisplayMatchesLayerAndToggle() {
+        let (layout, _) = Self.makeSingleBoothLayout(attractiveness: 5)
+
+        let boothsOff = CanvasDisplaySnapshot(
+            layout: layout,
+            legend: Legend(),
+            activeLayer: .booths,
+            showsAttractiveness: false
+        )
+        let boothsOn = CanvasDisplaySnapshot(
+            layout: layout,
+            legend: Legend(),
+            activeLayer: .booths,
+            showsAttractiveness: true
+        )
+        let structureOn = CanvasDisplaySnapshot(
+            layout: layout,
+            legend: Legend(),
+            activeLayer: .structure,
+            showsAttractiveness: true
+        )
+
+        #expect(CanvasSceneRenderer.attractivenessDisplay(for: boothsOff) == .hidden)
+        #expect(CanvasSceneRenderer.attractivenessDisplay(for: boothsOn) == .heat)
+        #expect(CanvasSceneRenderer.attractivenessDisplay(for: structureOn) == .hidden)
+    }
 }
 
 private struct CanvasRGBA: Equatable {

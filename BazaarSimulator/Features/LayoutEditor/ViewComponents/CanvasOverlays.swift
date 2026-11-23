@@ -9,6 +9,7 @@ struct CanvasOverlays: View {
     /// The swatches are hidden while the canvas has one fixed background; set this to bring the choice back.
     var showsBackgroundPicker = false
     @Binding var background: CanvasBackground
+    var showsAttractiveness: Binding<Bool>?
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
     let onFit: () -> Void
@@ -26,8 +27,13 @@ struct CanvasOverlays: View {
                 Spacer()
                 GlassEffectContainer(spacing: Spacing.s) {
                     VStack(alignment: .trailing, spacing: Spacing.s) {
-                        if showReadouts, showsBackgroundPicker {
-                            CanvasBackgroundSwatches(selection: $background)
+                        if showReadouts {
+                            if let showsAttractiveness {
+                                AttractivenessLegend(isOn: showsAttractiveness)
+                            }
+                            if showsBackgroundPicker {
+                                CanvasBackgroundSwatches(selection: $background)
+                            }
                         }
                         CanvasZoomControls(onZoomIn: onZoomIn, onZoomOut: onZoomOut, onFit: onFit)
                         if showReadouts {

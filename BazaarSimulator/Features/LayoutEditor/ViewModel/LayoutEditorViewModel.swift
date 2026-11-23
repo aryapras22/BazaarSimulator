@@ -33,6 +33,7 @@ final class LayoutEditorViewModel {
     var activeLayer: EditorLayer = .booths
     var hiddenLayers: Set<EditorLayer> = []
     var showVisitorFlow: Bool = false
+    var showsAttractiveness: Bool = false
     var transientHint: String?
     @ObservationIgnored var transientHintTask: Task<Void, Never>?
     var tool: EditorTool = .select
@@ -174,6 +175,10 @@ final class LayoutEditorViewModel {
 
     func requestBack() {
         onBack()
+    }
+
+    func toggleAttractiveness() {
+        showsAttractiveness.toggle()
     }
 
     func applySelection(_ objectID: UUID?) {

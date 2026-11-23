@@ -114,7 +114,8 @@ extension LayoutEditorView {
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world,
-            background: viewModel.canvasBackground
+            background: viewModel.canvasBackground,
+            showsAttractiveness: viewModel.showsAttractiveness
         )
     }
 
@@ -181,6 +182,7 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 background: $viewModel.canvasBackground,
+                showsAttractiveness: viewModel.activeLayer == .booths ? $viewModel.showsAttractiveness : nil,
                 onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }
