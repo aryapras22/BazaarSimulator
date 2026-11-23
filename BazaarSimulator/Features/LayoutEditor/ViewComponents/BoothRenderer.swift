@@ -15,7 +15,7 @@ struct BoothDrawState: Sendable {
 }
 
 enum BoothRenderer {
-    private static let stripThicknessM = 0.22
+    private static let stripThicknessM = 0.10
 
     static func draw(
         _ state: BoothDrawState,
@@ -111,7 +111,7 @@ enum BoothRenderer {
         context.stroke(Path(ellipseIn: rect), with: .color(Palette.canvasLine), lineWidth: 0.75)
     }
 
-    /// Booths and entertainment mark closed sides in red and draw no strip on open sides.
+    /// Booths and entertainment mark closed sides in dark blue and draw no strip on open sides.
     static func drawOpenSideStrips(
         of object: LayoutObject,
         blockedSides: OpenSides,
@@ -150,7 +150,7 @@ enum BoothRenderer {
                 for: LayoutGeometry.corners(of: stripPlacement),
                 transform: transform
             )
-            context.fill(stripPath, with: .color(Palette.destructive))
+            context.fill(stripPath, with: .color(Palette.canvasLine))
         }
     }
 
