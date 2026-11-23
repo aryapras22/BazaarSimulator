@@ -240,12 +240,30 @@ struct VenueGeometryTests {
         #expect(parts.filter { $0.size.x == 0.12 && $0.size.z == 0.12 }.count == 4)
     }
 
-    @Test("The awning is blue, or orange for a food booth")
+    @Test("Booth awnings and counter goods follow boothType, ignoring labels and legend entries")
     func awningColor() {
-        func awning(_ label: String) -> SIMD4<Float> {
-            VenueGeometry.blocks(for: object(.booth, label: label)).max { top($0) < top($1) }!.color
+        let fnbEntry = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let goodsEntry = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [fnbEntry, goodsEntry])
+
+        func booth(_ boothType: BoothType?, label: String, categoryID: LegendEntry.ID? = nil) -> LayoutObject {
+            LayoutObject(
+                kind: .booth, label: label, placement: Placement(center: SIMD2(10, 6), sizeM: SIMD2(4, 2)),
+                categoryID: categoryID, boothType: boothType, openSides: [.bottom]
+            )
         }
-        #expect(awning("B3") != awning("Food 1"))
+        func awning(_ parts: [VenueBlock]) -> SIMD4<Float> { parts.max { top($0) < top($1) }!.color }
+
+        let food = VenueGeometry.blocks(for: booth(.fnb, label: "B3", categoryID: goodsEntry.id), legend: legend)
+        let goods = VenueGeometry.blocks(for: booth(.goods, label: "Food 1", categoryID: fnbEntry.id), legend: legend)
+        let unassigned = VenueGeometry.blocks(for: booth(nil, label: "Food 2", categoryID: fnbEntry.id), legend: legend)
+
+        #expect(Set([awning(food), awning(goods), awning(unassigned)]).count == 3)
+        #expect(awning(food) == TenantColors.foodRGBA)
+        #expect(awning(goods) == TenantColors.goodsPalette[0])
+        #expect(food.contains { $0.shape == .cylinder })
+        #expect(!goods.contains { $0.shape == .cylinder })
+        #expect(!unassigned.contains { $0.shape == .cylinder })
     }
 
     @Test("Each open side has a low counter, and each closed side a tall panel")

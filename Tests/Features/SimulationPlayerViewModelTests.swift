@@ -1,3 +1,5 @@
+import AppKit
+import SpriteKit
 import SwiftUI
 import Foundation
 import Testing
@@ -408,25 +410,132 @@ struct SimulationPlayerSceneTests {
         #expect(SimulationMode.allCases.map(\.title) == ["Congestion Spots", "Crowd Level", "Walking Routes"])
     }
 
-    @Test("Tenant categories receive distinct colors for the legend and booths")
+    @Test("Tenant categories use fixed picker order, boothType colors, and entertainment resolution")
     func tenantColorsDifferentiateCategories() {
-        let fnb = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
-        let fashion = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
-        let hobbies = LegendEntry(name: "Lifestyle & Hobbies", color: LegendColor(red: 1, green: 1, blue: 0), type: .goods)
-        let legend = Legend(entries: [fnb, fashion, hobbies])
-
-        let items = TenantColors.legendItems(for: nil, legend: legend)
-        #expect(items.map(\.name) == ["FNB", "Fashion", "Lifestyle & Hobbies"])
-        #expect(Set(items.map(\.rgba)).count == 3)
-
-        let fnbBooth = LayoutObject(
-            kind: .booth, label: "F1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fnb.id
+        let fnbEntry = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let fashionEntry = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let hobbiesEntry = LegendEntry(name: "Hobbies", color: LegendColor(red: 1, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [fnbEntry, fashionEntry, hobbiesEntry])
+        let place = Placement(center: .zero, sizeM: SIMD2(2, 2))
+        let wallOnly = Layout(
+            name: "Empty", sizeM: SIMD2(20, 20), objects: [LayoutObject(kind: .wall, label: "W1", placement: place)]
         )
-        let fashionBooth = LayoutObject(
-            kind: .booth, label: "B1", placement: Placement(center: .zero, sizeM: SIMD2(2, 2)), categoryID: fashion.id
+        #expect(TenantColors.legendItems(for: nil, legend: legend).isEmpty)
+        #expect(TenantColors.legendItems(for: wallOnly, legend: legend).isEmpty)
+
+        func attraction(_ label: String, catalogID: String? = nil) -> LayoutObject {
+            LayoutObject(kind: .entertainment, label: label, placement: place, catalogID: catalogID)
+        }
+        let unassigned = LayoutObject(kind: .booth, label: "Food 1", placement: place, categoryID: fnbEntry.id)
+        let foods = LayoutObject(
+            kind: .booth, label: "B1", placement: place, categoryID: fashionEntry.id, boothType: .fnb
         )
-        #expect(TenantColors.boothRGBA(for: fnbBooth, legend: legend) == items[0].rgba)
-        #expect(TenantColors.boothRGBA(for: fashionBooth, legend: legend) == items[1].rgba)
-        #expect(items[0].rgba != items[1].rgba)
+        let goods = LayoutObject(
+            kind: .booth, label: "F1", placement: place, categoryID: hobbiesEntry.id, boothType: .goods
+        )
+        let attractions = [
+            attraction("Closed", catalogID: EntertainmentType.disabled.catalogID),
+            attraction("Area Lomba"),
+            attraction("Info Desk"),
+            attraction("Stage", catalogID: EntertainmentType.photobooth.catalogID),
+            attraction("Main Stage")
+        ]
+        let fullLayout = Layout(
+            name: "Full", sizeM: SIMD2(30, 20), objects: attractions + [goods, foods, unassigned, foods]
+        )
+
+        let items = TenantColors.legendItems(for: fullLayout, legend: legend)
+        let expectedNames = ["Unassigned", "Foods", "Goods"] + EntertainmentType.allCases.map(\.displayName)
+        #expect(items.map(\.name) == expectedNames)
+        #expect(!TenantColors.isFood(unassigned, legend: legend))
+        #expect(TenantColors.isFood(foods, legend: legend))
+        #expect(!TenantColors.isFood(goods, legend: legend))
+
+        let rgbaByName = Dictionary(uniqueKeysWithValues: items.map { ($0.name, $0.rgba) })
+        #expect(TenantColors.boothRGBA(for: unassigned, legend: legend) == rgbaByName["Unassigned"])
+        #expect(TenantColors.boothRGBA(for: foods, legend: legend) == TenantColors.foodRGBA)
+        #expect(rgbaByName["Foods"] == TenantColors.foodRGBA)
+        #expect(TenantColors.boothRGBA(for: goods, legend: legend) == TenantColors.goodsPalette[0])
+        #expect(rgbaByName["Goods"] == TenantColors.goodsPalette[0])
+        #expect(Set(items.prefix(3).map(\.rgba)).count == 3)
+        #expect(Set(items.dropFirst(3).map(\.rgba)).count == EntertainmentType.allCases.count)
+    }
+
+    @Test("Legend filters to present categories and ignores imported entries in ViewModel")
+    func tenantLegendFiltersPresentCategories() async {
+        let imported = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [imported])
+        let place = Placement(center: SIMD2(6, 6), sizeM: SIMD2(2, 2))
+
+        let filteredLayout = Layout(
+            name: "Subset", sizeM: SIMD2(20, 20),
+            objects: [
+                LayoutObject(kind: .entertainment, label: "PHOTO BOX", placement: place),
+                LayoutObject(kind: .booth, label: "B1", placement: place, categoryID: imported.id, boothType: .goods),
+                LayoutObject(kind: .door, label: "D1", placement: place)
+            ]
+        )
+        #expect(TenantColors.legendItems(for: filteredLayout, legend: legend).map(\.name) == ["Goods", "Photobooth"])
+
+        let session = ProjectSession()
+        let project = session.createProject(named: "Legend")
+        var hall = TestLayouts.hall()
+        hall.objects[0].boothType = .fnb
+        hall.objects[1].boothType = .goods
+        session.setDraft(ProjectDraft(name: "Legend", legend: legend, layouts: [hall]), for: project.id)
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+        let model = SimulationPlayerViewModel(
+            projectID: project.id, layoutID: .one, session: session,
+            analysisService: AnalysisService(), catalog: catalog
+        )
+        #expect(model.tenantTypes.isEmpty)
+        await model.load()
+        #expect(model.tenantTypes.map(\.name) == ["Unassigned", "Foods", "Goods"])
+    }
+
+    @Test("2D booth and entertainment fills match their legend dot colors")
+    func tenantLegendMatches2DFills() throws {
+        let imported = LegendEntry(name: "Fashion", color: LegendColor(red: 0, green: 1, blue: 0), type: .goods)
+        let legend = Legend(entries: [imported])
+        let place = Placement(center: SIMD2(6, 6), sizeM: SIMD2(2, 2))
+
+        let allObjects: [(category: String, object: LayoutObject)] = [
+            ("Unassigned", LayoutObject(kind: .booth, label: "F1", placement: place, categoryID: imported.id)),
+            ("Foods", LayoutObject(kind: .booth, label: "B1", placement: place, boothType: .fnb)),
+            ("Goods", LayoutObject(kind: .booth, label: "F2", placement: place, boothType: .goods)),
+            ("Stage", LayoutObject(kind: .entertainment, label: "Main Stage", placement: place)),
+            ("Photobooth", LayoutObject(
+                kind: .entertainment, label: "Stage", placement: place,
+                catalogID: EntertainmentType.photobooth.catalogID
+            )),
+            ("Information Desk", LayoutObject(kind: .entertainment, label: "Info", placement: place)),
+            ("Others", LayoutObject(kind: .entertainment, label: "Display", placement: place)),
+            ("Disabled", LayoutObject(
+                kind: .entertainment, label: "Off", placement: place,
+                catalogID: EntertainmentType.disabled.catalogID
+            ))
+        ]
+        let layout = Layout(name: "2D Parity", sizeM: SIMD2(24, 12), objects: allObjects.map(\.object))
+        let legendColors = Dictionary(
+            uniqueKeysWithValues: TenantColors.legendItems(for: layout, legend: legend).map { ($0.name, $0.nsColor) }
+        )
+
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 400, height: 300))
+        let scene = Venue2DScene(size: CGSize(width: 400, height: 300))
+        view.presentScene(scene)
+        scene.updateScene(layout: layout, legend: legend, visitors: [], densityCells: [], showHeatmap: false)
+
+        let objectLayer = try #require(scene.children.first { $0.zPosition == 2 })
+        let nodes = objectLayer.children.compactMap { $0 as? SKShapeNode }
+        #expect(nodes.count == allObjects.count)
+        for (entry, node) in zip(allObjects, nodes) {
+            let expected = try #require(legendColors[entry.category], "Missing legend item for \(entry.category)")
+            let actualRGB = try #require(node.fillColor.usingColorSpace(.sRGB))
+            let expectedRGB = try #require(expected.usingColorSpace(.sRGB))
+            #expect(abs(actualRGB.redComponent - expectedRGB.redComponent) < 0.002, "\(entry.category)")
+            #expect(abs(actualRGB.greenComponent - expectedRGB.greenComponent) < 0.002, "\(entry.category)")
+            #expect(abs(actualRGB.blueComponent - expectedRGB.blueComponent) < 0.002, "\(entry.category)")
+            #expect(abs(actualRGB.alphaComponent - expectedRGB.alphaComponent) < 0.002, "\(entry.category)")
+        }
     }
 }
