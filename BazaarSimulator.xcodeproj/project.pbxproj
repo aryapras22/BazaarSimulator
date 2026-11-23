@@ -154,7 +154,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				42C7C2193094562600513D5B /* BazaarSimulator */,
-				42C7C2403094B43900513D5B /* docs */,
 			);
 			name = BazaarSimulator;
 			packageProductDependencies = (
