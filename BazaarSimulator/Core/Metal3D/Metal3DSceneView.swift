@@ -6,13 +6,20 @@ struct Metal3DSceneView: NSViewRepresentable {
     let venue: SimulationVenue
     let frame: SimulationSceneFrame
     var backgroundColor: Color?
+    var initialDistanceScale: Float = 1.0
+    var zoomRequest: CameraZoomRequest?
 
     private var resolvedClearColor: MTLClearColor {
         backgroundColor.map(Metal3DRenderer.clearColor(for:)) ?? Metal3DRenderer.background
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(venue: venue, clearColor: resolvedClearColor)
+        Coordinator(
+            venue: venue,
+            clearColor: resolvedClearColor,
+            initialDistanceScale: initialDistanceScale,
+            lastZoomRequestID: zoomRequest?.id
+        )
     }
 
     func makeNSView(context: Context) -> OrbitView {
@@ -20,6 +27,7 @@ struct Metal3DSceneView: NSViewRepresentable {
         let view = OrbitView(frame: .zero, device: coordinator.renderer?.device)
         view.delegate = coordinator
         view.colorPixelFormat = Metal3DRenderer.colorFormat
+        view.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         view.clearColor = resolvedClearColor
         view.framebufferOnly = true
         // The view redraws when SwiftUI hands it a new frame or the camera moves, so a paused simulation
@@ -44,7 +52,13 @@ struct Metal3DSceneView: NSViewRepresentable {
     func updateNSView(_ view: OrbitView, context: Context) {
         let clearColor = resolvedClearColor
         view.clearColor = clearColor
-        context.coordinator.update(venue: venue, frame: frame, clearColor: clearColor)
+        context.coordinator.update(
+            venue: venue,
+            frame: frame,
+            clearColor: clearColor,
+            initialDistanceScale: initialDistanceScale,
+            zoomRequest: zoomRequest
+        )
         view.setNeedsDisplay(view.bounds)
     }
 
@@ -110,17 +124,38 @@ struct Metal3DSceneView: NSViewRepresentable {
         private var venue: SimulationVenue
         private var frame = SimulationSceneFrame()
         private var clearColor: MTLClearColor
+        private var initialDistanceScale: Float
+        private var lastZoomRequestID: Int?
 
-        init(venue: SimulationVenue, clearColor: MTLClearColor = Metal3DRenderer.background) {
+        init(
+            venue: SimulationVenue,
+            clearColor: MTLClearColor = Metal3DRenderer.background,
+            initialDistanceScale: Float = 1.0,
+            lastZoomRequestID: Int? = nil
+        ) {
             self.venue = venue
             self.clearColor = clearColor
-            camera = .framing(plan: venue.plan)
+            self.initialDistanceScale = initialDistanceScale
+            self.lastZoomRequestID = lastZoomRequestID
+            camera = .framing(plan: venue.plan, distanceScale: initialDistanceScale)
         }
 
         /// A different venue starts with the camera framed on it.
-        func update(venue: SimulationVenue, frame: SimulationSceneFrame, clearColor: MTLClearColor) {
-            if venue.id != self.venue.id {
-                camera = .framing(plan: venue.plan)
+        func update(
+            venue: SimulationVenue,
+            frame: SimulationSceneFrame,
+            clearColor: MTLClearColor,
+            initialDistanceScale: Float,
+            zoomRequest: CameraZoomRequest?
+        ) {
+            if venue.id != self.venue.id || initialDistanceScale != self.initialDistanceScale {
+                self.initialDistanceScale = initialDistanceScale
+                camera = .framing(plan: venue.plan, distanceScale: initialDistanceScale)
+            }
+            if let zoomRequest, lastZoomRequestID != zoomRequest.id {
+                lastZoomRequestID = zoomRequest.id
+                let amount: Float = zoomRequest.direction == .zoomIn ? 24 : -24
+                camera.zoom(amount)
             }
             self.venue = venue
             self.frame = frame

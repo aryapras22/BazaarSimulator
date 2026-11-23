@@ -15,8 +15,10 @@ struct DrawnVisitor {
 @Observable
 @MainActor
 final class SimulationPlayerViewModel {
-    /// The window is played back in this many seconds at 1x speed (4x slower than the original 120s rate).
-    static let playbackSeconds = 480.0
+    /// At 1x speed, each real second advances 30 simulated seconds (2x = 60s/s, 4x = 120s/s).
+    static let simulatedSecondsPerPlaybackSecond = 30.0
+    /// Fallback playback duration before a replay loads (11 hours at 30 simulated seconds per second).
+    static let defaultPlaybackSeconds = 39_600.0 / simulatedSecondsPerPlaybackSecond
     static let heatColumns = 36
 
     enum Phase: Equatable {
@@ -124,9 +126,43 @@ final class SimulationPlayerViewModel {
 
     // MARK: Time
 
+    /// Real-time seconds needed to play the full event at 1x speed (30 simulated seconds per real second).
+    var playbackDuration: Double {
+        guard let duration = replay?.durationSeconds, duration > 0 else {
+            return Self.defaultPlaybackSeconds
+        }
+        return max(duration / Self.simulatedSecondsPerPlaybackSecond, 1.0)
+    }
+
     /// How far through the window, 0 to 1, after `playback` seconds of playback.
     func progress(at playback: Double) -> Double {
-        min(max(playback / Self.playbackSeconds, 0), 1)
+        min(max(playback / playbackDuration, 0), 1)
+    }
+
+    /// Highest density recorded for `spot` from the start of playback up to `playback`.
+    func peakSpotDensity(for spot: SpotOutcome, upTo playback: Double) -> Double {
+        let current = spotDensity(for: spot, at: playback)
+        if let analysis = result?.analyses[layoutID],
+           let measured = analysis.spots.first(where: { $0.number == spot.number }),
+           !measured.densitySamples.isEmpty {
+            let step = windowSeconds(at: playback) / Double(max(analysis.sampleIntervalSeconds, 1))
+            let low = min(max(Int(step.rounded(.down)), 0), measured.densitySamples.count - 1)
+            let pastMax = measured.densitySamples[0...low].max().map(Double.init) ?? 0
+            return max(pastMax, current)
+        }
+        let prog = progress(at: playback)
+        if spot.windowDensity.count >= 2 {
+            let step = prog * Double(spot.windowDensity.count - 1)
+            let low = min(max(Int(step.rounded(.down)), 0), spot.windowDensity.count - 1)
+            let pastMax = spot.windowDensity[0...low].max() ?? 0
+            return max(pastMax, current)
+        }
+        return prog >= 0.5 ? max(spot.peakDensity, current) : current
+    }
+
+    /// True once a spot has reached Grade E or F at any point up to `playback` (and stays visible afterward).
+    func isCongestedSpot(_ spot: SpotOutcome, at playback: Double) -> Bool {
+        SeverityGrade.grade(forDensity: peakSpotDensity(for: spot, upTo: playback)).rawValue >= SeverityGrade.e.rawValue
     }
 
     /// Seconds into the busiest window that `playback` seconds of playback shows.
@@ -265,7 +301,8 @@ final class SimulationPlayerViewModel {
 
         switch mode {
         case .congestion:
-            frame.spots = (outcome?.spots ?? []).map { spot in
+            frame.spots = (outcome?.spots ?? []).compactMap { spot in
+                guard isCongestedSpot(spot, at: playback) else { return nil }
                 let density = spotDensity(for: spot, at: playback)
                 let place = meters(spot.location)
                 return SimulationSceneFrame.Spot(
@@ -465,12 +502,13 @@ final class SimulationPlayerViewModel {
         case .congestion:
             guard let spots = outcome?.spots else { return [] }
             let plan = plan
-            return spots.map { spot in
+            return spots.compactMap { spot in
+                guard isCongestedSpot(spot, at: playback) else { return nil }
+                let density = max(0.35, spotDensity(for: spot, at: playback))
                 let center = SIMD2(
                     plan.origin.x + Double(spot.location.x) * plan.size.x,
                     plan.origin.y + Double(spot.location.y) * plan.size.y
                 )
-                let density = max(0.35, spotDensity(for: spot, at: playback))
                 return DensityCell(id: spot.number, center: center, peoplePerSquareMetre: density)
             }
         }

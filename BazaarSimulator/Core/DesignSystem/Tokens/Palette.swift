@@ -33,6 +33,7 @@ enum Palette {
     static let primaryDisabledText = Color(hex: 0x46444F)
 
     static let canvasGridLine = Color(hex: 0x071327)
+    static let simulationBackground = Color(.sRGB, red: 0.06, green: 0.08, blue: 0.14, opacity: 1.0)
     static let canvasBackgroundGrey = Color(hex: 0x212830)
     static let canvasGridLineGrey = Color(hex: 0x3A434F)
     static let canvasBackgroundWhite = Color(hex: 0xFFFFFF)

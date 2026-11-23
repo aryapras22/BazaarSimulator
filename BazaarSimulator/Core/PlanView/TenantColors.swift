@@ -14,7 +14,7 @@ struct TenantLegendItem: Identifiable, Equatable {
 
     var nsColor: NSColor {
         NSColor(
-            calibratedRed: CGFloat(rgba.x),
+            srgbRed: CGFloat(rgba.x),
             green: CGFloat(rgba.y),
             blue: CGFloat(rgba.z),
             alpha: CGFloat(rgba.w)
@@ -92,7 +92,7 @@ enum TenantColors {
     static func boothNSColor(for object: LayoutObject, legend: Legend = Legend()) -> NSColor {
         let rgba = boothRGBA(for: object, legend: legend)
         return NSColor(
-            calibratedRed: CGFloat(rgba.x),
+            srgbRed: CGFloat(rgba.x),
             green: CGFloat(rgba.y),
             blue: CGFloat(rgba.z),
             alpha: CGFloat(rgba.w)

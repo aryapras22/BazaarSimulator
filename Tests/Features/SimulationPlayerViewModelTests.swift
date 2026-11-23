@@ -57,17 +57,19 @@ struct SimulationPlayerViewModelTests {
         #expect(model.planAspect > 0)
     }
 
-    @Test("The playback clock shows the time of day across the full event")
+    @Test("The playback clock advances 30 simulated seconds per real second across the full event")
     func clockText() async {
         let model = makeModel()
         await model.load()
-        #expect(SimulationPlayerViewModel.playbackSeconds == 480)
+        #expect(SimulationPlayerViewModel.simulatedSecondsPerPlaybackSecond == 30)
+        #expect(model.playbackDuration == 360)
+        #expect(model.windowSeconds(at: 1) == 30)
         #expect(model.clockText(at: 0) == "10:00")
-        #expect(model.clockText(at: 240) == "11:30")
-        #expect(model.clockText(at: 480) == "13:00")
-        #expect(model.progress(at: 240) == 0.5)
+        #expect(model.clockText(at: 180) == "11:30")
+        #expect(model.clockText(at: 360) == "13:00")
+        #expect(model.progress(at: 180) == 0.5)
         #expect(model.progress(at: 600) == 1)
-        #expect(model.windowSeconds(at: 480) == 10_800)
+        #expect(model.windowSeconds(at: 360) == 10_800)
     }
 
     @Test("Visitors are drawn on the plan, and are counted by the people in them")
@@ -78,7 +80,7 @@ struct SimulationPlayerViewModelTests {
         var busiest = 0.0
         var most = 0
         for step in 0...20 {
-            let time = Double(step) * (SimulationPlayerViewModel.playbackSeconds / 20)
+            let time = Double(step) * (model.playbackDuration / 20)
             let count = model.visitorsInside(at: time)
             if count > most { most = count; busiest = time }
         }
@@ -96,7 +98,7 @@ struct SimulationPlayerViewModelTests {
         let model = makeModel()
         await model.load()
         let replay = try #require(model.replay)
-        let stepPlayback = SimulationPlayerViewModel.playbackSeconds / Double(max(replay.frames.count - 1, 1))
+        let stepPlayback = model.playbackDuration / Double(max(replay.frames.count - 1, 1))
         let index = try #require((0..<(replay.frames.count - 1)).first { frameIndex in
             let next = replay.frames[frameIndex + 1].visitors
             return replay.frames[frameIndex].visitors.contains { visitor in
@@ -118,7 +120,7 @@ struct SimulationPlayerViewModelTests {
         let model = makeModel()
         await model.load()
         let early = model.footfallSummary(at: 40)
-        let late = model.footfallSummary(at: SimulationPlayerViewModel.playbackSeconds)
+        let late = model.footfallSummary(at: model.playbackDuration)
         #expect(late.total >= early.total)
         #expect(late.busiest >= early.busiest)
         #expect(late.total > 0)
@@ -162,7 +164,7 @@ struct SimulationPlayerViewModelTests {
                     .filter { inBlock(Double($0.position.x), Double($0.position.y)) }
                     .reduce(0) { $0 + $1.people }
                 let playbackTime = Double(frameIndex * replay.frameIntervalSeconds) / replay.durationSeconds
-                    * SimulationPlayerViewModel.playbackSeconds
+                    * model.playbackDuration
                 let shown = model.spotDensity(for: spot, at: playbackTime)
                 total += 1
                 if SeverityGrade.grade(forDensity: Double(people) / area) == SeverityGrade.grade(forDensity: shown) {
@@ -185,6 +187,30 @@ struct SimulationPlayerViewModelTests {
         let model = makeModel(layout: .two)
         await model.load()
         #expect(model.outcome?.name == "Layout 2")
+    }
+
+    @Test("2D and 3D congestion hotspots stay hidden until Grade E or F, then stay visible")
+    func congestionHotspotsRequireGradeEOrF() async throws {
+        let model = makeModel()
+        await model.load()
+        model.mode = .congestion
+        let spots = try #require(model.outcome?.spots)
+        #expect(model.spriteOverlayCells(at: 0).isEmpty)
+        #expect(model.sceneFrame(at: 0).spots.isEmpty)
+        for spot in spots {
+            #expect(!model.isCongestedSpot(spot, at: 0))
+        }
+        var previouslyShown: Set<Int> = []
+        for step in 0...10 {
+            let time = Double(step) * (model.playbackDuration / 10)
+            let expectedIDs = Set(spots.filter { model.isCongestedSpot($0, at: time) }.map(\.number))
+            let shown2D = Set(model.spriteOverlayCells(at: time).map(\.id))
+            let shown3D = Set(model.sceneFrame(at: time).spots.map(\.number))
+            #expect(shown2D == expectedIDs)
+            #expect(shown3D == expectedIDs)
+            #expect(previouslyShown.isSubset(of: expectedIDs))
+            previouslyShown = expectedIDs
+        }
     }
 }
 
@@ -310,14 +336,21 @@ struct SimulationPlayerSceneTests {
         #expect(Set(frame.visitors.map(\.id)).count == frame.visitors.count)
     }
 
-    @Test("Congestion marks the watched spots, with no floor overlay")
+    @Test("Congestion marks hotspots once they reach Grade E or F, with no floor overlay")
     func congestion() async {
         let model = await loadedModel()
         model.mode = .congestion
-        let frame = model.sceneFrame(at: 60)
-        #expect(frame.spots.count == model.outcome?.spots.count)
-        #expect(frame.overlay == nil)
-        #expect(frame.spots.allSatisfy { (0...1).contains($0.level) })
+        let startFrame = model.sceneFrame(at: 0)
+        #expect(startFrame.spots.isEmpty)
+        #expect(startFrame.overlay == nil)
+
+        let endFrame = model.sceneFrame(at: model.playbackDuration)
+        let expectedCount = (model.outcome?.spots ?? []).filter {
+            model.isCongestedSpot($0, at: model.playbackDuration)
+        }.count
+        #expect(endFrame.spots.count == expectedCount)
+        #expect(endFrame.overlay == nil)
+        #expect(endFrame.spots.allSatisfy { (0...1).contains($0.level) })
     }
 
     @Test("Crowd density and busiest path paint the floor, with no spot markers")
