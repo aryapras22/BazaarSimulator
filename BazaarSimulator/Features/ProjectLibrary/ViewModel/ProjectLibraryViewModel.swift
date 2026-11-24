@@ -65,6 +65,21 @@ final class ProjectLibraryViewModel {
         session.activeProjectID
     }
 
+    /// The project whose runs show under the list: the one opened last.
+    var selectedProject: ProjectSummary? {
+        session.projects.first { $0.id == session.activeProjectID }
+    }
+
+    /// The project is the one open, on any of its pages: its setup, the editor, an analysis or a saved run.
+    func isProjectSelected(_ project: ProjectSummary) -> Bool {
+        switch destination() {
+        case .setup(let id), .review(let id), .editor(let id), .analysis(let id), .savedAnalysis(let id, _):
+            id == project.id
+        case .simulation(let id, _, _): id == project.id
+        case .empty: false
+        }
+    }
+
     // MARK: Selection
 
     func isFolderSelected(_ project: ProjectSummary) -> Bool {

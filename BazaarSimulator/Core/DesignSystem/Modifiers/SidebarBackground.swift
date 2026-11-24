@@ -6,17 +6,19 @@ struct SidebarBackground: ViewModifier {
             .background(
                 ZStack {
                     Palette.sidebarBase
+                    // A blue glow at the left, a third of the way down.
                     RadialGradient(
-                        colors: [Palette.glowBlue.opacity(0.85), Color.clear],
-                        center: .init(x: 0.1, y: 0.8),
-                        startRadius: 20,
-                        endRadius: 260
-                    )
-                    RadialGradient(
-                        colors: [Palette.glowOrange.opacity(0.75), Color.clear],
-                        center: .init(x: 0.2, y: 1.0),
+                        colors: [Palette.sidebarGlowBlue.opacity(0.9), Color.clear],
+                        center: .init(x: 0.0, y: 0.36),
                         startRadius: 10,
-                        endRadius: 220
+                        endRadius: 320
+                    )
+                    // A warm glow at the bottom right.
+                    RadialGradient(
+                        colors: [Palette.sidebarGlowWarm.opacity(0.75), Color.clear],
+                        center: .init(x: 1.0, y: 0.78),
+                        startRadius: 10,
+                        endRadius: 340
                     )
                 }
                 .ignoresSafeArea()

@@ -9,9 +9,11 @@ struct InsightsSheet: View {
     var onClose: () -> Void
 
     private var subtitle: String {
-        viewModel.isSingleLayout
-            ? "Each tab shows how \(LayoutID.one.name) does on one result, then how it changes during the day."
-            : "Each tab compares \(LayoutID.one.name) and \(LayoutID.two.name) on one result, then shows how it changes during the day."
+        let names = viewModel.layoutNames
+        return viewModel.isSingleLayout
+            ? "Each tab shows how \(names.name(.one)) does on one result, then how it changes during the day."
+            : "Each tab compares \(names.name(.one)) and \(names.name(.two)) on one result, "
+                + "then shows how it changes during the day."
     }
 
     private var metrics: DashboardMetrics {

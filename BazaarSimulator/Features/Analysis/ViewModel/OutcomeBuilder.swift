@@ -9,6 +9,7 @@ import Foundation
 enum OutcomeBuilder {
     static func build(
         layoutID: LayoutID,
+        name: String? = nil,
         analysis: LayoutAnalysis,
         schedule: DaySchedule
     ) -> LayoutOutcome {
@@ -32,7 +33,7 @@ enum OutcomeBuilder {
 
         return LayoutOutcome(
             layout: layoutID,
-            name: layoutID.name,
+            name: name ?? layoutID.name,
             windowMinutes: window,
             spots: spots,
             dayPoints: schedule.sampleHours.map { dayPoint(at: $0, analysis: analysis, window: window) }

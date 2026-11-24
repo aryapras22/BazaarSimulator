@@ -39,7 +39,7 @@ struct SimulationInfoPanel: View {
                 case .congestion:
                     congestionLegend
                 case .density:
-                    scaleLegend(labels: ["Calm", "Crowded", "Jammed"], colors: HeatScale.colors)
+                    scaleLegend(labels: ["Very Low", "High", "Very High"], colors: HeatScale.colors)
                 case .footfall:
                     scaleLegend(
                         labels: ["Rarely walked", "", "Most walked"],

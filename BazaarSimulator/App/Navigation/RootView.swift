@@ -176,7 +176,10 @@ struct RootView: View {
                     projectID: projectID, layout: layout, analysisID: analysisID
                 )
             )
-            .id("\(projectID.uuidString)-\(layout.rawValue)-\(analysisID?.uuidString ?? "latest")")
+            .id(
+                "\(projectID.uuidString)-\(layout.rawValue)-\(analysisID?.uuidString ?? "latest")-"
+                    + (router.simulationLayoutIDs?.map(\.uuidString).joined() ?? "")
+            )
         }
     }
 }

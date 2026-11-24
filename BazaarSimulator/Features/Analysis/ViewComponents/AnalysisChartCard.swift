@@ -5,6 +5,7 @@ import SwiftUI
 struct AnalysisChartCard: View {
     let content: AnalysisContent
 
+    @Environment(\.layoutNames) private var names
     @State private var chartHeight: CGFloat = 300
 
     private var yAxisStride: Double {
@@ -92,7 +93,7 @@ struct AnalysisChartCard: View {
             Image(systemName: "diamond.fill")
                 .font(.system(size: 9))
                 .foregroundStyle(series.layout.chartColor)
-            Text(series.layout.name)
+            Text(names.name(series.layout))
                 .fontWeight(.semibold)
         }
         .lineLimit(1)
@@ -116,7 +117,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     AreaMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value),
+                        y: .value("Value", content.plotValue(point.value)),
                         series: .value("Area", series.layout.name),
                         stacking: .unstacked
                     )
@@ -130,7 +131,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     LineMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value),
+                        y: .value("Value", content.plotValue(point.value)),
                         series: .value("Layout", series.layout.name)
                     )
                     .foregroundStyle(series.layout.chartColor)
@@ -139,7 +140,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     PointMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value)
+                        y: .value("Value", content.plotValue(point.value))
                     )
                     .foregroundStyle(series.layout.chartColor)
                     .symbol(.diamond)
@@ -151,12 +152,17 @@ struct AnalysisChartCard: View {
         .chartYScale(domain: -yTop * 0.08...yTop * 1.08)
         .chartXAxis {
             AxisMarks(values: xAxisValues) { value in
+                // A small tick at every sampled hour, so the points can be read against the time.
+                AxisTick(length: 4, stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(Color.textPrimary.opacity(0.35))
                 AxisValueLabel(
                     anchor: labelAnchor(for: value.as(Double.self)),
                     collisionResolution: .disabled,
                     verticalSpacing: 12
                 ) {
-                    if let hour = value.as(Double.self) {
+                    // Only the morning, the busiest time and the evening are written out, as the points in between are
+                    // too close for their words to fit. Without names for the hours, every hour is.
+                    if let hour = value.as(Double.self), content.hourLabels.isEmpty || content.hourLabels[hour] != nil {
                         // The word on one line and the time under it, so neighbouring labels never meet.
                         let parts = Self.label(for: hour, in: content).components(separatedBy: " (")
                         VStack(spacing: 2) {
@@ -198,7 +204,7 @@ struct AnalysisChartCard: View {
     }
 
     private var yTop: Double {
-        max(content.yAxisMaximum, content.series.flatMap { $0.points.map(\.value) }.max() ?? 0)
+        max(content.yAxisMaximum, content.series.flatMap { $0.points.map { content.plotValue($0.value) } }.max() ?? 0)
     }
 
     private func extremes(of series: AnalysisContent.Series)

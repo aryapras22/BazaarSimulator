@@ -31,6 +31,8 @@ final class SimulationPlayerViewModel {
     let layoutID: LayoutID
     /// The saved run being played, or nil for the project as it is now.
     let analysisID: UUID?
+    /// The two layouts to play, when they are not the pair of the run: a saved run showing another pair.
+    let layoutIDs: [UUID]?
     private let session: any ProjectSessionProtocol
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
@@ -49,6 +51,7 @@ final class SimulationPlayerViewModel {
         projectID: UUID,
         layoutID: LayoutID,
         analysisID: UUID? = nil,
+        layoutIDs: [UUID]? = nil,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
@@ -57,6 +60,7 @@ final class SimulationPlayerViewModel {
         self.projectID = projectID
         self.layoutID = layoutID
         self.analysisID = analysisID
+        self.layoutIDs = layoutIDs
         self.session = session
         self.analysisService = analysisService
         self.catalog = catalog
@@ -65,9 +69,13 @@ final class SimulationPlayerViewModel {
 
     func load() async {
         let saved = analysisID.flatMap { session.savedAnalysis(id: $0, in: projectID) }
+        // A layout of the saved run is played as the run had it, and any other as the project has it now.
+        let pair = layoutIDs?.compactMap { id in
+            saved?.layouts.first { $0.id == id } ?? session.layout(id: id, in: projectID)
+        }
         switch await SimulationLoader.load(
-            projectID: projectID, savedAnalysis: saved, session: session, analysisService: analysisService,
-            catalog: catalog
+            projectID: projectID, savedAnalysis: saved, layouts: pair?.isEmpty == false ? pair : nil,
+            session: session, analysisService: analysisService, catalog: catalog
         ) {
         case .needsLayouts:
             phase = .needsLayouts

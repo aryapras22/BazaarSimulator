@@ -40,21 +40,24 @@ struct CompareRulesEngine: Sendable {
         let lose = win.other
         let oWin = outcome(for: win)
         let oLose = outcome(for: lose)
-        let avgWin = Self.formatCountOrAvg(Self.rounded1(oWin.averageStuckSpots))
-        let avgLose = Self.formatCountOrAvg(Self.rounded1(oLose.averageStuckSpots))
+        // Shown to the nearest whole number: 1.3 spots on average reads as 1 spot.
+        let avgWin = Self.formatCountOrAvg(oWin.averageStuckSpots.rounded())
+        let avgLose = Self.formatCountOrAvg(oLose.averageStuckSpots.rounded())
 
+        func spots(_ text: String) -> String { "\(text) \(text == "1" ? "spot" : "spots")" }
         let headline = avgWin == avgLose
-            ? (Self.rounded1(oWin.averageStuckSpots) == 0
+            ? (oWin.averageStuckSpots.rounded() == 0
                 ? "Neither layout has spots where people get stuck, even on average."
-                : "On average, both layouts have \(avgWin) spots where people get stuck at once.")
-            : Self.rounded1(oWin.averageStuckSpots) == 0
-            ? "On average, nobody gets stuck in \(oWin.name). \(oLose.name) has \(avgLose)."
-            : "On average, people get stuck in only \(avgWin) spots in \(oWin.name). \(oLose.name) has \(avgLose)."
+                : "On average, both layouts have \(spots(avgWin)) where people get stuck at once.")
+            : oWin.averageStuckSpots.rounded() == 0
+            ? "On average, nobody gets stuck in \(oWin.name). \(oLose.name) has \(spots(avgLose))."
+            : "On average, people get stuck in only \(spots(avgWin)) in \(oWin.name). "
+                + "\(oLose.name) has \(spots(avgLose))."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
             let c = out.C
-            let average = Self.rounded1(out.averageStuckSpots)
+            let average = out.averageStuckSpots.rounded()
             let worst = out.worstSpot
             let bullets: [String]
             if c == 0 {
@@ -82,7 +85,11 @@ struct CompareRulesEngine: Sendable {
             }
         )
 
-        let maxSpots = Double(max(outcomes[.one]?.spotTotal ?? 1, outcomes[.two]?.spotTotal ?? 1))
+        // The axis goes up to the most spots stuck at once in either of the two layouts, not to every spot marked.
+        let stuckAtOnce = LayoutID.allCases.flatMap { layout in
+            outcome(for: layout).dayPoints.map { Double($0.jammedSpots) }
+        }
+        let maxSpots = max(stuckAtOnce.max() ?? 0, 1)
 
         var content = AnalysisContent(
             recommended: win,
@@ -124,8 +131,9 @@ struct CompareRulesEngine: Sendable {
         let oLose = outcome(for: lose)
 
         let window = Self.formatHalfMinutes(windowMinutes)
-        let avgWin = Self.rounded1(oWin.averageStuckMinutes)
-        let avgLose = Self.rounded1(oLose.averageStuckMinutes)
+        // Shown to the nearest whole minute.
+        let avgWin = oWin.averageStuckMinutes.rounded()
+        let avgLose = oLose.averageStuckMinutes.rounded()
         let textWin = Self.formatCountOrAvg(avgWin), textLose = Self.formatCountOrAvg(avgLose)
 
         let headline = textWin == textLose
@@ -141,14 +149,14 @@ struct CompareRulesEngine: Sendable {
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
             let qualifying = out.spots
-                .filter { $0.stuckMin >= 0.25 }
+                .filter { $0.stuckMin >= 0.5 }
                 .sorted { $0.stuckMin > $1.stuckMin }
                 .prefix(2)
-                .map { "Spot \($0.number): \(Self.formatHalfMinutes($0.stuckMin)) min" }
+                .map { "Spot \($0.number): \(Self.formatCountOrAvg($0.stuckMin.rounded())) min" }
             let bullets = qualifying.isEmpty ? ["Nobody gets stuck"] : Array(qualifying)
             return AnalysisContent.Tile(
                 layout: layout,
-                value: Self.formatCountOrAvg(Self.rounded1(out.averageStuckMinutes)),
+                value: Self.formatCountOrAvg(out.averageStuckMinutes.rounded()),
                 caption: "stuck at the worst spot",
                 bullets: bullets,
                 unit: "min"
@@ -186,7 +194,7 @@ struct CompareRulesEngine: Sendable {
             ]
         )
         content.axisLabel = { "\(Self.formatHalfMinutes($0)) min" }
-        content.valueText = { "\(Self.formatHalfMinutes($0)) min" }
+        content.valueText = { "\(Self.formatCountOrAvg($0.rounded())) min" }
         return withDay(content) { $0.heavyMinutes }
     }
 
@@ -231,11 +239,6 @@ struct CompareRulesEngine: Sendable {
             meaningGenerator: { $0.worstSpot.grade.plainMeaning }
         )
 
-        // The value axis is named by crowd level, each name set in the middle of its band of density.
-        let top = max(2.4, Self.axisMax(
-            LayoutID.allCases.flatMap { outcome(for: $0).dayPoints.map(\.worstDensity) }, step: 0.5, minimum: 0
-        ))
-
         var content = AnalysisContent(
             recommended: win,
             headline: headline,
@@ -244,8 +247,8 @@ struct CompareRulesEngine: Sendable {
             rows: rows,
             tableTitle: "Crowd Level by Layout",
             chartTitle: "Crowd Level through the day",
-            yAxisMaximum: top,
-            yAxisStride: 0.5,
+            yAxisMaximum: Double(SeverityGrade.allCases.count),
+            yAxisStride: 1,
             series: makeInsightSeries { $0.worstDensity },
             infoQuestion: "What do the crowd levels mean?",
             explanation: "How crowded the busiest spot gets, from calm to jammed.",
@@ -257,10 +260,23 @@ struct CompareRulesEngine: Sendable {
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Lower is better"),
             ]
         )
-        content.axisTicks = [0.135, 0.585, 1.26, 2.1]
-        content.axisLabel = { SeverityGrade.grade(forDensity: $0).crowdLevel }
+        // The axis names every level, from Very Low to Very High, and gives each the same room. A level's name is set
+        // in the middle of its band, and a density is placed inside its band in proportion to where it lies in it.
+        content.plotValue = Self.crowdLevelPlace
+        content.axisTicks = SeverityGrade.allCases.map { Double($0.rawValue) + 0.5 }
+        content.axisLabel = { SeverityGrade(rawValue: Int($0))?.crowdLevel ?? "" }
         content.valueText = { "\(Self.formatDecimal1($0)) per m²" }
         return withDay(content) { $0.worstDensity }
+    }
+
+    /// Where a density sits on the crowd level axis: the level's place, then how far through its band the density is.
+    /// The last level has no upper limit, so it is given as much room as the densities seen up to 0.6 above it.
+    static func crowdLevelPlace(_ density: Double) -> Double {
+        let grade = SeverityGrade.grade(forDensity: density)
+        let lower = grade.lowerDensity
+        let upper = grade.upperDensity ?? lower + 0.6
+        let share = min(max((density - lower) / (upper - lower), 0), 1)
+        return Double(grade.rawValue) + share
     }
 
     // MARK: - 4. Flow Rate
@@ -418,8 +434,14 @@ struct CompareRulesEngine: Sendable {
 
     // MARK: - Through the day
 
-    /// The three moments the Insights chart shows: the start of the day, the busiest time, and the last sample.
+    /// Every hour the day was sampled at, which is what the Insights chart plots.
     private var chartHours: [Double] {
+        outcome(for: .one).dayPoints.map(\.hour).sorted()
+    }
+
+    /// The three moments the chart names and the sentence under it talks about: the start of the day, the busiest
+    /// time, and the last sample.
+    private var keyHours: [Double] {
         let hours = outcome(for: .one).dayPoints.map(\.hour).sorted()
         guard let first = hours.first, let last = hours.last else { return [] }
         let peak = peakHourValue.flatMap { target in hours.min { abs($0 - target) < abs($1 - target) } }
@@ -446,10 +468,11 @@ struct CompareRulesEngine: Sendable {
         }
     }
 
-    /// Adds what the chart needs to read as a day: the words under each hour, and who does better when.
+    /// Adds what the chart needs to read as a day: the words under the morning, the busiest time and the evening, and
+    /// who does better when. The other hours are labelled with their time.
     private func withDay(_ content: AnalysisContent, value: (DayPoint) -> Double) -> AnalysisContent {
         var result = content
-        let hours = chartHours
+        let hours = keyHours
         result.peakHour = peakHourValue.flatMap { target in hours.min { abs($0 - target) < abs($1 - target) } }
         for (index, hour) in hours.enumerated() {
             let time = TimeRange.format(Int((hour * 60).rounded()))
@@ -462,7 +485,7 @@ struct CompareRulesEngine: Sendable {
 
     /// "Layout 2 does better all day: in the morning, at the busiest time and in the evening."
     private func comparisonSentence(_ value: (DayPoint) -> Double) -> String {
-        let hours = chartHours
+        let hours = keyHours
         guard !hours.isEmpty else { return "" }
         let slots = hours.enumerated().map { index, hour -> (phrase: String, winner: LayoutID?) in
             func point(_ layout: LayoutID) -> Double {
@@ -480,12 +503,12 @@ struct CompareRulesEngine: Sendable {
         let winners = Set(slots.compactMap(\.winner))
         if winners.isEmpty { return "Both layouts do the same all day." }
         if slots.allSatisfy({ $0.winner != nil }), winners.count == 1, let only = winners.first {
-            return "\(only.name) does better all day: \(joined(slots.map(\.phrase)))."
+            return "\(outcome(for: only).name) does better all day: \(joined(slots.map(\.phrase)))."
         }
         var sentences: [String] = []
         for layout in LayoutID.allCases {
             let wins = slots.filter { $0.winner == layout }.map(\.phrase)
-            if !wins.isEmpty { sentences.append("\(layout.name) does better \(joined(wins)).") }
+            if !wins.isEmpty { sentences.append("\(outcome(for: layout).name) does better \(joined(wins)).") }
         }
         let ties = slots.filter { $0.winner == nil }.map(\.phrase)
         if !ties.isEmpty { sentences.append("They are level \(joined(ties)).") }

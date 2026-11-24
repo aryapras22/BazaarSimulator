@@ -33,6 +33,15 @@ struct DashboardViewModelTests {
         }
     }
 
+    /// Waits for a switch between layouts to finish. The page stays ready the whole time, so the loading phase cannot
+    /// be waited on.
+    private func untilShowing(_ model: DashboardViewModel, _ layout: LayoutID, _ id: Layout.ID) async {
+        for _ in 0..<500 {
+            if model.floorPlan(for: layout)?.id == id, !model.isRunning { return }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     private var twoLayouts: [Layout] {
         [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]
     }
@@ -94,9 +103,10 @@ struct DashboardViewModelTests {
         for tab in AnalysisTab.shown {
             let content = try #require(model.content(for: tab))
             #expect(content.tiles.count == 2)
-            // The chart shows the morning, the busiest time and the evening.
-            #expect(content.series.allSatisfy { $0.points.count <= 3 && $0.points.count >= 1 })
-            #expect(content.hourLabels.count == content.series.first?.points.count)
+            // The chart plots every sampled hour, and names the morning, the busiest time and the evening.
+            #expect(content.series.allSatisfy { $0.points.count >= 1 })
+            #expect(content.hourLabels.count <= 3)
+            #expect(content.hourLabels.count <= (content.series.first?.points.count ?? 0))
         }
     }
 
@@ -156,22 +166,144 @@ struct DashboardViewModelTests {
         #expect(model.simulationResult?.analyses == previousAnalyses)
     }
 
-    @Test("Picking another layout for a card analyses the new pair, and picking the other card's layout swaps them")
-    func choosingLayouts() async {
-        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+    private var threeLayouts: [Layout] {
+        [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6), TestLayouts.hall(booths: 9)]
+    }
+
+    @Test("The best layout is always on the left card, and picking a layout switches only the right card")
+    func bestLayoutStaysOnTheLeft() async throws {
+        let layouts = threeLayouts
         let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
         await model.runSimulation()
-        #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[1].id)
-        #expect(model.layoutChoices.map(\.id) == layouts.map(\.id))
+        let best = try #require(model.bestChoiceLayoutID)
+        let others = layouts.filter { $0.id != best }
+        #expect(model.floorPlan(for: .one)?.id == best)
+        #expect(model.floorPlan(for: .two)?.id != best)
+        // Only the right card has a list, and it holds the layouts other than the best.
+        #expect(model.layoutChoices(for: .one).isEmpty)
+        #expect(model.layoutChoices(for: .two).map(\.id) == others.map(\.id))
 
-        model.choose(layouts[2].id, for: .two)
-        #expect(model.phase == .loading)
-        await untilReady(model)
-        #expect(model.floorPlan(for: .one)?.id == layouts[0].id && model.floorPlan(for: .two)?.id == layouts[2].id)
+        let shownRight = model.floorPlan(for: .two)?.id
+        let next = try #require(others.first { $0.id != shownRight })
+        let peakBefore = model.simulationResult?.schedule.peakMinute
+        model.choose(next.id, for: .two)
+        // Every layout was simulated in the first run, so the new pair is on the cards at once, in the same window.
+        #expect(model.phase == .ready)
+        #expect(!model.isRunning)
+        #expect(model.floorPlan(for: .one)?.id == best)
+        #expect(model.floorPlan(for: .two)?.id == next.id)
+        #expect(model.simulationResult?.schedule.peakMinute == peakBefore)
 
-        model.choose(layouts[0].id, for: .two)
-        await untilReady(model)
-        #expect(model.floorPlan(for: .one)?.id == layouts[2].id && model.floorPlan(for: .two)?.id == layouts[0].id)
+        // The left card is not switched.
+        model.choose(others[0].id, for: .one)
+        #expect(model.floorPlan(for: .one)?.id == best)
+        #expect(model.floorPlan(for: .two)?.id == next.id)
+    }
+
+    @Test("Switching the right card makes no new run, and switching back shows the pair at once")
+    func switchingLayoutsMakesNoNewRun() async throws {
+        let layouts = threeLayouts
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: AnalysisService(), catalog: catalog, onBack: {}
+        )
+        await model.runSimulation()
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        let best = try #require(model.bestChoiceLayoutID)
+        let others = layouts.filter { $0.id != best }
+        let firstRight = try #require(model.floorPlan(for: .two)?.id)
+        let other = try #require(others.first { $0.id != firstRight })
+
+        model.choose(other.id, for: .two)
+        #expect(model.floorPlan(for: .two)?.id == other.id)
+        // The switch is not saved as a run, and the sidebar never showed one under way.
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        #expect(!session.isSimulating(project.id))
+
+        // The first pair was worked out already, so it comes back without loading.
+        model.choose(firstRight, for: .two)
+        #expect(model.phase == .ready)
+        #expect(model.floorPlan(for: .two)?.id == firstRight)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+    }
+
+    @Test("The best layout is the same whichever layout is on the right card")
+    func bestLayoutDoesNotDependOnThePair() async throws {
+        let layouts = threeLayouts
+        let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        let best = try #require(model.bestChoiceLayoutID)
+        let name = model.bestLayout?.name
+        #expect(name != nil)
+
+        for other in layouts.filter({ $0.id != best }) {
+            model.choose(other.id, for: .two)
+            #expect(model.bestChoiceLayoutID == best)
+            #expect(model.bestLayout?.name == name)
+            #expect(model.floorPlan(for: .one)?.id == best)
+        }
+    }
+
+    @Test("A layout keeps its project number whichever card it is on")
+    func layoutNumbersFollowTheProject() async throws {
+        let layouts = threeLayouts
+        let model = makeModel(layouts: layouts, parameters: TestLayouts.parameters)
+        await model.runSimulation()
+        let best = try #require(model.bestChoiceLayoutID)
+        func number(of id: Layout.ID) -> String { "Layout \((layouts.firstIndex { $0.id == id } ?? 0) + 1)" }
+
+        #expect(model.layoutNames.name(.one) == number(of: best))
+        for other in layouts.filter({ $0.id != best }) {
+            // Whichever layout is on the right card is named by its place in the project, not by its card.
+            model.choose(other.id, for: .two)
+            #expect(model.layoutNames.name(.two) == number(of: other.id))
+            #expect(model.layoutNames.name(.one) == number(of: best))
+        }
+    }
+
+    @Test("A saved run keeps the best layout on the left, switches the right card in place, and saves nothing")
+    func savedRunSwitchesLayoutsInPlace() async throws {
+        let layouts = threeLayouts
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+        let live = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: AnalysisService(), catalog: catalog, onBack: {}
+        )
+        await live.runSimulation()
+        let saved = try #require(session.savedAnalyses(for: project.id).first)
+        let comparedBefore = session.comparedLayouts(for: project.id).map(\.id)
+
+        let record = DashboardViewModel(
+            projectID: project.id, source: .saved(saved.id), session: session, analysisService: AnalysisService(),
+            catalog: catalog
+        )
+        // Opening a saved run simulates every layout of the project first, and only then shows the run.
+        #expect(record.phase == .loading)
+        await record.runSimulation()
+        #expect(record.phase == .ready)
+        #expect(record.simulationResult?.projectRun != nil)
+        let best = try #require(record.bestChoiceLayoutID)
+        #expect(record.floorPlan(for: .one)?.id == best)
+        #expect(record.layoutChoices(for: .one).isEmpty)
+        #expect(record.layoutChoices(for: .two).count == 2)
+
+        // Every layout is already worked out, so the other layout is on the right card at once.
+        let shownRight = try #require(record.floorPlan(for: .two)?.id)
+        let other = try #require(layouts.first { $0.id != best && $0.id != shownRight })
+        record.choose(other.id, for: .two)
+        #expect(record.floorPlan(for: .two)?.id == other.id)
+        #expect(record.floorPlan(for: .one)?.id == best)
+        #expect(!record.isRunning)
+
+        // The live analysis is untouched and nothing was saved.
+        #expect(session.comparedLayouts(for: project.id).map(\.id) == comparedBefore)
+        #expect(session.savedAnalyses(for: project.id).count == 1)
+        #expect(!session.isSimulating(project.id))
     }
 
     @Test("Cancelling during loading stops the simulation, clears running state, saves no run, and navigates back")

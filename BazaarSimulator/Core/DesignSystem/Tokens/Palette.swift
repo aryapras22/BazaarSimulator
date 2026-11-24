@@ -5,6 +5,9 @@ enum Palette {
     static let sidebarBase = Color(hex: 0x0B172B)
     static let glowBlue = Color(hex: 0x0E264F)
     static let glowOrange = Color(hex: 0x3C2A2B)
+    /// The two glows in the sidebar: a blue one at the left and a warm one at the bottom right.
+    static let sidebarGlowBlue = Color(hex: 0x17386F)
+    static let sidebarGlowWarm = Color(hex: 0x5B3B32)
     static let surface = Color(hex: 0x121F36)
     /// The dim over the window behind a card that floats over it.
     static let scrim = Color.black.opacity(0.25)

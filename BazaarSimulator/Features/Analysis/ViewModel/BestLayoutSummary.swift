@@ -43,6 +43,8 @@ struct BestLayoutSummary {
 
     let checks: [Check]
     let best: LayoutID
+    /// What each layout is called, as the project numbers it.
+    let names: LayoutNames
     /// Each layout's score. The higher one is best.
     let scores: [LayoutID: Double]
 
@@ -73,6 +75,7 @@ struct BestLayoutSummary {
             )
         }
         checks = built
+        names = LayoutNames(names: outcomes.mapValues(\.name))
 
         var points: [LayoutID: Double] = [.one: 0, .two: 0]
         for check in built where !check.isTie {
@@ -94,7 +97,7 @@ struct BestLayoutSummary {
 
     /// A layout's average for one check over the whole simulation, to one decimal as the page shows it. These are the
     /// same numbers the Insights tabs decide on, so the two always name the same winner.
-    private static func average(for tab: AnalysisTab, outcome: LayoutOutcome?) -> Double {
+    static func average(for tab: AnalysisTab, outcome: LayoutOutcome?) -> Double {
         guard let outcome else { return 0 }
         switch tab {
         case .congestionPoints: return CompareRulesEngine.rounded1(outcome.averageStuckSpots)
@@ -138,13 +141,13 @@ struct BestLayoutSummary {
     /// How the other layout did, such as "Layout 1: 3 spots".
     func caption(for check: Check) -> String {
         guard let other = check.values[best.other] else { return "" }
-        return "\(best.other.name): \(other.text)\(other.unit.isEmpty ? "" : " \(other.unit)")"
+        return "\(names.name(best.other)): \(other.text)\(other.unit.isEmpty ? "" : " \(other.unit)")"
     }
 
     // MARK: Words
 
     /// What the check shows for a layout: its average, set in the check's own unit.
-    private static func value(for tab: AnalysisTab, average: Double) -> (text: String, unit: String) {
+    static func value(for tab: AnalysisTab, average: Double) -> (text: String, unit: String) {
         switch tab {
         case .congestionPoints:
             let text = CompareRulesEngine.formatCountOrAvg((average * 10).rounded() / 10)
@@ -156,7 +159,7 @@ struct BestLayoutSummary {
         }
     }
 
-    private static func symbol(for tab: AnalysisTab) -> String {
+    static func symbol(for tab: AnalysisTab) -> String {
         switch tab {
         case .congestionPoints: "exclamationmark.triangle"
         case .congestionDuration: "clock"
@@ -164,7 +167,7 @@ struct BestLayoutSummary {
         }
     }
 
-    private static func strength(for tab: AnalysisTab) -> String {
+    static func strength(for tab: AnalysisTab) -> String {
         switch tab {
         case .congestionPoints: "fewer stuck spots"
         case .congestionDuration: "less time stuck"

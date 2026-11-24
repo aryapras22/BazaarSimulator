@@ -9,9 +9,6 @@ struct ProjectSetupView: View {
     @State private var previewedFileID: UUID?
     @AppStorage(DevMode.defaultsKey) private var isDevModeOn = false
 
-    /// Wide enough that the side margins stay small; only very wide windows center the content.
-    private static let maxContentWidth: CGFloat = 1400
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerView
@@ -30,15 +27,15 @@ struct ProjectSetupView: View {
                     .padding(.top, Spacing.m)
             }
         }
-        .padding(Spacing.xl)
-        // The title bar only reserves room in a window, not in full screen. Ignoring it and padding by a fixed
-        // amount keeps the name field at the same height in both.
-        .padding(.top, Spacing.m)
-        // Capped, so with the sidebar hidden the content stays centered instead of stretching across the window.
-        .frame(maxWidth: Self.maxContentWidth)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, Spacing.xl)
+        .padding(.bottom, Spacing.xl)
+        // Just a small gap under the window's top bar; the bar already keeps the content clear of the buttons.
+        .padding(.top, Spacing.xs)
+        // The content stretches across the whole page and starts below the window's top bar, which holds the window
+        // buttons and the sidebar toggle, in a window and in full screen. Only the background runs under the bar, so
+        // the name field never sits under the toggle, and the content never sits behind the sidebar.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Palette.background.ignoresSafeArea())
-        .underToolbarInWindow()
         .fileImporter(
             isPresented: Binding(
                 get: { importTarget != nil },
@@ -68,7 +65,10 @@ struct ProjectSetupView: View {
             viewModel.clearUnsupportedFile()
         }
         .appDialog($dialog)
-        .layoutPreview(previewedFileID.flatMap(viewModel.previewLayout)) {
+        .layoutPreview(
+            previewedFileID.flatMap(viewModel.previewLayout),
+            legend: Legend(entries: viewModel.legendEntries)
+        ) {
             previewedFileID = nil
         }
     }

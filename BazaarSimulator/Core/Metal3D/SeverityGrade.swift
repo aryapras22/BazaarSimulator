@@ -43,14 +43,16 @@ enum SeverityGrade: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The word for the crowd at a spot, from calm to jammed, as the Crowd Level result shows it.
+    /// The words for the crowd at a spot, one for each grade, from very low to very high, as the Crowd Level result
+    /// shows them.
     var crowdLevel: String {
         switch self {
-        case .a, .b: "Calm"
-        case .c: "Moderate"
-        case .d: "Busy"
-        case .e: "Crowded"
-        case .f: "Jammed"
+        case .a: "Very Low"
+        case .b: "Low"
+        case .c: "Slightly Low"
+        case .d: "Moderate"
+        case .e: "High"
+        case .f: "Very High"
         }
     }
 
