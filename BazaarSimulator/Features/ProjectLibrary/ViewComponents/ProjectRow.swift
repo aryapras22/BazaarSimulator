@@ -30,6 +30,9 @@ struct ProjectRow: View {
         .padding(.horizontal, Spacing.m)
         .padding(.vertical, Spacing.s)
         .background(isSelected ? Palette.selection : Color.clear)
+        // The whole row can be clicked, not only its text and icon. Without a shape, the empty part of a row that is
+        // not selected, which has no background, does nothing when clicked.
+        .contentShape(RoundedRectangle(cornerRadius: Radius.m))
         .clipShape(RoundedRectangle(cornerRadius: Radius.m))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.m)

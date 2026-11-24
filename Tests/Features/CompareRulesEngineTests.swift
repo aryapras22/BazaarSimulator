@@ -63,7 +63,7 @@ struct CompareRulesEngineTests {
         #expect(content.recommended == .two)
         // Over the day layout 1 averages 1.3 spots stuck at once (0, 3 and 1) and layout 2 averages 0.3 (0, 1 and 0),
         // which show as 1 and 0 to the nearest whole number.
-        #expect(content.headline == "On average, nobody gets stuck in Layout 2. Layout 1 has 1.")
+        #expect(content.headline == "On average, nobody gets stuck in Layout 2. Layout 1 has 1 spot.")
         #expect(content.chartTitle == "Stuck Spots through the day")
         #expect(content.symbol == "exclamationmark.triangle.fill")
         #expect(content.tiles.count == 2)

@@ -54,13 +54,14 @@ struct DashboardMetrics {
         let tabsPlan = max(min(available - lower, Self.referencePlanHeight, widthLimitedPlan), 160)
         lowerHeight = max(available - tabsPlan, lower)
 
-        // On the page itself the plan takes the room the header and the Best Layout summary leave.
+        // On the page itself the plan takes the room the Best Layout summary leaves. The page starts below the window's
+        // top bar, which holds the back button, the title and Parameters.
         // With two layouts the row under each plan, which only the single layout fills, is left out, so the plans get
         // its room.
         let underPlanRow = SeverityScaleView.labelHeight + SeverityScaleView.labelSpacing + SeverityScaleView.barHeight + 3
         // The gaps between the cells of the page are all the same.
         let gap = CardSpacing.gap
-        let pageFixed = lerp(16, 29) + Self.headerHeight + gap
+        let pageFixed = gap
             + (layoutCount == 1 ? cardChrome : cardChrome - underPlanRow)
             + gap + (layoutCount == 1 ? Self.singleSummaryHeight : Self.summaryHeight) + gap
         planHeight = max(min(size.height - pageFixed, widthLimitedPlan), 200)

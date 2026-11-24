@@ -62,8 +62,8 @@ struct ProjectBestLayoutTests {
         #expect(ProjectBestLayout.best(of: [], peakHourText: "14:00", windowMinutes: 10) == nil)
     }
 
-    @Test("The card names the best of all layouts, and says which layout does better where it does not")
-    func summaryAgainstAllLayouts() throws {
+    @Test("The card names the best layout and says whether the layout on the other card does better on a check")
+    func summaryAgainstTheOtherCard() throws {
         // Layout 1 has fewer spots stuck at once, but its worst spot is stuck for the whole window. Layout 2 wins
         // overall on that, and Layout 3 is worse on every check.
         func entry(_ peak: Double, _ stuck: Double, _ copies: Int, _ name: String) -> ProjectOutcome {
@@ -74,17 +74,23 @@ struct ProjectBestLayoutTests {
         let first = entry(1.0, 10, 1, "Layout 1")
         let second = entry(1.0, 0, 2, "Layout 2")
         let third = entry(2.5, 8, 3, "Layout 3")
-        let all = [first, second, third]
-        let bestID = try #require(ProjectBestLayout.best(of: all, peakHourText: "14:00", windowMinutes: 10))
+        let bestID = try #require(ProjectBestLayout.best(
+            of: [first, second, third], peakHourText: "14:00", windowMinutes: 10
+        ))
         #expect(bestID == second.layoutID)
 
-        let summary = ProjectBestSummary(best: second, all: all, place: nil)
-        #expect(summary.name == "Layout 2")
-        let spots = try #require(summary.checks.first { $0.tab == .congestionPoints })
+        // Against the layout on the other card, and not against every layout.
+        let againstFirst = ProjectBestSummary(best: second, against: first, place: nil)
+        #expect(againstFirst.name == "Layout 2")
+        let spots = try #require(againstFirst.checks.first { $0.tab == .congestionPoints })
         #expect(!spots.isBest)
         #expect(spots.note == "Layout 1 has fewer stuck spots.")
-        let time = try #require(summary.checks.first { $0.tab == .congestionDuration })
+        let time = try #require(againstFirst.checks.first { $0.tab == .congestionDuration })
         #expect(time.isBest)
         #expect(time.note == nil)
+
+        // Against a layout that is worse everywhere, the best layout does best on every check.
+        let againstThird = ProjectBestSummary(best: second, against: third, place: nil)
+        #expect(againstThird.checks.allSatisfy { $0.isBest && $0.note == nil })
     }
 }

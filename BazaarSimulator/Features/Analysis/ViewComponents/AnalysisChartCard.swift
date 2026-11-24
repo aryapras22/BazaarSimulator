@@ -117,7 +117,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     AreaMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value),
+                        y: .value("Value", content.plotValue(point.value)),
                         series: .value("Area", series.layout.name),
                         stacking: .unstacked
                     )
@@ -131,7 +131,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     LineMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value),
+                        y: .value("Value", content.plotValue(point.value)),
                         series: .value("Layout", series.layout.name)
                     )
                     .foregroundStyle(series.layout.chartColor)
@@ -140,7 +140,7 @@ struct AnalysisChartCard: View {
                 ForEach(series.points) { point in
                     PointMark(
                         x: .value("Time", point.hour),
-                        y: .value("Value", point.value)
+                        y: .value("Value", content.plotValue(point.value))
                     )
                     .foregroundStyle(series.layout.chartColor)
                     .symbol(.diamond)
@@ -204,7 +204,7 @@ struct AnalysisChartCard: View {
     }
 
     private var yTop: Double {
-        max(content.yAxisMaximum, content.series.flatMap { $0.points.map(\.value) }.max() ?? 0)
+        max(content.yAxisMaximum, content.series.flatMap { $0.points.map { content.plotValue($0.value) } }.max() ?? 0)
     }
 
     private func extremes(of series: AnalysisContent.Series)

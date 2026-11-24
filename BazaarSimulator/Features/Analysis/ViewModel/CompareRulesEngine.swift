@@ -44,13 +44,15 @@ struct CompareRulesEngine: Sendable {
         let avgWin = Self.formatCountOrAvg(oWin.averageStuckSpots.rounded())
         let avgLose = Self.formatCountOrAvg(oLose.averageStuckSpots.rounded())
 
+        func spots(_ text: String) -> String { "\(text) \(text == "1" ? "spot" : "spots")" }
         let headline = avgWin == avgLose
             ? (oWin.averageStuckSpots.rounded() == 0
                 ? "Neither layout has spots where people get stuck, even on average."
-                : "On average, both layouts have \(avgWin) spots where people get stuck at once.")
+                : "On average, both layouts have \(spots(avgWin)) where people get stuck at once.")
             : oWin.averageStuckSpots.rounded() == 0
-            ? "On average, nobody gets stuck in \(oWin.name). \(oLose.name) has \(avgLose)."
-            : "On average, people get stuck in only \(avgWin) spots in \(oWin.name). \(oLose.name) has \(avgLose)."
+            ? "On average, nobody gets stuck in \(oWin.name). \(oLose.name) has \(spots(avgLose))."
+            : "On average, people get stuck in only \(spots(avgWin)) in \(oWin.name). "
+                + "\(oLose.name) has \(spots(avgLose))."
 
         let tiles = LayoutID.allCases.map { layout -> AnalysisContent.Tile in
             let out = outcome(for: layout)
@@ -83,7 +85,11 @@ struct CompareRulesEngine: Sendable {
             }
         )
 
-        let maxSpots = Double(max(outcomes[.one]?.spotTotal ?? 1, outcomes[.two]?.spotTotal ?? 1))
+        // The axis goes up to the most spots stuck at once in either of the two layouts, not to every spot marked.
+        let stuckAtOnce = LayoutID.allCases.flatMap { layout in
+            outcome(for: layout).dayPoints.map { Double($0.jammedSpots) }
+        }
+        let maxSpots = max(stuckAtOnce.max() ?? 0, 1)
 
         var content = AnalysisContent(
             recommended: win,
@@ -233,11 +239,6 @@ struct CompareRulesEngine: Sendable {
             meaningGenerator: { $0.worstSpot.grade.plainMeaning }
         )
 
-        // The value axis is named by crowd level, each name set in the middle of its band of density.
-        let top = max(2.4, Self.axisMax(
-            LayoutID.allCases.flatMap { outcome(for: $0).dayPoints.map(\.worstDensity) }, step: 0.5, minimum: 0
-        ))
-
         var content = AnalysisContent(
             recommended: win,
             headline: headline,
@@ -246,8 +247,8 @@ struct CompareRulesEngine: Sendable {
             rows: rows,
             tableTitle: "Crowd Level by Layout",
             chartTitle: "Crowd Level through the day",
-            yAxisMaximum: top,
-            yAxisStride: 0.5,
+            yAxisMaximum: Double(SeverityGrade.allCases.count),
+            yAxisStride: 1,
             series: makeInsightSeries { $0.worstDensity },
             infoQuestion: "What do the crowd levels mean?",
             explanation: "How crowded the busiest spot gets, from calm to jammed.",
@@ -259,10 +260,23 @@ struct CompareRulesEngine: Sendable {
                 AnalysisContent.Fact(symbol: "checkmark.circle", text: "Lower is better"),
             ]
         )
-        content.axisTicks = [0.135, 0.585, 1.26, 2.1]
-        content.axisLabel = { SeverityGrade.grade(forDensity: $0).crowdLevel }
+        // The axis names every level, from Very Low to Very High, and gives each the same room. A level's name is set
+        // in the middle of its band, and a density is placed inside its band in proportion to where it lies in it.
+        content.plotValue = Self.crowdLevelPlace
+        content.axisTicks = SeverityGrade.allCases.map { Double($0.rawValue) + 0.5 }
+        content.axisLabel = { SeverityGrade(rawValue: Int($0))?.crowdLevel ?? "" }
         content.valueText = { "\(Self.formatDecimal1($0)) per m²" }
         return withDay(content) { $0.worstDensity }
+    }
+
+    /// Where a density sits on the crowd level axis: the level's place, then how far through its band the density is.
+    /// The last level has no upper limit, so it is given as much room as the densities seen up to 0.6 above it.
+    static func crowdLevelPlace(_ density: Double) -> Double {
+        let grade = SeverityGrade.grade(forDensity: density)
+        let lower = grade.lowerDensity
+        let upper = grade.upperDensity ?? lower + 0.6
+        let share = min(max((density - lower) / (upper - lower), 0), 1)
+        return Double(grade.rawValue) + share
     }
 
     // MARK: - 4. Flow Rate

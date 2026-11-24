@@ -1,5 +1,15 @@
 import SwiftUI
 
+/// What the controls in the window's top bar measure.
+private enum TopBar {
+    /// The height of Back and Parameters, the same as the sidebar toggle.
+    static let controlHeight: CGFloat = 36
+    /// How far Back and Parameters sit from the edges of the bar, the same on both sides.
+    static let edgeInset: CGFloat = 12
+    /// The room between Back and the title.
+    static let titleGap: CGFloat = 14
+}
+
 /// The compare page. The Parameters screen belongs to another feature, so the app passes it in.
 struct DashboardView<ParametersSheet: View>: View {
     @Bindable var viewModel: DashboardViewModel
@@ -22,22 +32,70 @@ struct DashboardView<ParametersSheet: View>: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .clipped()
         }
-        // What is behind Parameters is blurred, as behind Insights.
-        .blur(radius: viewModel.isParametersPresented ? 14 : 0)
-        .underToolbarInWindow()
+        // Back, the title and Parameters are in the window's own top bar, level with the traffic lights and the sidebar
+        // toggle in a window and in full screen, and clear of them when the sidebar is collapsed.
+        .toolbar {
+            // Back and Parameters are drawn here, not by the system, so they are the same height and equally round,
+            // and sit as far from the window's edges as each other. The window's own look would make one taller
+            // than the other and leave Back touching the edge.
+            ToolbarItem(placement: .navigation) {
+                Button(action: viewModel.onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.textPrimary)
+                        .frame(width: TopBar.controlHeight, height: TopBar.controlHeight)
+                        .background {
+                            Circle()
+                                .fill(Color.backButtonFill)
+                                .overlay { Circle().strokeBorder(.white.opacity(0.14), lineWidth: 0.75) }
+                        }
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, TopBar.edgeInset)
+                .help("Back")
+                .accessibilityLabel("Back")
+            }
+            .sharedBackgroundVisibility(.hidden)
+            // The window shows no title of its own, so the page's name is an item of the bar.
+            ToolbarItem(placement: .navigation) {
+                Text(viewModel.title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .padding(.leading, TopBar.titleGap)
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarSpacer(.flexible)
+            ToolbarItem(placement: .primaryAction) {
+                Button { viewModel.openParameters() } label: {
+                    Text("Parameters")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.textPrimary)
+                        .padding(.horizontal, 18)
+                        .frame(height: TopBar.controlHeight)
+                        .background {
+                            Capsule()
+                                .fill(Color.cardButtonFill)
+                                .overlay { Capsule().strokeBorder(Color.controlBorder.opacity(0.55), lineWidth: 0.75) }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, TopBar.edgeInset)
+                .help("Change visitors, opening hours and visitor types")
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
         .background { Color.backgroundMain.ignoresSafeArea() }
         .environment(\.layoutNames, viewModel.layoutNames)
         .overlay {
             if viewModel.isParametersPresented {
-                ZStack {
-                    Palette.scrim
-                        .ignoresSafeArea()
-                        .onTapGesture { viewModel.closeParameters() }
+                GlassModal(maxWidth: 860, onOutsideTap: { viewModel.closeParameters() }) { _ in
                     SheetHost { parametersSheet(viewModel.closeParameters) }
-                        .padding(Spacing.xl)
                         .onExitCommand { viewModel.closeParameters() }
                 }
-                .transition(.opacity)
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.isParametersPresented)
@@ -67,12 +125,6 @@ struct DashboardContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DashboardHeader(
-                title: viewModel.title,
-                onBack: viewModel.onBack,
-                onOpenParameters: { viewModel.openParameters() }
-            )
-
             switch viewModel.phase {
             case .loading:
                 RunningNotice(
@@ -91,7 +143,8 @@ struct DashboardContent: View {
         }
         .padding(.leading, DashboardMetrics.horizontalPadding.leading)
         .padding(.trailing, DashboardMetrics.horizontalPadding.trailing)
-        .padding(.top, metrics.topPadding)
+        // The page starts below the window's top bar, which holds the back button, the title and Parameters.
+        .padding(.top, metrics.headerToCards)
         .padding(.bottom, metrics.bottomPadding)
     }
 
@@ -101,10 +154,8 @@ struct DashboardContent: View {
         // The Best Layout summary comes first, then the layouts it chose from.
         if let summary = viewModel.singleSummary {
             SingleLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
-                .padding(.top, metrics.headerToCards)
         } else if let summary = viewModel.bestLayout {
             BestLayoutSummaryView(summary: summary, onInsights: { viewModel.isInsightsPresented = true })
-                .padding(.top, metrics.headerToCards)
         }
 
         // One layout fills the page on its own. Two sit side by side and are compared.
@@ -117,13 +168,14 @@ struct DashboardContent: View {
                     plan: viewModel.plan(for: layout),
                     peakHourText: viewModel.peakHourText,
                     metrics: metrics,
-                    showsSimulate: viewModel.canSimulate,
+                    showsSimulate: true,
                     showsEdit: viewModel.canEdit,
                     showsWorstSpot: viewModel.isSingleLayout,
-                    choices: viewModel.layoutChoices,
+                    choices: viewModel.layoutChoices(for: layout),
+                    layoutNumber: viewModel.layoutNumber(of:),
                     bestChoiceID: bestPlanID,
                     onChoose: { viewModel.choose($0, for: layout) },
-                    onSimulate: { viewModel.onSimulate(layout) },
+                    onSimulate: { viewModel.simulate(layout) },
                     onEdit: { viewModel.onEdit(layout) }
                 )
             }
@@ -146,7 +198,12 @@ private struct RunningNotice: View {
     var body: some View {
         ZStack {
             if showsProgress, let previewVenue {
-                Metal3DSceneView(venue: previewVenue, frame: previewFrame)
+                Metal3DSceneView(
+                    venue: previewVenue,
+                    frame: previewFrame,
+                    backgroundColor: Palette.simulationBackground,
+                    initialDistanceScale: 0.72
+                )
                     .allowsHitTesting(false)
                     .overlay {
                         Color.backgroundMain.opacity(0.62)
@@ -159,7 +216,7 @@ private struct RunningNotice: View {
                     .padding(.vertical, 18)
             }
 
-            VStack(spacing: 12) {
+            let card = VStack(spacing: 12) {
                 VStack(spacing: 12) {
                     if showsProgress {
                         ProgressView()
@@ -190,56 +247,14 @@ private struct RunningNotice: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 18)
-            .glassEffect(
-                showsProgress ? .regular : .identity,
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
+
+            if showsProgress {
+                card.glassCardSurface(in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+            } else {
+                card
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
-    }
-}
-
-struct DashboardHeader: View {
-    let title: String
-    var onBack: () -> Void = {}
-    var onOpenParameters: (() -> Void)?
-
-    var body: some View {
-        HStack(spacing: 0) {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.textPrimary)
-                    .frame(width: 40, height: 40)
-                    .background {
-                        Circle()
-                            .fill(Color.backButtonFill)
-                            .overlay { Circle().strokeBorder(.white.opacity(0.14), lineWidth: 0.75) }
-                            .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
-                    }
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Back")
-            .accessibilityLabel("Back")
-
-            Text(title)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.textPrimary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .minimumScaleFactor(0.85)
-                .padding(.leading, 19)
-
-            Spacer(minLength: 12)
-
-            if let onOpenParameters {
-                Button("Parameters", action: onOpenParameters)
-                    .buttonStyle(ControlButtonStyle())
-                    .help("Change visitors, opening hours and visitor types")
-            }
-        }
-        .frame(height: DashboardMetrics.headerHeight)
     }
 }

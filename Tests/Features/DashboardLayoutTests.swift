@@ -208,8 +208,8 @@ struct DashboardLayoutTests {
         }
     }
 
-    @Test("Saved Analysis page keeps the Parameters button at the top right")
-    func savedAnalysisHeaderKeepsParametersButton() async throws {
+    @Test("A saved run opens Parameters from the button in the window's top bar")
+    func savedAnalysisOpensParameters() async throws {
         let session = ProjectSession()
         let project = session.createProject(named: "Saved Header Test")
         let layouts = makeLandscapeLayouts(count: 2)
@@ -222,30 +222,16 @@ struct DashboardLayoutTests {
         await runner.runSimulation()
         let saved = try #require(session.savedAnalyses(for: project.id).first)
 
+        var openedParameters = false
         let savedVM = DashboardViewModel(
             projectID: project.id, source: .saved(saved.id),
-            session: session, analysisService: AnalysisService(), catalog: catalog
+            session: session, analysisService: AnalysisService(), catalog: catalog,
+            onOpenParameters: { openedParameters = true }
         )
-        let libraryVM = ProjectLibraryViewModel(
-            session: session,
-            destination: { .savedAnalysis(projectID: project.id, analysisID: saved.id) },
-            onOpenProject: { _ in }
-        )
-        let splitView = NavigationSplitView {
-            ProjectLibraryView(viewModel: libraryVM)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 240, max: 300)
-        } detail: {
-            DashboardView(viewModel: savedVM) { _ in EmptyView() }
-        }
-        .frame(minWidth: 1280, minHeight: 800)
-
-        let window = makeWindow(width: 1280, height: 800, rootView: splitView)
-        try? await Task.sleep(for: .milliseconds(150))
-        window.layoutIfNeeded()
-
-        let frames = detailFocusRings(in: window)
-        let hasTopRightParametersButton = frames.contains { $0.minX > 1000 && $0.maxY > 760 }
-        #expect(hasTopRightParametersButton)
+        // The page puts Back, the title and Parameters in the window's top bar. Parameters asks the model to open.
+        #expect(savedVM.title.contains(saved.name))
+        savedVM.openParameters()
+        #expect(openedParameters)
     }
 
     @Test("Visitor types use the configured brand colors in order")

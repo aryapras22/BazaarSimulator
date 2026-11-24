@@ -27,15 +27,15 @@ struct ProjectSetupView: View {
                     .padding(.top, Spacing.m)
             }
         }
-        .padding(Spacing.xl)
-        // The title bar only reserves room in a window, not in full screen. Ignoring it and padding by a fixed
-        // amount keeps the name field at the same height in both.
-        .padding(.top, Spacing.m)
-        // The content stretches across the whole page. Only the background and the top run under the toolbar, so the
-        // sides keep the safe area and the content never sits behind the sidebar, whether it is shown or hidden.
+        .padding(.horizontal, Spacing.xl)
+        .padding(.bottom, Spacing.xl)
+        // Just a small gap under the window's top bar; the bar already keeps the content clear of the buttons.
+        .padding(.top, Spacing.xs)
+        // The content stretches across the whole page and starts below the window's top bar, which holds the window
+        // buttons and the sidebar toggle, in a window and in full screen. Only the background runs under the bar, so
+        // the name field never sits under the toggle, and the content never sits behind the sidebar.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Palette.background.ignoresSafeArea())
-        .underToolbarInWindow()
         .fileImporter(
             isPresented: Binding(
                 get: { importTarget != nil },

@@ -24,12 +24,21 @@ struct GlassModal<Content: View>: View {
                     ScrollView { content(width) }
                 }
                 .frame(width: width)
-                .glassModalSurface()
+                .glassCardSurface(in: RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
                 .padding(.vertical, margin)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .transition(.opacity)
+    }
+}
+
+extension View {
+    /// A frosted material under Liquid Glass, matching `GlassModal` so floating cards blur what sits behind them.
+    func glassCardSurface<S: Shape>(in shape: S) -> some View {
+        self
+            .background(.regularMaterial, in: shape)
+            .glassEffect(.regular, in: shape)
     }
 }
 

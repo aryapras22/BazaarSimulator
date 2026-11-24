@@ -23,6 +23,9 @@ enum SimulationLoader {
         /// The layouts to analyse, in place of the ones the saved run or the project compares. A saved run uses them
         /// to show another layout beside its own, with the parameters it was made with.
         layouts layoutsToAnalyse: [Layout]? = nil,
+        /// With a saved run, also simulate the project's other layouts with the run's parameters, so every layout is
+        /// worked out before the run is shown and any two of them can be put on the cards at once.
+        simulatesProject: Bool = false,
         session: any ProjectSessionProtocol,
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
@@ -38,7 +41,7 @@ enum SimulationLoader {
         let legend = session.draft(for: projectID)?.legend ?? Legend()
         // The project's other layouts are simulated in the same go. They are not on the page, but showing one on a
         // card afterwards then reads its run instead of waiting for it.
-        let others = savedAnalysis == nil
+        let others = savedAnalysis == nil || simulatesProject
             ? (session.draft(for: projectID)?.layouts ?? []).filter { layout in !layouts.contains { $0.id == layout.id } }
             : []
         func analyses(for runLayouts: [Layout], focus: TimeRange) async -> [LayoutAnalysis] {
@@ -85,7 +88,7 @@ enum SimulationLoader {
             visitorTypes: catalog.visitorTypes,
             schedule: schedule
         )
-        guard savedAnalysis == nil else { return .ready(result) }
+        guard savedAnalysis == nil || simulatesProject else { return .ready(result) }
 
         // The whole project in one run: the two on the page and the others, which were simulated with them. It ranks
         // the layouts for the Best Layout card, and puts any two of them on the cards without simulating again.
@@ -107,7 +110,9 @@ enum SimulationLoader {
             of: ranked, peakHourText: schedule.peakText, windowMinutes: schedule.windowMinutes
         )
         result.projectRun = ProjectRun(
-            layouts: projectLayouts,
+            layouts: everyLayout.sorted {
+                (order.firstIndex(of: $0.id) ?? .max) < (order.firstIndex(of: $1.id) ?? .max)
+            },
             analyses: Dictionary(zip(everyLayout.map(\.id), everything), uniquingKeysWith: { first, _ in first }),
             outcomes: ranked,
             bestLayoutID: result.bestProjectLayoutID,

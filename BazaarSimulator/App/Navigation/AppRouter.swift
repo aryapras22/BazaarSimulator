@@ -32,6 +32,9 @@ final class AppRouter {
     private(set) var parametersAnalysisID: UUID?
     private var editorOrigin: AppDestination?
     private var simulationOrigin: AppDestination?
+    /// The two layouts the simulation page plays, when they are not the ones the run or the live pair names: a saved run
+    /// showing another pair than the one it was made with. Nil otherwise.
+    private(set) var simulationLayoutIDs: [UUID]?
 
     init(destination: AppDestination = .empty) {
         self.destination = destination
@@ -79,7 +82,8 @@ final class AppRouter {
     }
 
     /// Opens the simulation replay page and remembers where it was opened from, so Back returns there.
-    func showSimulation(projectID: UUID, layout: LayoutID, analysisID: UUID? = nil) {
+    func showSimulation(projectID: UUID, layout: LayoutID, analysisID: UUID? = nil, layouts: [UUID]? = nil) {
+        simulationLayoutIDs = layouts
         if destination.projectID == projectID {
             simulationOrigin = destination
         }

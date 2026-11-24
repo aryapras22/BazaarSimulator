@@ -17,6 +17,8 @@ struct LayoutComparisonCard: View {
     var showsWorstSpot = false
     /// The project's layouts this card can show instead. Empty when there is nothing to pick.
     var choices: [Layout] = []
+    /// The number the project gives a layout of the list, which stays the same whichever layouts the list holds.
+    var layoutNumber: ((Layout.ID) -> Int)?
     /// The project layout that is the best one, marked with a trophy in the list of choices.
     var bestChoiceID: Layout.ID?
     var onChoose: (Layout.ID) -> Void = { _ in }
@@ -73,33 +75,21 @@ struct LayoutComparisonCard: View {
 
     private var headerBar: some View {
         HStack(spacing: 6) {
-            Button { showsChoices = true } label: {
-                HStack(spacing: 7) {
-                    Circle()
-                        .fill(layout.accent)
-                        .frame(width: 10, height: 10)
-                        .layoutPriority(1)
-                    Text(names.name(layout))
-                        .layoutPriority(1)
-                    if let planName = floorPlan?.name, !planName.isEmpty {
-                        Text(planName)
-                            .foregroundStyle(.textMuted)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    if !choices.isEmpty {
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
-                            .padding(.leading, 2)
-                            .layoutPriority(1)
-                    }
-                }
+            if choices.isEmpty {
+                // Nothing to switch to, so the name is only a label, without the look of a button.
+                layoutLabel
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(.textPrimary)
+                    .frame(height: ControlButtonStyle.height)
+                    .accessibilityLabel("\(names.name(layout))")
+            } else {
+                Button { showsChoices = true } label: { layoutLabel }
+                    .buttonStyle(ControlButtonStyle(horizontalPadding: 10, allowsTruncation: true))
+                    .help("Show another of the project's layouts here")
+                    .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
+                    .accessibilityLabel("Layout selector, \(names.name(layout))")
             }
-            .buttonStyle(ControlButtonStyle(horizontalPadding: 10, allowsTruncation: true))
-            .allowsHitTesting(!choices.isEmpty)
-            .help(choices.isEmpty ? "" : "Show another of the project's layouts here")
-            .popover(isPresented: $showsChoices, arrowEdge: .bottom) { choiceList }
-            .accessibilityLabel("Layout selector, \(names.name(layout))")
 
             Spacer(minLength: 0)
 
@@ -123,6 +113,30 @@ struct LayoutComparisonCard: View {
         }
     }
 
+    /// The layout's color, its number and the name of its file, with the arrows when another layout can be chosen.
+    private var layoutLabel: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(layout.accent)
+                .frame(width: 10, height: 10)
+                .layoutPriority(1)
+            Text(names.name(layout))
+                .layoutPriority(1)
+            if let planName = floorPlan?.name, !planName.isEmpty {
+                Text(planName)
+                    .foregroundStyle(.textMuted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            if !choices.isEmpty {
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .padding(.leading, 2)
+                    .layoutPriority(1)
+            }
+        }
+    }
+
     private var choiceList: some View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
@@ -135,7 +149,7 @@ struct LayoutComparisonCard: View {
                             .font(.system(size: 11, weight: .semibold))
                             .opacity(choice.id == floorPlan?.id ? 1 : 0)
                         // Numbered as the project numbers it, whichever card shows it.
-                        Text("Layout \(index + 1)")
+                        Text("Layout \(layoutNumber?(choice.id) ?? index + 1)")
                         Text(choice.name.isEmpty ? "Untitled layout" : choice.name)
                             .foregroundStyle(.textMuted)
                             .lineLimit(1)

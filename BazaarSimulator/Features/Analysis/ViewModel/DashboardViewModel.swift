@@ -23,7 +23,8 @@ final class DashboardViewModel {
     private let analysisService: any AnalysisServiceProtocol
     private let catalog: PresetCatalog
     let onBack: () -> Void
-    let onSimulate: (LayoutID) -> Void
+    /// Plays a layout. With a saved run that shows another pair than its own, the two layouts shown go with it.
+    let onSimulate: (LayoutID, [Layout.ID]?) -> Void
     let onEdit: (LayoutID) -> Void
     let onOpenParameters: (() -> Void)?
 
@@ -47,7 +48,7 @@ final class DashboardViewModel {
         analysisService: any AnalysisServiceProtocol,
         catalog: PresetCatalog,
         onBack: @escaping () -> Void = {},
-        onSimulate: @escaping (LayoutID) -> Void = { _ in },
+        onSimulate: @escaping (LayoutID, [Layout.ID]?) -> Void = { _, _ in },
         onEdit: @escaping (LayoutID) -> Void = { _ in },
         onOpenParameters: (() -> Void)? = nil
     ) {
@@ -60,18 +61,8 @@ final class DashboardViewModel {
         self.onSimulate = onSimulate
         self.onEdit = onEdit
         self.onOpenParameters = onOpenParameters
-        // A saved run is already complete, so its page shows it from the start and never waits to be told to load.
-        if case .saved(let id) = source { showSaved(id) }
-        // A page for the latest run starts from the saved run made from the same layouts and parameters, if there
-        // is one, so a page built anew never opens on the loading page when the analysis is already known.
-        if source == .latest, let saved = unchangedSavedAnalysis(),
-           let result = SimulationResult(
-               saved: saved, visitorTypes: catalog.visitorTypes, projectLayouts: projectLayouts
-           ) {
-            simulationResult = result
-            shownInputs = currentInputs
-            phase = .ready
-        }
+        // Neither a saved run nor the latest analysis shows at once. Every layout of the project is simulated first, so
+        // the page opens with the whole project worked out: the best of all, and any two layouts on the cards.
     }
 
     var projectName: String {
@@ -105,24 +96,61 @@ final class DashboardViewModel {
         }
     }
 
-    /// Shows another of the project's layouts on a card. Switching is not a new run: a pair already worked out is shown
-    /// at once, and a new pair is worked out quietly, without a "Run N" in the sidebar and without a saved analysis.
-    /// On a saved run, which is a record that cannot change, the pair is shown in place and the run is left as it was.
+    /// The layouts the right card can show: the project's layouts other than the best one, which is always on the left.
+    /// The left card has none, as it is not switched.
+    func layoutChoices(for layout: LayoutID) -> [Layout] {
+        guard layout == .two else { return [] }
+        let all = layoutChoices
+        guard let bestID = bestChoiceLayoutID else { return all }
+        let others = all.filter { $0.id != bestID }
+        return others.count > 1 ? others : []
+    }
+
+    /// The pair for the cards: the best layout of the project on the left, always, and on the right the layout asked
+    /// for, or else the one shown there, or else the first other layout when that one is the best.
+    private func pairWithBestFirst(in run: ProjectRun, current: [Layout], wanted: Layout.ID? = nil) -> [Layout]? {
+        guard let bestID = run.bestLayoutID,
+              let best = run.layouts.first(where: { $0.id == bestID })
+        else { return nil }
+        let others = run.layouts.filter { $0.id != bestID }
+        guard !others.isEmpty else { return [best] }
+        let shown = current.reversed().first { $0.id != bestID }
+        let right = wanted.flatMap { id in others.first { $0.id == id } }
+            ?? shown.flatMap { layout in others.first { $0.id == layout.id } }
+            ?? others[0]
+        return [best, right]
+    }
+
+    /// Puts the pair on the cards of the live page, in the project's session.
+    private func pin(_ pair: [Layout]) {
+        for (index, layout) in pair.enumerated() {
+            session.setComparedLayout(layout.id, at: index, for: projectID)
+        }
+    }
+
+    /// Shows another of the project's layouts on the right card, for the best layout on the left to be compared with.
+    /// Switching is not a new run: a pair already worked out is shown at once, and a new pair is worked out quietly,
+    /// without a "Run N" in the sidebar and without a saved analysis. On a saved run, which is a record that cannot
+    /// change, the pair is shown in place and the run is left as it was.
     func choose(_ id: Layout.ID, for layout: LayoutID) {
-        guard floorPlan(for: layout)?.id != id else { return }
+        // The left card always holds the best layout, so only the right one is switched.
+        guard layout == .two, floorPlan(for: layout)?.id != id else { return }
         if case .saved = source {
-            chooseFromSavedRun(id, for: layout)
+            chooseFromSavedRun(id)
             return
         }
-        session.setComparedLayout(id, at: layout.rawValue - 1, for: projectID)
         // Every layout was simulated together, so any pair is put on the cards from that run at once.
-        if let run = currentProjectRun, let switched = run.result(showing: comparedLayouts) {
+        if let run = currentProjectRun,
+           let pair = pairWithBestFirst(in: run, current: comparedLayouts, wanted: id),
+           let switched = run.result(showing: pair) {
+            pin(pair)
             runTask?.cancel()
             simulationResult = switched
             shownInputs = currentInputs
             phase = .ready
             return
         }
+        session.setComparedLayout(id, at: layout.rawValue - 1, for: projectID)
         if let cached = cachedResult(for: currentInputs) {
             runTask?.cancel()
             simulationResult = cached
@@ -136,22 +164,27 @@ final class DashboardViewModel {
     }
 
     /// A saved run is a record, so a switch shows the pair in place and leaves the run, and the live analysis, as they
-    /// were. The layout that stays is the run's own. The one picked is the run's if it has it, and the project's
-    /// current version otherwise, analysed with the parameters the run was made with. Nothing is saved.
-    private func chooseFromSavedRun(_ id: Layout.ID, for layout: LayoutID) {
+    /// were. The best layout stays on the left and the one picked goes on the right. It is the run's own layout if the
+    /// run has it. Nothing is saved.
+    private func chooseFromSavedRun(_ id: Layout.ID) {
         guard case .saved(let savedID) = source,
               let saved = session.savedAnalysis(id: savedID, in: projectID)
         else { return }
-        var pair = LayoutID.allCases.compactMap { simulationResult?.layouts[$0] }
-        let index = layout.rawValue - 1
-        guard pair.indices.contains(index) else { return }
-        if let other = pair.firstIndex(where: { $0.id == id }) {
-            pair.swapAt(index, other)
-        } else if let chosen = saved.layouts.first(where: { $0.id == id }) ?? session.layout(id: id, in: projectID) {
-            pair[index] = chosen
-        } else {
+        let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0] }
+        if let run = projectRun, let pair = pairWithBestFirst(in: run, current: shown, wanted: id),
+           let switched = run.result(showing: pair) {
+            savedSwitchTask?.cancel()
+            simulationResult = switched
+            showsDerivedPair = pair != saved.layouts
+            phase = .ready
             return
         }
+        // Without the run of the whole project, the pair is worked out for that layout alone.
+        var pair = shown
+        guard pair.indices.contains(1),
+              let chosen = saved.layouts.first(where: { $0.id == id }) ?? session.layout(id: id, in: projectID)
+        else { return }
+        pair[1] = chosen
         if pair == saved.layouts {
             savedSwitchTask?.cancel()
             showSaved(savedID)
@@ -254,7 +287,17 @@ final class DashboardViewModel {
     private var savedSwitchTask: Task<Void, Never>?
     /// A saved run is showing another pair than the one it was made with, so it cannot be replayed in the simulator.
     private(set) var showsDerivedPair = false
-    var canSimulate: Bool { !showsDerivedPair }
+
+    /// Plays one of the two layouts on the cards in the simulator, also when a saved run shows a pair of its own choosing.
+    func simulate(_ layout: LayoutID) {
+        let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0].map(\.id) }
+        onSimulate(layout, showsDerivedPair ? shown : nil)
+    }
+
+    /// The number the project gives a layout, which the list of layouts shows whichever layouts it holds.
+    func layoutNumber(of id: Layout.ID) -> Int {
+        (projectLayouts.firstIndex { $0.id == id } ?? 0) + 1
+    }
     /// For a switch, the loading page only comes if the new pair takes a while, so a quick one never flashes it.
     private var switchLoadingTask: Task<Void, Never>?
     private static let switchLoadingDelay: Duration = .milliseconds(600)
@@ -278,6 +321,8 @@ final class DashboardViewModel {
             if isRunning, runningInputs == currentInputs { return }
             if !isRunning, simulationResult != nil, shownInputs == currentInputs { return }
         }
+        // A saved run being opened is left to finish. Cancelling it would only leave the page waiting.
+        if case .saved = source, isRunning { return }
         logWhyRunning()
         runTask?.cancel()
         runTask = Task { await runSimulation() }
@@ -316,17 +361,7 @@ final class DashboardViewModel {
 
     func runSimulation() async {
         if case .saved(let id) = source {
-            showSaved(id)
-            return
-        }
-        if let saved = unchangedSavedAnalysis() {
-            let result = SimulationResult(
-                saved: saved, visitorTypes: catalog.visitorTypes, projectLayouts: projectLayouts
-            )
-            simulationResult = result
-            shownInputs = currentInputs
-            if let result { remember(result, for: currentInputs) }
-            phase = .ready
+            await openSavedRun(id)
             return
         }
         // A pair worked out before, such as the one a saved run's layout switch comes back to, needs no run at all.
@@ -390,10 +425,20 @@ final class DashboardViewModel {
                 return
             }
             loadingProgress = 1.0
-            simulationResult = result
             projectRun = result.projectRun ?? projectRun
-            shownInputs = inputs
-            remember(result, for: inputs)
+            // The best layout of the project goes on the left card, whatever pair the run was made for. The run holds
+            // every layout, so putting it there needs no more simulation.
+            var shown = result
+            if let run = result.projectRun,
+               let pair = pairWithBestFirst(in: run, current: comparedLayouts),
+               pair.map(\.id) != comparedLayouts.map(\.id),
+               let pinned = run.result(showing: pair) {
+                pin(pair)
+                shown = pinned
+            }
+            simulationResult = shown
+            shownInputs = currentInputs
+            remember(shown, for: currentInputs)
             phase = .ready
             if !isQuiet { record(result, parameters: inputs.parameters) }
         case .cancelled:
@@ -447,6 +492,67 @@ final class DashboardViewModel {
         previewFrame = frame
     }
 
+    /// Opens a saved run. Every layout of the project is simulated first, with the run's own parameters, and only then
+    /// is the run shown, so it comes with the best of all the layouts and can switch a card to any of them at once. A
+    /// run already opened in this session shows from the work it did, without simulating again.
+    private func openSavedRun(_ id: SavedAnalysis.ID) async {
+        guard let saved = session.savedAnalysis(id: id, in: projectID) else {
+            phase = .needsLayouts(count: 0)
+            return
+        }
+        if let run = projectRun {
+            showSavedRun(saved, from: run)
+            return
+        }
+        guard !isRunning else { return }
+        runCount += 1
+        let run = runCount
+        isRunning = true
+        showLoading()
+        defer { if run == runCount { isRunning = false } }
+        let loaded = await SimulationLoader.load(
+            projectID: projectID,
+            savedAnalysis: saved,
+            simulatesProject: true,
+            session: session,
+            analysisService: analysisService,
+            catalog: catalog,
+            onLiveFrame: { [weak self] layoutID, visitors, progress in
+                Task { @MainActor [weak self] in
+                    self?.applyLiveVisitors(visitors, layoutID: layoutID, progress: progress, run: run)
+                }
+            }
+        )
+        guard run == runCount, !Task.isCancelled else { return }
+        guard case .ready(let result) = loaded else {
+            // The measurements the run stored stand in when it cannot be simulated again.
+            showSaved(id)
+            return
+        }
+        loadingProgress = 1.0
+        projectRun = result.projectRun
+        if let run = result.projectRun {
+            showSavedRun(saved, from: run)
+        } else {
+            simulationResult = result
+            showsDerivedPair = false
+            phase = .ready
+        }
+    }
+
+    /// Shows a saved run with the best layout of the project on the left, as on the live page. When the best layout
+    /// is not one of the run's own, the run shows another pair than the one it was made with, and cannot be replayed.
+    private func showSavedRun(_ saved: SavedAnalysis, from run: ProjectRun) {
+        let pair = pairWithBestFirst(in: run, current: saved.layouts) ?? saved.layouts
+        guard let result = run.result(showing: pair) ?? run.result(showing: saved.layouts) else {
+            showSaved(saved.id)
+            return
+        }
+        simulationResult = result
+        showsDerivedPair = pair != saved.layouts
+        phase = .ready
+    }
+
     private func showSaved(_ id: SavedAnalysis.ID) {
         guard let saved = session.savedAnalysis(id: id, in: projectID),
               let result = SimulationResult(
@@ -470,17 +576,6 @@ final class DashboardViewModel {
 
     private var comparedLayouts: [Layout] {
         Array(session.comparedLayouts(for: projectID).prefix(LayoutID.allCases.count))
-    }
-
-    /// The project's latest saved run, when it was made from the layouts and parameters now in the project. Opening
-    /// the page then shows it at once, also after the app was restarted, instead of simulating again.
-    private func unchangedSavedAnalysis() -> SavedAnalysis? {
-        let layouts = comparedLayouts
-        guard !layouts.isEmpty,
-              let latest = session.savedAnalyses(for: projectID).last,
-              latest.matches(parameters: currentParameters, layouts: layouts)
-        else { return nil }
-        return latest
     }
 
     /// Keeps a finished analysis as the next saved run in the sidebar.
@@ -519,7 +614,10 @@ final class DashboardViewModel {
               let best = projectOutcomes.first(where: { $0.layoutID == bestID })
         else { return nil }
         let place = LayoutID.allCases.first { result.layouts[$0]?.id == bestID }
-        return ProjectBestSummary(best: best, all: projectOutcomes, place: place)
+        // It is compared with the layout on the other card, the one being looked at, not with every layout.
+        let otherID = LayoutID.allCases.first { result.layouts[$0]?.id != bestID }.flatMap { result.layouts[$0]?.id }
+        let other = projectOutcomes.first { $0.layoutID == otherID }
+        return ProjectBestSummary(best: best, against: other, place: place)
     }
 
     /// How every layout of the project did. A run that covered them all carries it, a result restored from a saved run

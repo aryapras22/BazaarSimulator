@@ -43,6 +43,7 @@ enum SingleLayoutContent {
         single.hourLabels = built.hourLabels
         single.axisTicks = built.axisTicks
         single.axisLabel = built.axisLabel
+        single.plotValue = built.plotValue
         single.valueText = built.valueText
         return single
     }

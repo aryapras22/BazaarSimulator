@@ -101,8 +101,8 @@ final class ProjectScreenFactory {
             analysisService: services.analysisService,
             catalog: services.presetCatalog,
             onBack: { [weak router] in router?.showSetup(projectID: projectID) },
-            onSimulate: { [weak router] layout in
-                router?.showSimulation(projectID: projectID, layout: layout, analysisID: analysisID)
+            onSimulate: { [weak router] layout, layouts in
+                router?.showSimulation(projectID: projectID, layout: layout, analysisID: analysisID, layouts: layouts)
             },
             onOpenParameters: { [weak router] in
                 router?.showParameters(projectID: projectID, analysisID: analysisID)
@@ -133,7 +133,7 @@ final class ProjectScreenFactory {
             onBack: { [weak router] in
                 router?.showSetup(projectID: projectID)
             },
-            onSimulate: { [weak router] layout in
+            onSimulate: { [weak router] layout, _ in
                 router?.showSimulation(projectID: projectID, layout: layout)
             },
             onEdit: { [weak router] layout in
@@ -156,6 +156,7 @@ final class ProjectScreenFactory {
             projectID: projectID,
             layoutID: layout,
             analysisID: analysisID,
+            layoutIDs: router.simulationLayoutIDs,
             session: services.projectSession,
             analysisService: services.analysisService,
             catalog: services.presetCatalog,

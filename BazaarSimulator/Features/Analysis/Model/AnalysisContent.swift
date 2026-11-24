@@ -71,6 +71,9 @@ struct AnalysisContent: Sendable {
     /// Where the chart's value axis is labelled, when it is not every `yAxisStride`, and how a value reads.
     var axisTicks: [Double]?
     var axisLabel: (@Sendable (Double) -> String)?
+    /// Where a value sits on the chart's value axis, when the axis is not a straight scale. The crowd level axis gives
+    /// every level the same room. `yAxisMaximum` and `axisTicks` are in these places.
+    var plotValue: @Sendable (Double) -> Double = { $0 }
     var valueText: @Sendable (Double) -> String = { $0.formatted(.number.precision(.fractionLength(0...1))) }
 
     func unit(for value: Double) -> String {
