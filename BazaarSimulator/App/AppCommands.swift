@@ -145,5 +145,11 @@ struct AppCommands: Commands {
         CommandMenu("Developer") {
             Toggle("Dev Mode", isOn: $isDevModeOn)
         }
+
+        // App Review guideline 5.1.1(i) requires the privacy policy to be reachable inside the app.
+        CommandGroup(replacing: .help) {
+            Link("Mospace Support", destination: URL(string: "https://mospace.caffeine-junkie.xyz/support/")!)
+            Link("Privacy Policy", destination: URL(string: "https://mospace.caffeine-junkie.xyz/privacy/")!)
+        }
     }
 }

@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "42C7C2163094562600513D5B"
-               BuildableName = "BazaarSimulator.app"
+               BuildableName = "Mospace.app"
                BlueprintName = "BazaarSimulator"
                ReferencedContainer = "container:BazaarSimulator.xcodeproj">
             </BuildableReference>
@@ -57,7 +57,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "42C7C2163094562600513D5B"
-            BuildableName = "BazaarSimulator.app"
+            BuildableName = "Mospace.app"
             BlueprintName = "BazaarSimulator"
             ReferencedContainer = "container:BazaarSimulator.xcodeproj">
          </BuildableReference>
@@ -80,7 +80,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "42C7C2163094562600513D5B"
-            BuildableName = "BazaarSimulator.app"
+            BuildableName = "Mospace.app"
             BlueprintName = "BazaarSimulator"
             ReferencedContainer = "container:BazaarSimulator.xcodeproj">
          </BuildableReference>

@@ -21,7 +21,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		42C7C2173094562600513D5B /* BazaarSimulator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BazaarSimulator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		42C7C2173094562600513D5B /* Mospace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mospace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		42C7C2A03094562600513D5B /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
 		42C7C2A13094562600513D5B /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BazaarSimulatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -133,7 +133,7 @@
 		42C7C2183094562600513D5B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				42C7C2173094562600513D5B /* BazaarSimulator.app */,
+				42C7C2173094562600513D5B /* Mospace.app */,
 				42C7C2A33094562600513D5B /* BazaarSimulatorTests.xctest */,
 			);
 			name = Products;
@@ -154,14 +154,13 @@
 			);
 			fileSystemSynchronizedGroups = (
 				42C7C2193094562600513D5B /* BazaarSimulator */,
-				42C7C2403094B43900513D5B /* docs */,
 			);
 			name = BazaarSimulator;
 			packageProductDependencies = (
 				42C7C2B03094562600513D5B /* Extractor */,
 			);
 			productName = BazaarSimulator;
-			productReference = 42C7C2173094562600513D5B /* BazaarSimulator.app */;
+			productReference = 42C7C2173094562600513D5B /* Mospace.app */;
 			productType = "com.apple.product-type.application";
 		};
 		42C7C2A53094562600513D5B /* BazaarSimulatorTests */ = {
@@ -386,13 +385,13 @@
 		42C7C2233094562600513D5B /* Debug configuration for PBXNativeTarget "BazaarSimulator" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Mospace-App-Icon";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_STANDALONE_ICON_BEHAVIOR = all;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T49MVP6MUV;
+				DEVELOPMENT_TEAM = 8ZYJQ3TK5Q;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -400,14 +399,15 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Arya. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.caffeine-junkie.BazaarSimulator";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = BazaarSimulator;
+				PRODUCT_NAME = Mospace;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -421,13 +421,13 @@
 		42C7C2243094562600513D5B /* Release configuration for PBXNativeTarget "BazaarSimulator" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Mospace-App-Icon";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_STANDALONE_ICON_BEHAVIOR = all;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T49MVP6MUV;
+				DEVELOPMENT_TEAM = 8ZYJQ3TK5Q;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -435,14 +435,15 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Arya. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.caffeine-junkie.BazaarSimulator";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = BazaarSimulator;
+				PRODUCT_NAME = Mospace;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -470,7 +471,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BazaarSimulator.app/Contents/MacOS/BazaarSimulator";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mospace.app/Contents/MacOS/Mospace";
 			};
 			name = Debug;
 		};
@@ -491,7 +492,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BazaarSimulator.app/Contents/MacOS/BazaarSimulator";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Mospace.app/Contents/MacOS/Mospace";
 			};
 			name = Release;
 		};

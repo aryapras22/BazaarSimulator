@@ -89,12 +89,12 @@ struct LayoutEditorViewModelFurnitureTests {
         let context = LayoutEditorViewModelTests.makeContext()
         let viewModel = context.viewModel
         viewModel.selectLayer(.booths)
-        let spot = try #require(freeSpot(for: .seating, size: SIMD2(3, 2), in: context.layout))
+        let spot = try #require(freeSpot(for: .seating, size: SIMD2(1, 1), in: context.layout))
 
         viewModel.placeLibraryItem(id: FurnitureModels.seatingBlockID, at: spot)
         let block = try #require(viewModel.selectedObject)
         #expect(block.kind == .seating)
-        #expect(FurnitureModels.chairs(of: block).count == 24)
+        #expect(FurnitureModels.chairs(of: block).count == 4)
 
         viewModel.editInspectorDraft {
             $0.widthM = 4.0
@@ -182,10 +182,10 @@ struct LayoutEditorViewModelFurnitureTests {
         #expect(viewModel.inspectorDraft?.kind == .table)
     }
 
-    @Test("The furniture Type picker lists Audience Seating before table models, and table switching keeps working")
+    @Test("The furniture Type picker lists table models before Audience Seating, and table switching keeps working")
     func pickerOrderAndTableModelSwitch() throws {
-        let expectedIDs = [FurnitureModels.seatingBlockID] + FurnitureModels.tables.map(\.id)
-        let expectedNames = ["Audience Seating"] + FurnitureModels.tables.map(\.name)
+        let expectedIDs = FurnitureModels.tables.map(\.id) + [FurnitureModels.seatingBlockID]
+        let expectedNames = FurnitureModels.tables.map(\.name) + ["Audience Seating"]
         #expect(FurnitureTypePicker.options.map(\.id) == expectedIDs)
         #expect(FurnitureTypePicker.options.map(\.name) == expectedNames)
 

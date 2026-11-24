@@ -33,6 +33,7 @@ final class LayoutEditorViewModel {
     var activeLayer: EditorLayer = .booths
     var hiddenLayers: Set<EditorLayer> = []
     var showVisitorFlow: Bool = false
+    var showsAttractiveness: Bool = false
     var transientHint: String?
     @ObservationIgnored var transientHintTask: Task<Void, Never>?
     var tool: EditorTool = .select
@@ -111,6 +112,15 @@ final class LayoutEditorViewModel {
         return session.layout(id: activeLayoutID, in: projectID) ?? layouts.first
     }
 
+    var activeLayoutTitle: String {
+        if let name = activeLayout?.name.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        let index = (layouts.firstIndex { $0.id == activeLayoutID } ?? 0) + 1
+        return "Layout \(index)"
+    }
+
     var selectedObject: LayoutObject? {
         guard let selectionID, let activeLayout else { return nil }
         return activeLayout.objects.first { $0.id == selectionID }
@@ -165,6 +175,10 @@ final class LayoutEditorViewModel {
 
     func requestBack() {
         onBack()
+    }
+
+    func toggleAttractiveness() {
+        showsAttractiveness.toggle()
     }
 
     func applySelection(_ objectID: UUID?) {

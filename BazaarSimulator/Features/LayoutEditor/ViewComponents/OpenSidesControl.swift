@@ -48,7 +48,7 @@ struct OpenSidesControl: View {
             .frame(maxWidth: .infinity)
             .frame(height: 152)
 
-            Text("Orange = closed · click an edge to toggle")
+            Text("Dark blue = closed · click an edge to toggle")
                 .font(Typography.caption)
                 .foregroundStyle(Palette.textSecondary)
         }
@@ -74,7 +74,7 @@ struct OpenSidesControl: View {
                 if !isOpen {
                     Text("Closed")
                         .font(Typography.caption)
-                        .foregroundStyle(Palette.highlight)
+                        .foregroundStyle(Palette.accentText)
                         .offset(
                             x: screenSide == .left ? -24 : (screenSide == .right ? 24 : 0),
                             y: screenSide == .top ? -14 : (screenSide == .bottom ? 14 : 0)
@@ -126,7 +126,7 @@ private struct HorizontalEdgeLine: View {
                     style: StrokeStyle(lineWidth: 2, dash: [5, 4])
                 )
             } else {
-                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
+                context.stroke(path, with: .color(Palette.canvasLine), lineWidth: 2.5)
             }
         }
     }
@@ -147,7 +147,7 @@ private struct VerticalEdgeLine: View {
                     style: StrokeStyle(lineWidth: 2, dash: [5, 4])
                 )
             } else {
-                context.stroke(path, with: .color(Palette.highlight), lineWidth: 4)
+                context.stroke(path, with: .color(Palette.canvasLine), lineWidth: 2.5)
             }
         }
     }

@@ -20,7 +20,7 @@ enum LayoutValidator {
 
     private static func checkMinimumSizes(in layout: Layout) -> [LayoutIssue] {
         var issues: [LayoutIssue] = []
-        for object in layout.objects where object.kind.isResizable {
+        for object in layout.objects where object.kind.isResizable && !object.kind.isStructural {
             let minDim = object.kind.minimumDimensionM
             let isWidthTooSmall = object.placement.sizeM.x < minDim - 1e-6
             let isLengthTooSmall = object.kind != .door
@@ -31,7 +31,7 @@ enum LayoutValidator {
                         severity: .error,
                         kind: .belowMinimumSize,
                         objectIDs: [object.id],
-                        message: LayoutIssueText.belowMinimumSize
+                        message: LayoutIssueText.belowMinimumSize(label(for: object))
                     )
                 )
             }
@@ -63,8 +63,8 @@ enum LayoutValidator {
                         LayoutIssue(
                             severity: .warning,
                             kind: .overlappingObjects,
-                            objectIDs: [booth.id, other.id],
-                            message: LayoutIssueText.overlappingObjects(booth.label, other.label)
+                            objectIDs: other.kind.isStructural ? [booth.id] : [booth.id, other.id],
+                            message: LayoutIssueText.overlappingObjects(label(for: booth), label(for: other))
                         )
                     )
                 }
@@ -90,7 +90,7 @@ enum LayoutValidator {
                         severity: .warning,
                         kind: .outsideFloor,
                         objectIDs: [object.id],
-                        message: LayoutIssueText.outsideFloor(object.label)
+                        message: LayoutIssueText.outsideFloor(label(for: object))
                     )
                 )
             }
@@ -111,7 +111,7 @@ enum LayoutValidator {
                         severity: .warning,
                         kind: .noOpenSides,
                         objectIDs: [booth.id],
-                        message: LayoutIssueText.noOpenSides
+                        message: LayoutIssueText.noOpenSides(label(for: booth))
                     )
                 )
                 continue
@@ -137,7 +137,7 @@ enum LayoutValidator {
                             severity: .warning,
                             kind: .blockedOpenSide(side: side),
                             objectIDs: [booth.id],
-                            message: LayoutIssueText.blockedOpenSide(sideName(for: side))
+                            message: LayoutIssueText.blockedOpenSide(label(for: booth), sideName: sideName(for: side))
                         )
                     )
                 }
@@ -193,5 +193,10 @@ enum LayoutValidator {
         if side == .right { return "Right" }
         if side == .bottom { return "Bottom" }
         return "Left"
+    }
+
+    private static func label(for object: LayoutObject) -> String {
+        let trimmed = object.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? object.kind.displayName : trimmed
     }
 }

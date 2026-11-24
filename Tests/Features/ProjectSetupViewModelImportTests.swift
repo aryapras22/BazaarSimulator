@@ -1,4 +1,6 @@
 import Foundation
+import simd
+import SwiftUI
 import Testing
 @testable import BazaarSimulator
 
@@ -352,5 +354,137 @@ extension ProjectSetupViewModelTests {
         #expect(session.draft(for: project.id) == nil)
         #expect(session.activeLayoutID(for: project.id) == nil)
         #expect(editedProjectID == nil)
+    }
+
+    @Test("editLayout displays the imported floor plan's real name in the editor header")
+    @MainActor
+    func editLayoutDisplaysRealLayoutNameInEditorHeader() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let queue = ScriptedImportQueue(isSynchronous: true)
+        let setupViewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in },
+            onEdit: { _ in }
+        )
+
+        setupViewModel.addLegendFiles(urls: [URL(fileURLWithPath: "/tmp/legend.pdf")])
+        setupViewModel.addFloorPlanFiles(urls: [
+            URL(fileURLWithPath: "/tmp/plan1.pdf"),
+            URL(fileURLWithPath: "/tmp/plan2.pdf")
+        ])
+
+        let targetFile = setupViewModel.floorPlanFiles[1]
+        setupViewModel.editLayout(fileID: targetFile.id)
+
+        let editorViewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        let headerTexts = EditorHeaderTextExtractor.texts(in: EditorHeaderBar(viewModel: editorViewModel).body)
+
+        #expect(editorViewModel.activeLayout?.name == "plan2")
+        #expect(headerTexts.contains("plan2"))
+        #expect(!headerTexts.contains("Layout 1"))
+        #expect(!headerTexts.contains("Layout 2"))
+    }
+
+    @Test("Editor header trims whitespace around the active layout name")
+    @MainActor
+    func editorHeaderTrimsActiveLayoutName() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let layout = Layout(name: "  Main Hall  ", sizeM: SIMD2<Double>(20, 20))
+        session.setDraft(ProjectDraft(name: "Bazaar 1", layouts: [layout]), for: project.id)
+
+        let editorViewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        let headerTexts = EditorHeaderTextExtractor.texts(in: EditorHeaderBar(viewModel: editorViewModel).body)
+
+        #expect(headerTexts.contains("Main Hall"))
+        #expect(!headerTexts.contains("  Main Hall  "))
+        #expect(!headerTexts.contains("Layout 1"))
+    }
+
+    @Test("Editor header falls back to Layout N when the layout name is empty or whitespace")
+    @MainActor
+    func editorHeaderFallsBackWhenLayoutNameIsEmpty() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let first = Layout(name: "", sizeM: SIMD2<Double>(20, 20))
+        let second = Layout(name: "   \n ", sizeM: SIMD2<Double>(20, 20))
+        session.setDraft(ProjectDraft(name: "Bazaar 1", layouts: [first, second]), for: project.id)
+
+        let editorViewModel = LayoutEditorViewModel(projectID: project.id, session: session)
+        let firstTexts = EditorHeaderTextExtractor.texts(in: EditorHeaderBar(viewModel: editorViewModel).body)
+        #expect(firstTexts.contains("Layout 1"))
+
+        editorViewModel.selectLayout(second.id)
+        let secondTexts = EditorHeaderTextExtractor.texts(in: EditorHeaderBar(viewModel: editorViewModel).body)
+        #expect(secondTexts.contains("Layout 2"))
+    }
+}
+
+private enum EditorHeaderTextExtractor {
+    static func texts(in root: Any) -> [String] {
+        var result: [String] = []
+        collect(in: root, into: &result)
+        return result
+    }
+
+    private static func collect(in value: Any, into result: inout [String]) {
+        if let text = value as? Text {
+            if let resolved = resolve(text: text) {
+                result.append(resolved)
+            }
+            return
+        }
+        for child in Mirror(reflecting: value).children {
+            collect(in: child.value, into: &result)
+        }
+    }
+
+    private static func resolve(text: Text) -> String? {
+        guard let storage = Mirror(reflecting: text).children.first(where: { $0.label == "storage" })?.value else {
+            return nil
+        }
+        let storageMirror = Mirror(reflecting: storage)
+        if let verbatim = storageMirror.children.first(where: { $0.label == "verbatim" })?.value as? String {
+            return verbatim
+        }
+        if let anyStorage = storageMirror.children.first(where: { $0.label == "anyTextStorage" })?.value,
+           let key = Mirror(reflecting: anyStorage).children.first(where: { $0.label == "key" })?.value
+            as? LocalizedStringKey {
+            return resolve(localizedKey: key)
+        }
+        return nil
+    }
+
+    private static func resolve(localizedKey: LocalizedStringKey) -> String? {
+        let mirror = Mirror(reflecting: localizedKey)
+        guard var key = mirror.children.first(where: { $0.label == "key" })?.value as? String else {
+            return nil
+        }
+        if let rawArgs = mirror.children.first(where: { $0.label == "arguments" })?.value as? [Any] {
+            for arg in rawArgs {
+                guard let argValue = extractFormattedValue(from: arg) else { continue }
+                for placeholder in ["%lld", "%ld", "%d", "%@"] {
+                    if let range = key.range(of: placeholder) {
+                        key.replaceSubrange(range, with: String(describing: argValue))
+                        break
+                    }
+                }
+            }
+        }
+        return key
+    }
+
+    private static func extractFormattedValue(from argument: Any) -> Any? {
+        guard let storage = Mirror(reflecting: argument).children.first(where: { $0.label == "storage" })?.value else {
+            return nil
+        }
+        let storageMirror = Mirror(reflecting: storage)
+        guard let tuple = storageMirror.children.first(where: { $0.label == "value" })?.value else {
+            return nil
+        }
+        return Mirror(reflecting: tuple).children.first?.value
     }
 }

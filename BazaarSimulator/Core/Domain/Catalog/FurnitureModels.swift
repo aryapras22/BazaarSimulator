@@ -47,7 +47,7 @@ enum FurnitureModels {
     ]
 
     static let seatingBlockID = "seating-block"
-    static let seatingBlockSizeM = SIMD2<Double>(3.0, 2.0)
+    static let seatingBlockSizeM = SIMD2<Double>(1.0, 1.0)
 
     static func table(_ id: String?) -> TableModel? {
         tables.first { $0.id == id }

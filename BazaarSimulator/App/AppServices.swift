@@ -32,7 +32,7 @@ final class AppServices {
                 scripted.mockLayoutFileNames = seed.layoutNames
                 projectID = Self.seedMockProject(
                     named: seed.name,
-                    layoutNames: seed.layoutNames,
+                    planNames: seed.planNames,
                     in: session,
                     importQueue: scripted
                 )
@@ -46,22 +46,14 @@ final class AppServices {
         }
     }
 
-    private static let mockSeeds: [(name: String, layoutNames: [String])] = [
-        ("More Market", [
-            "more-market-i-layout",
-            "more-market-ii-layout",
-            "more-market-iii-layout",
-            "more-market-iv-layout",
-            "more-market-v-layout",
-            "more-market-vi-layout",
-            "more-market-viii-layout"
-        ]),
-        ("Annyeong Market", ["annyeong-market-layout", "beyond-market-layout"])
+    /// `planNames` are the file names users see; the scripted queue loads `layoutNames` by position.
+    private static let mockSeeds: [(name: String, layoutNames: [String], planNames: [String])] = [
+        ("Sample Project", ["annyeong-market-layout", "beyond-market-layout"], ["Sample Plan 1", "Sample Plan 2"])
     ]
 
     private static func seedMockProject(
         named name: String,
-        layoutNames: [String],
+        planNames: [String],
         in session: any ProjectSessionProtocol,
         importQueue: ScriptedImportQueue
     ) -> UUID {
@@ -73,7 +65,7 @@ final class AppServices {
             projectID: project.id
         )
         importQueue.add(
-            urls: layoutNames.map { URL(fileURLWithPath: "/mock/\($0).pdf") },
+            urls: planNames.map { URL(fileURLWithPath: "/mock/\($0).pdf") },
             kind: .floorPlan,
             projectID: project.id
         )

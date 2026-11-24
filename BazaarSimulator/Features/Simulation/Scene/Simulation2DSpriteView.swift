@@ -353,7 +353,7 @@ final class Venue2DScene: SKScene {
 
         switch object.kind {
         case .booth:
-            node.fillColor = TenantColors.boothNSColor(for: object, legend: legend)
+            node.fillColor = TenantColors.boothNSColor(for: object)
             node.zPosition = 1
         case .table:
             node.fillColor = Self.srgbColor(VenueGeometry.yellowColor)
@@ -363,7 +363,7 @@ final class Venue2DScene: SKScene {
             node.zPosition = 1
             addSeatingChairNodes(to: node, for: object, inkColor: inkColor)
         case .entertainment:
-            node.fillColor = Self.srgbColor(VenueGeometry.entertainmentColor(for: object))
+            node.fillColor = TenantColors.entertainmentNSColor(for: object)
             node.zPosition = 1
         case .door:
             node.fillColor = Self.srgbColor(VenueGeometry.doorColor(for: object))

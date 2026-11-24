@@ -126,8 +126,8 @@ enum CanvasSceneRenderer {
         }
     }
 
-    private static func attractivenessDisplay(for snapshot: CanvasDisplaySnapshot) -> AttractivenessDisplay {
-        snapshot.activeLayer == .booths ? .heat : .hidden
+    static func attractivenessDisplay(for snapshot: CanvasDisplaySnapshot) -> AttractivenessDisplay {
+        snapshot.activeLayer == .booths && snapshot.showsAttractiveness ? .heat : .hidden
     }
 
     private static func drawObject(

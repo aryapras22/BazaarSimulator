@@ -7,8 +7,8 @@ struct FurnitureTypePicker: View {
     }
 
     static let options: [Option] =
-        [Option(id: FurnitureModels.seatingBlockID, name: "Audience Seating")]
-        + FurnitureModels.tables.map { Option(id: $0.id, name: $0.name) }
+        FurnitureModels.tables.map { Option(id: $0.id, name: $0.name) }
+        + [Option(id: FurnitureModels.seatingBlockID, name: "Audience Seating")]
 
     let selectedID: String
     let onSelect: (String) -> Void

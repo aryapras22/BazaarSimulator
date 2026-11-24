@@ -9,12 +9,18 @@ enum LayoutIssueText {
         "\(label) sits outside the hall and lobby"
     }
 
-    static func blockedOpenSide(_ sideName: String) -> String {
-        "Open \(sideName.lowercased()) side faces an obstacle"
+    static func blockedOpenSide(_ label: String, sideName: String) -> String {
+        "Open \(sideName.lowercased()) side of \(label) faces an obstacle"
     }
 
-    static let noOpenSides = "Visitors cannot reach this booth"
+    static func noOpenSides(_ label: String) -> String {
+        "Visitors cannot reach \(label)"
+    }
+
+    static func belowMinimumSize(_ label: String) -> String {
+        "\(label) is below the minimum size"
+    }
+
     static let missingHallDoorEntry = "No hall door allows visitors to enter"
     static let missingHallDoorExit = "No hall door allows visitors to exit"
-    static let belowMinimumSize = "Size is below the minimum allowed"
 }

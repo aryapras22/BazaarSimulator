@@ -2,7 +2,7 @@ import AppKit
 import simd
 import SwiftUI
 
-/// One tenant category shown in the simulation legend and matched to booth fills in 2D and 3D.
+/// One tenant category shown in the simulation legend and matched to booth and attraction fills in 2D and 3D.
 struct TenantLegendItem: Identifiable, Equatable {
     let id: String
     let name: String
@@ -13,17 +13,13 @@ struct TenantLegendItem: Identifiable, Equatable {
     }
 
     var nsColor: NSColor {
-        NSColor(
-            srgbRed: CGFloat(rgba.x),
-            green: CGFloat(rgba.y),
-            blue: CGFloat(rgba.z),
-            alpha: CGFloat(rgba.w)
-        )
+        TenantColors.nsColor(for: rgba)
     }
 }
 
-/// Slightly differentiated, cohesive booth colors shared across 2D SpriteKit, 3D Metal, and the info panel legend.
+/// Cohesive fixed category colors shared across 2D SpriteKit, 3D Metal, and the simulation legend.
 enum TenantColors {
+    static let unassignedRGBA = SIMD4<Float>(0.56, 0.59, 0.65, 1)
     static let foodRGBA = SIMD4<Float>(0.76, 0.41, 0.36, 1)
     static let goodsPalette: [SIMD4<Float>] = [
         SIMD4<Float>(0.29, 0.50, 0.74, 1),
@@ -34,64 +30,76 @@ enum TenantColors {
         SIMD4<Float>(0.36, 0.59, 0.70, 1)
     ]
 
-    private static let foodKeywords = ["food", "f&b", "fnb"]
-
-    static func isFood(_ entry: LegendEntry) -> Bool {
-        if entry.type == .fnb { return true }
-        let lowered = entry.name.lowercased()
-        return foodKeywords.contains { lowered.contains($0) }
-    }
-
     static func isFood(_ object: LayoutObject, legend: Legend = Legend()) -> Bool {
-        if let categoryID = object.categoryID,
-           let entry = legend.entries.first(where: { $0.id == categoryID }) {
-            return isFood(entry)
-        }
-        if object.boothType == .fnb { return true }
-        let label = object.label.lowercased()
-        return foodKeywords.contains { label.contains($0) } || label.hasPrefix("f")
+        object.boothType == .fnb
     }
 
-    /// Legend items shown at the bottom of the simulation details panel.
-    static func legendItems(for layout: Layout?, legend: Legend) -> [TenantLegendItem] {
-        if !legend.entries.isEmpty {
-            var nonFoodIndex = 0
-            return legend.entries.map { entry in
-                let rgba: SIMD4<Float>
-                if isFood(entry) {
-                    rgba = foodRGBA
-                } else {
-                    rgba = goodsPalette[nonFoodIndex % goodsPalette.count]
-                    nonFoodIndex += 1
-                }
-                return TenantLegendItem(id: entry.id.uuidString, name: entry.name, rgba: rgba)
-            }
+    /// Legend items shown at the bottom of the simulation details panel, in `CategoryPicker` order.
+    static func legendItems(for layout: Layout?, legend: Legend = Legend()) -> [TenantLegendItem] {
+        guard let objects = layout?.objects else { return [] }
+
+        let booths = objects.filter { $0.kind == .booth }
+        var items: [TenantLegendItem] = []
+        if booths.contains(where: { $0.boothType == nil }) {
+            items.append(TenantLegendItem(id: "booth-unassigned", name: "Unassigned", rgba: unassignedRGBA))
+        }
+        if booths.contains(where: { $0.boothType == .fnb }) {
+            items.append(TenantLegendItem(id: "booth-fnb", name: "Foods", rgba: foodRGBA))
+        }
+        if booths.contains(where: { $0.boothType == .goods }) {
+            items.append(TenantLegendItem(id: "booth-goods", name: "Goods", rgba: goodsPalette[0]))
         }
 
-        let booths = layout?.objects.filter { $0.kind == .booth } ?? []
-        guard !booths.isEmpty else { return [] }
-        let hasFood = booths.contains { isFood($0) }
-        let hasGoods = booths.contains { !isFood($0) }
-        var items: [TenantLegendItem] = []
-        if hasFood { items.append(TenantLegendItem(id: "fnb", name: "F&B", rgba: foodRGBA)) }
-        if hasGoods { items.append(TenantLegendItem(id: "goods", name: "Goods", rgba: goodsPalette[0])) }
+        let presentEntertainment = Set(
+            objects
+                .filter { $0.kind == .entertainment }
+                .map { EntertainmentType.resolve(catalogID: $0.catalogID, label: $0.label) }
+        )
+        for type in EntertainmentType.allCases where presentEntertainment.contains(type) {
+            items.append(
+                TenantLegendItem(id: type.catalogID, name: type.displayName, rgba: entertainmentRGBA(for: type))
+            )
+        }
         return items
     }
 
     /// Resolved RGBA color for one booth object.
     static func boothRGBA(for object: LayoutObject, legend: Legend = Legend()) -> SIMD4<Float> {
-        if let categoryID = object.categoryID {
-            let items = legendItems(for: nil, legend: legend)
-            if let match = items.first(where: { $0.id == categoryID.uuidString }) {
-                return match.rgba
-            }
+        switch object.boothType {
+        case nil: unassignedRGBA
+        case .fnb: foodRGBA
+        case .goods: goodsPalette[0]
         }
-        return isFood(object, legend: legend) ? foodRGBA : goodsPalette[0]
     }
 
     static func boothNSColor(for object: LayoutObject, legend: Legend = Legend()) -> NSColor {
-        let rgba = boothRGBA(for: object, legend: legend)
-        return NSColor(
+        nsColor(for: boothRGBA(for: object, legend: legend))
+    }
+
+    static func entertainmentRGBA(for type: EntertainmentType) -> SIMD4<Float> {
+        switch type {
+        case .stage: SIMD4<Float>(0.85, 0.56, 0.26, 1)
+        case .photobooth: SIMD4<Float>(0.60, 0.44, 0.74, 1)
+        case .informationDesk: SIMD4<Float>(0.27, 0.64, 0.58, 1)
+        case .other: SIMD4<Float>(0.73, 0.65, 0.35, 1)
+        case .disabled: SIMD4<Float>(0.40, 0.43, 0.48, 1)
+        }
+    }
+
+    static func entertainmentRGBA(for object: LayoutObject) -> SIMD4<Float> {
+        entertainmentRGBA(for: EntertainmentType.resolve(catalogID: object.catalogID, label: object.label))
+    }
+
+    static func entertainmentNSColor(for type: EntertainmentType) -> NSColor {
+        nsColor(for: entertainmentRGBA(for: type))
+    }
+
+    static func entertainmentNSColor(for object: LayoutObject) -> NSColor {
+        nsColor(for: entertainmentRGBA(for: object))
+    }
+
+    fileprivate static func nsColor(for rgba: SIMD4<Float>) -> NSColor {
+        NSColor(
             srgbRed: CGFloat(rgba.x),
             green: CGFloat(rgba.y),
             blue: CGFloat(rgba.z),

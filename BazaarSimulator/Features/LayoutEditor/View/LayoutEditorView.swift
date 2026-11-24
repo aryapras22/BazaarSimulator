@@ -47,7 +47,9 @@ struct LayoutEditorView: View {
                     layer: viewModel.activeLayer,
                     isActive: { viewModel.isActive($0) },
                     isAvailable: { viewModel.tool(for: $0) != nil },
-                    onSelect: { viewModel.toggle($0) }
+                    onSelect: { viewModel.toggle($0) },
+                    isPopularityActive: viewModel.showsAttractiveness,
+                    onTogglePopularity: { viewModel.toggleAttractiveness() }
                 )
                 .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
                 .padding(.trailing, Self.rightColumnInset)
@@ -114,7 +116,8 @@ extension LayoutEditorView {
             groupClusters: viewModel.groupClusters,
             issues: viewModel.canvasIssueSnapshot,
             hoverWorld: pointer.world,
-            background: viewModel.canvasBackground
+            background: viewModel.canvasBackground,
+            showsAttractiveness: viewModel.showsAttractiveness
         )
     }
 
@@ -148,8 +151,7 @@ extension LayoutEditorView {
     @ViewBuilder
     private var editorHeader: some View {
         if is3DPreview {
-            let index = (viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0) + 1
-            Editor3DHeaderBar(layoutIndex: index, onBack: { viewModel.requestBack() })
+            Editor3DHeaderBar(layoutTitle: viewModel.activeLayoutTitle, onBack: { viewModel.requestBack() })
         } else {
             EditorHeaderBar(viewModel: viewModel)
         }
@@ -182,6 +184,7 @@ extension LayoutEditorView {
                 tool: viewModel.tool,
                 message: viewModel.transientHint,
                 background: $viewModel.canvasBackground,
+                showsAttractiveness: viewModel.activeLayer == .booths && viewModel.showsAttractiveness,
                 onZoomIn: { viewModel.zoomIn(in: canvasViewSize) },
                 onZoomOut: { viewModel.zoomOut(in: canvasViewSize) },
                 onFit: { viewModel.fitToView(in: canvasViewSize) }

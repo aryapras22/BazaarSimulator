@@ -54,8 +54,7 @@ struct EditorHeaderBar: View {
 
     /// Which layout is being edited is chosen from the upload page, so the title is only a label here.
     private var layoutTitle: some View {
-        let index = (viewModel.layouts.firstIndex { $0.id == viewModel.activeLayoutID } ?? 0) + 1
-        return Text("Layout \(index)")
+        Text(viewModel.activeLayoutTitle)
             .font(.system(size: 17, weight: .semibold))
             .foregroundColor(Palette.textPrimary)
     }
