@@ -33,7 +33,7 @@ struct LayoutPreviewDialog: View {
             }
 
             ZoomablePlan(zoom: $zoom) {
-                LayoutPlanCanvas(layout: layout, plan: plan, legend: legend)
+                LayoutPlanCanvas(layout: layout, plan: plan, legend: legend, colorMode: .simulation)
                     .equatable()
             }
             .aspectRatio(planAspect, contentMode: .fit)

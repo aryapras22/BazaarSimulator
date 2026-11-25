@@ -9,37 +9,23 @@ struct LayoutEditorView: View {
     @State private var is3DPreview = false
     @FocusState private var isCanvasFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.pageClearsToolbar) private var pageClearsToolbar
 
     /// Room the tool buttons take at the right of the canvas: their width and a gap on each side.
     private static let toolButtonsWidth: CGFloat = 64
     private static let inspectorWidth = InspectorPanelMetrics.width
     private static let rightColumnInset = inspectorWidth + InspectorPanelMetrics.margin * 3
-    /// The header row: its top gap, its height and the gap under it.
-    private static let headerRowHeight: CGFloat = Spacing.m + 40 + Spacing.s
     /// How much of the canvas' right side lies under the tool buttons and the inspector.
     private static let coveredWidth = inspectorWidth + InspectorPanelMetrics.margin * 2 + toolButtonsWidth
 
     var body: some View {
         // The canvas runs the full width, under the tool buttons and the inspector, which float over its right side.
-        // The inspector runs the whole height of the window, so the header, with undo and redo, ends above the tools.
         ZStack(alignment: .topTrailing) {
-            VStack(spacing: 0) {
-                editorHeader
-                    // The window's own buttons and the sidebar toggle float over the top left, so the bar starts after them.
-                    .padding(.leading, pageClearsToolbar ? Spacing.l : 150)
-                    // Redo ends exactly above the right edge of the tool buttons.
-                    .padding(.trailing, is3DPreview ? Spacing.l : Self.rightColumnInset)
-                    .padding(.top, Spacing.m)
-                    .padding(.bottom, Spacing.s)
-
-                EditorViewportContainer(
-                    is3DPreview: Binding(get: { is3DPreview }, set: { set3DPreview($0) }),
-                    layout: viewModel.activeLayout,
-                    background: viewModel.canvasBackground
-                ) {
-                    viewportArea
-                }
+            EditorViewportContainer(
+                is3DPreview: Binding(get: { is3DPreview }, set: { set3DPreview($0) }),
+                layout: viewModel.activeLayout,
+                background: viewModel.canvasBackground
+            ) {
+                viewportArea
             }
 
             if !is3DPreview {
@@ -51,7 +37,7 @@ struct LayoutEditorView: View {
                     isPopularityActive: viewModel.showsAttractiveness,
                     onTogglePopularity: { viewModel.toggleAttractiveness() }
                 )
-                .padding(.top, Self.headerRowHeight + InspectorPanelMetrics.margin + Spacing.s)
+                .padding(.top, InspectorPanelMetrics.margin + Spacing.s)
                 .padding(.trailing, Self.rightColumnInset)
 
                 LayoutInspectorColumn(
@@ -64,7 +50,9 @@ struct LayoutEditorView: View {
         }
         .frame(minWidth: 800, minHeight: 560)
         .background(Palette.background.ignoresSafeArea())
-        .underToolbarInWindow()
+        .toolbar {
+            EditorHeaderToolbar(viewModel: viewModel, is3DPreview: is3DPreview)
+        }
         .navigationTitle(viewModel.projectName)
         .navigationSubtitle(viewModel.layouts.count > 1 ? "" : viewModel.activeLayout?.name ?? "")
         .focusedSceneValue(\.editorCommandActions, commandActions)
@@ -146,15 +134,6 @@ extension LayoutEditorView {
             selectStructureLayer: { guard !is3DPreview else { return }; viewModel.selectLayer(.structure) },
             selectBoothsLayer: { guard !is3DPreview else { return }; viewModel.selectLayer(.booths) }
         )
-    }
-
-    @ViewBuilder
-    private var editorHeader: some View {
-        if is3DPreview {
-            Editor3DHeaderBar(layoutTitle: viewModel.activeLayoutTitle, onBack: { viewModel.requestBack() })
-        } else {
-            EditorHeaderBar(viewModel: viewModel)
-        }
     }
 
     private func set3DPreview(_ enabled: Bool) {

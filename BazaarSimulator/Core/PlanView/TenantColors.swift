@@ -9,7 +9,7 @@ struct TenantLegendItem: Identifiable, Equatable {
     let rgba: SIMD4<Float>
 
     var color: Color {
-        Color(.sRGB, red: Double(rgba.x), green: Double(rgba.y), blue: Double(rgba.z), opacity: Double(rgba.w))
+        TenantColors.color(for: rgba)
     }
 
     var nsColor: NSColor {
@@ -17,8 +17,15 @@ struct TenantLegendItem: Identifiable, Equatable {
     }
 }
 
-/// Cohesive fixed category colors shared across 2D SpriteKit, 3D Metal, and the simulation legend.
+/// Cohesive fixed category colors shared across 2D SpriteKit, 3D Metal, layout preview, and the simulation legend.
 enum TenantColors {
+    static let hallFloorRGBA = VenueGeometry.hallFloorColor
+    static let lobbyFloorRGBA = VenueGeometry.lobbyFloorColor
+    static let outlineRGBA = VenueGeometry.frameColor
+    static let hallFloorColor = color(for: hallFloorRGBA)
+    static let lobbyFloorColor = color(for: lobbyFloorRGBA)
+    static let outlineColor = color(for: outlineRGBA)
+
     static let unassignedRGBA = SIMD4<Float>(0.56, 0.59, 0.65, 1)
     static let foodRGBA = SIMD4<Float>(0.76, 0.41, 0.36, 1)
     static let goodsPalette: [SIMD4<Float>] = [
@@ -98,7 +105,33 @@ enum TenantColors {
         nsColor(for: entertainmentRGBA(for: object))
     }
 
-    fileprivate static func nsColor(for rgba: SIMD4<Float>) -> NSColor {
+    static func objectRGBA(for object: LayoutObject, legend: Legend = Legend()) -> SIMD4<Float> {
+        switch object.kind {
+        case .booth: boothRGBA(for: object, legend: legend)
+        case .table: VenueGeometry.yellowColor
+        case .seating: VenueGeometry.paleBlueColor
+        case .entertainment: entertainmentRGBA(for: object)
+        case .door: VenueGeometry.doorColor(for: object)
+        case .wall: VenueGeometry.whiteColor
+        case .block where object.isColumn: VenueGeometry.cobaltColor
+        case .block: VenueGeometry.blockColor
+        case .closedArea: VenueGeometry.paleBlueColor
+        }
+    }
+
+    static func objectColor(for object: LayoutObject, legend: Legend = Legend()) -> Color {
+        color(for: objectRGBA(for: object, legend: legend))
+    }
+
+    static func objectNSColor(for object: LayoutObject, legend: Legend = Legend()) -> NSColor {
+        nsColor(for: objectRGBA(for: object, legend: legend))
+    }
+
+    static func color(for rgba: SIMD4<Float>) -> Color {
+        Color(.sRGB, red: Double(rgba.x), green: Double(rgba.y), blue: Double(rgba.z), opacity: Double(rgba.w))
+    }
+
+    static func nsColor(for rgba: SIMD4<Float>) -> NSColor {
         NSColor(
             srgbRed: CGFloat(rgba.x),
             green: CGFloat(rgba.y),

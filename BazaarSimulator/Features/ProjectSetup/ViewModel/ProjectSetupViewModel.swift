@@ -94,7 +94,9 @@ final class ProjectSetupViewModel {
 
     /// The current layout for a floor plan, preferring edited session state over the initial import.
     func previewLayout(fileID: UUID) -> Layout? {
-        session.layout(id: fileID, in: projectID) ?? importQueue.extractedLayout(for: fileID)?.layout
+        session.layout(id: fileID, in: projectID)
+            ?? importQueue.extractedLayout(for: fileID)?.layout
+                .resolvingBoothTypes(from: Legend(entries: legendEntries))
     }
 
     func clearUnsupportedFile() {

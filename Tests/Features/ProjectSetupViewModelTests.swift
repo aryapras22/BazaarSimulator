@@ -442,6 +442,65 @@ extension ProjectSetupViewModelTests {
         )
         #expect(row.status == expectedStatus)
     }
+
+    @Test("previewLayout resolves missing booth types from legendEntries before saving a draft")
+    @MainActor
+    func previewLayoutResolvesBoothTypesBeforeDraftSaved() throws {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Bazaar 1")
+        let fnbEntry = LegendEntry(name: "FNB", color: LegendColor(red: 1, green: 0, blue: 0), type: .fnb)
+        let customEntry = LegendEntry(name: "Craft", color: LegendColor(red: 0, green: 1, blue: 0), type: nil)
+        let place = Placement(center: SIMD2<Double>(4, 4), sizeM: SIMD2<Double>(2, 2))
+        let fnbBooth = LayoutObject(kind: .booth, label: "B1", placement: place, categoryID: fnbEntry.id)
+        let pickedBooth = LayoutObject(kind: .booth, label: "B2", placement: place, categoryID: customEntry.id)
+        let unassignedBooth = LayoutObject(kind: .booth, label: "B3", placement: place)
+        let fileID = UUID()
+        let extracted = ExtractedLayout(layout: Layout(
+            id: fileID,
+            name: "Plan 1",
+            sizeM: SIMD2<Double>(20, 20),
+            objects: [fnbBooth, pickedBooth, unassignedBooth]
+        ))
+        let queue = PreviewImportQueueStub(
+            legend: Legend(entries: [fnbEntry, customEntry]),
+            extracted: [fileID: extracted]
+        )
+        let viewModel = ProjectSetupViewModel(
+            projectID: project.id,
+            session: session,
+            importQueue: queue,
+            onContinue: { _ in }
+        )
+
+        viewModel.setLegendEntryType(id: customEntry.id, to: .goods)
+
+        #expect(session.layout(id: fileID, in: project.id) == nil)
+        let preview = try #require(viewModel.previewLayout(fileID: fileID))
+        #expect(preview.objects.first { $0.id == fnbBooth.id }?.boothType == .fnb)
+        #expect(preview.objects.first { $0.id == pickedBooth.id }?.boothType == .goods)
+        #expect(preview.objects.first { $0.id == unassignedBooth.id }?.boothType == nil)
+    }
+}
+
+@MainActor
+private final class PreviewImportQueueStub: ImportQueueing {
+    private let storedLegend: Legend
+    private let storedExtracted: [UUID: ExtractedLayout]
+
+    init(legend: Legend, extracted: [UUID: ExtractedLayout]) {
+        self.storedLegend = legend
+        self.storedExtracted = extracted
+    }
+
+    func files(for projectID: UUID) -> [ImportFile] { [] }
+    func legend(for projectID: UUID) -> Legend? { storedLegend }
+    func extractedLayout(for fileID: UUID) -> ExtractedLayout? { storedExtracted[fileID] }
+    func logEntries(for projectID: UUID) -> [ImportLogEntry] { [] }
+    func add(urls: [URL], kind: ImportFileKind, projectID: UUID) {}
+    func remove(fileID: UUID) {}
+    func retry(fileID: UUID) {}
+    func cancel(projectID: UUID) {}
+    func removeAll(projectID: UUID) {}
 }
 
 @Suite("UploadPageStatesTests")

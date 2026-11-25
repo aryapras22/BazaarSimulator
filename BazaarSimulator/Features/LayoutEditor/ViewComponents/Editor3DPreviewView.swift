@@ -87,7 +87,7 @@ struct Editor3DHeaderBar: View {
                 headerButton("arrow.uturn.forward", label: "Redo", help: "Redo (⇧⌘Z / ⌘Y)", enabled: false, action: {})
             }
         }
-        .frame(height: 40)
+        .frame(height: ToolbarMetrics.controlSize)
     }
 
     private func headerButton(
@@ -99,9 +99,9 @@ struct Editor3DHeaderBar: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: ToolbarMetrics.iconFontSize, weight: .medium))
                 .foregroundStyle(Palette.textPrimary.opacity(enabled ? 1 : 0.35))
-                .frame(width: 38, height: 38)
+                .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
                 .background(Circle().fill(Palette.surface))
                 .overlay(Circle().strokeBorder(Palette.surfaceBorder, lineWidth: 1))
                 .contentShape(Circle())
