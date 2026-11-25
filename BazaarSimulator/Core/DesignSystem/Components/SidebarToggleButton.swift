@@ -7,9 +7,9 @@ struct SidebarToggleButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "sidebar.left")
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: ToolbarMetrics.iconFontSize, weight: .regular))
                 .foregroundColor(Palette.textSecondary)
-                .frame(width: 30, height: 30)
+                .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

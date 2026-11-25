@@ -30,19 +30,19 @@ struct EditorHeaderBar: View {
                 }
             }
         }
-        .frame(height: 40)
+        .frame(height: ToolbarMetrics.controlSize)
     }
 
     // MARK: Pieces
 
-    private var backButton: some View {
+    var backButton: some View {
         Button {
             viewModel.requestBack()
         } label: {
             Image(systemName: "chevron.left")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: ToolbarMetrics.iconFontSize, weight: .medium))
                 .foregroundColor(Palette.textPrimary)
-                .frame(width: 38, height: 38)
+                .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
                 .background(Circle().fill(Color(hex: 0x1C2A40)))
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75))
                 .contentShape(Circle())
@@ -53,13 +53,15 @@ struct EditorHeaderBar: View {
     }
 
     /// Which layout is being edited is chosen from the upload page, so the title is only a label here.
-    private var layoutTitle: some View {
+    var layoutTitle: some View {
         Text(viewModel.activeLayoutTitle)
             .font(.system(size: 17, weight: .semibold))
             .foregroundColor(Palette.textPrimary)
+            .lineLimit(1)
+            .truncationMode(.tail)
     }
 
-    private var layerTabs: some View {
+    var layerTabs: some View {
         HStack(spacing: 0) {
             ForEach(Self.tabOrder, id: \.self) { layer in
                 let selected = viewModel.activeLayer == layer
@@ -69,7 +71,7 @@ struct EditorHeaderBar: View {
                     Text(Self.title(of: layer))
                         .font(.system(size: 13, weight: selected ? .semibold : .medium))
                         .foregroundColor(selected ? Palette.textPrimary : Palette.textSecondary)
-                        .frame(width: 168, height: 30)
+                        .frame(width: ToolbarMetrics.tabItemWidth, height: ToolbarMetrics.tabItemHeight)
                         .background(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .fill(selected ? Color(hex: 0x3A4A66) : Color.clear)
@@ -80,20 +82,23 @@ struct EditorHeaderBar: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(3)
+        .padding(ToolbarMetrics.tabTrackInset)
         .background(Color(hex: 0x1A2740), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color(hex: 0x2F4260), lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(hex: 0x2F4260), lineWidth: 1)
+        )
         .help("Layer (⌘1 Structure, ⌘2 Floor Plan)")
     }
 
-    private func roundButton(
+    func roundButton(
         _ symbol: String, label: String, help: String, enabled: Bool, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: ToolbarMetrics.iconFontSize, weight: .medium))
                 .foregroundColor(Palette.textPrimary.opacity(enabled ? 1 : 0.35))
-                .frame(width: 38, height: 38)
+                .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
                 .background(Circle().fill(Color(hex: 0x1C2A40)))
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75))
                 .contentShape(Circle())
@@ -104,7 +109,7 @@ struct EditorHeaderBar: View {
         .accessibilityLabel(label)
     }
 
-    private func placingChip(_ text: String) -> some View {
+    func placingChip(_ text: String) -> some View {
         HStack(spacing: Spacing.xs) {
             Text(text)
                 .font(Typography.caption)
@@ -134,7 +139,7 @@ struct EditorHeaderBar: View {
         layer == .booths ? "Floor Plan" : "Structure"
     }
 
-    private var placingChipTitle: String? {
+    var placingChipTitle: String? {
         switch viewModel.tool {
         case .place(let source):
             switch source {
@@ -156,5 +161,63 @@ struct EditorHeaderBar: View {
         default:
             return nil
         }
+    }
+}
+
+struct EditorHeaderToolbar: ToolbarContent {
+    @Bindable var viewModel: LayoutEditorViewModel
+    let is3DPreview: Bool
+
+    private var header: EditorHeaderBar {
+        EditorHeaderBar(viewModel: viewModel)
+    }
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            header.backButton
+                .padding(.leading, Spacing.s)
+        }
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarItem(placement: .navigation) {
+            header.layoutTitle
+                .padding(.leading, Spacing.s)
+        }
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: Spacing.m) {
+                if let chip = header.placingChipTitle {
+                    header.placingChip(chip)
+                }
+                header.layerTabs
+            }
+            .frame(height: ToolbarMetrics.controlSize)
+        }
+        .hidden(is3DPreview)
+        .sharedBackgroundVisibility(.hidden)
+
+        ToolbarItem(placement: .primaryAction) {
+            HStack(spacing: Spacing.s) {
+                header.roundButton(
+                    "arrow.uturn.backward",
+                    label: "Undo",
+                    help: "Undo (⌘Z)",
+                    enabled: !is3DPreview && viewModel.canUndo
+                ) {
+                    viewModel.undo()
+                }
+                header.roundButton(
+                    "arrow.uturn.forward",
+                    label: "Redo",
+                    help: "Redo (⇧⌘Z / ⌘Y)",
+                    enabled: !is3DPreview && viewModel.canRedo
+                ) {
+                    viewModel.redo()
+                }
+            }
+            .padding(.trailing, Spacing.m)
+        }
+        .sharedBackgroundVisibility(.hidden)
     }
 }
