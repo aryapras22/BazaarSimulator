@@ -57,10 +57,13 @@ struct RootView: View {
         // up under the transparent toolbar.
         .environment(\.pageClearsToolbar, isFullScreen)
         .onAppear {
-            isFullScreen = NSApp.keyWindow?.styleMask.contains(.fullScreen) ?? false
+            // A window restored in full screen is not key yet when this runs, so any full screen window counts.
+            isFullScreen = NSApp.windows.contains { $0.styleMask.contains(.fullScreen) }
+            NSApp.windows.filter { $0.styleMask.contains(.titled) }.forEach(Self.paintTitlebar)
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             isFullScreen = true
+            (note.object as? NSWindow).map(Self.paintTitlebar)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { _ in
             isFullScreen = false
@@ -93,6 +96,12 @@ struct RootView: View {
                 columnVisibility = .all
             }
         }
+    }
+
+    /// In full screen AppKit covers the toolbar with an opaque title bar fill in the window's background color, over
+    /// any SwiftUI toolbar background, so the window itself takes the page's color.
+    private static func paintTitlebar(_ window: NSWindow) {
+        window.backgroundColor = NSColor(Palette.background)
     }
 
     /// The page on screen, when it is an analysis. Its Insights are drawn over the whole window from here.
