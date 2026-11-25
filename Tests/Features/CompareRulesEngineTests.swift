@@ -54,7 +54,7 @@ struct CompareRulesEngineTests {
         return [.one: out1, .two: out2]
     }
 
-    @Test("Congestion Points tab picks the layout with fewer stuck spots on average")
+    @Test("Stuck Spots tab picks the layout with fewer stuck spots on average")
     func congestionPointsWinner() {
         let outcomes = makeFixtureOutcomes()
         let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00")
@@ -75,7 +75,7 @@ struct CompareRulesEngineTests {
         #expect(content.facts.count == 3)
     }
 
-    @Test("Congestion Duration tab picks the layout with less time stuck on average")
+    @Test("Time Stuck tab picks the layout with less time stuck on average")
     func congestionDurationWinner() {
         let outcomes = makeFixtureOutcomes()
         let engine = CompareRulesEngine(outcomes: outcomes, peakHourText: "14:00")

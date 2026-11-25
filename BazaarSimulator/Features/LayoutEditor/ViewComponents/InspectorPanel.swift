@@ -88,7 +88,7 @@ struct RenameableTitle: View {
                     .onExitCommand { isEditing = false }
                     .padding(.horizontal, Spacing.s)
                     .frame(height: 28)
-                    .background(Color(hex: 0x1F2E48), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .background(Color(hex: 0x1F2E48), in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
                     .onChange(of: isFocused) { _, focused in
                         if !focused && isEditing { commit() }
                     }
@@ -171,7 +171,7 @@ struct InspectorTip: View {
                         .foregroundColor(Palette.tipText)
                         .padding(.horizontal, Spacing.s)
                         .padding(.vertical, 4)
-                        .background(Palette.tipButton, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .background(Palette.tipButton, in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }

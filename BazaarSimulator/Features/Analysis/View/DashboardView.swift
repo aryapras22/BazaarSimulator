@@ -76,11 +76,14 @@ struct DashboardView<ParametersSheet: View>: View {
                         .padding(.horizontal, 18)
                         .frame(height: TopBar.controlHeight)
                         .background {
-                            Capsule()
+                            RoundedRectangle.button
                                 .fill(Color.cardButtonFill)
-                                .overlay { Capsule().strokeBorder(Color.controlBorder.opacity(0.55), lineWidth: 0.75) }
+                                .overlay {
+                                    RoundedRectangle.button
+                                        .strokeBorder(Color.controlBorder.opacity(0.55), lineWidth: 0.75)
+                                }
                         }
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle.button)
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, TopBar.edgeInset)

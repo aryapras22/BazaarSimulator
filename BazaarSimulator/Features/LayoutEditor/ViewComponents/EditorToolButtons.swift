@@ -60,18 +60,18 @@ struct EditorToolButtons: View {
                     .foregroundColor(Palette.textPrimary.opacity(isAvailable ? 1 : 0.35))
                     .frame(width: 40, height: 40)
                     .background(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
                             .fill(isActive ? Color(hex: 0x3D5073) : Color(hex: 0x2A3A56))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
                             .strokeBorder(
                                 isActive ? Palette.highlight : Color(hex: 0x40536F),
                                 lineWidth: isActive ? 1.5 : 1
                             )
                     )
                     .shadow(color: .black.opacity(0.25), radius: 5, y: 2)
-                    .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .contentShape(RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(!isAvailable)

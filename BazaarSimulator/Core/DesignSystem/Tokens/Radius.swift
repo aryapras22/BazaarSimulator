@@ -8,3 +8,8 @@ enum Radius {
     static let xl: CGFloat = 24
 }
 // swiftlint:enable identifier_name
+
+extension RoundedRectangle {
+    /// The shape of every button: the corner radius of the Choose files button.
+    static var button: RoundedRectangle { RoundedRectangle(cornerRadius: Radius.s) }
+}

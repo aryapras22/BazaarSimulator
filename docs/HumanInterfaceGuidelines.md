@@ -97,4 +97,4 @@ Reference guide for Apple Human Interface Guidelines (HIG) tailored for Bazaar S
 | Layout editor canvas | Direct manipulation canvas with zooming and panning | [`CanvasSceneRenderer`](file:///Users/arya/projects/ada/BazaarSimulator/BazaarSimulator/Features/LayoutEditor/ViewComponents/CanvasSceneRenderer.swift) with marquee selection and hover |
 | Layout editor inspector | Inspector panel with grouped property controls | `InspectorPanel` presenting single-object, group, and wall properties |
 | Parameters dialog | Modal configuration sheet | `ParametersDialog` with Cancel and Apply buttons |
-| 3D simulation | Tabbed metric views with playback transport bar | Simulation screen with Density, Congestion, and Footfall tabs and timeline controls |
+| 3D simulation | Tabbed metric views with playback transport bar | Simulation screen with Density, Stuck Spots, and Footfall tabs and timeline controls |

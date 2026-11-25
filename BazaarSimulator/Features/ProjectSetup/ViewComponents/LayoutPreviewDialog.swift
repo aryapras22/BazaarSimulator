@@ -24,8 +24,8 @@ struct LayoutPreviewDialog: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Palette.textPrimary)
                         .frame(width: 30, height: 30)
-                        .background(Circle().fill(Palette.control))
-                        .contentShape(Circle())
+                        .background(RoundedRectangle.button.fill(Palette.control))
+                        .contentShape(RoundedRectangle.button)
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.cancelAction)
@@ -67,8 +67,8 @@ struct LayoutPreviewDialog: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Palette.textPrimary.opacity(disabled ? 0.35 : 1))
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(Palette.control))
-                .contentShape(Circle())
+                .background(RoundedRectangle.button.fill(Palette.control))
+                .contentShape(RoundedRectangle.button)
         }
         .buttonStyle(.plain)
         .disabled(disabled)

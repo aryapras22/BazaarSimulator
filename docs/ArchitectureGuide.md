@@ -35,8 +35,8 @@ A project is one bazaar. It holds a legend, one set of event parameters, and sev
 | Parameters | A sheet that opens when setup continues, and again from the Analysis header, with Cancel and Apply. Total visitors per day, event duration, bazaar type, visitor type mix. Applies to every layout in the project |
 | Project overview | Header with Parameters and Legend buttons. One card per layout with a thumbnail, zone badges (A to F) colored by risk, counts of low, medium, and high zones, and Simulate and Edit buttons |
 | Saved analyses | Every time Apply finishes a parameter run, the session saves a `SavedAnalysis` (parameters, layout copies, and the per-spot, per-minute `LayoutAnalysis` measurements, without the recorded footage) as "Run N" inside the project folder in the sidebar. The Analysis page shows the latest one, and opening one from the sidebar shows the same page as it was, without Parameters, Simulate, or Edit. Rename and Delete are in its context menu. `FileSavedAnalysisStore` (`Core/Repositories/`) keeps the project list and one JSON file per analysis under Application Support, so both survive a restart |
-| Analysis | The compare page, laid out like the Challenge 5 prototype: a header with Back and Parameters, two layout cards (plan with numbered stuck spots, Simulate and Edit at the top right), and a Best Layout summary with three checks and an Insights button. Hovering a spot opens a details box and a click keeps it open. Insights opens a sheet with tabs for Congestion Points, Congestion Duration, Crowd Density, and Flow Rate, each with a recommendation ("Our choice"), a comparison table, and a chart over the day |
-| Simulation | Simulate on a layout card opens its own window (`SimulationWindowView`). It plays the busiest 10 minutes of that layout from the same run the analysis was measured from, in 2D or in a Metal 3D view (`Metal3DRenderer`), with Congestion, Density, and Footfall overlays and playback controls. `SimulationReplayBuilder` cuts the window out of the run's recorded frames. `SimulationPlayerLoader` uses the run the app still holds when it matches the saved analysis, and otherwise re-runs the same layout with the saved parameters, which gives the same crowd because the engine is seeded |
+| Analysis | The compare page, laid out like the Challenge 5 prototype: a header with Back and Parameters, two layout cards (plan with numbered stuck spots, Simulate and Edit at the top right), and a Best Layout summary with three checks and an Insights button. Hovering a spot opens a details box and a click keeps it open. Insights opens a sheet with tabs for Stuck Spots, Time Stuck, Crowd Density, and Flow Rate, each with a recommendation ("Our choice"), a comparison table, and a chart over the day |
+| Simulation | Simulate on a layout card opens its own window (`SimulationWindowView`). It plays the busiest 10 minutes of that layout from the same run the analysis was measured from, in 2D or in a Metal 3D view (`Metal3DRenderer`), with Stuck Spots, Density, and Footfall overlays and playback controls. `SimulationReplayBuilder` cuts the window out of the run's recorded frames. `SimulationPlayerLoader` uses the run the app still holds when it matches the saved analysis, and otherwise re-runs the same layout with the saved parameters, which gives the same crowd because the engine is seeded |
 
 Two things are missing from the Hi-Fi. It has no separate review screen, so this guide reuses the Layout editor for it, with detected objects marked for confirmation. It also shows no way to start a layout without a PDF, but the editor still has to work without a reader (see Floor plan import and reading).
 
@@ -437,7 +437,7 @@ sequenceDiagram
         Engine-->>Service: LayoutAnalysis
     end
     Service-->>VM: One LayoutAnalysis per layout
-    User->>VM: Picks a tab (Crowd Density, Flow Rate, Congestion, Duration)
+    User->>VM: Picks a tab (Crowd Density, Flow Rate, Stuck Spots, Time Stuck)
     VM->>Rec: recommendation(for: tab, analyses)
     Rec-->>VM: Recommendation
     VM-->>User: Our choice, table, and chart
@@ -465,11 +465,11 @@ sequenceDiagram
         Engine-->>VM: SimulationSnapshot (HeatmapFrame at a lower rate)
         VM-->>Scene: Update agents and the selected overlay
     end
-    User->>VM: Pauses, changes speed, or picks Density, Congestion, or Footfall
+    User->>VM: Pauses, changes speed, or picks Density, Stuck Spots, or Footfall
     VM->>Engine: pause() or setSpeed()
 ```
 
-The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. The static layout scene now comes from `Core/Scene3D`; the simulation adds agents and overlays on top. Agents are drawn from snapshots. The Density, Congestion, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. These simulation-specific overlays live in `Features/Simulation/Scene/`. RealityKit is used for the 3D scene (confirmed via spike off `feature/layout-editor`). The engine and view model do not change either way, because they only produce snapshots.
+The Simulation view builds the 3D scene from the layout while the Preparing Layout screen is up. The static layout scene now comes from `Core/Scene3D`; the simulation adds agents and overlays on top. Agents are drawn from snapshots. The Density, Stuck Spots, and Footfall tabs switch which layer of the `HeatmapFrame` is painted over the floor. These simulation-specific overlays live in `Features/Simulation/Scene/`. RealityKit is used for the 3D scene (confirmed via spike off `feature/layout-editor`). The engine and view model do not change either way, because they only produce snapshots.
 
 * * *
 ## macOS specifics

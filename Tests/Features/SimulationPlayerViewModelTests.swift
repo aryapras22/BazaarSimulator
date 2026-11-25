@@ -407,9 +407,9 @@ struct SimulationPlayerSceneTests {
         #expect(smoothed[0] == 0)
     }
 
-    @Test("Simulation modes expose Congestion Spots, Crowd Level, and Walking Routes tabs")
+    @Test("Simulation modes expose Stuck Spots, Crowd Level, and Walking Routes tabs")
     func modeTitles() {
-        #expect(SimulationMode.allCases.map(\.title) == ["Congestion Spots", "Crowd Level", "Walking Routes"])
+        #expect(SimulationMode.allCases.map(\.title) == ["Stuck Spots", "Crowd Level", "Walking Routes"])
     }
 
     @Test("Tenant categories use fixed picker order, boothType colors, and entertainment resolution")

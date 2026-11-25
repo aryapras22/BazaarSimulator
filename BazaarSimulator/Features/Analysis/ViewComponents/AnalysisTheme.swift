@@ -40,7 +40,8 @@ extension Radius {
     static let card: CGFloat = 26
     static let panel: CGFloat = 24
     static let tile: CGFloat = 10
-    static let control: CGFloat = 8
+    /// The corner radius of every button, the same as the Choose files button.
+    static let control: CGFloat = Radius.s
 }
 
 private struct CardsAreGlassKey: EnvironmentKey {
