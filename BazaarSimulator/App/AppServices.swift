@@ -48,7 +48,16 @@ final class AppServices {
 
     /// `planNames` are the file names users see; the scripted queue loads `layoutNames` by position.
     private static let mockSeeds: [(name: String, layoutNames: [String], planNames: [String])] = [
-        ("Sample Project", ["annyeong-market-layout", "beyond-market-layout"], ["Sample Plan 1", "Sample Plan 2"])
+        ("Sample Project", ["annyeong-market-layout", "beyond-market-layout"], ["Sample Plan 1", "Sample Plan 2"]),
+        ("Sample Project 2", [
+            "more-market-i-layout",
+            "more-market-ii-layout",
+            "more-market-iii-layout",
+            "more-market-iv-layout",
+            "more-market-v-layout",
+            "more-market-vi-layout",
+            "more-market-viii-layout"
+        ], (1...7).map { "Sample Plan \($0)" })
     ]
 
     private static func seedMockProject(
