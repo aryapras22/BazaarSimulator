@@ -99,9 +99,9 @@ struct EditorHeaderBar: View {
                 .font(.system(size: ToolbarMetrics.iconFontSize, weight: .medium))
                 .foregroundColor(Palette.textPrimary.opacity(enabled ? 1 : 0.35))
                 .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
-                .background(Circle().fill(Color(hex: 0x1C2A40)))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75))
-                .contentShape(Circle())
+                .background(RoundedRectangle.button.fill(Color(hex: 0x1C2A40)))
+                .overlay(RoundedRectangle.button.strokeBorder(Color.white.opacity(0.14), lineWidth: 0.75))
+                .contentShape(RoundedRectangle.button)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)

@@ -73,6 +73,7 @@ struct Editor3DHeaderBar: View {
                 label: "Back to Analysis",
                 help: "Back to Analysis",
                 enabled: true,
+                isRound: true,
                 action: onBack
             )
 
@@ -95,16 +96,19 @@ struct Editor3DHeaderBar: View {
         label: String,
         help: String,
         enabled: Bool,
+        isRound: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        // Back is a circle. Undo and Redo use the shape of every other button.
+        let shape = AnyShape(isRound ? AnyShape(Circle()) : AnyShape(RoundedRectangle.button))
+        return Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: ToolbarMetrics.iconFontSize, weight: .medium))
                 .foregroundStyle(Palette.textPrimary.opacity(enabled ? 1 : 0.35))
                 .frame(width: ToolbarMetrics.controlSize, height: ToolbarMetrics.controlSize)
-                .background(Circle().fill(Palette.surface))
-                .overlay(Circle().strokeBorder(Palette.surfaceBorder, lineWidth: 1))
-                .contentShape(Circle())
+                .background(shape.fill(Palette.surface))
+                .overlay(shape.stroke(Palette.surfaceBorder, lineWidth: 1))
+                .contentShape(shape)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
