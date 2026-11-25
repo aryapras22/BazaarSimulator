@@ -12,7 +12,6 @@ struct LayoutComparisonCard: View {
     var planHeight: CGFloat?
     /// Simulate is on every layout, also on a saved run, which plays its own layouts. A saved run has no Edit.
     var showsSimulate = true
-    var showsEdit = true
     /// With one layout the card is the whole page, so it also names the worst spot under the plan.
     var showsWorstSpot = false
     /// The project's layouts this card can show instead. Empty when there is nothing to pick.
@@ -23,7 +22,6 @@ struct LayoutComparisonCard: View {
     var bestChoiceID: Layout.ID?
     var onChoose: (Layout.ID) -> Void = { _ in }
     var onSimulate: () -> Void = {}
-    var onEdit: () -> Void = {}
 
     @Environment(\.layoutNames) private var names
     @State private var hoveredSpot: Int?
@@ -100,15 +98,6 @@ struct LayoutComparisonCard: View {
                 }
                 .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
                 .help("Watch visitors move through \(names.name(layout))")
-            }
-
-            if showsEdit {
-                Button(action: onEdit) {
-                    Label("Edit", systemImage: "pencil")
-                        .labelStyle(ControlLabelStyle())
-                }
-                .buttonStyle(ControlButtonStyle(horizontalPadding: 12))
-                .help("Change \(names.name(layout)) in the layout editor")
             }
         }
     }

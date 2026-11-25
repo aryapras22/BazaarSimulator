@@ -226,7 +226,6 @@ struct DashboardSavedRunTests {
         await opened.runSimulation()
 
         #expect(opened.phase == .ready)
-        #expect(!opened.canEdit)
         #expect(opened.title == "P · Run 1")
         #expect(session.savedAnalyses(for: projectID).count == 1)
     }
@@ -515,7 +514,7 @@ struct ProjectDraftPersistenceTests {
         let store = temporaryStore()
         let firstSession = ProjectSession(store: store)
         _ = AppServices(projectSession: firstSession, seedsMockProject: true)
-        let seeded = try #require(firstSession.project(named: "Annyeong Market"))
+        let seeded = try #require(firstSession.project(named: "Sample Project"))
         var edited = try #require(firstSession.draft(for: seeded.id)?.layouts.first)
         edited.name = "Customized Annyeong"
         edited.sizeM.x += 2
@@ -524,7 +523,7 @@ struct ProjectDraftPersistenceTests {
         let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
         _ = AppServices(projectSession: reopened, seedsMockProject: true)
 
-        #expect(reopened.project(named: "Annyeong Market")?.id == seeded.id)
+        #expect(reopened.project(named: "Sample Project")?.id == seeded.id)
         #expect(reopened.layout(id: edited.id, in: seeded.id) == edited)
     }
 }

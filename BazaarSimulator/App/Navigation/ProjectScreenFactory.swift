@@ -117,14 +117,6 @@ final class ProjectScreenFactory {
             return existing
         }
         let session = services.projectSession
-        /// Layout 1 and Layout 2 on the compare page are the layouts the project compares.
-        func open(_ layout: LayoutID, then show: @escaping (UUID) -> Void) {
-            let layouts = session.comparedLayouts(for: projectID)
-            if layout.rawValue - 1 < layouts.count {
-                session.setActiveLayoutID(layouts[layout.rawValue - 1].id, for: projectID)
-            }
-            show(projectID)
-        }
         let created = DashboardViewModel(
             projectID: projectID,
             session: session,
@@ -135,9 +127,6 @@ final class ProjectScreenFactory {
             },
             onSimulate: { [weak router] layout, _ in
                 router?.showSimulation(projectID: projectID, layout: layout)
-            },
-            onEdit: { [weak router] layout in
-                open(layout) { router?.showEditor(projectID: $0) }
             },
             onOpenParameters: { [weak router] in
                 router?.showParameters(projectID: projectID)
