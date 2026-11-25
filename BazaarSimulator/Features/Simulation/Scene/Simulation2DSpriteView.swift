@@ -265,16 +265,12 @@ final class Venue2DScene: SKScene {
 
     // MARK: - Static Floor & Booths
 
-    private static func srgbColor(_ rgba: SIMD4<Float>) -> NSColor {
-        NSColor(srgbRed: CGFloat(rgba.x), green: CGFloat(rgba.y), blue: CGFloat(rgba.z), alpha: CGFloat(rgba.w))
-    }
-
     private func rebuildStaticLayout(_ layout: Layout, legend: Legend) {
         floorLayer.removeAllChildren()
         objectLayer.removeAllChildren()
 
-        let floorColor = Self.srgbColor(VenueGeometry.hallFloorColor)
-        let borderColor = Self.srgbColor(VenueGeometry.frameColor)
+        let floorColor = TenantColors.nsColor(for: TenantColors.hallFloorRGBA)
+        let borderColor = TenantColors.nsColor(for: TenantColors.outlineRGBA)
 
         if layout.hall.count >= 3 {
             floorLayer.addChild(makePolygonNode(points: layout.hall, in: layout, fill: floorColor, stroke: borderColor))
@@ -293,7 +289,7 @@ final class Venue2DScene: SKScene {
         }
 
         if layout.lobby.count >= 3 {
-            let lobbyColor = Self.srgbColor(VenueGeometry.lobbyFloorColor)
+            let lobbyColor = TenantColors.nsColor(for: TenantColors.lobbyFloorRGBA)
             floorLayer.addChild(makePolygonNode(points: layout.lobby, in: layout, fill: lobbyColor, stroke: borderColor))
         }
 
@@ -328,7 +324,7 @@ final class Venue2DScene: SKScene {
             width: CGFloat(object.placement.sizeM.x) * pointsPerMetre,
             height: CGFloat(object.placement.sizeM.y) * pointsPerMetre
         )
-        let inkColor = Self.srgbColor(VenueGeometry.frameColor)
+        let inkColor = TenantColors.nsColor(for: TenantColors.outlineRGBA)
         let node: SKShapeNode
         if object.kind == .table {
             let model = FurnitureModels.table(object.catalogID)
@@ -350,37 +346,21 @@ final class Venue2DScene: SKScene {
         node.zRotation = CGFloat(-object.placement.rotationRadians)
         node.strokeColor = inkColor
         node.lineWidth = 1.2
+        node.fillColor = TenantColors.objectNSColor(for: object, legend: legend)
 
         switch object.kind {
-        case .booth:
-            node.fillColor = TenantColors.boothNSColor(for: object)
-            node.zPosition = 1
-        case .table:
-            node.fillColor = Self.srgbColor(VenueGeometry.yellowColor)
-            node.zPosition = 1
         case .seating:
-            node.fillColor = Self.srgbColor(VenueGeometry.paleBlueColor)
             node.zPosition = 1
             addSeatingChairNodes(to: node, for: object, inkColor: inkColor)
-        case .entertainment:
-            node.fillColor = TenantColors.entertainmentNSColor(for: object)
-            node.zPosition = 1
         case .door:
-            node.fillColor = Self.srgbColor(VenueGeometry.doorColor(for: object))
             node.zPosition = 2
         case .wall:
-            node.fillColor = Self.srgbColor(VenueGeometry.whiteColor)
             node.lineWidth = 1.4
             node.zPosition = 0
-        case .block where object.isColumn:
-            node.fillColor = Self.srgbColor(VenueGeometry.cobaltColor)
-            node.zPosition = 1
-        case .block:
-            node.fillColor = Self.srgbColor(VenueGeometry.blockColor)
-            node.zPosition = 1
         case .closedArea:
-            node.fillColor = Self.srgbColor(VenueGeometry.paleBlueColor)
             node.zPosition = 0
+        case .booth, .table, .entertainment, .block:
+            node.zPosition = 1
         }
         return node
     }
@@ -388,7 +368,7 @@ final class Venue2DScene: SKScene {
     private func addSeatingChairNodes(to parent: SKNode, for object: LayoutObject, inkColor: NSColor) {
         let chairSide = CGFloat(FurnitureModels.chairSizeM.x) * pointsPerMetre
         let chairSize = CGSize(width: chairSide, height: chairSide)
-        let chairFill = Self.srgbColor(VenueGeometry.creamColor)
+        let chairFill = TenantColors.nsColor(for: VenueGeometry.creamColor)
         for offset in FurnitureModels.gridOffsets(for: object.placement.sizeM) {
             let chair = SKShapeNode(rectOf: chairSize, cornerRadius: 1)
             chair.position = CGPoint(
@@ -401,7 +381,9 @@ final class Venue2DScene: SKScene {
             parent.addChild(chair)
         }
     }
+}
 
+extension Venue2DScene {
     // MARK: - Smooth Radial Heatmap Overlay (Matching 3D View)
 
     private func updateSmoothHeatmap(

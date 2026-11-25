@@ -3,10 +3,16 @@ import SwiftUI
 /// The layout drawn as a floor plan: floor, booths, tables, stage, walls, and doors.
 /// Everything is placed through `plan`, so overlays that use the same frame line up with it.
 struct LayoutPlanCanvas: View, Equatable {
+    enum ColorMode: Equatable {
+        case neutral
+        case simulation
+    }
+
     let layout: Layout
     let plan: PlanFrame
     /// With a legend, a booth is filled with the color of its category. Without one, every booth is the same beige.
     var legend: Legend?
+    var colorMode: ColorMode = .neutral
 
     var body: some View {
         Canvas { context, size in
@@ -23,14 +29,31 @@ struct LayoutPlanCanvas: View, Equatable {
                 return path
             }
 
-            context.fill(path(layout.hall), with: .color(Style.floor))
-            context.fill(path(layout.lobby), with: .color(Style.lobby))
+            let hallShape = layout.hall.count >= 3
+                ? path(layout.hall)
+                : (colorMode == .simulation
+                    ? path([.zero, SIMD2(layout.sizeM.x, 0), layout.sizeM, SIMD2(0, layout.sizeM.y)])
+                    : Path())
+            if !hallShape.isEmpty {
+                context.fill(hallShape, with: .color(Style.floor(for: colorMode)))
+                if let surfaceOutline = Style.surfaceOutline(for: colorMode) {
+                    context.stroke(hallShape, with: .color(surfaceOutline), lineWidth: 1)
+                }
+            }
+
+            let lobbyShape = path(layout.lobby)
+            if !lobbyShape.isEmpty {
+                context.fill(lobbyShape, with: .color(Style.lobby(for: colorMode)))
+                if let surfaceOutline = Style.surfaceOutline(for: colorMode) {
+                    context.stroke(lobbyShape, with: .color(surfaceOutline), lineWidth: 1)
+                }
+            }
 
             for kind in Style.drawOrder {
                 for object in layout.objects where object.kind == kind {
                     let shape = path(LayoutGeometry.corners(of: object.placement))
-                    context.fill(shape, with: .color(Style.fill(for: object, legend: legend)))
-                    if let outline = Style.outline(for: kind) {
+                    context.fill(shape, with: .color(Style.fill(for: object, legend: legend, colorMode: colorMode)))
+                    if let outline = Style.outline(for: kind, colorMode: colorMode) {
                         context.stroke(shape, with: .color(outline), lineWidth: 1)
                     }
                     if kind == .entertainment {
@@ -44,22 +67,44 @@ struct LayoutPlanCanvas: View, Equatable {
     }
 
     private enum Style {
-        static let floor = Color(hex: 0xF4F6F9)
-        static let lobby = Color(hex: 0xE8ECF2)
         static let drawOrder: [LayoutObjectKind] = [
             .closedArea, .seating, .table, .booth, .entertainment, .block, .wall, .door
         ]
 
-        static func fill(for object: LayoutObject, legend: Legend?) -> Color {
+        static func floor(for colorMode: ColorMode) -> Color {
+            switch colorMode {
+            case .neutral: Color(hex: 0xF4F6F9)
+            case .simulation: TenantColors.hallFloorColor
+            }
+        }
+
+        static func lobby(for colorMode: ColorMode) -> Color {
+            switch colorMode {
+            case .neutral: Color(hex: 0xE8ECF2)
+            case .simulation: TenantColors.lobbyFloorColor
+            }
+        }
+
+        static func surfaceOutline(for colorMode: ColorMode) -> Color? {
+            switch colorMode {
+            case .neutral: nil
+            case .simulation: TenantColors.outlineColor
+            }
+        }
+
+        static func fill(for object: LayoutObject, legend: Legend?, colorMode: ColorMode) -> Color {
+            if colorMode == .simulation {
+                return TenantColors.objectColor(for: object, legend: legend ?? Legend())
+            }
             switch object.kind {
-            case .booth: boothFill(for: object, legend: legend)
-            case .table: Color(hex: 0xC3C9D2)
-            case .entertainment: Color(hex: 0x9AA2AF)
-            case .wall, .block: Color(hex: 0x5E6775)
-            case .closedArea: Color(hex: 0xC9CED6).opacity(0.85)
-            case .seating: Color(hex: 0xDDE2E9)
+            case .booth: return boothFill(for: object, legend: legend)
+            case .table: return Color(hex: 0xC3C9D2)
+            case .entertainment: return Color(hex: 0x9AA2AF)
+            case .wall, .block: return Color(hex: 0x5E6775)
+            case .closedArea: return Color(hex: 0xC9CED6).opacity(0.85)
+            case .seating: return Color(hex: 0xDDE2E9)
             case .door:
-                object.doorFlow?.direction == .entrance ? Color(hex: 0x3FA66B) : Color(hex: 0xE5483B)
+                return object.doorFlow?.direction == .entrance ? Color(hex: 0x3FA66B) : Color(hex: 0xE5483B)
             }
         }
 
@@ -73,10 +118,13 @@ struct LayoutPlanCanvas: View, Equatable {
             return Color(.sRGB, red: entry.color.red, green: entry.color.green, blue: entry.color.blue, opacity: 0.9)
         }
 
-        static func outline(for kind: LayoutObjectKind) -> Color? {
+        static func outline(for kind: LayoutObjectKind, colorMode: ColorMode) -> Color? {
+            if colorMode == .simulation {
+                return TenantColors.outlineColor
+            }
             switch kind {
-            case .booth, .table, .entertainment: Color(hex: 0x9C9484).opacity(0.7)
-            default: nil
+            case .booth, .table, .entertainment: return Color(hex: 0x9C9484).opacity(0.7)
+            default: return nil
             }
         }
     }

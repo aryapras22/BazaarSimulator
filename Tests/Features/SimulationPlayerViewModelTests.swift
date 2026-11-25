@@ -150,13 +150,15 @@ struct SimulationPlayerViewModelTests {
         var total = 0, matching = 0
         for (spot, measured) in zip(outcome.spots, analysis.spots) {
             let half = 1.5
-            let inBlock = { (x: Double, y: Double) in abs(x - measured.position.x) <= half && abs(y - measured.position.y) <= half }
+            let inBlock = { (posX: Double, posY: Double) in
+                abs(posX - measured.position.x) <= half && abs(posY - measured.position.y) <= half
+            }
             var cells = 0
             for row in 0..<mask.rows {
                 for column in 0..<mask.columns where mask.cells[row * mask.columns + column] {
-                    let x = mask.origin.x + (Double(column) + 0.5) * mask.cellSizeM
-                    let y = mask.origin.y + (Double(row) + 0.5) * mask.cellSizeM
-                    if inBlock(x, y) { cells += 1 }
+                    let cellX = mask.origin.x + (Double(column) + 0.5) * mask.cellSizeM
+                    let cellY = mask.origin.y + (Double(row) + 0.5) * mask.cellSizeM
+                    if inBlock(cellX, cellY) { cells += 1 }
                 }
             }
             let area = Double(cells) * mask.cellSizeM * mask.cellSizeM
@@ -536,6 +538,94 @@ struct SimulationPlayerSceneTests {
             #expect(abs(actualRGB.greenComponent - expectedRGB.greenComponent) < 0.002, "\(entry.category)")
             #expect(abs(actualRGB.blueComponent - expectedRGB.blueComponent) < 0.002, "\(entry.category)")
             #expect(abs(actualRGB.alphaComponent - expectedRGB.alphaComponent) < 0.002, "\(entry.category)")
+        }
+    }
+}
+
+private struct ObjectColorCase {
+    let name: String
+    let object: LayoutObject
+    let expected: SIMD4<Float>
+}
+
+extension SimulationPlayerSceneTests {
+    private func allKindColorCases() -> [ObjectColorCase] {
+        let place = Placement(center: SIMD2(6, 6), sizeM: SIMD2(2, 2))
+        func item(
+            _ name: String, _ kind: LayoutObjectKind, label: String = "X",
+            boothType: BoothType? = nil, catalogID: String? = nil,
+            direction: DoorDirection? = nil, expected: SIMD4<Float>
+        ) -> ObjectColorCase {
+            let object = LayoutObject(
+                kind: kind, label: label, placement: place, boothType: boothType,
+                doorFlow: direction.map { DoorFlow(direction: $0) }, catalogID: catalogID
+            )
+            return ObjectColorCase(name: name, object: object, expected: expected)
+        }
+        return [
+            item("booth-nil", .booth, expected: TenantColors.unassignedRGBA),
+            item("booth-fnb", .booth, boothType: .fnb, expected: TenantColors.foodRGBA),
+            item("booth-goods", .booth, boothType: .goods, expected: TenantColors.goodsPalette[0]),
+            item("stage", .entertainment, label: "Main Stage", expected: TenantColors.entertainmentRGBA(for: .stage)),
+            item("photobooth", .entertainment, catalogID: EntertainmentType.photobooth.catalogID,
+                 expected: TenantColors.entertainmentRGBA(for: .photobooth)),
+            item("info", .entertainment, label: "Info Desk",
+                 expected: TenantColors.entertainmentRGBA(for: .informationDesk)),
+            item("other-ent", .entertainment, label: "Display", expected: TenantColors.entertainmentRGBA(for: .other)),
+            item("disabled-ent", .entertainment, catalogID: EntertainmentType.disabled.catalogID,
+                 expected: TenantColors.entertainmentRGBA(for: .disabled)),
+            item("table", .table, expected: VenueGeometry.yellowColor),
+            item("seating", .seating, expected: VenueGeometry.paleBlueColor),
+            item("wall", .wall, expected: VenueGeometry.whiteColor),
+            item("block", .block, expected: VenueGeometry.blockColor),
+            item("column", .block, catalogID: ObjectCatalog.columnID, expected: VenueGeometry.cobaltColor),
+            item("closedArea", .closedArea, expected: VenueGeometry.paleBlueColor),
+            item("door-entrance", .door, direction: .entrance, expected: SIMD4(0.18, 0.62, 0.42, 1)),
+            item("door-exit", .door, direction: .exit, expected: SIMD4(0.85, 0.20, 0.22, 1)),
+            item("door-both", .door, direction: .both, expected: SIMD4(0.20, 0.38, 0.75, 1)),
+            item("door-disabled", .door, direction: .disabled, expected: SIMD4(0.62, 0.64, 0.68, 1)),
+            item("door-default", .door, expected: SIMD4(0.20, 0.38, 0.75, 1))
+        ]
+    }
+
+    private func assertColor(_ actual: NSColor, matches expected: SIMD4<Float>, _ label: String) throws {
+        let srgb = try #require(actual.usingColorSpace(.sRGB), "\(label)")
+        #expect(abs(srgb.redComponent - CGFloat(expected.x)) < 0.002, "\(label) red")
+        #expect(abs(srgb.greenComponent - CGFloat(expected.y)) < 0.002, "\(label) green")
+        #expect(abs(srgb.blueComponent - CGFloat(expected.z)) < 0.002, "\(label) blue")
+        #expect(abs(srgb.alphaComponent - CGFloat(expected.w)) < 0.002, "\(label) alpha")
+    }
+
+    @Test("TenantColors.objectRGBA maps every object kind and matches Venue2DScene fills")
+    func objectRGBACoversAllKindsAndMatches2DScene() throws {
+        let cases = allKindColorCases()
+        for entry in cases {
+            #expect(TenantColors.objectRGBA(for: entry.object) == entry.expected, "\(entry.name)")
+        }
+
+        let hall = [SIMD2<Double>(0, 0), SIMD2(24, 0), SIMD2(24, 12), SIMD2(0, 12)]
+        let lobby = [SIMD2<Double>(0, 12), SIMD2(24, 12), SIMD2(24, 16), SIMD2(0, 16)]
+        let layout = Layout(
+            name: "All Kinds", sizeM: SIMD2(24, 16), hall: hall, lobby: lobby, objects: cases.map(\.object)
+        )
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 400, height: 300))
+        let scene = Venue2DScene(size: CGSize(width: 400, height: 300))
+        view.presentScene(scene)
+        scene.updateScene(layout: layout, visitors: [], densityCells: [], showHeatmap: false)
+
+        let floorLayer = try #require(scene.children.first { $0.zPosition == 0 && !($0 is SKCameraNode) })
+        let floorNodes = floorLayer.children.compactMap { $0 as? SKShapeNode }
+        try #require(floorNodes.count == 2)
+        try assertColor(floorNodes[0].fillColor, matches: TenantColors.hallFloorRGBA, "hall")
+        try assertColor(floorNodes[1].fillColor, matches: TenantColors.lobbyFloorRGBA, "lobby")
+        try assertColor(floorNodes[0].strokeColor, matches: TenantColors.outlineRGBA, "hall-stroke")
+
+        let objectLayer = try #require(scene.children.first { $0.zPosition == 2 })
+        let nodes = objectLayer.children.compactMap { $0 as? SKShapeNode }
+        #expect(nodes.count == cases.count)
+        for (entry, node) in zip(cases, nodes) {
+            try assertColor(node.fillColor, matches: entry.expected, entry.name)
+            try assertColor(node.strokeColor, matches: TenantColors.outlineRGBA, "\(entry.name)-stroke")
         }
     }
 }
