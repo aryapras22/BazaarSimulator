@@ -847,12 +847,12 @@
   "pilasters": [],
   "fixtures": [
     {
-      "label": "PURPLE BLOCK",
-      "kind": "fixture",
-      "x0": 14.77,
-      "x1": 19.77,
-      "y0": 12.75,
-      "y1": 16.83
+      "label": "N1",
+      "kind": "stage",
+      "x0": 15.4,
+      "x1": 20.4,
+      "y0": 12.625,
+      "y1": 16.375
     }
   ],
   "closed": [
