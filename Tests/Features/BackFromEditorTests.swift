@@ -79,7 +79,7 @@ extension BackFromEditorTests {
         while dashboard.phase == .loading { await Task.yield() }
         #expect(dashboard.phase == .ready)
 
-        dashboard.onEdit(.one)
+        router.showEditor(projectID: project.id)
         #expect(router.destination == .editor(projectID: project.id))
         let editor = factory.makeLayoutEditorViewModel(projectID: project.id)
         editor.refreshDerivedState()

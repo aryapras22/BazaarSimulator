@@ -169,14 +169,12 @@ struct DashboardContent: View {
                     peakHourText: viewModel.peakHourText,
                     metrics: metrics,
                     showsSimulate: true,
-                    showsEdit: viewModel.canEdit,
                     showsWorstSpot: viewModel.isSingleLayout,
                     choices: viewModel.layoutChoices(for: layout),
                     layoutNumber: viewModel.layoutNumber(of:),
                     bestChoiceID: bestPlanID,
                     onChoose: { viewModel.choose($0, for: layout) },
-                    onSimulate: { viewModel.simulate(layout) },
-                    onEdit: { viewModel.onEdit(layout) }
+                    onSimulate: { viewModel.simulate(layout) }
                 )
             }
         }

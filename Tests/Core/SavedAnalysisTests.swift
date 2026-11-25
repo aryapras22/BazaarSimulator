@@ -226,7 +226,6 @@ struct DashboardSavedRunTests {
         await opened.runSimulation()
 
         #expect(opened.phase == .ready)
-        #expect(!opened.canEdit)
         #expect(opened.title == "P · Run 1")
         #expect(session.savedAnalyses(for: projectID).count == 1)
     }

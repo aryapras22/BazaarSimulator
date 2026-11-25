@@ -25,7 +25,6 @@ final class DashboardViewModel {
     let onBack: () -> Void
     /// Plays a layout. With a saved run that shows another pair than its own, the two layouts shown go with it.
     let onSimulate: (LayoutID, [Layout.ID]?) -> Void
-    let onEdit: (LayoutID) -> Void
     let onOpenParameters: (() -> Void)?
 
     var tab: AnalysisTab = .congestionPoints
@@ -49,7 +48,6 @@ final class DashboardViewModel {
         catalog: PresetCatalog,
         onBack: @escaping () -> Void = {},
         onSimulate: @escaping (LayoutID, [Layout.ID]?) -> Void = { _, _ in },
-        onEdit: @escaping (LayoutID) -> Void = { _ in },
         onOpenParameters: (() -> Void)? = nil
     ) {
         self.projectID = projectID
@@ -59,7 +57,6 @@ final class DashboardViewModel {
         self.catalog = catalog
         self.onBack = onBack
         self.onSimulate = onSimulate
-        self.onEdit = onEdit
         self.onOpenParameters = onOpenParameters
         // Neither a saved run nor the latest analysis shows at once. Every layout of the project is simulated first, so
         // the page opens with the whole project worked out: the best of all, and any two layouts on the cards.
@@ -68,9 +65,6 @@ final class DashboardViewModel {
     var projectName: String {
         session.projects.first { $0.id == projectID }?.name ?? "Project"
     }
-
-    /// A saved run is a record, so its parameters and layouts cannot be changed from it.
-    var canEdit: Bool { source == .latest }
 
     /// The layouts the page shows, one or two.
     var layoutIDs: [LayoutID] {
