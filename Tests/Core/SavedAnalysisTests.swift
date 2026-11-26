@@ -514,7 +514,7 @@ struct ProjectDraftPersistenceTests {
         let store = temporaryStore()
         let firstSession = ProjectSession(store: store)
         _ = AppServices(projectSession: firstSession, seedsMockProject: true)
-        let seeded = try #require(firstSession.project(named: "Sample Project"))
+        let seeded = try #require(firstSession.project(named: "Lantern Night Market"))
         var edited = try #require(firstSession.draft(for: seeded.id)?.layouts.first)
         edited.name = "Customized Annyeong"
         edited.sizeM.x += 2
@@ -523,7 +523,7 @@ struct ProjectDraftPersistenceTests {
         let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
         _ = AppServices(projectSession: reopened, seedsMockProject: true)
 
-        #expect(reopened.project(named: "Sample Project")?.id == seeded.id)
+        #expect(reopened.project(named: "Lantern Night Market")?.id == seeded.id)
         #expect(reopened.layout(id: edited.id, in: seeded.id) == edited)
     }
 }
