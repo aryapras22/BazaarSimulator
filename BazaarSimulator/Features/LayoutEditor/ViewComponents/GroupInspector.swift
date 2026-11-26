@@ -15,17 +15,19 @@ struct GroupInspector: View {
                     .foregroundStyle(Palette.destructive)
             }
 
-            CategoryPicker(
-                categories: categories,
-                entertainmentTypes: [],
-                title: categoryTitle,
-                currentChoice: currentCategoryChoice,
-                onSelect: { choice in
-                    if case .booth(let id) = choice {
-                        draft.category = .set(id)
+            if display.boothCount > 0 {
+                CategoryPicker(
+                    categories: categories,
+                    entertainmentTypes: [],
+                    title: categoryTitle,
+                    currentChoice: currentCategoryChoice,
+                    onSelect: { choice in
+                        if case .booth(let id) = choice {
+                            draft.category = .set(id)
+                        }
                     }
-                }
-            )
+                )
+            }
 
             GroupSizeFields(draft: $draft, width: display.width, length: display.length, range: sizeRange)
 

@@ -26,28 +26,30 @@ extension LayoutEditorViewModel {
 
     var groupInspectorDisplay: GroupInspectorDisplay {
         let members = selectedGroupMembers.map { groupDraft?.applied(to: $0) ?? $0 }
-        let boothCount = members.filter { $0.kind == .booth }.count
+        let booths = members.filter { $0.kind == .booth }
         return GroupInspectorDisplay(
-            category: MixedValue(members.map(\.boothType)),
+            category: MixedValue(booths.map(\.boothType)),
             width: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.x) }),
             length: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.y) }),
             rotation: MixedValue(members.map(\.placement.rotationDegrees)),
             warningSummary: groupWarningSummary,
             memberCount: members.count,
-            boothCount: boothCount
+            boothCount: booths.count
         )
     }
 
     var groupWarningSummary: String? {
-        let memberIDs = Set(selectedGroupMembers.map(\.id))
-        let warned = issues
+        let members = selectedGroupMembers
+        let memberIDs = Set(members.map(\.id))
+        let warnedIDs = issues
             .filter { $0.severity == .warning }
             .reduce(into: Set<UUID>()) { $0.formUnion($1.objectIDs) }
             .intersection(memberIDs)
-        switch warned.count {
+        let warnedMembers = members.filter { warnedIDs.contains($0.id) }
+        switch warnedMembers.count {
         case 0: return nil
-        case 1: return "1 booth has a warning"
-        default: return "\(warned.count) booths have warnings"
+        case 1: return "1 \(Self.singularNoun(for: warnedMembers)) has a warning"
+        default: return "\(warnedMembers.count) \(Self.pluralNoun(for: warnedMembers)) have warnings"
         }
     }
 
@@ -67,6 +69,7 @@ extension LayoutEditorViewModel {
     func resetOpenSidesForGroup() {
         guard let layout = activeLayout else { return }
         let edits = selectedGroupMembers.compactMap { member -> LayoutEdit? in
+            guard member.kind.hasOpenSides else { return nil }
             var updated = member
             updated.openSides = OpenSideInference.defaultSide(for: member, in: layout)
             return updated == member ? nil : .replace(before: member, after: updated)

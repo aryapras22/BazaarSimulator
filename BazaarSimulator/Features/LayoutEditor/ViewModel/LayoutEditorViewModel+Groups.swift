@@ -7,9 +7,36 @@ extension LayoutEditorViewModel {
         return activeLayout.objects.filter { groupSelection.memberIDs.contains($0.id) }
     }
 
+    var groupSelectionNoun: String {
+        Self.pluralNoun(for: selectedGroupMembers)
+    }
+
+    static func pluralNoun(for objects: [LayoutObject]) -> String {
+        let kinds = Set(objects.map(\.kind))
+        guard kinds.count == 1, let kind = kinds.first else { return "objects" }
+        return pluralNoun(for: kind)
+    }
+
+    static func singularNoun(for objects: [LayoutObject]) -> String {
+        let kinds = Set(objects.map(\.kind))
+        guard kinds.count == 1, let kind = kinds.first else { return "object" }
+        return kind.displayName.lowercased()
+    }
+
+    static func pluralNoun(for kind: LayoutObjectKind) -> String {
+        switch kind {
+        case .booth:
+            return "booths"
+        case .seating, .entertainment:
+            return kind.displayName.lowercased()
+        default:
+            return "\(kind.displayName.lowercased())s"
+        }
+    }
+
     var groupSelectionTitle: String {
         guard let groupSelection else { return "" }
-        let count = "\(groupSelection.memberIDs.count) \(activeLayer == .booths ? "booths" : "objects")"
+        let count = "\(groupSelection.memberIDs.count) \(groupSelectionNoun)"
         switch groupSelection.kind {
         case .group(.name(let prefix)): return "Group \(prefix) · \(count)"
         case .group(.size(let key)): return "Size \(key.title) · \(count)"
