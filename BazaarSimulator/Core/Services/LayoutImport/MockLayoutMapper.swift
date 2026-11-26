@@ -182,15 +182,18 @@ extension MockLayoutMapper {
         )
     }
 
-    /// The file gives each table as a square dot, so it becomes the round standard table closest in size.
+    /// A table without a named model is a square dot, so it becomes the round standard table closest in size.
     private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
         let rounds = FurnitureModels.tables.filter { $0.shape == .round }
         return tables.enumerated().map { index, table in
-            let model = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            let closestRound = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            let model = table.model.flatMap { FurnitureModels.table($0) } ?? closestRound
+            var tablePlacement = Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM)
+            tablePlacement.rotationRadians = (table.rotationDegrees ?? 0) * .pi / 180
             return LayoutObject(
                 kind: .table,
                 label: "Table \(index + 1)",
-                placement: Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM),
+                placement: tablePlacement,
                 reviewState: .detected,
                 catalogID: model.id
             )
@@ -210,6 +213,11 @@ extension MockLayoutMapper {
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {
         pilasters.map { pilaster in
             let kind: LayoutObjectKind = pilaster.kind.lowercased() == "wall" ? .wall : .block
+            if kind == .wall, let degrees = pilaster.rotationDegrees {
+                var turned = placement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
+                turned.rotationRadians = degrees * .pi / 180
+                return LayoutObject(kind: kind, label: kind.displayName, placement: turned, reviewState: .detected)
+            }
             let pilasterPlacement = kind == .wall
                 ? linearPlacement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
                 : placement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
@@ -235,6 +243,15 @@ extension MockLayoutMapper {
             // A fixture of kind "stage" is a stage extension, whatever its label says.
             if fixture.kind.lowercased() == "stage" || ObjectCatalog.namesEntertainment(fixture.label) {
                 return ObjectCatalog.detectedEntertainment(label: fixture.label, placement: fixturePlacement)
+            }
+            if fixture.kind.lowercased() == "seating" {
+                return LayoutObject(
+                    kind: .seating,
+                    label: fixture.label,
+                    placement: fixturePlacement,
+                    reviewState: .detected,
+                    catalogID: FurnitureModels.seatingBlockID
+                )
             }
             return LayoutObject(kind: .block, label: fixture.label, placement: fixturePlacement, reviewState: .detected)
         }

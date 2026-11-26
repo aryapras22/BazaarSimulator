@@ -15,17 +15,26 @@ struct GroupInspector: View {
                     .foregroundStyle(Palette.destructive)
             }
 
-            CategoryPicker(
-                categories: categories,
-                entertainmentTypes: [],
-                title: categoryTitle,
-                currentChoice: currentCategoryChoice,
-                onSelect: { choice in
-                    if case .booth(let id) = choice {
-                        draft.category = .set(id)
+            if display.boothCount > 0 {
+                CategoryPicker(
+                    categories: categories,
+                    entertainmentTypes: [],
+                    title: categoryTitle,
+                    currentChoice: currentCategoryChoice,
+                    onSelect: { choice in
+                        if case .booth(let id) = choice {
+                            draft.category = .set(id)
+                        }
                     }
-                }
-            )
+                )
+            }
+
+            if display.furnitureCount > 0 {
+                FurnitureTypePicker(
+                    selectedID: sharedFurnitureTypeID,
+                    onSelect: { draft.furnitureType = .set($0) }
+                )
+            }
 
             GroupSizeFields(draft: $draft, width: display.width, length: display.length, range: sizeRange)
 
@@ -41,6 +50,11 @@ struct GroupInspector: View {
     private var currentCategoryChoice: CategoryChoice? {
         guard case .shared(let shared) = display.category else { return nil }
         return .booth(shared)
+    }
+
+    private var sharedFurnitureTypeID: String? {
+        guard case .shared(let shared) = display.furnitureType else { return nil }
+        return shared
     }
 
     private var categoryTitle: String {

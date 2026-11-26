@@ -1,7 +1,7 @@
 {
  "meta": {
-  "name": "BEYOND MARKET VOL.4 BOO!TOPIA",
-  "sheet": "SCC 1ST FLOOR",
+  "name": "Spooky Weekend",
+  "sheet": "Hall A, Level 1",
   "world": {
    "w": 68.8,
    "h": 83.9
@@ -2430,12 +2430,6 @@
    "x1": 28.89,
    "y0": 62.61,
    "y1": 64.57
-  },
-  {
-   "x0": 48.5,
-   "x1": 50.5,
-   "y0": 62.653,
-   "y1": 64.403
   }
  ]
 }

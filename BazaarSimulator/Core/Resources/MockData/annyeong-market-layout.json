@@ -1,7 +1,7 @@
 {
  "meta": {
-  "name": "ANNYEONG KOREAN MARKET",
-  "sheet": "SCC PTC LEVEL 1",
+  "name": "Seoul Food Week",
+  "sheet": "Hall A, Level 1",
   "world": {
    "w": 70.1,
    "h": 84.2
@@ -2039,12 +2039,6 @@
    "x1": 3.57,
    "y0": 38.08,
    "y1": 54.08
-  },
-  {
-   "x0": 46.875,
-   "x1": 49.375,
-   "y0": 62.375,
-   "y1": 64.875
   }
  ]
 }

@@ -14,12 +14,19 @@ enum LayoutEditing {
         case let .delete(object, _):
             updated.objects.removeAll { $0.id == object.id }
         case let .setOutline(_, after):
-            updated.hall = after.hall
-            updated.sizeM = after.sizeM
+            applyOutline(after, to: &updated)
         case let .batch(edits):
             updated = edits.reduce(layout) { apply($1, to: $0) }
         }
         return updated
+    }
+
+    private static func applyOutline(_ outline: LayoutOutline, to layout: inout Layout) {
+        layout.hall = outline.hall
+        layout.sizeM = outline.sizeM
+        if let lobby = outline.lobby { layout.lobby = lobby }
+        if let markers = outline.markers { layout.markers = markers }
+        if let zones = outline.zones { layout.zones = zones }
     }
 
     static func inverse(of edit: LayoutEdit) -> LayoutEdit {

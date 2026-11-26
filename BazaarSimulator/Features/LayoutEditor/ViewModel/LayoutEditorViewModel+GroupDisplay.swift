@@ -44,7 +44,7 @@ extension LayoutEditorViewModel {
         let count = selection.memberIDs.count
         switch selection.kind {
         case .group(let kind): return "\(boothGroup(kind)?.title ?? "") · \(count)"
-        case .custom: return "\(count) booths"
+        case .custom: return "\(count) \(groupSelectionNoun)"
         }
     }
 

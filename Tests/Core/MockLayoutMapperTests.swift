@@ -18,7 +18,7 @@ struct MockLayoutMapperTests {
 
         #expect(count(.booth, in: layout) == 209)
         #expect(count(.door, in: layout) == 4)
-        #expect(count(.closedArea, in: layout) == 5)
+        #expect(count(.closedArea, in: layout) == 4)
         #expect(count(.block, in: layout) == 4)
         #expect(count(.entertainment, in: layout) == 1)
         #expect(count(.wall, in: layout) == 3)
@@ -36,7 +36,7 @@ struct MockLayoutMapperTests {
 
         #expect(count(.booth, in: layout) == 154)
         #expect(count(.door, in: layout) == 4)
-        #expect(count(.closedArea, in: layout) == 7)
+        #expect(count(.closedArea, in: layout) == 6)
         #expect(count(.block, in: layout) == 34)
         let columns = layout.objects.filter { $0.label == "Column" }
         #expect(columns.count == 23)

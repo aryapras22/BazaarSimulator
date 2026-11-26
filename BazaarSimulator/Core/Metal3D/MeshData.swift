@@ -135,4 +135,69 @@ struct MeshData {
         }
         return mesh
     }
+
+    /// A solid floor slab extruded downward from `topY` by `thickness`, matching a simple 2D polygon in XZ.
+    static func floorSlab(polygon: [SIMD2<Float>], topY: Float, thickness: Float) -> MeshData {
+        guard polygon.count >= 3 else { return MeshData() }
+        let points2D = polygon.map { SIMD2<Double>(Double($0.x), Double($0.y)) }
+        let triangles = PolygonTriangulator.triangulate(points2D)
+        guard !triangles.isEmpty else { return MeshData() }
+
+        let bottomY = topY - thickness
+        var mesh = MeshData()
+        mesh.appendCap(polygon: polygon, triangles: triangles, posY: topY, normalY: 1)
+        mesh.appendCap(polygon: polygon, triangles: triangles, posY: bottomY, normalY: -1)
+        mesh.appendRim(polygon: polygon, points2D: points2D, topY: topY, bottomY: bottomY)
+        return mesh
+    }
+
+    private mutating func appendCap(
+        polygon: [SIMD2<Float>],
+        triangles: [(Int, Int, Int)],
+        posY: Float,
+        normalY: Float
+    ) {
+        let base = UInt16(vertices.count)
+        let normal = SIMD3<Float>(0, normalY, 0)
+        for point in polygon {
+            vertices.append(Vertex(position: SIMD3(point.x, posY, point.y), normal: normal))
+        }
+        for (idxA, idxB, idxC) in triangles {
+            addTriangle(base + UInt16(idxA), base + UInt16(idxB), base + UInt16(idxC))
+        }
+    }
+
+    private mutating func appendRim(
+        polygon: [SIMD2<Float>],
+        points2D: [SIMD2<Double>],
+        topY: Float,
+        bottomY: Float
+    ) {
+        var doubleArea = 0.0
+        for index in points2D.indices {
+            let current = points2D[index]
+            let next = points2D[(index + 1) % points2D.count]
+            doubleArea += current.x * next.y - next.x * current.y
+        }
+        let outwardSign: Float = doubleArea >= 0 ? 1 : -1
+
+        for index in polygon.indices {
+            let start = polygon[index]
+            let end = polygon[(index + 1) % polygon.count]
+            let edge = end - start
+            let length = simd_length(edge)
+            guard length > 1e-6 else { continue }
+            let outward2D = SIMD2<Float>(edge.y, -edge.x) * (outwardSign / length)
+            let normal = SIMD3<Float>(outward2D.x, 0, outward2D.y)
+            let base = UInt16(vertices.count)
+            vertices += [
+                Vertex(position: SIMD3(start.x, bottomY, start.y), normal: normal),
+                Vertex(position: SIMD3(end.x, bottomY, end.y), normal: normal),
+                Vertex(position: SIMD3(end.x, topY, end.y), normal: normal),
+                Vertex(position: SIMD3(start.x, topY, start.y), normal: normal)
+            ]
+            addTriangle(base, base + 1, base + 2)
+            addTriangle(base, base + 2, base + 3)
+        }
+    }
 }

@@ -64,13 +64,13 @@ struct ProjectScreenFactoryTests {
 
         #expect(services.projectSession.projects.count == 2)
         #expect(services.initialDestination == .setup(projectID: activeID))
-        #expect(services.projectSession.project(named: "Sample Project 2")?.id == activeID)
-        #expect(draft.layouts.count == 7)
+        #expect(services.projectSession.project(named: "Riverside Weekend Bazaar")?.id == activeID)
+        #expect(draft.layouts.count == 5)
         #expect(draft.layouts.allSatisfy { !$0.objects.isEmpty })
         #expect(services.importQueue.legend(for: activeID) != nil)
-        #expect(services.importQueue.files(for: activeID).filter { $0.kind == .floorPlan }.count == 7)
+        #expect(services.importQueue.files(for: activeID).filter { $0.kind == .floorPlan }.count == 5)
 
-        let first = try #require(services.projectSession.project(named: "Sample Project"))
+        let first = try #require(services.projectSession.project(named: "Lantern Night Market"))
         let firstDraft = try #require(services.projectSession.draft(for: first.id))
         #expect(firstDraft.layouts.count == 2)
     }

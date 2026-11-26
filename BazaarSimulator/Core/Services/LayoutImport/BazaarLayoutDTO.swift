@@ -121,17 +121,22 @@ struct BazaarMarkerDTO: Decodable, Identifiable, Sendable, Equatable {
     }
 }
 
+/// A table may name its standard `model` and add `rot` in degrees; without a model it is matched by width.
 struct BazaarTableDTO: Decodable, Sendable, Equatable {
     let centerX: Double
     let centerY: Double
     let width: Double
     let height: Double
+    var model: String?
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case centerX = "cx"
         case centerY = "cy"
         case width = "w"
         case height = "h"
+        case model
+        case rotationDegrees = "rot"
     }
 }
 
@@ -163,12 +168,14 @@ struct BazaarColumnDTO: Decodable, Sendable, Equatable {
     }
 }
 
+/// A wall may add `rot` in degrees: the box is then the wall before the turn, length along x, turned about its centre.
 struct BazaarPilasterDTO: Decodable, Sendable, Equatable {
     let kind: String
     let minX: Double
     let maxX: Double
     let minY: Double
     let maxY: Double
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case kind
@@ -176,6 +183,7 @@ struct BazaarPilasterDTO: Decodable, Sendable, Equatable {
         case maxX = "x1"
         case minY = "y0"
         case maxY = "y1"
+        case rotationDegrees = "rot"
     }
 }
 
