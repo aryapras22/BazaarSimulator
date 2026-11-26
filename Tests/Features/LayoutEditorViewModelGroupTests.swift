@@ -11,10 +11,11 @@ struct LayoutEditorViewModelGroupTests {
         let layout: Layout
     }
 
-    static func makeContext(layer: EditorLayer = .booths) -> TestContext {
+    static func makeContext(layer: EditorLayer = .booths, adding extraObjects: [LayoutObject] = []) -> TestContext {
         let session = ProjectSession()
         let project = session.createProject(named: "Annyeong")
-        let layout = PreviewLayouts.annyeong()
+        var layout = PreviewLayouts.annyeong()
+        layout.objects += extraObjects
         session.setDraft(
             ProjectDraft(name: "Annyeong", legend: PreviewLayouts.sampleLegend, layouts: [layout]),
             for: project.id
@@ -139,6 +140,45 @@ struct LayoutEditorViewModelGroupTests {
         let members = viewModel.selectedGroupMembers
         #expect(members.count == 112)
         #expect(members.allSatisfy { $0.boothType == .fnb })
+        viewModel.undo()
+        #expect(viewModel.activeLayout == context.layout)
+        #expect(!viewModel.canUndo)
+    }
+
+    @Test("A table type chosen for a mixed table and seating selection converts every member as one undo step")
+    func furnitureTypeChangeConvertsEveryMember() throws {
+        let table = LayoutObject(
+            kind: .table,
+            label: "",
+            placement: Placement(center: SIMD2<Double>(5, 5), sizeM: SIMD2<Double>(1.2, 0.7)),
+            catalogID: "table-rect-4",
+            heightM: FurnitureModels.tableHeightM
+        )
+        let seating = LayoutObject(
+            kind: .seating,
+            label: "",
+            placement: Placement(center: SIMD2<Double>(9, 5), sizeM: FurnitureModels.seatingBlockSizeM),
+            catalogID: FurnitureModels.seatingBlockID,
+            heightM: FurnitureModels.chairHeightM
+        )
+        let context = Self.makeContext(adding: [table, seating])
+        let viewModel = context.viewModel
+        viewModel.selectBooths([table.id, seating.id])
+
+        #expect(viewModel.groupInspectorDisplay.furnitureType == .mixed)
+        #expect(viewModel.groupInspectorDisplay.furnitureCount == 2)
+
+        let model = try #require(FurnitureModels.table("table-round-4"))
+        var draft = GroupInspectorDraft(memberIDs: [table.id, seating.id])
+        draft.furnitureType = .set(model.id)
+        viewModel.updateGroupDraft(draft)
+
+        let members = viewModel.selectedGroupMembers
+        #expect(members.count == 2)
+        #expect(members.allSatisfy {
+            $0.kind == .table && $0.catalogID == model.id && $0.placement.sizeM == model.sizeM
+                && $0.heightM == FurnitureModels.tableHeightM
+        })
         viewModel.undo()
         #expect(viewModel.activeLayout == context.layout)
         #expect(!viewModel.canUndo)

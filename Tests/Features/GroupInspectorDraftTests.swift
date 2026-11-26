@@ -14,6 +14,15 @@ struct GroupInspectorDraftTests {
         )
     }
 
+    private func furniture(_ kind: LayoutObjectKind, catalogID: String, sizeM: SIMD2<Double>) -> LayoutObject {
+        LayoutObject(
+            kind: kind,
+            label: "",
+            placement: Placement(center: .zero, sizeM: sizeM),
+            catalogID: catalogID
+        )
+    }
+
     @Test("Members with different booth types show Mixed, equal ones show the shared value")
     func mixedAndSharedValues() {
         #expect(MixedValue<BoothType?>([.fnb, .goods]) == .mixed)
@@ -49,5 +58,43 @@ struct GroupInspectorDraftTests {
     @Test("A fresh draft has no changes")
     func freshDraftHasNoChanges() {
         #expect(!GroupInspectorDraft(memberIDs: []).hasChanges)
+    }
+
+    @Test("Setting the seating block turns a table into a seating block")
+    func tableBecomesSeating() {
+        let table = furniture(.table, catalogID: "table-rect-4", sizeM: SIMD2<Double>(1.2, 0.7))
+        var draft = GroupInspectorDraft(memberIDs: [table.id])
+        draft.furnitureType = .set(FurnitureModels.seatingBlockID)
+
+        let updated = draft.applied(to: table)
+
+        #expect(updated.kind == .seating)
+        #expect(updated.catalogID == FurnitureModels.seatingBlockID)
+        #expect(updated.placement.sizeM == FurnitureModels.seatingBlockSizeM)
+        #expect(updated.heightM == FurnitureModels.chairHeightM)
+    }
+
+    @Test("Setting a table model turns a seating block into that table")
+    func seatingBecomesTable() throws {
+        let seating = furniture(.seating, catalogID: FurnitureModels.seatingBlockID, sizeM: SIMD2<Double>(3, 2))
+        let model = try #require(FurnitureModels.table("table-round-6"))
+        var draft = GroupInspectorDraft(memberIDs: [seating.id])
+        draft.furnitureType = .set(model.id)
+
+        let updated = draft.applied(to: seating)
+
+        #expect(updated.kind == .table)
+        #expect(updated.catalogID == model.id)
+        #expect(updated.placement.sizeM == model.sizeM)
+        #expect(updated.heightM == FurnitureModels.tableHeightM)
+    }
+
+    @Test("A furniture type leaves a booth untouched")
+    func furnitureTypeLeavesBoothAlone() {
+        let member = booth("A1")
+        var draft = GroupInspectorDraft(memberIDs: [member.id])
+        draft.furnitureType = .set(FurnitureModels.seatingBlockID)
+
+        #expect(draft.applied(to: member) == member)
     }
 }
