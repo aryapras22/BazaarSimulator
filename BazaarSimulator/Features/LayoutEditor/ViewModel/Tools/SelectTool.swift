@@ -156,6 +156,8 @@ final class SelectTool: EditorToolHandling {
         if let hitID = event.hitObjectID {
             let bySize = event.modifiers.contains(.option)
             context.selectGroup(containing: hitID, bySize: bySize)
+        } else {
+            handleHallDoubleClick(event, context: context)
         }
         resetGesture()
         context.clearPreview()

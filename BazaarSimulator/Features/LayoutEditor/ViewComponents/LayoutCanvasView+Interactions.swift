@@ -90,10 +90,13 @@ extension LayoutCanvasView {
         if !isPastThreshold {
             let isDouble = clickSequence.register(
                 id: releaseEvent.hitObjectID,
+                point: releaseEvent.viewPoint,
                 at: ProcessInfo.processInfo.systemUptime,
                 interval: NSEvent.doubleClickInterval
             )
             if isDouble {
+                // Placing tools ignore double clicks, so a fast second click on empty canvas must still place.
+                if releaseEvent.hitObjectID == nil { onPointerRelease(releaseEvent) }
                 onPointerDoubleClick(releaseEvent)
                 return
             }

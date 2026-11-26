@@ -25,4 +25,13 @@ extension SelectTool {
         resetGesture()
         context.clearPreview()
     }
+
+    func handleHallDoubleClick(_ event: CanvasPointerEvent, context: ToolContext) {
+        guard context.activeLayer == .structure else { return }
+        let tolerance = Snapper.tolerance(pointsPerMetre: event.pointsPerMetre)
+        guard let edit = HallEdges.split(at: event.worldPoint, in: context.layout, within: tolerance) else {
+            return
+        }
+        context.applyEdit(edit)
+    }
 }
