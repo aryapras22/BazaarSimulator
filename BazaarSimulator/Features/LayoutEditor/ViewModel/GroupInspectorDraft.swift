@@ -24,14 +24,19 @@ struct GroupInspectorDraft: Equatable, Sendable {
     var widthM: FieldChange<Double> = .unchanged
     var lengthM: FieldChange<Double> = .unchanged
     var rotationDegrees: FieldChange<Int> = .unchanged
+    var furnitureType: FieldChange<String> = .unchanged
 
     var hasChanges: Bool {
         category != .unchanged || widthM != .unchanged || lengthM != .unchanged
-            || rotationDegrees != .unchanged
+            || rotationDegrees != .unchanged || furnitureType != .unchanged
     }
 
     func applied(to member: LayoutObject) -> LayoutObject {
         var updated = member
+        if case .set(let catalogID) = furnitureType, member.kind == .table || member.kind == .seating {
+            var converted = InspectorDraft(object: member)
+            if converted.convertFurniture(to: catalogID) { updated = converted.applied(to: member) }
+        }
         if case .set(let value) = category, member.kind.hasCategory { updated.boothType = value }
         if case .set(let value) = widthM, member.kind.isResizable { updated.placement.sizeM.x = value }
         if case .set(let value) = lengthM, member.kind.isResizable { updated.placement.sizeM.y = value }
@@ -48,6 +53,8 @@ struct GroupInspectorDisplay: Equatable, Sendable {
     let warningSummary: String?
     let memberCount: Int
     let boothCount: Int
+    let furnitureType: MixedValue<String>
+    let furnitureCount: Int
 
     init(
         category: MixedValue<BoothType?>,
@@ -56,8 +63,12 @@ struct GroupInspectorDisplay: Equatable, Sendable {
         rotation: MixedValue<Int>,
         warningSummary: String?,
         memberCount: Int,
-        boothCount: Int? = nil
+        boothCount: Int? = nil,
+        furnitureType: MixedValue<String> = .mixed,
+        furnitureCount: Int = 0
     ) {
+        self.furnitureType = furnitureType
+        self.furnitureCount = furnitureCount
         self.category = category
         self.width = width
         self.length = length

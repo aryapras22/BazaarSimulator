@@ -10,15 +10,9 @@ struct FurnitureTypePicker: View {
         FurnitureModels.tables.map { Option(id: $0.id, name: $0.name) }
         + [Option(id: FurnitureModels.seatingBlockID, name: "Audience Seating")]
 
-    let selectedID: String
+    /// Nil when the selected objects have different types. The menu then reads "Mixed" and checks no option.
+    let selectedID: String?
     let onSelect: (String) -> Void
-
-    private var selection: Binding<String> {
-        Binding(
-            get: { selectedID },
-            set: { onSelect($0) }
-        )
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
@@ -26,13 +20,23 @@ struct FurnitureTypePicker: View {
                 .font(Typography.inspectorLabel)
                 .foregroundStyle(Palette.textPrimary)
 
-            Picker("Type", selection: selection) {
-                ForEach(Self.options) { option in
-                    Text(option.name).tag(option.id)
+            Group {
+                if let selectedID {
+                    Picker("Type", selection: Binding(get: { selectedID }, set: { onSelect($0) })) {
+                        ForEach(Self.options) { option in
+                            Text(option.name).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                } else {
+                    Menu("Mixed") {
+                        ForEach(Self.options) { option in
+                            Button(option.name) { onSelect(option.id) }
+                        }
+                    }
                 }
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
             .controlSize(.large)
             .frame(maxWidth: .infinity, alignment: .leading)
         }

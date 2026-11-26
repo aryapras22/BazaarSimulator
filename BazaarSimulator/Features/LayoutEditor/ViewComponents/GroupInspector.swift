@@ -29,6 +29,13 @@ struct GroupInspector: View {
                 )
             }
 
+            if display.furnitureCount > 0 {
+                FurnitureTypePicker(
+                    selectedID: sharedFurnitureTypeID,
+                    onSelect: { draft.furnitureType = .set($0) }
+                )
+            }
+
             GroupSizeFields(draft: $draft, width: display.width, length: display.length, range: sizeRange)
 
             RotationControl(degrees: rotationBinding, isMixed: display.rotation == .mixed)
@@ -43,6 +50,11 @@ struct GroupInspector: View {
     private var currentCategoryChoice: CategoryChoice? {
         guard case .shared(let shared) = display.category else { return nil }
         return .booth(shared)
+    }
+
+    private var sharedFurnitureTypeID: String? {
+        guard case .shared(let shared) = display.furnitureType else { return nil }
+        return shared
     }
 
     private var categoryTitle: String {

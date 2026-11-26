@@ -83,6 +83,27 @@ struct InspectorDraft: Sendable, Equatable {
         }
     }
 
+    /// Switches a table or seating draft to the given furniture type. Returns whether the draft changed.
+    mutating func convertFurniture(to catalogID: String) -> Bool {
+        guard kind == .seating || kind == .table else { return false }
+        let before = self
+        if catalogID == FurnitureModels.seatingBlockID {
+            guard kind != .seating || self.catalogID != FurnitureModels.seatingBlockID else { return false }
+            kind = .seating
+            self.catalogID = FurnitureModels.seatingBlockID
+            widthM = FurnitureModels.seatingBlockSizeM.x
+            lengthM = FurnitureModels.seatingBlockSizeM.y
+            heightM = FurnitureModels.chairHeightM
+        } else if let table = FurnitureModels.table(catalogID) {
+            kind = .table
+            self.catalogID = table.id
+            widthM = table.sizeM.x
+            lengthM = table.sizeM.y
+            heightM = FurnitureModels.tableHeightM
+        }
+        return self != before
+    }
+
     func applied(to original: LayoutObject) -> LayoutObject {
         var updated = original
         updated.kind = kind

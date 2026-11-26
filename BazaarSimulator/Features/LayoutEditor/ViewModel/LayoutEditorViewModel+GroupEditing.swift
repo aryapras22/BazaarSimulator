@@ -27,6 +27,7 @@ extension LayoutEditorViewModel {
     var groupInspectorDisplay: GroupInspectorDisplay {
         let members = selectedGroupMembers.map { groupDraft?.applied(to: $0) ?? $0 }
         let booths = members.filter { $0.kind == .booth }
+        let furniture = members.filter { $0.kind == .table || $0.kind == .seating }
         return GroupInspectorDisplay(
             category: MixedValue(booths.map(\.boothType)),
             width: MixedValue(members.map { DimensionInput.rounded($0.placement.sizeM.x) }),
@@ -34,7 +35,13 @@ extension LayoutEditorViewModel {
             rotation: MixedValue(members.map(\.placement.rotationDegrees)),
             warningSummary: groupWarningSummary,
             memberCount: members.count,
-            boothCount: booths.count
+            boothCount: booths.count,
+            furnitureType: MixedValue(furniture.map {
+                $0.kind == .seating
+                    ? FurnitureModels.seatingBlockID
+                    : (FurnitureModels.table($0.catalogID) ?? FurnitureModels.tables[1]).id
+            }),
+            furnitureCount: furniture.count
         )
     }
 
