@@ -210,6 +210,11 @@ extension MockLayoutMapper {
     private static func mapPilasters(from pilasters: [BazaarPilasterDTO]) -> [LayoutObject] {
         pilasters.map { pilaster in
             let kind: LayoutObjectKind = pilaster.kind.lowercased() == "wall" ? .wall : .block
+            if kind == .wall, let degrees = pilaster.rotationDegrees {
+                var turned = placement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
+                turned.rotationRadians = degrees * .pi / 180
+                return LayoutObject(kind: kind, label: kind.displayName, placement: turned, reviewState: .detected)
+            }
             let pilasterPlacement = kind == .wall
                 ? linearPlacement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)
                 : placement(minX: pilaster.minX, maxX: pilaster.maxX, minY: pilaster.minY, maxY: pilaster.maxY)

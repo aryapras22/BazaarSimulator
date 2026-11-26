@@ -163,12 +163,14 @@ struct BazaarColumnDTO: Decodable, Sendable, Equatable {
     }
 }
 
+/// A wall may add `rot` in degrees: the box is then the wall before the turn, length along x, turned about its centre.
 struct BazaarPilasterDTO: Decodable, Sendable, Equatable {
     let kind: String
     let minX: Double
     let maxX: Double
     let minY: Double
     let maxY: Double
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case kind
@@ -176,6 +178,7 @@ struct BazaarPilasterDTO: Decodable, Sendable, Equatable {
         case maxX = "x1"
         case minY = "y0"
         case maxY = "y1"
+        case rotationDegrees = "rot"
     }
 }
 
