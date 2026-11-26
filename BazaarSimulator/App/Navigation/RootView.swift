@@ -60,10 +60,15 @@ struct RootView: View {
             // A window restored in full screen is not key yet when this runs, so any full screen window counts.
             isFullScreen = NSApp.windows.contains { $0.styleMask.contains(.fullScreen) }
             NSApp.windows.filter { $0.styleMask.contains(.titled) }.forEach(Self.paintTitlebar)
+            // The bar's window is built after the page appears when the app opens in full screen.
+            DispatchQueue.main.async(execute: Self.paintSidebarStrip)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { note in
             isFullScreen = true
             (note.object as? NSWindow).map(Self.paintTitlebar)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
+            Self.paintSidebarStrip()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willExitFullScreenNotification)) { _ in
             isFullScreen = false
@@ -102,6 +107,35 @@ struct RootView: View {
     /// any SwiftUI toolbar background, so the window itself takes the page's color.
     private static func paintTitlebar(_ window: NSWindow) {
         window.backgroundColor = NSColor(Palette.background)
+    }
+
+    private static let sidebarStripID = NSUserInterfaceItemIdentifier("sidebarStrip")
+
+    /// That fill takes one color for the whole bar, so the part over the sidebar gets a view of the sidebar's color laid
+    /// into it. The fill is a private AppKit view; if a macOS update renames it, nothing is found and the bar stays navy.
+    private static func paintSidebarStrip() {
+        for window in NSApp.windows {
+            guard let bar = window.contentView?.superview else { continue }
+            func fills(in view: NSView) -> [NSView] {
+                let isSidebarFill = String(describing: type(of: view)) == "NSTitlebarBackgroundView"
+                    && view.frame.minX == 0 && view.frame.width < bar.frame.width
+                return (isSidebarFill ? [view] : []) + view.subviews.flatMap(fills)
+            }
+            fills(in: bar).forEach(addStrip)
+        }
+    }
+
+    private static func addStrip(to fill: NSView) {
+        if !fill.subviews.contains(where: { $0.identifier == sidebarStripID }) {
+            let strip = NSView(frame: fill.bounds)
+            strip.identifier = sidebarStripID
+            strip.wantsLayer = true
+            strip.layer?.backgroundColor = NSColor(Palette.sidebarBase).cgColor
+            strip.autoresizingMask = [.width, .height]
+            // On top of the fill's own scroll edge and glass layers, which paint navy over anything below them. The
+            // sidebar button sits in the toolbar view above the whole fill, so the strip does not cover it.
+            fill.addSubview(strip, positioned: .above, relativeTo: nil)
+        }
     }
 
     /// The page on screen, when it is an analysis. Its Insights are drawn over the whole window from here.
