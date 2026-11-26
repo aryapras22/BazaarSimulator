@@ -5,7 +5,10 @@ import simd
 /// plan's y as depth (z) and height as y.
 struct VenueBlock: Equatable {
     /// A wedge is a pitched roof whose ridge runs along its width.
-    enum Shape { case box, cylinder, wedge }
+    enum Shape: Equatable {
+        case box, cylinder, wedge
+        case polygon([SIMD2<Float>])
+    }
 
     var shape: Shape
     /// Center of the block.
@@ -70,7 +73,7 @@ enum VenueGeometry {
     private static func floors(for layout: Layout) -> [VenueBlock] {
         var result: [VenueBlock] = []
         if layout.hall.count >= 3 {
-            result.append(floor(of: LayoutGeometry.bounds(of: layout.hall), color: hallFloorColor))
+            result.append(floor(of: layout.hall, color: hallFloorColor))
         } else {
             result.append(floor(
                 of: BoundingBox(minX: 0, maxX: layout.sizeM.x, minY: 0, maxY: layout.sizeM.y), color: hallFloorColor
@@ -80,6 +83,18 @@ enum VenueGeometry {
             result.append(floor(of: LayoutGeometry.bounds(of: layout.lobby), color: lobbyFloorColor))
         }
         return result
+    }
+
+    private static func floor(of polygon: [SIMD2<Double>], color: SIMD4<Float>) -> VenueBlock {
+        let points = polygon.map { SIMD2<Float>(Float($0.x), Float($0.y)) }
+        let box = LayoutGeometry.bounds(of: polygon)
+        return VenueBlock(
+            shape: .polygon(points),
+            center: SIMD3(Float(box.minX + box.maxX) / 2, -floorThickness / 2, Float(box.minY + box.maxY) / 2),
+            size: SIMD3(Float(box.maxX - box.minX), floorThickness, Float(box.maxY - box.minY)),
+            rotationY: 0,
+            color: color
+        )
     }
 
     private static func floor(of box: BoundingBox, color: SIMD4<Float>) -> VenueBlock {

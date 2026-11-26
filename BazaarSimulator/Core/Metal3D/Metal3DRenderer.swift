@@ -44,7 +44,7 @@ final class Metal3DRenderer {
         var normal: SIMD3<Float>
     }
 
-    private struct GPUMesh {
+    fileprivate struct GPUMesh {
         let vertices: MTLBuffer
         let indices: MTLBuffer
         let indexCount: Int
@@ -84,6 +84,7 @@ final class Metal3DRenderer {
     private var venueBoxes: (buffer: MTLBuffer?, count: Int) = (nil, 0)
     private var venueCylinders: (buffer: MTLBuffer?, count: Int) = (nil, 0)
     private var venueWedges: (buffer: MTLBuffer?, count: Int) = (nil, 0)
+    private var venuePolygons: [(mesh: GPUMesh, instances: MTLBuffer)] = []
     /// Two textures that take turns, so the GPU never reads one while it is being rewritten.
     private var overlayTextures: [MTLTexture] = []
     private var nextOverlayTexture = 0
@@ -136,27 +137,19 @@ final class Metal3DRenderer {
             descriptor.isDepthWriteEnabled = writes
             return device.makeDepthStencilState(descriptor: descriptor)
         }
-        func upload(_ mesh: MeshData) -> GPUMesh? {
-            let vertices = mesh.vertices.map { MeshVertex(position: $0.position, normal: $0.normal) }
-            guard let vertexBuffer = device.makeBuffer(
-                bytes: vertices, length: MemoryLayout<MeshVertex>.stride * vertices.count, options: .storageModeShared
-            ), let indexBuffer = device.makeBuffer(
-                bytes: mesh.indices, length: MemoryLayout<UInt16>.stride * mesh.indices.count, options: .storageModeShared
-            ) else { return nil }
-            return GPUMesh(vertices: vertexBuffer, indices: indexBuffer, indexCount: mesh.indices.count)
-        }
-
         guard let opaque = pipeline("solidVertex", "solidFragment", blended: false),
               let blended = pipeline("solidVertex", "solidFragment", blended: true),
               let overlay = pipeline("overlayVertex", "flatFragment", blended: true),
               let label = pipeline("labelVertex", "flatFragment", blended: true),
               let writing = depthState(writes: true),
               let reading = depthState(writes: false),
-              let cube = upload(.cube),
-              let cylinder = upload(.cylinder),
-              let wedge = upload(.wedge),
-              let body = upload(.capsule(radius: Self.bodyRadius, height: Self.bodyHeight)),
-              let head = upload(.capsule(radius: Self.headDiameter / 2, height: Self.headDiameter)) else {
+              let cube = Self.upload(.cube, on: device),
+              let cylinder = Self.upload(.cylinder, on: device),
+              let wedge = Self.upload(.wedge, on: device),
+              let body = Self.upload(.capsule(radius: Self.bodyRadius, height: Self.bodyHeight), on: device),
+              let head = Self.upload(
+                  .capsule(radius: Self.headDiameter / 2, height: Self.headDiameter), on: device
+              ) else {
             return nil
         }
         opaquePipeline = opaque
@@ -230,6 +223,9 @@ final class Metal3DRenderer {
         draw(venueBoxes.buffer, count: venueBoxes.count, mesh: cube, uniforms: &uniforms, encoder: encoder)
         draw(venueCylinders.buffer, count: venueCylinders.count, mesh: cylinder, uniforms: &uniforms, encoder: encoder)
         draw(venueWedges.buffer, count: venueWedges.count, mesh: wedge, uniforms: &uniforms, encoder: encoder)
+        for polygon in venuePolygons {
+            draw(polygon.instances, count: 1, mesh: polygon.mesh, uniforms: &uniforms, encoder: encoder)
+        }
         let figures = figureInstances(frame.visitors, attractions: venue.attractions, seats: venue.seats)
         draw(buffer(figures.bodies), count: figures.bodies.count, mesh: body, uniforms: &uniforms, encoder: encoder)
         draw(buffer(figures.heads), count: figures.heads.count, mesh: head, uniforms: &uniforms, encoder: encoder)
@@ -307,6 +303,7 @@ final class Metal3DRenderer {
         venueWedges = (buffer(wedges), wedges.count)
         venueBoxes = (buffer(boxes), boxes.count)
         venueCylinders = (buffer(cylinders), cylinders.count)
+        venuePolygons = polygonEntries(for: venue.blocks)
     }
 
     private func buffer(_ instances: [Instance]) -> MTLBuffer? {
@@ -404,5 +401,34 @@ final class Metal3DRenderer {
             Float(converted.redComponent), Float(converted.greenComponent),
             Float(converted.blueComponent), Float(converted.alphaComponent)
         )
+    }
+}
+
+private extension Metal3DRenderer {
+    static func upload(_ mesh: MeshData, on device: MTLDevice) -> GPUMesh? {
+        guard !mesh.vertices.isEmpty, !mesh.indices.isEmpty else { return nil }
+        let vertices = mesh.vertices.map { MeshVertex(position: $0.position, normal: $0.normal) }
+        guard let vertexBuffer = device.makeBuffer(
+            bytes: vertices, length: MemoryLayout<MeshVertex>.stride * vertices.count, options: .storageModeShared
+        ), let indexBuffer = device.makeBuffer(
+            bytes: mesh.indices, length: MemoryLayout<UInt16>.stride * mesh.indices.count, options: .storageModeShared
+        ) else { return nil }
+        return GPUMesh(vertices: vertexBuffer, indices: indexBuffer, indexCount: mesh.indices.count)
+    }
+
+    func polygonEntries(for blocks: [VenueBlock]) -> [(mesh: GPUMesh, instances: MTLBuffer)] {
+        blocks.compactMap { block in
+            guard case let .polygon(points) = block.shape else { return nil }
+            let slab = MeshData.floorSlab(
+                polygon: points, topY: block.center.y + block.size.y / 2, thickness: block.size.y
+            )
+            let instance = Instance(
+                positionRotation: SIMD4(0, 0, 0, 0),
+                scale: SIMD4(1, 1, 1, Outline.none.rawValue),
+                color: block.color
+            )
+            guard let mesh = Self.upload(slab, on: device), let instances = buffer([instance]) else { return nil }
+            return (mesh, instances)
+        }
     }
 }

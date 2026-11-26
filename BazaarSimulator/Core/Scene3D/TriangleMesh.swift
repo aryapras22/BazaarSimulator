@@ -160,34 +160,22 @@ extension TriangleMesh {
     }
 
     mutating func appendFloorPolygon(_ points: [SIMD2<Double>], heightY: Double = 0) {
-        guard points.count >= 3 else { return }
+        let triangles = PolygonTriangulator.triangulate(points)
+        guard !triangles.isEmpty else { return }
+
         let baseIndex = UInt32(positions.count)
         let normalUp = SIMD3<Float>(0, 1, 0)
-
         for point in points {
             positions.append(SIMD3<Float>(Float(point.x), Float(heightY), Float(point.y)))
             normals.append(normalUp)
         }
 
-        var doubleSignedArea = 0.0
-        let count = points.count
-        for index in 0..<count {
-            let currentPoint = points[index]
-            let nextPoint = points[(index + 1) % count]
-            doubleSignedArea += currentPoint.x * nextPoint.y - nextPoint.x * currentPoint.y
-        }
-
-        let isCounterClockwise = doubleSignedArea > 0
-
-        for idx in 1..<(count - 1) {
-            let idxA = baseIndex
-            let idxB = baseIndex + UInt32(idx)
-            let idxC = baseIndex + UInt32(idx + 1)
-            if isCounterClockwise {
-                indices.append(contentsOf: [idxA, idxC, idxB])
-            } else {
-                indices.append(contentsOf: [idxA, idxB, idxC])
-            }
+        for (idxA, idxB, idxC) in triangles {
+            let vertA = baseIndex + UInt32(idxA)
+            let vertB = baseIndex + UInt32(idxB)
+            let vertC = baseIndex + UInt32(idxC)
+            // Mapping 2D (x, y) to 3D (x, heightY, y) flips handedness, so CCW 2D triangles wind (a, c, b) to face +Y.
+            indices.append(contentsOf: [vertA, vertC, vertB])
         }
     }
 }
