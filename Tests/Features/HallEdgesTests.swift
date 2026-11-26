@@ -9,6 +9,7 @@ private final class HallDragContext: ToolContext {
     var layout: Layout
     var selectionID: UUID?
     var groupMemberIDs: Set<UUID> = []
+    var activeLayer: EditorLayer = .structure
     var preview: CanvasDragState?
     var appliedEdits: [LayoutEdit] = []
 
@@ -56,11 +57,16 @@ struct HallEdgesTests {
         #expect(grown.sizeM == SIMD2(17, 10))
     }
 
-    @Test("An edge cannot be dragged past the world origin")
-    func edgeStopsAtOrigin() throws {
-        let move = try #require(HallEdges.move(edge: 3, to: SIMD2(-6, 5), in: Self.layout()))
+    @Test("Dragging past the origin keeps negative preview coordinates and shifts on commit")
+    func draggingPastOriginKeepsNegativePreviewAndShiftsOnCommit() throws {
+        let layout = Self.layout()
+        let move = try #require(HallEdges.move(edge: 3, to: SIMD2(-6, 5), in: layout))
 
-        #expect(move.hall[3].x == 0 && move.hall[0].x == 0)
+        #expect(move.hall == [SIMD2(-6, 2), SIMD2(12, 2), SIMD2(12, 8), SIMD2(-6, 8)])
+        let committed = LayoutEditing.apply(move.edit, to: layout)
+        #expect(committed.hall == [SIMD2(0, 2), SIMD2(18, 2), SIMD2(18, 8), SIMD2(0, 8)])
+        #expect(committed.sizeM.x >= 18 && committed.sizeM.y >= 10)
+        #expect(LayoutEditing.apply(LayoutEditing.inverse(of: move.edit), to: committed) == layout)
     }
 
     @Test("Doors on the moved edge travel with it")
@@ -101,4 +107,36 @@ struct HallEdgesTests {
         #expect(context.layout.hall[1] == SIMD2(14, 2))
         #expect(context.preview == nil)
     }
+
+    @Test("Double-clicking a hall edge on the structure layer commits one undoable outline split")
+    func selectToolDoubleClickSplitsHallEdge() {
+        let tool = SelectTool()
+        let original = Self.layout()
+        let context = HallDragContext(layout: original)
+
+        tool.handleDoubleClick(Self.event(at: SIMD2(5.1, 2.02)), context: context)
+
+        #expect(context.appliedEdits.count == 1)
+        if let edit = context.appliedEdits.first {
+            if case .setOutline = edit {
+            } else {
+                Issue.record("Expected a .setOutline edit for hall edge split")
+            }
+            #expect(LayoutEditing.apply(LayoutEditing.inverse(of: edit), to: context.layout) == original)
+        }
+        #expect(context.layout.hall == [SIMD2(2, 2), SIMD2(5, 2), SIMD2(12, 2), SIMD2(12, 8), SIMD2(2, 8)])
+    }
+
+    @Test("Double-clicking a hall edge on the booths layer does not split the hall")
+    func selectToolDoubleClickIgnoresHallEdgeOnBoothsLayer() {
+        let tool = SelectTool()
+        let context = HallDragContext(layout: Self.layout())
+        context.activeLayer = .booths
+
+        tool.handleDoubleClick(Self.event(at: SIMD2(5, 2)), context: context)
+
+        #expect(context.appliedEdits.isEmpty)
+        #expect(context.layout.hall == Self.hall)
+    }
 }
+
