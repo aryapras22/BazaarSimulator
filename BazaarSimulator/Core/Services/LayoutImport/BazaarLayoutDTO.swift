@@ -121,17 +121,22 @@ struct BazaarMarkerDTO: Decodable, Identifiable, Sendable, Equatable {
     }
 }
 
+/// A table may name its standard `model` and add `rot` in degrees; without a model it is matched by width.
 struct BazaarTableDTO: Decodable, Sendable, Equatable {
     let centerX: Double
     let centerY: Double
     let width: Double
     let height: Double
+    var model: String?
+    var rotationDegrees: Double?
 
     enum CodingKeys: String, CodingKey {
         case centerX = "cx"
         case centerY = "cy"
         case width = "w"
         case height = "h"
+        case model
+        case rotationDegrees = "rot"
     }
 }
 

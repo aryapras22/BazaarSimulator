@@ -182,15 +182,18 @@ extension MockLayoutMapper {
         )
     }
 
-    /// The file gives each table as a square dot, so it becomes the round standard table closest in size.
+    /// A table without a named model is a square dot, so it becomes the round standard table closest in size.
     private static func mapTables(from tables: [BazaarTableDTO]) -> [LayoutObject] {
         let rounds = FurnitureModels.tables.filter { $0.shape == .round }
         return tables.enumerated().map { index, table in
-            let model = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            let closestRound = rounds.min { abs($0.sizeM.x - table.width) < abs($1.sizeM.x - table.width) } ?? rounds[0]
+            let model = table.model.flatMap { FurnitureModels.table($0) } ?? closestRound
+            var tablePlacement = Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM)
+            tablePlacement.rotationRadians = (table.rotationDegrees ?? 0) * .pi / 180
             return LayoutObject(
                 kind: .table,
                 label: "Table \(index + 1)",
-                placement: Placement(center: SIMD2(table.centerX, table.centerY), sizeM: model.sizeM),
+                placement: tablePlacement,
                 reviewState: .detected,
                 catalogID: model.id
             )
