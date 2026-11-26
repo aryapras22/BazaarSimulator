@@ -236,6 +236,15 @@ extension MockLayoutMapper {
             if fixture.kind.lowercased() == "stage" || ObjectCatalog.namesEntertainment(fixture.label) {
                 return ObjectCatalog.detectedEntertainment(label: fixture.label, placement: fixturePlacement)
             }
+            if fixture.kind.lowercased() == "seating" {
+                return LayoutObject(
+                    kind: .seating,
+                    label: fixture.label,
+                    placement: fixturePlacement,
+                    reviewState: .detected,
+                    catalogID: FurnitureModels.seatingBlockID
+                )
+            }
             return LayoutObject(kind: .block, label: fixture.label, placement: fixturePlacement, reviewState: .detected)
         }
     }
