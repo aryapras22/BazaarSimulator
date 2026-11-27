@@ -56,6 +56,18 @@ final class DashboardViewModel {
     /// The pairs a saved run has been switched to, so switching back to one shows it at once.
     private var savedSwitchCache: [(layouts: [Layout], result: SimulationResult)] = []
     private var savedSwitchTask: Task<Void, Never>?
+    private struct PendingSavedSwitch {
+        let pair: [Layout]
+        let previousResult: SimulationResult?
+        let previousShowsDerivedPair: Bool
+    }
+    private struct PendingQuietSwitch {
+        let layouts: [Layout]
+        let previousInputs: Inputs?
+        let previousResult: SimulationResult?
+    }
+    private var pendingSavedSwitch: PendingSavedSwitch?
+    private var pendingQuietSwitch: PendingQuietSwitch?
     /// A saved run is showing another pair than the one it was made with, so it cannot be replayed in the simulator.
     private(set) var showsDerivedPair = false
     /// For a switch, the loading page only comes if the new pair takes a while, so a quick one never flashes it.
@@ -104,10 +116,21 @@ extension DashboardViewModel {
 
     var isSingleLayout: Bool { layoutIDs.count == 1 }
 
+    private var pendingSwitchLayouts: [Layout]? {
+        pendingSavedSwitch?.pair ?? pendingQuietSwitch?.layouts
+    }
+
     /// What each layout on the page is called: as the project numbers it, not by the card it sits in, so the project's
     /// first layout stays "Layout 1" wherever it is shown.
     var layoutNames: LayoutNames {
-        LayoutNames(names: simulationResult?.outcomes.mapValues(\.name) ?? [:])
+        if let pending = pendingSwitchLayouts {
+            let layouts = projectLayouts
+            let names = Dictionary(uniqueKeysWithValues: zip(LayoutID.allCases, pending).map { place, layout in
+                (place, LayoutNames.name(of: layout, in: layouts, place: place))
+            })
+            return LayoutNames(names: names)
+        }
+        return LayoutNames(names: simulationResult?.outcomes.mapValues(\.name) ?? [:])
     }
 
     /// The project's layouts a card can show instead of its own. Empty when the project has no layout beyond the ones
@@ -173,32 +196,82 @@ extension DashboardViewModel {
            let pair = pairWithBestFirst(in: run, current: comparedLayouts, wanted: id),
            let switched = run.result(showing: pair) {
             pin(pair)
-            runTask?.cancel()
+            let inputs = currentInputs
+            resetInFlightState()
             simulationResult = switched
-            shownInputs = currentInputs
+            shownInputs = inputs
+            remember(switched, for: inputs)
             phase = .ready
             return
         }
+        let previousInputs = pendingQuietSwitch?.previousInputs ?? shownInputs
+        let previousResult = pendingQuietSwitch?.previousResult ?? simulationResult
         session.setComparedLayout(id, at: layout.rawValue - 1, for: projectID)
-        if let cached = cachedResult(for: currentInputs) {
-            runTask?.cancel()
+        let inputs = currentInputs
+        let restored = inputs == previousInputs ? previousResult : nil
+        if let cached = cachedResult(for: inputs) ?? restored {
+            resetInFlightState()
             simulationResult = cached
-            shownInputs = currentInputs
+            shownInputs = inputs
             phase = .ready
             return
         }
         // The page stays as it is while the new pair is worked out, instead of giving way to the loading page.
-        quietInputs = currentInputs
+        resetInFlightState()
+        quietInputs = inputs
+        pendingQuietSwitch = PendingQuietSwitch(
+            layouts: inputs.layouts, previousInputs: previousInputs, previousResult: previousResult
+        )
         startSimulation()
     }
 
-    private func cancelSavedSwitch() {
+    private func resetInFlightState() {
         runCount += 1
+        runTask?.cancel()
+        runTask = nil
         savedSwitchTask?.cancel()
         savedSwitchTask = nil
         switchLoadingTask?.cancel()
         switchLoadingTask = nil
         isRunning = false
+        runningInputs = nil
+        quietInputs = nil
+        pendingQuietSwitch = nil
+        pendingSavedSwitch = nil
+        if marksSessionRunning {
+            marksSessionRunning = false
+            session.setAnalysisRunning(false, for: projectID)
+        }
+    }
+
+    private func scheduleSwitchLoading(for run: Int) {
+        switchLoadingTask?.cancel()
+        switchLoadingTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.switchLoadingDelay)
+            guard let self, !Task.isCancelled, run == self.runCount, self.isRunning else { return }
+            self.showLoading()
+        }
+    }
+
+    private func restoreSavedPage(from previous: PendingSavedSwitch?, savedID: SavedAnalysis.ID) {
+        if let result = previous?.previousResult {
+            simulationResult = result
+            showsDerivedPair = previous?.previousShowsDerivedPair ?? false
+            phase = .ready
+        } else {
+            showSaved(savedID)
+        }
+    }
+
+    private func restoreQuietSwitch(from previous: PendingQuietSwitch?) {
+        if let previousInputs = previous?.previousInputs {
+            pin(previousInputs.layouts)
+            shownInputs = previousInputs
+        }
+        if let previousResult = previous?.previousResult {
+            simulationResult = previousResult
+            phase = .ready
+        }
     }
 
     /// A saved run is a record, so a switch shows the pair in place and leaves the run, and the live analysis, as they
@@ -208,10 +281,10 @@ extension DashboardViewModel {
         guard case .saved(let savedID) = source,
               let saved = session.savedAnalysis(id: savedID, in: projectID)
         else { return }
-        let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0] }
+        let shown = pendingSavedSwitch?.pair ?? LayoutID.allCases.compactMap { simulationResult?.layouts[$0] }
         if let run = projectRun, let pair = pairWithBestFirst(in: run, current: shown, wanted: id),
            let switched = run.result(showing: pair) {
-            cancelSavedSwitch()
+            resetInFlightState()
             simulationResult = switched
             showsDerivedPair = pair != saved.layouts
             phase = .ready
@@ -223,8 +296,16 @@ extension DashboardViewModel {
               pair[0].id != id,
               let chosen = saved.layouts.first(where: { $0.id == id }) ?? session.layout(id: id, in: projectID)
         else { return }
-        cancelSavedSwitch()
+        let baseResult = pendingSavedSwitch?.previousResult ?? simulationResult
+        let baseDerived = pendingSavedSwitch?.previousShowsDerivedPair ?? showsDerivedPair
+        resetInFlightState()
         pair[1] = chosen
+        if let baseResult, LayoutID.allCases.compactMap({ baseResult.layouts[$0] }) == pair {
+            simulationResult = baseResult
+            showsDerivedPair = baseDerived
+            phase = .ready
+            return
+        }
         let savedPair = savedResult(for: saved).map { result in
             LayoutID.allCases.compactMap { result.layouts[$0] }
         } ?? saved.layouts
@@ -235,6 +316,10 @@ extension DashboardViewModel {
             showsDerivedPair = pair != saved.layouts
             phase = .ready
         } else {
+            pendingSavedSwitch = PendingSavedSwitch(
+                pair: pair, previousResult: baseResult, previousShowsDerivedPair: baseDerived
+            )
+            isRunning = true
             savedSwitchTask = Task { await runSavedSwitch(to: pair, of: saved) }
         }
     }
@@ -245,15 +330,11 @@ extension DashboardViewModel {
         let run = runCount
         isRunning = true
         // The run stays on the page, and the loading page only comes if the other pair takes a while.
-        switchLoadingTask?.cancel()
-        switchLoadingTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.switchLoadingDelay)
-            guard let self, !Task.isCancelled, run == self.runCount, self.isRunning else { return }
-            self.showLoading()
-        }
+        scheduleSwitchLoading(for: run)
         defer {
             if run == runCount {
                 isRunning = false
+                pendingSavedSwitch = nil
                 switchLoadingTask?.cancel()
                 switchLoadingTask = nil
             }
@@ -274,7 +355,9 @@ extension DashboardViewModel {
         guard run == runCount, !Task.isCancelled else { return }
         guard case .ready(let result) = loaded else {
             // Nothing to show for that pair, so the run comes back as it was.
-            if case .saved(let id) = source { showSaved(id) }
+            if case .saved(let id) = source {
+                restoreSavedPage(from: pendingSavedSwitch, savedID: id)
+            }
             return
         }
         loadingProgress = 1.0
@@ -314,8 +397,8 @@ extension DashboardViewModel {
 
     /// Plays one of the two layouts on the cards in the simulator, also when a saved run shows a pair of its own.
     func simulate(_ layout: LayoutID) {
-        let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0].map(\.id) }
-        onSimulate(layout, showsDerivedPair ? shown : nil)
+        let shown = LayoutID.allCases.compactMap { floorPlan(for: $0)?.id }
+        onSimulate(layout, showsDerivedPair || pendingSavedSwitch != nil ? shown : nil)
     }
 
     /// The number the project gives a layout, which the list of layouts shows whichever layouts it holds.
@@ -346,7 +429,7 @@ extension DashboardViewModel {
             if !isRunning, simulationResult != nil, shownInputs == currentInputs { return }
         }
         // A ready saved run (including a derived pair) or one already opening stays as it is.
-        if case .saved = source, simulationResult != nil || isRunning { return }
+        if case .saved = source, simulationResult != nil || isRunning || pendingSavedSwitch != nil { return }
         logWhyRunning()
         runTask?.cancel()
         runTask = Task { await runSimulation() }
@@ -354,21 +437,15 @@ extension DashboardViewModel {
 
     /// Cancels the simulation in progress, removes the running row from the sidebar, and leaves the loading screen.
     func cancelSimulation() {
-        runCount += 1
-        switchLoadingTask?.cancel()
-        switchLoadingTask = nil
-        savedSwitchTask?.cancel()
-        savedSwitchTask = nil
-        runTask?.cancel()
-        runTask = nil
-        isRunning = false
-        runningInputs = nil
+        let previousSavedSwitch = pendingSavedSwitch
+        resetInFlightState()
         previewVenue = nil
+        previewLayout = nil
         previewFrame = SimulationSceneFrame()
         loadingProgress = 0.0
-        if marksSessionRunning {
-            marksSessionRunning = false
-            session.setAnalysisRunning(false, for: projectID)
+        if case .saved(let savedID) = source {
+            restoreSavedPage(from: previousSavedSwitch, savedID: savedID)
+            return
         }
         onBack()
     }
@@ -392,6 +469,15 @@ extension DashboardViewModel {
         }
     }
 
+    private func applyCachedResult(_ cached: SimulationResult, for inputs: Inputs) {
+        let isQuiet = quietInputs == inputs
+        resetInFlightState()
+        simulationResult = cached
+        shownInputs = inputs
+        phase = .ready
+        if !isQuiet { record(cached, parameters: inputs.parameters) }
+    }
+
     func runSimulation() async {
         if case .saved(let id) = source {
             openSavedRun(id)
@@ -399,34 +485,32 @@ extension DashboardViewModel {
         }
         // A pair worked out before, such as the one a saved run's layout switch comes back to, needs no run at all.
         if let cached = cachedResult(for: currentInputs) {
-            simulationResult = cached
-            shownInputs = currentInputs
-            quietInputs = nil
-            phase = .ready
+            applyCachedResult(cached, for: currentInputs)
             return
         }
         let inputs = currentInputs
         let isQuiet = quietInputs == inputs
-        if isQuiet { quietInputs = nil }
+        quietInputs = nil
 
         runCount += 1
         let run = runCount
+        isRunning = true
+        runningInputs = inputs
         // Reaching here means the layouts or parameters changed, so the result on the page is for other inputs. The
         // loading page replaces it until the new one is ready. A switch between layouts keeps the page as it is and
         // only shows the loading page if the new pair takes a while.
-        switchLoadingTask?.cancel()
         if isQuiet {
-            switchLoadingTask = Task { [weak self] in
-                try? await Task.sleep(for: Self.switchLoadingDelay)
-                guard let self, !Task.isCancelled, run == self.runCount, self.isRunning else { return }
-                self.showLoading()
-            }
+            pendingQuietSwitch = PendingQuietSwitch(
+                layouts: inputs.layouts,
+                previousInputs: pendingQuietSwitch?.previousInputs ?? shownInputs,
+                previousResult: pendingQuietSwitch?.previousResult ?? simulationResult
+            )
+            scheduleSwitchLoading(for: run)
         } else {
+            pendingQuietSwitch = nil
+            switchLoadingTask?.cancel()
+            switchLoadingTask = nil
             showLoading()
-        }
-        isRunning = true
-        runningInputs = inputs
-        if !isQuiet {
             marksSessionRunning = true
             session.setAnalysisRunning(true, for: projectID)
         }
@@ -434,6 +518,7 @@ extension DashboardViewModel {
             if run == runCount {
                 isRunning = false
                 runningInputs = nil
+                pendingQuietSwitch = nil
                 switchLoadingTask?.cancel()
                 switchLoadingTask = nil
                 if !isQuiet, marksSessionRunning {
@@ -482,7 +567,8 @@ extension DashboardViewModel {
             phase = .ready
             if !isQuiet { record(shown, parameters: inputs.parameters) }
         case .cancelled:
-            break
+            guard isQuiet, run == runCount, !Task.isCancelled else { break }
+            restoreQuietSwitch(from: pendingQuietSwitch)
         }
     }
 
@@ -535,7 +621,7 @@ extension DashboardViewModel {
     /// Opens a saved run, showing the measurements the run stored without simulating. Its replay stays unsaved until
     /// the Simulate page opens.
     private func openSavedRun(_ id: SavedAnalysis.ID) {
-        guard simulationResult == nil, !isRunning else { return }
+        guard simulationResult == nil, !isRunning, pendingSavedSwitch == nil else { return }
         showSaved(id)
     }
 
@@ -739,7 +825,11 @@ extension DashboardViewModel {
     }
 
     func floorPlan(for layout: LayoutID) -> Layout? {
-        simulationResult?.layouts[layout]
+        let index = layout.rawValue - 1
+        if let pending = pendingSwitchLayouts, pending.indices.contains(index) {
+            return pending[index]
+        }
+        return simulationResult?.layouts[layout]
     }
 
     func plan(for layout: LayoutID) -> PlanFrame {
