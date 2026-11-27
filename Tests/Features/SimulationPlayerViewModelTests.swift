@@ -284,6 +284,16 @@ struct PlaybackClockTests {
         clock.play(from: start.addingTimeInterval(600))
         #expect(clock.time(at: start.addingTimeInterval(605)) == 5)
     }
+
+    @Test("Seeking back after the end stays paused")
+    func seekAfterEnd() {
+        var clock = PlaybackClock(duration: 120)
+        let start = Date()
+        clock.play(from: start)
+        clock.seek(to: 30, at: start.addingTimeInterval(500))
+        #expect(!clock.isRunning)
+        #expect(clock.time(at: start.addingTimeInterval(510)) == 30)
+    }
 }
 
 
