@@ -39,7 +39,9 @@ final class ProjectScreenFactory {
         services.importQueue.removeAll(projectID: id)
         setupViewModels[id] = nil
         layoutEditorViewModels[id] = nil
+        dashboardViewModels[id]?.cancelRuns()
         dashboardViewModels[id] = nil
+        savedDashboardViewModels.values.filter { $0.projectID == id }.forEach { $0.cancelRuns() }
         savedDashboardViewModels = savedDashboardViewModels.filter { $0.value.projectID != id }
         if router.parametersProjectID == id { router.dismissParameters() }
         session.deleteProject(id: id)

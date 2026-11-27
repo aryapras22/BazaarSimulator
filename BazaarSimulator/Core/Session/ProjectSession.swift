@@ -145,9 +145,14 @@ final class ProjectSession: ProjectSessionProtocol {
     }
 
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
+        guard hasProject(projectID) else { return }
         eventParametersByProject[projectID] = parameters
         parametersByProject[projectID] = Self.modalParameters(from: parameters)
         persistState(for: projectID)
+    }
+
+    private func hasProject(_ id: UUID) -> Bool {
+        projects.contains { $0.id == id }
     }
 
     func deleteProject(id: UUID) {
@@ -342,6 +347,8 @@ final class ProjectSession: ProjectSessionProtocol {
     func recordAnalysis(
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
     ) -> SavedAnalysis? {
+        // A run can finish after its project was deleted. Saving it then would leave an orphan folder on disk.
+        guard hasProject(projectID) else { return nil }
         let existing = savedAnalyses(for: projectID)
         if let matched = existing.first(where: {
             $0.matches(parameters: parameters, layouts: layouts, analyses: analyses, peakMinute: peakMinute)
