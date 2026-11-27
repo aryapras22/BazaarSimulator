@@ -2,27 +2,29 @@ import Foundation
 import Testing
 @testable import BazaarSimulator
 
+@MainActor
+@discardableResult
+private func recordRun(_ session: ProjectSession, in projectID: UUID) -> SavedAnalysis? {
+    let layout = PreviewLayouts.annyeong()
+    let measured = LayoutAnalysis(
+        layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 15, spots: [],
+        flowPerMinute: [], simulatedPeople: 10, totalPeople: 10
+    )
+    let parameters = PresetCatalog(
+        visitorTypes: TestLayouts.visitorTypes,
+        bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 100
+    ).defaultParameters()
+    return session.recordAnalysis(
+        layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: projectID
+    )
+}
+
 @Suite("ProjectDeletionTests")
 @MainActor
 struct ProjectDeletionTests {
     private func temporaryRoot() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("deletion-tests-\(UUID().uuidString)")
-    }
-
-    private func recordRun(_ session: ProjectSession, in projectID: UUID) {
-        let layout = PreviewLayouts.annyeong()
-        let measured = LayoutAnalysis(
-            layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 15, spots: [],
-            flowPerMinute: [], simulatedPeople: 10, totalPeople: 10
-        )
-        let parameters = PresetCatalog(
-            visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
-            defaultTotalVisitors: 100
-        ).defaultParameters()
-        session.recordAnalysis(
-            layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: projectID
-        )
     }
 
     @Test("Deleting a project removes it with its layouts, its saved analyses, and its place as the active project")
@@ -178,6 +180,37 @@ struct SidebarDeletionTests {
         library.confirmDeletion()
         #expect(session.projects.isEmpty)
         #expect(router.destination == .empty)
+    }
+
+    @Test("Deleting a saved run while its replay is open leaves the replay")
+    func deletingTheReplayedRunLeavesIt() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        let run = recordRun(session, in: project.id)!
+        let router = AppRouter(destination: .simulation(projectID: project.id, layout: .one, analysisID: run.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+
+        library.requestDeletion(of: run, in: project)
+        library.confirmDeletion()
+
+        #expect(router.destination == .setup(projectID: project.id))
+    }
+
+    @Test("Deleting a saved run drops its cached page")
+    func deletingARunDropsItsPage() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        let run = recordRun(session, in: project.id)!
+        let router = AppRouter(destination: .setup(projectID: project.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+        let before = factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: run.id)
+
+        library.requestDeletion(of: run, in: project)
+        library.confirmDeletion()
+
+        #expect(factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: run.id) !== before)
     }
 
     @Test("Deleting a project that is not open leaves the page alone")
