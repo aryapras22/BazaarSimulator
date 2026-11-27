@@ -197,3 +197,261 @@ struct ProjectSessionTests {
         #expect(afterDelete.comparedLayouts(for: project.id).map(\.id) == [first.id, second.id])
     }
 }
+
+@Suite("LatestDisplayedAnalysisTests")
+@MainActor
+struct LatestDisplayedAnalysisTests {
+    private struct PersistedLatestAnalysisState: Decodable {
+        let latestDisplayedAnalysisID: SavedAnalysis.ID?
+    }
+
+    private struct LegacySessionState: Encodable {
+        let eventParameters: EventParameters
+        let comparedLayoutIDs: [Layout.ID]
+    }
+
+    private func temporaryStore() -> FileSavedAnalysisStore {
+        FileSavedAnalysisStore(root: FileManager.default.temporaryDirectory
+            .appendingPathComponent("project-session-latest-run-\(UUID().uuidString)"))
+    }
+
+    private func parameters(visitors: Int) -> EventParameters {
+        var copy = TestLayouts.parameters
+        copy.totalVisitors = visitors
+        return copy
+    }
+
+    private func analysis(for layout: Layout) -> LayoutAnalysis {
+        let spot = SpotMeasurement(
+            number: 1, name: "Near B1", position: SIMD2(4, 5),
+            densitySamples: [0.25, 0.5], peopleSamples: [2, 5]
+        )
+        var measured = LayoutAnalysis(
+            layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 60, spots: [spot],
+            flowPerMinute: [2, 3], simulatedPeople: 40, totalPeople: 40
+        )
+        measured.plan = PlanFrame(origin: .zero, size: layout.sizeM)
+        return measured
+    }
+
+    private func persistedLatestDisplayedAnalysisID(
+        for projectID: UUID, in store: FileSavedAnalysisStore
+    ) -> SavedAnalysis.ID? {
+        let stateFile = store.rootForTesting
+            .appendingPathComponent("State", isDirectory: true)
+            .appendingPathComponent("\(projectID.uuidString).json")
+        guard let data = try? Data(contentsOf: stateFile) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode(PersistedLatestAnalysisState.self, from: data))?.latestDisplayedAnalysisID
+    }
+
+    private func writeStateJSON<Value: Encodable>(
+        _ value: Value, for projectID: UUID, in store: FileSavedAnalysisStore
+    ) throws {
+        let stateDirectory = store.rootForTesting.appendingPathComponent("State", isDirectory: true)
+        try FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(value)
+        try data.write(to: stateDirectory.appendingPathComponent("\(projectID.uuidString).json"))
+    }
+
+    private func makeViewModel(session: ProjectSession, projectID: UUID) -> ProjectLibraryViewModel {
+        ProjectLibraryViewModel(
+            session: session, destination: { .analysis(projectID: projectID) }, onOpenProject: { _ in }
+        )
+    }
+
+    @Test("Recording a new analysis tracks and persists it as the latest displayed run")
+    func recordingNewRunTracksAndPersistsLatestDisplayedRun() throws {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let session = ProjectSession(store: store)
+        let project = session.createProject(named: "Alpha")
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 5)]
+        let analyses = layouts.map(analysis(for:))
+        let viewModel = makeViewModel(session: session, projectID: project.id)
+
+        let run1 = try #require(session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 300), peakMinute: 660, in: project.id
+        ))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == run1.id)
+        #expect(viewModel.isAnalysisSelected(run1, in: project))
+
+        let run2 = try #require(session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 600), peakMinute: 690, in: project.id
+        ))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == run2.id)
+        #expect(viewModel.isAnalysisSelected(run2, in: project))
+        #expect(!viewModel.isAnalysisSelected(run1, in: project))
+    }
+
+    @Test("Matching an earlier run switches the latest displayed run back without saving a duplicate")
+    func matchingEarlierRunSwitchesLatestDisplayedRunWithoutDuplicate() throws {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let session = ProjectSession(store: store)
+        let project = session.createProject(named: "Alpha")
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 5)]
+        let reversed = [layouts[1], layouts[0]]
+        let analyses = layouts.map(analysis(for:))
+        let viewModel = makeViewModel(session: session, projectID: project.id)
+
+        let run1 = try #require(session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 300), peakMinute: 660, in: project.id
+        ))
+        let run2 = try #require(session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 600), peakMinute: 690, in: project.id
+        ))
+
+        let duplicate = session.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map(analysis(for:)),
+            parameters: parameters(visitors: 300),
+            peakMinute: 660,
+            in: project.id
+        )
+
+        #expect(duplicate == nil)
+        #expect(session.savedAnalyses(for: project.id).map(\.id) == [run1.id, run2.id])
+        #expect(viewModel.isAnalysisSelected(run1, in: project))
+        #expect(!viewModel.isAnalysisSelected(run2, in: project))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == run1.id)
+    }
+
+    @Test("Latest displayed analysis selection survives relaunch through FileSavedAnalysisStore")
+    func latestDisplayedAnalysisSurvivesRelaunch() {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let project = ProjectSummary(name: "Alpha")
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 5)]
+        let analyses = layouts.map(analysis(for:))
+        let run1 = SavedAnalysis(
+            number: 1, createdAt: Date(timeIntervalSince1970: 1_000),
+            parameters: parameters(visitors: 300), layouts: layouts, analyses: analyses, peakMinute: 660
+        )
+        let run2 = SavedAnalysis(
+            number: 2, createdAt: Date(timeIntervalSince1970: 2_000),
+            parameters: parameters(visitors: 600), layouts: layouts, analyses: analyses, peakMinute: 690
+        )
+        store.saveProjects([project])
+        store.save(run1, in: project.id)
+        store.save(run2, in: project.id)
+
+        let session = ProjectSession(store: store)
+        let matched = session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 300), peakMinute: 660, in: project.id
+        )
+        #expect(matched == nil)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        let viewModel = makeViewModel(session: reopened, projectID: project.id)
+
+        #expect(reopened.savedAnalyses(for: project.id).map(\.id) == [run1.id, run2.id])
+        #expect(viewModel.isAnalysisSelected(run1, in: project))
+        #expect(!viewModel.isAnalysisSelected(run2, in: project))
+    }
+
+    @Test("Legacy state files without latestDisplayedAnalysisID fall back to the newest run and persist updates")
+    func legacyStateWithoutLatestDisplayedAnalysisFallsBackToNewestRun() throws {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let project = ProjectSummary(name: "Legacy")
+        let first = TestLayouts.hall(booths: 3)
+        let second = TestLayouts.hall(booths: 4)
+        let third = TestLayouts.hall(booths: 5)
+        let params1 = parameters(visitors: 300)
+        let pair = [first, second]
+        let analyses = pair.map(analysis(for:))
+        let run1 = SavedAnalysis(
+            number: 1, createdAt: Date(timeIntervalSince1970: 1_000),
+            parameters: params1, layouts: pair, analyses: analyses, peakMinute: 660
+        )
+        let run2 = SavedAnalysis(
+            number: 2, createdAt: Date(timeIntervalSince1970: 2_000),
+            parameters: parameters(visitors: 600), layouts: pair, analyses: analyses, peakMinute: 690
+        )
+
+        store.saveProjects([project])
+        store.saveDraft(ProjectDraft(name: project.name, layouts: [first, second, third]), for: project.id)
+        try writeStateJSON(
+            LegacySessionState(eventParameters: params1, comparedLayoutIDs: [third.id, first.id]),
+            for: project.id, in: store
+        )
+        store.save(run1, in: project.id)
+        store.save(run2, in: project.id)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        let viewModel = makeViewModel(session: reopened, projectID: project.id)
+
+        #expect(reopened.eventParameters(for: project.id) == params1)
+        #expect(reopened.comparedLayouts(for: project.id).map(\.id) == [third.id, first.id])
+        #expect(viewModel.isAnalysisSelected(run2, in: project))
+        #expect(!viewModel.isAnalysisSelected(run1, in: project))
+
+        let matched = reopened.recordAnalysis(
+            layouts: run1.layouts, analyses: run1.analyses,
+            parameters: run1.parameters, peakMinute: run1.peakMinute, in: project.id
+        )
+
+        #expect(matched == nil)
+        #expect(viewModel.isAnalysisSelected(run1, in: project))
+        #expect(!viewModel.isAnalysisSelected(run2, in: project))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == run1.id)
+        #expect(reopened.eventParameters(for: project.id) == params1)
+        #expect(reopened.comparedLayouts(for: project.id).map(\.id) == [third.id, first.id])
+    }
+
+    @Test("Deleting the tracked displayed run falls back to the newest remaining run and clears persisted ID")
+    func deletingTrackedDisplayedRunFallsBackToNewestRemainingRun() {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let project = ProjectSummary(name: "Alpha")
+        let layouts = [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 5)]
+        let analyses = layouts.map(analysis(for:))
+        let run1 = SavedAnalysis(
+            number: 1, createdAt: Date(timeIntervalSince1970: 1_000),
+            parameters: parameters(visitors: 300), layouts: layouts, analyses: analyses, peakMinute: 660
+        )
+        let run2 = SavedAnalysis(
+            number: 2, createdAt: Date(timeIntervalSince1970: 2_000),
+            parameters: parameters(visitors: 600), layouts: layouts, analyses: analyses, peakMinute: 690
+        )
+        let run3 = SavedAnalysis(
+            number: 3, createdAt: Date(timeIntervalSince1970: 3_000),
+            parameters: parameters(visitors: 900), layouts: layouts, analyses: analyses, peakMinute: 720
+        )
+        store.saveProjects([project])
+        store.save(run1, in: project.id)
+        store.save(run2, in: project.id)
+        store.save(run3, in: project.id)
+
+        let session = ProjectSession(store: store)
+        let viewModel = makeViewModel(session: session, projectID: project.id)
+        _ = session.recordAnalysis(
+            layouts: layouts, analyses: analyses, parameters: parameters(visitors: 300), peakMinute: 660, in: project.id
+        )
+
+        #expect(viewModel.isAnalysisSelected(run1, in: project))
+        #expect(!viewModel.isAnalysisSelected(run3, in: project))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == run1.id)
+
+        session.deleteSavedAnalysis(id: run1.id, in: project.id)
+
+        #expect(viewModel.isAnalysisSelected(run3, in: project))
+        #expect(!viewModel.isAnalysisSelected(run2, in: project))
+        #expect(persistedLatestDisplayedAnalysisID(for: project.id, in: store) == nil)
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        let reopenedViewModel = makeViewModel(session: reopened, projectID: project.id)
+        #expect(reopened.savedAnalyses(for: project.id).map(\.id) == [run2.id, run3.id])
+        #expect(reopenedViewModel.isAnalysisSelected(run3, in: project))
+        #expect(!reopenedViewModel.isAnalysisSelected(run2, in: project))
+    }
+}
