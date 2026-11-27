@@ -180,11 +180,11 @@ struct RootView: View {
             LayoutEditorView(viewModel: factory.makeLayoutEditorViewModel(projectID: projectID))
                 .id(projectID)
         case .simulation(let projectID, let layout, let analysisID):
-            SimulationPlayerView(
-                viewModel: factory.makeSimulationPlayerViewModel(
+            SimulationPlayerScreen {
+                factory.makeSimulationPlayerViewModel(
                     projectID: projectID, layout: layout, analysisID: analysisID
                 )
-            )
+            }
             .id(
                 "\(projectID.uuidString)-\(layout.rawValue)-\(analysisID?.uuidString ?? "latest")-"
                     + (router.simulationLayoutIDs?.map(\.uuidString).joined() ?? "")
@@ -197,6 +197,20 @@ private struct ParametersRequest: Identifiable, Equatable {
     let projectID: UUID
     let analysisID: UUID?
     var id: String { "\(projectID.uuidString)-\(analysisID?.uuidString ?? "latest")" }
+}
+
+/// Builds the player view model once per simulation, so a redraw of the app (leaving full screen,
+/// resizing the window) does not swap in a fresh model and run the simulation again.
+private struct SimulationPlayerScreen: View {
+    @State private var viewModel: SimulationPlayerViewModel
+
+    init(make: () -> SimulationPlayerViewModel) {
+        _viewModel = State(initialValue: make())
+    }
+
+    var body: some View {
+        SimulationPlayerView(viewModel: viewModel)
+    }
 }
 
 /// Builds the Parameters view model once per presentation, so a redraw of the app does not reset it.
