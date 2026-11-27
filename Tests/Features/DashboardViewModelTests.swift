@@ -282,20 +282,17 @@ struct DashboardViewModelTests {
             projectID: project.id, source: .saved(saved.id), session: session, analysisService: AnalysisService(),
             catalog: catalog
         )
-        // Opening a saved run simulates every layout of the project first, and only then shows the run.
-        #expect(record.phase == .loading)
-        await record.runSimulation()
         #expect(record.phase == .ready)
-        #expect(record.simulationResult?.projectRun != nil)
+        #expect(record.simulationResult?.projectRun == nil)
         let best = try #require(record.bestChoiceLayoutID)
         #expect(record.floorPlan(for: .one)?.id == best)
         #expect(record.layoutChoices(for: .one).isEmpty)
         #expect(record.layoutChoices(for: .two).count == 2)
 
-        // Every layout is already worked out, so the other layout is on the right card at once.
         let shownRight = try #require(record.floorPlan(for: .two)?.id)
         let other = try #require(layouts.first { $0.id != best && $0.id != shownRight })
         record.choose(other.id, for: .two)
+        await untilShowing(record, .two, other.id)
         #expect(record.floorPlan(for: .two)?.id == other.id)
         #expect(record.floorPlan(for: .one)?.id == best)
         #expect(!record.isRunning)
@@ -340,6 +337,124 @@ struct DashboardViewModelTests {
     }
 }
 
+extension DashboardViewModelTests {
+    private func stubAnalysis(
+        for layout: Layout,
+        parameters: EventParameters,
+        density: Float,
+        people: Int
+    ) -> LayoutAnalysis {
+        let count = max(parameters.eventHours.endMinute - parameters.eventHours.startMinute, 1)
+        let spot = SpotMeasurement(
+            number: 1,
+            name: "Near B1",
+            position: SIMD2(4, 5),
+            densitySamples: Array(repeating: density, count: count),
+            peopleSamples: Array(repeating: people, count: count)
+        )
+        var analysis = LayoutAnalysis(
+            layoutID: layout.id,
+            eventStartMinute: parameters.eventHours.startMinute,
+            sampleIntervalSeconds: 60,
+            spots: [spot],
+            flowPerMinute: Array(repeating: Double(people), count: count),
+            simulatedPeople: people * 10,
+            totalPeople: parameters.totalVisitors
+        )
+        analysis.plan = PlanFrame(origin: .zero, size: layout.sizeM)
+        return analysis
+    }
+
+    @Test("Opening a saved run shows stored measurements immediately without simulating")
+    func openingSavedRunShowsStoredMeasurementsWithoutSimulating() async throws {
+        let layouts = twoLayouts
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let parameters = TestLayouts.parameters
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(parameters, for: project.id)
+        let storedAnalyses = [
+            stubAnalysis(for: layouts[0], parameters: parameters, density: 0.3, people: 3),
+            stubAnalysis(for: layouts[1], parameters: parameters, density: 1.1, people: 11)
+        ]
+        let saved = try #require(
+            session.recordAnalysis(
+                layouts: layouts,
+                analyses: storedAnalyses,
+                parameters: parameters,
+                peakMinute: parameters.eventHours.startMinute + 60,
+                in: project.id
+            )
+        )
+        let spy = GatedAnalysisService()
+        let model = DashboardViewModel(
+            projectID: project.id,
+            source: .saved(saved.id),
+            session: session,
+            analysisService: spy,
+            catalog: catalog
+        )
+
+        #expect(model.phase == .ready)
+        #expect(model.simulationResult?.analyses[.one] == storedAnalyses[0])
+        #expect(model.simulationResult?.analyses[.two] == storedAnalyses[1])
+        #expect(model.simulationResult?.replay(for: .one) == nil)
+        #expect(spy.calls.isEmpty)
+
+        await model.runSimulation()
+        #expect(model.phase == .ready)
+        #expect(model.simulationResult?.analyses[.one] == storedAnalyses[0])
+        #expect(model.simulationResult?.analyses[.two] == storedAnalyses[1])
+        #expect(model.simulationResult?.replay(for: .one) == nil)
+        #expect(spy.calls.isEmpty)
+
+        model.startSimulation()
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(20))
+        #expect(model.phase == .ready)
+        #expect(model.simulationResult?.analyses[.one] == storedAnalyses[0])
+        #expect(model.simulationResult?.analyses[.two] == storedAnalyses[1])
+        #expect(model.simulationResult?.replay(for: .one) == nil)
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test("Recording a run stores the pinned layout pair order shown on the cards")
+    func runSimulationRecordsPinnedLayoutOrder() async throws {
+        let layouts = twoLayouts
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        let parameters = TestLayouts.parameters
+        session.setDraft(ProjectDraft(name: "P", layouts: layouts), for: project.id)
+        session.setEventParameters(parameters, for: project.id)
+
+        let service = GatedAnalysisService { layout, params in
+            let isFirst = layout.id == layouts[0].id
+            return stubAnalysis(
+                for: layout,
+                parameters: params,
+                density: isFirst ? 1.8 : 0.1,
+                people: isFirst ? 20 : 1
+            )
+        }
+        let model = DashboardViewModel(
+            projectID: project.id,
+            session: session,
+            analysisService: service,
+            catalog: catalog
+        )
+
+        await model.runSimulation()
+
+        let expectedOrder = [layouts[1].id, layouts[0].id]
+        #expect(model.phase == .ready)
+        #expect(model.floorPlan(for: .one)?.id == layouts[1].id)
+        #expect(model.floorPlan(for: .two)?.id == layouts[0].id)
+        let saved = try #require(session.savedAnalyses(for: project.id).first)
+        #expect(saved.layouts.map(\.id) == expectedOrder)
+        #expect(saved.analyses.map(\.layoutID) == expectedOrder)
+    }
+}
+
 @MainActor
 private final class GatedAnalysisService: AnalysisServiceProtocol {
     struct Call {
@@ -352,9 +467,14 @@ private final class GatedAnalysisService: AnalysisServiceProtocol {
     private var firstCallGate: CheckedContinuation<Void, Never>?
     private var hasPausedFirstCall = false
     private let pausesFirstCall: Bool
+    private let makeAnalysis: ((Layout, EventParameters) -> LayoutAnalysis)?
 
-    init(pausesFirstCall: Bool = false) {
+    init(
+        pausesFirstCall: Bool = false,
+        makeAnalysis: ((Layout, EventParameters) -> LayoutAnalysis)? = nil
+    ) {
         self.pausesFirstCall = pausesFirstCall
+        self.makeAnalysis = makeAnalysis
     }
 
     func waitForFirstCall() async {
@@ -388,6 +508,7 @@ private final class GatedAnalysisService: AnalysisServiceProtocol {
         }
         guard !Task.isCancelled else { return [] }
         return layouts.map { layout in
+            if let makeAnalysis { return makeAnalysis(layout, parameters) }
             let spot = SpotMeasurement(
                 number: 1, name: "Near B1", position: SIMD2(4, 5),
                 densitySamples: [0.2, 0.5], peopleSamples: [2, 5]
