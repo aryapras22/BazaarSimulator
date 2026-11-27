@@ -140,6 +140,75 @@ struct SavedAnalysisTests {
         #expect(decoded == original)
         #expect(decoded.replay == nil)
     }
+
+    @Test("SavedAnalysis.matches ignores layout order while checking layout edits and parameters")
+    func matchesIgnoresLayoutOrderButChecksEditsAndParameters() {
+        let pair = layouts()
+        let params = parameters(visitors: 500)
+        let saved = SavedAnalysis(
+            number: 1,
+            parameters: params,
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            peakMinute: 690
+        )
+
+        var editedFirst = pair[0]
+        editedFirst.name = "Edited Annyeong"
+        editedFirst.sizeM.x += 2
+
+        #expect(saved.matches(parameters: params, layouts: [pair[1], pair[0]]))
+        #expect(!saved.matches(parameters: params, layouts: [editedFirst, pair[1]]))
+        #expect(!saved.matches(parameters: params, layouts: [pair[1], editedFirst]))
+        #expect(!saved.matches(parameters: parameters(visitors: 800), layouts: [pair[1], pair[0]]))
+        #expect(!saved.matches(parameters: params, layouts: [pair[0]]))
+    }
+
+    @Test("Recording an analysis skips duplicates matching an earlier non-last run in either layout order")
+    func recordAnalysisSkipsDuplicateMatchingEarlierRunInEitherOrder() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = layouts()
+        let reversed = [pair[1], pair[0]]
+        let firstParams = parameters(visitors: 500)
+        let secondParams = parameters(visitors: 800)
+
+        let first = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: secondParams,
+            peakMinute: 700,
+            in: project.id
+        )
+
+        let duplicateSameOrder = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        let duplicateReversedOrder = session.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(duplicateSameOrder == nil)
+        #expect(duplicateReversedOrder == nil)
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
 }
 
 @Suite("DashboardSavedRunTests")
