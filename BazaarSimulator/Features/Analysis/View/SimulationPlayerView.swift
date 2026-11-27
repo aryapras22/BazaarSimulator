@@ -8,6 +8,7 @@ struct SimulationPlayerView: View {
     @State private var clock = PlaybackClock(duration: SimulationPlayerViewModel.defaultPlaybackSeconds)
     @State private var zoomRequest: CameraZoomRequest?
     @State private var keyMonitor: Any?
+    @State private var windowNumber: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.pageClearsToolbar) private var pageClearsToolbar
 
@@ -31,6 +32,7 @@ struct SimulationPlayerView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .underToolbarInWindow()
         .background(Palette.simulationBackground.ignoresSafeArea())
+        .background(WindowNumberReader { windowNumber = $0 })
         .task {
             await viewModel.load()
             clock = PlaybackClock(duration: viewModel.playbackDuration)
@@ -48,16 +50,22 @@ struct SimulationPlayerView: View {
     private func installSpaceMonitor() {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            let isPlainSpace = event.keyCode == 49
-                && !event.isARepeat
-                && event.modifierFlags.intersection([.command, .control, .option]).isEmpty
-            guard isPlainSpace, viewModel.phase == .ready,
-                  !(event.window?.firstResponder is NSText) else {
+            guard viewModel.phase == .ready, Self.handlesSpace(event, windowNumber: windowNumber) else {
                 return event
             }
             clock.toggle()
             return nil
         }
+    }
+
+    /// The monitor sees key events for every window of the app, so only Space typed in this player's window plays.
+    static func handlesSpace(_ event: NSEvent, windowNumber: Int?) -> Bool {
+        event.keyCode == 49
+            && !event.isARepeat
+            && event.modifierFlags.isDisjoint(with: [.command, .control, .option])
+            && windowNumber != nil
+            && event.windowNumber == windowNumber
+            && !(event.window?.firstResponder is NSText)
     }
 
     private func removeSpaceMonitor() {
@@ -256,4 +264,33 @@ extension SegmentedTabBarStyle {
         pillBorder: Color(hex: 0x7486A0).opacity(0.7),
         unselectedWeight: .semibold
     )
+}
+
+/// Reports the number of the window the player sits in. The number is kept instead of the window, so the view's
+/// state does not hold on to its own window.
+private struct WindowNumberReader: NSViewRepresentable {
+    let onChange: (Int?) -> Void
+
+    func makeNSView(context: Context) -> ReaderView {
+        let view = ReaderView()
+        view.onChange = onChange
+        return view
+    }
+
+    func updateNSView(_ nsView: ReaderView, context: Context) {
+        nsView.onChange = onChange
+    }
+
+    final class ReaderView: NSView {
+        var onChange: ((Int?) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            // AppKit can move the view while SwiftUI updates, and state must not change in the middle of that.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                onChange?(window?.windowNumber)
+            }
+        }
+    }
 }
