@@ -5,10 +5,16 @@ import os
 struct ProjectSessionState: Codable, Equatable, Sendable {
     var eventParameters: EventParameters?
     var comparedLayoutIDs: [Layout.ID]?
+    var latestDisplayedAnalysisID: SavedAnalysis.ID?
 
-    init(eventParameters: EventParameters? = nil, comparedLayoutIDs: [Layout.ID]? = nil) {
+    init(
+        eventParameters: EventParameters? = nil,
+        comparedLayoutIDs: [Layout.ID]? = nil,
+        latestDisplayedAnalysisID: SavedAnalysis.ID? = nil
+    ) {
         self.eventParameters = eventParameters
         self.comparedLayoutIDs = comparedLayoutIDs
+        self.latestDisplayedAnalysisID = latestDisplayedAnalysisID
     }
 }
 

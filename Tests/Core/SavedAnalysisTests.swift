@@ -157,11 +157,24 @@ struct SavedAnalysisTests {
         editedFirst.name = "Edited Annyeong"
         editedFirst.sizeM.x += 2
 
-        #expect(saved.matches(parameters: params, layouts: [pair[1], pair[0]]))
-        #expect(!saved.matches(parameters: params, layouts: [editedFirst, pair[1]]))
-        #expect(!saved.matches(parameters: params, layouts: [pair[1], editedFirst]))
-        #expect(!saved.matches(parameters: parameters(visitors: 800), layouts: [pair[1], pair[0]]))
-        #expect(!saved.matches(parameters: params, layouts: [pair[0]]))
+        #expect(saved.matches(
+            parameters: params, layouts: [pair[1], pair[0]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [editedFirst, pair[1]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [pair[1], editedFirst], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: parameters(visitors: 800),
+            layouts: [pair[1], pair[0]],
+            analyses: saved.analyses,
+            peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [pair[0]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
     }
 
     @Test("Recording an analysis skips duplicates matching an earlier non-last run in either layout order")

@@ -37,8 +37,9 @@ protocol ProjectSessionProtocol: AnyObject {
     func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
     func savedAnalyses(for projectID: UUID) -> [SavedAnalysis]
+    func latestDisplayedAnalysisID(for projectID: UUID) -> SavedAnalysis.ID?
     /// Keeps a finished analysis as the project's next saved run. Nothing is added when any saved run of the project
-    /// matches the same layouts and parameters.
+    /// matches the same parameters, layouts in any order, stored measurements, and peak minute.
     @discardableResult
     func recordAnalysis(
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
@@ -57,6 +58,10 @@ extension ProjectSessionProtocol {
         seededDraft.seedFingerprint = fingerprint
         setDraft(seededDraft, for: projectID)
     }
+
+    func latestDisplayedAnalysisID(for projectID: UUID) -> SavedAnalysis.ID? {
+        savedAnalyses(for: projectID).last?.id
+    }
 }
 
 @Observable
@@ -74,6 +79,7 @@ final class ProjectSession: ProjectSessionProtocol {
     private var simulatingProjects: Set<UUID> = []
     private var analysingProjects: Set<UUID> = []
     private var savedAnalysesByProject: [UUID: [SavedAnalysis]] = [:]
+    private var latestDisplayedAnalysisIDs: [UUID: SavedAnalysis.ID] = [:]
     private let store: (any SavedAnalysisStoring)?
 
     /// With a store, projects, drafts, state, and saved analyses are read from it now and written to it as they change.
@@ -99,6 +105,9 @@ final class ProjectSession: ProjectSessionProtocol {
                 }
                 if let comparedIDs = state.comparedLayoutIDs {
                     comparedLayoutIDs[project.id] = comparedIDs
+                }
+                if let latestDisplayedID = state.latestDisplayedAnalysisID {
+                    latestDisplayedAnalysisIDs[project.id] = latestDisplayedID
                 }
             }
         }
@@ -156,6 +165,7 @@ final class ProjectSession: ProjectSessionProtocol {
         simulatingProjects.remove(id)
         analysingProjects.remove(id)
         savedAnalysesByProject[id] = nil
+        latestDisplayedAnalysisIDs[id] = nil
         store?.saveProjects(projects)
         store?.deleteDraft(for: id)
         store?.deleteState(for: id)
@@ -322,6 +332,10 @@ final class ProjectSession: ProjectSessionProtocol {
     func deleteSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID) {
         savedAnalysesByProject[projectID]?.removeAll { $0.id == id }
         store?.delete(analysisID: id, in: projectID)
+        if latestDisplayedAnalysisIDs[projectID] == id {
+            latestDisplayedAnalysisIDs[projectID] = nil
+            persistState(for: projectID)
+        }
     }
 
     @discardableResult
@@ -329,7 +343,13 @@ final class ProjectSession: ProjectSessionProtocol {
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
     ) -> SavedAnalysis? {
         let existing = savedAnalyses(for: projectID)
-        if existing.contains(where: { $0.matches(parameters: parameters, layouts: layouts) }) { return nil }
+        if let matched = existing.first(where: {
+            $0.matches(parameters: parameters, layouts: layouts, analyses: analyses, peakMinute: peakMinute)
+        }) {
+            latestDisplayedAnalysisIDs[projectID] = matched.id
+            persistState(for: projectID)
+            return nil
+        }
         let saved = SavedAnalysis(
             number: (existing.map(\.number).max() ?? 0) + 1,
             parameters: parameters,
@@ -338,7 +358,9 @@ final class ProjectSession: ProjectSessionProtocol {
             peakMinute: peakMinute
         )
         savedAnalysesByProject[projectID, default: []].append(saved)
+        latestDisplayedAnalysisIDs[projectID] = saved.id
         store?.save(saved, in: projectID)
+        persistState(for: projectID)
         return saved
     }
 
@@ -352,6 +374,15 @@ final class ProjectSession: ProjectSessionProtocol {
 }
 
 extension ProjectSession {
+    func latestDisplayedAnalysisID(for projectID: UUID) -> SavedAnalysis.ID? {
+        let analyses = savedAnalyses(for: projectID)
+        if let trackedID = latestDisplayedAnalysisIDs[projectID],
+           analyses.contains(where: { $0.id == trackedID }) {
+            return trackedID
+        }
+        return analyses.last?.id
+    }
+
     private static func modalParameters(from parameters: EventParameters) -> ModalParameters {
         ModalParameters(
             totalVisitors: parameters.totalVisitors,
@@ -368,7 +399,8 @@ extension ProjectSession {
     private func persistState(for projectID: UUID) {
         let state = ProjectSessionState(
             eventParameters: eventParametersByProject[projectID],
-            comparedLayoutIDs: comparedLayoutIDs[projectID]
+            comparedLayoutIDs: comparedLayoutIDs[projectID],
+            latestDisplayedAnalysisID: latestDisplayedAnalysisIDs[projectID]
         )
         store?.saveState(state, for: projectID)
     }

@@ -94,7 +94,9 @@ final class ProjectLibraryViewModel {
         case .savedAnalysis(let projectID, let analysisID):
             projectID == project.id && analysisID == analysis.id
         case .analysis(let projectID):
-            projectID == project.id && !isRunning(project) && session.savedAnalyses(for: project.id).last?.id == analysis.id
+            projectID == project.id
+                && !isRunning(project)
+                && session.latestDisplayedAnalysisID(for: project.id) == analysis.id
         default: false
         }
     }
