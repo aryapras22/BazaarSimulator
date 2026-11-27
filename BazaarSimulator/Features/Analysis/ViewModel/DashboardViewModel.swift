@@ -39,6 +39,30 @@ final class DashboardViewModel {
     private(set) var loadingProgress: Double = 0.0
     private var runTask: Task<Void, Never>?
     private var runCount = 0
+    /// What a result was made from. The page runs again only when these change, so coming back to it, or another
+    /// window opening over it, never throws away the analysis it is showing.
+    private struct Inputs: Equatable {
+        let parameters: EventParameters
+        let layouts: [Layout]
+    }
+    private var shownInputs: Inputs?
+    private var runningInputs: Inputs?
+    /// The pairs of layouts already worked out on this page, for these parameters, so switching back to one shows it at
+    /// once. A change to the parameters or to a layout makes its entry stale, as the inputs no longer match.
+    private var resultCache: [(inputs: Inputs, result: SimulationResult)] = []
+    /// The inputs of a run that is a switch between layouts: it neither shows a running row in the sidebar nor saves
+    /// an analysis. A run for any other inputs, such as new parameters, is a real one.
+    private var quietInputs: Inputs?
+    /// The pairs a saved run has been switched to, so switching back to one shows it at once.
+    private var savedSwitchCache: [(layouts: [Layout], result: SimulationResult)] = []
+    private var savedSwitchTask: Task<Void, Never>?
+    /// A saved run is showing another pair than the one it was made with, so it cannot be replayed in the simulator.
+    private(set) var showsDerivedPair = false
+    /// For a switch, the loading page only comes if the new pair takes a while, so a quick one never flashes it.
+    private var switchLoadingTask: Task<Void, Never>?
+    /// Every layout of the project simulated in one go. Any two of them go on the cards from it at once.
+    private var projectRun: ProjectRun?
+    private var projectRunTask: Task<Void, Never>?
 
     init(
         projectID: UUID,
@@ -58,9 +82,15 @@ final class DashboardViewModel {
         self.onBack = onBack
         self.onSimulate = onSimulate
         self.onOpenParameters = onOpenParameters
-        // Neither a saved run nor the latest analysis shows at once. Every layout of the project is simulated first, so
-        // the page opens with the whole project worked out: the best of all, and any two layouts on the cards.
+        // A saved run shows its stored measurements immediately without simulating; its replay is built only when the
+        // Simulate page opens.
+        if case .saved(let id) = source { showSaved(id) }
     }
+}
+
+// MARK: - Layout choices and switching
+
+extension DashboardViewModel {
 
     var projectName: String {
         session.projects.first { $0.id == projectID }?.name ?? "Project"
@@ -248,9 +278,11 @@ final class DashboardViewModel {
     var peakHourText: String {
         simulationResult?.peakHourText ?? ""
     }
+}
 
-    // MARK: Running the simulation
+// MARK: - Running the simulation
 
+extension DashboardViewModel {
     /// Replaces the page with the loading page, which shows the simulation under way.
     private func showLoading() {
         simulationResult = nil
@@ -259,30 +291,10 @@ final class DashboardViewModel {
         preparePreviewVenue(for: nil)
     }
 
-    /// What a result was made from. The page runs again only when these change, so coming back to it, or another
-    /// window opening over it, never throws away the analysis it is showing.
-    private struct Inputs: Equatable {
-        let parameters: EventParameters
-        let layouts: [Layout]
-    }
-
     private var currentInputs: Inputs { Inputs(parameters: currentParameters, layouts: comparedLayouts) }
-    private var shownInputs: Inputs?
-    private var runningInputs: Inputs?
-    /// The pairs of layouts already worked out on this page, for these parameters, so switching back to one shows it at
-    /// once. A change to the parameters or to a layout makes its entry stale, as the inputs no longer match.
-    private var resultCache: [(inputs: Inputs, result: SimulationResult)] = []
     private static let resultCacheLimit = 12
-    /// The inputs of a run that is a switch between layouts: it neither shows a running row in the sidebar nor saves
-    /// an analysis. A run for any other inputs, such as new parameters, is a real one.
-    private var quietInputs: Inputs?
-    /// The pairs a saved run has been switched to, so switching back to one shows it at once.
-    private var savedSwitchCache: [(layouts: [Layout], result: SimulationResult)] = []
-    private var savedSwitchTask: Task<Void, Never>?
-    /// A saved run is showing another pair than the one it was made with, so it cannot be replayed in the simulator.
-    private(set) var showsDerivedPair = false
 
-    /// Plays one of the two layouts on the cards in the simulator, also when a saved run shows a pair of its own choosing.
+    /// Plays one of the two layouts on the cards in the simulator, also when a saved run shows a pair of its own.
     func simulate(_ layout: LayoutID) {
         let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0].map(\.id) }
         onSimulate(layout, showsDerivedPair ? shown : nil)
@@ -292,8 +304,7 @@ final class DashboardViewModel {
     func layoutNumber(of id: Layout.ID) -> Int {
         (projectLayouts.firstIndex { $0.id == id } ?? 0) + 1
     }
-    /// For a switch, the loading page only comes if the new pair takes a while, so a quick one never flashes it.
-    private var switchLoadingTask: Task<Void, Never>?
+
     private static let switchLoadingDelay: Duration = .milliseconds(600)
 
     private func cachedResult(for inputs: Inputs) -> SimulationResult? {
@@ -309,14 +320,15 @@ final class DashboardViewModel {
     /// Starts a run in the background. A run already under way is cancelled first, unless it is for the same
     /// layouts and parameters, and a page that already shows them stays as it is.
     func startSimulation() {
-        Logger(subsystem: "BazaarSimulator", category: "analysis")
-            .info("startSimulation: result \(self.simulationResult != nil), shown \(self.shownInputs != nil), running \(self.isRunning)")
+        Logger(subsystem: "BazaarSimulator", category: "analysis").info(
+            "startSimulation: result \(self.simulationResult != nil), shown \(self.shownInputs != nil), running \(self.isRunning)"
+        )
         if source == .latest {
             if isRunning, runningInputs == currentInputs { return }
             if !isRunning, simulationResult != nil, shownInputs == currentInputs { return }
         }
-        // A saved run being opened is left to finish. Cancelling it would only leave the page waiting.
-        if case .saved = source, isRunning { return }
+        // A ready saved run (including a derived pair) or one already opening stays as it is.
+        if case .saved = source, simulationResult != nil || isRunning { return }
         logWhyRunning()
         runTask?.cancel()
         runTask = Task { await runSimulation() }
@@ -348,14 +360,17 @@ final class DashboardViewModel {
         let now = currentInputs
         if shown.parameters != now.parameters { log.info("run: parameters changed") }
         if shown.layouts != now.layouts {
-            let changed = zip(shown.layouts, now.layouts).enumerated().filter { $0.element.0 != $0.element.1 }.map(\.offset)
+            let changed = zip(shown.layouts, now.layouts)
+                .enumerated()
+                .filter { $0.element.0 != $0.element.1 }
+                .map(\.offset)
             log.info("run: layouts changed (count \(shown.layouts.count)->\(now.layouts.count), differing \(changed))")
         }
     }
 
     func runSimulation() async {
         if case .saved(let id) = source {
-            await openSavedRun(id)
+            openSavedRun(id)
             return
         }
         // A pair worked out before, such as the one a saved run's layout switch comes back to, needs no run at all.
@@ -434,7 +449,7 @@ final class DashboardViewModel {
             shownInputs = currentInputs
             remember(shown, for: currentInputs)
             phase = .ready
-            if !isQuiet { record(result, parameters: inputs.parameters) }
+            if !isQuiet { record(shown, parameters: inputs.parameters) }
         case .cancelled:
             break
         }
@@ -486,65 +501,11 @@ final class DashboardViewModel {
         previewFrame = frame
     }
 
-    /// Opens a saved run. Every layout of the project is simulated first, with the run's own parameters, and only then
-    /// is the run shown, so it comes with the best of all the layouts and can switch a card to any of them at once. A
-    /// run already opened in this session shows from the work it did, without simulating again.
-    private func openSavedRun(_ id: SavedAnalysis.ID) async {
-        guard let saved = session.savedAnalysis(id: id, in: projectID) else {
-            phase = .needsLayouts(count: 0)
-            return
-        }
-        if let run = projectRun {
-            showSavedRun(saved, from: run)
-            return
-        }
-        guard !isRunning else { return }
-        runCount += 1
-        let run = runCount
-        isRunning = true
-        showLoading()
-        defer { if run == runCount { isRunning = false } }
-        let loaded = await SimulationLoader.load(
-            projectID: projectID,
-            savedAnalysis: saved,
-            simulatesProject: true,
-            session: session,
-            analysisService: analysisService,
-            catalog: catalog,
-            onLiveFrame: { [weak self] layoutID, visitors, progress in
-                Task { @MainActor [weak self] in
-                    self?.applyLiveVisitors(visitors, layoutID: layoutID, progress: progress, run: run)
-                }
-            }
-        )
-        guard run == runCount, !Task.isCancelled else { return }
-        guard case .ready(let result) = loaded else {
-            // The measurements the run stored stand in when it cannot be simulated again.
-            showSaved(id)
-            return
-        }
-        loadingProgress = 1.0
-        projectRun = result.projectRun
-        if let run = result.projectRun {
-            showSavedRun(saved, from: run)
-        } else {
-            simulationResult = result
-            showsDerivedPair = false
-            phase = .ready
-        }
-    }
-
-    /// Shows a saved run with the best layout of the project on the left, as on the live page. When the best layout
-    /// is not one of the run's own, the run shows another pair than the one it was made with, and cannot be replayed.
-    private func showSavedRun(_ saved: SavedAnalysis, from run: ProjectRun) {
-        let pair = pairWithBestFirst(in: run, current: saved.layouts) ?? saved.layouts
-        guard let result = run.result(showing: pair) ?? run.result(showing: saved.layouts) else {
-            showSaved(saved.id)
-            return
-        }
-        simulationResult = result
-        showsDerivedPair = pair != saved.layouts
-        phase = .ready
+    /// Opens a saved run, showing the measurements the run stored without simulating. Its replay stays unsaved until
+    /// the Simulate page opens.
+    private func openSavedRun(_ id: SavedAnalysis.ID) {
+        guard simulationResult == nil else { return }
+        showSaved(id)
     }
 
     private func showSaved(_ id: SavedAnalysis.ID) {
@@ -597,8 +558,11 @@ final class DashboardViewModel {
         isParametersPresented = false
         startSimulation()
     }
+}
 
-    // MARK: Reading the result
+// MARK: - Reading the result
+
+extension DashboardViewModel {
 
     /// The best of all the project's layouts, which may not be on a card, and how it does on each of the three checks
     /// against all the others, for the summary above the cards. It is the same whichever pair is on the page.
@@ -635,10 +599,6 @@ final class DashboardViewModel {
                 of: projectOutcomes, peakHourText: result.peakHourText, windowMinutes: result.windowMinutes
             )
     }
-
-    /// Every layout of the project simulated in one go. Any two of them go on the cards from it at once.
-    private var projectRun: ProjectRun?
-    private var projectRunTask: Task<Void, Never>?
 
     /// The run of the whole project, while nothing it was made from has changed.
     private var currentProjectRun: ProjectRun? {
