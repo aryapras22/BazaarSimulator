@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 @MainActor
@@ -31,8 +32,7 @@ final class AppServices {
                 let scripted = ScriptedImportQueue(isSynchronous: true)
                 scripted.mockLayoutFileNames = seed.layoutNames
                 projectID = Self.seedMockProject(
-                    named: seed.name,
-                    planNames: seed.planNames,
+                    seed,
                     in: session,
                     importQueue: scripted
                 )
@@ -46,43 +46,100 @@ final class AppServices {
         }
     }
 
+    private struct MockSeed {
+        let name: String
+        let layoutNames: [String]
+        let planNames: [String]
+    }
+
     /// `planNames` are the file names users see; the scripted queue loads `layoutNames` by position.
-    private static let mockSeeds: [(name: String, layoutNames: [String], planNames: [String])] = [
-        ("Lantern Night Market", ["annyeong-market-layout", "beyond-market-layout"], ["Seoul Food Week", "Spooky Weekend"]),
-        ("Riverside Weekend Bazaar", [
-            "more-market-i-layout",
-            "more-market-iii-layout",
-            "more-market-iv-layout",
-            "more-market-v-layout",
-            "more-market-viii-layout"
-        ], ["North Atrium", "Garden Court", "East Annex", "Central Atrium", "South Atrium"])
+    private static let mockSeeds: [MockSeed] = [
+        MockSeed(
+            name: "Lantern Night Market",
+            layoutNames: ["annyeong-market-layout", "beyond-market-layout"],
+            planNames: ["Seoul Food Week", "Spooky Weekend"]
+        ),
+        MockSeed(
+            name: "Riverside Weekend Bazaar",
+            layoutNames: [
+                "more-market-i-layout",
+                "more-market-iii-layout",
+                "more-market-iv-layout",
+                "more-market-v-layout",
+                "more-market-viii-layout"
+            ],
+            planNames: ["North Atrium", "Garden Court", "East Annex", "Central Atrium", "South Atrium"]
+        )
     ]
 
+    private static func seedFingerprint(for seed: MockSeed, in bundle: Bundle = .main) -> String {
+        var hasher = SHA256()
+
+        func updateLength(_ count: Int) {
+            var length = UInt64(count).bigEndian
+            withUnsafeBytes(of: &length) { hasher.update(bufferPointer: $0) }
+        }
+
+        func updateData(_ data: Data) {
+            updateLength(data.count)
+            hasher.update(data: data)
+        }
+
+        func updateString(_ string: String) {
+            updateData(Data(string.utf8))
+        }
+
+        updateLength(seed.layoutNames.count)
+        for fileName in seed.layoutNames {
+            updateString(fileName)
+            if let rawBytes = try? MockDataStore.rawData(from: fileName, in: bundle) {
+                hasher.update(data: Data([1]))
+                updateData(rawBytes)
+            } else {
+                hasher.update(data: Data([0]))
+            }
+        }
+
+        updateLength(seed.planNames.count)
+        for planName in seed.planNames {
+            updateString(planName)
+        }
+
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
     private static func seedMockProject(
-        named name: String,
-        planNames: [String],
+        _ seed: MockSeed,
         in session: any ProjectSessionProtocol,
         importQueue: ScriptedImportQueue
     ) -> UUID {
         // A project saved by an earlier launch keeps its ID, so its saved analyses stay with it.
-        let project = session.project(named: name) ?? session.createProject(named: name)
+        let project = session.project(named: seed.name) ?? session.createProject(named: seed.name)
         importQueue.add(
             urls: [URL(fileURLWithPath: "/mock/legend.pdf")],
             kind: .legend,
             projectID: project.id
         )
         importQueue.add(
-            urls: planNames.map { URL(fileURLWithPath: "/mock/\($0).pdf") },
+            urls: seed.planNames.map { URL(fileURLWithPath: "/mock/\($0).pdf") },
             kind: .floorPlan,
             projectID: project.id
         )
 
-        if session.draft(for: project.id) == nil {
+        let fingerprint = seedFingerprint(for: seed)
+        let shouldWriteSeed: Bool = switch session.draft(for: project.id) {
+        case nil:
+            true
+        case .some(let existing):
+            existing.seedFingerprint != nil && existing.seedFingerprint != fingerprint
+        }
+
+        if shouldWriteSeed {
             let floorPlanFiles = importQueue.files(for: project.id).filter { $0.kind == .floorPlan }
             let layouts = floorPlanFiles.compactMap { importQueue.extractedLayout(for: $0.id)?.layout }
             let legend = importQueue.legend(for: project.id) ?? Legend()
             let draft = ProjectDraft(name: project.name, legend: legend, layouts: layouts)
-            session.setDraft(draft, for: project.id)
+            session.setSeededDraft(draft, fingerprint: fingerprint, for: project.id)
         }
         session.selectProject(id: project.id)
         return project.id

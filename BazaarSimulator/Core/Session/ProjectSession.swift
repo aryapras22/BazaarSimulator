@@ -20,6 +20,7 @@ protocol ProjectSessionProtocol: AnyObject {
 
     func draft(for projectID: UUID) -> ProjectDraft?
     func setDraft(_ draft: ProjectDraft, for projectID: UUID)
+    func setSeededDraft(_ draft: ProjectDraft, fingerprint: String, for projectID: UUID)
 
     func layout(id: Layout.ID, in projectID: UUID) -> Layout?
     func updateLayout(_ layout: Layout, in projectID: UUID)
@@ -48,6 +49,14 @@ protocol ProjectSessionProtocol: AnyObject {
     func renameSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID, to name: String)
     func deleteSavedAnalysis(id: SavedAnalysis.ID, in projectID: UUID)
     func isSimulating(_ projectID: UUID) -> Bool
+}
+
+extension ProjectSessionProtocol {
+    func setSeededDraft(_ draft: ProjectDraft, fingerprint: String, for projectID: UUID) {
+        var seededDraft = draft
+        seededDraft.seedFingerprint = fingerprint
+        setDraft(seededDraft, for: projectID)
+    }
 }
 
 @Observable
@@ -156,6 +165,18 @@ final class ProjectSession: ProjectSessionProtocol {
     }
 
     func setDraft(_ draft: ProjectDraft, for projectID: UUID) {
+        var userDraft = draft
+        userDraft.seedFingerprint = nil
+        storeDraft(userDraft, for: projectID)
+    }
+
+    func setSeededDraft(_ draft: ProjectDraft, fingerprint: String, for projectID: UUID) {
+        var seededDraft = draft
+        seededDraft.seedFingerprint = fingerprint
+        storeDraft(seededDraft, for: projectID)
+    }
+
+    private func storeDraft(_ draft: ProjectDraft, for projectID: UUID) {
         drafts[projectID] = draft
         store?.saveDraft(draft, for: projectID)
         if let activeID = activeLayoutIDs[projectID],
@@ -175,6 +196,7 @@ final class ProjectSession: ProjectSessionProtocol {
             return
         }
         currentDraft.layouts[index] = layout
+        currentDraft.seedFingerprint = nil
         drafts[projectID] = currentDraft
         store?.saveDraft(currentDraft, for: projectID)
     }
