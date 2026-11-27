@@ -73,6 +73,31 @@ struct ProjectDeletionTests {
         #expect(reopened.savedAnalyses(for: drop.id).isEmpty)
     }
 
+    @Test("A run that finishes after its project is deleted saves nothing")
+    func lateRunSavesNothing() {
+        let root = temporaryRoot()
+        let session = ProjectSession(store: FileSavedAnalysisStore(root: root))
+        let project = session.createProject(named: "Drop")
+        session.deleteProject(id: project.id)
+
+        let saved = recordRun(session, in: project.id)
+
+        #expect(saved == nil)
+        #expect(session.savedAnalyses(for: project.id).isEmpty)
+        #expect(FileSavedAnalysisStore(root: root).loadAnalyses(for: project.id).isEmpty)
+    }
+
+    @Test("Parameters set for a deleted project are dropped")
+    func lateParametersAreDropped() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Drop")
+        session.deleteProject(id: project.id)
+
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+
+        #expect(session.eventParameters(for: project.id) == nil)
+    }
+
     @Test("Renaming a project changes the name the sidebar lists, and keeps it after a restart")
     func renameFollowsInTheSidebar() {
         let root = temporaryRoot()
@@ -211,6 +236,31 @@ struct SidebarDeletionTests {
         library.confirmDeletion()
 
         #expect(factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: run.id) !== before)
+    }
+
+    @Test("Deleting a project stops the analysis running for it")
+    func deletingAProjectStopsItsRun() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        session.setDraft(
+            ProjectDraft(name: "First", layouts: [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]),
+            for: project.id
+        )
+        var parameters = TestLayouts.parameters
+        parameters.totalVisitors = 4000
+        session.setEventParameters(parameters, for: project.id)
+        let router = AppRouter(destination: .analysis(projectID: project.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+        let dashboard = factory.makeDashboardViewModel(projectID: project.id)
+        dashboard.startSimulation()
+        await Task.yield()
+        #expect(dashboard.isRunning)
+
+        library.requestDeletion(of: project)
+        library.confirmDeletion()
+
+        #expect(!dashboard.isRunning)
     }
 
     @Test("Deleting a project that is not open leaves the page alone")

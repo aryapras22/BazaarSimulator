@@ -337,6 +337,17 @@ final class DashboardViewModel {
         onBack()
     }
 
+    /// Stops every run of this page and stays on it, for a project that is being deleted. Unlike `cancelSimulation`
+    /// it neither leaves the page nor touches the session, which the deletion clears.
+    func cancelRuns() {
+        runCount += 1
+        runTask?.cancel()
+        savedSwitchTask?.cancel()
+        switchLoadingTask?.cancel()
+        projectRunTask?.cancel()
+        isRunning = false
+    }
+
     /// Writes to the log why a run starts although a result is already on the page, so an unexpected run can be
     /// traced: filter the console for the "analysis" category.
     private func logWhyRunning() {

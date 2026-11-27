@@ -127,6 +127,7 @@ final class ProjectSession: ProjectSessionProtocol {
     }
 
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
+        guard hasProject(projectID) else { return }
         eventParametersByProject[projectID] = parameters
         parametersByProject[projectID] = ModalParameters(
             totalVisitors: parameters.totalVisitors,
@@ -138,6 +139,10 @@ final class ProjectSession: ProjectSessionProtocol {
             explorerPercent: Double(parameters.mix.share(for: "explorer")?.percent ?? 15),
             purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 15)
         )
+    }
+
+    private func hasProject(_ id: UUID) -> Bool {
+        projects.contains { $0.id == id }
     }
 
     func deleteProject(id: UUID) {
@@ -325,6 +330,8 @@ final class ProjectSession: ProjectSessionProtocol {
     func recordAnalysis(
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
     ) -> SavedAnalysis? {
+        // A run can finish after its project was deleted. Saving it then would leave an orphan folder on disk.
+        guard hasProject(projectID) else { return nil }
         let existing = savedAnalyses(for: projectID)
         if existing.last?.matches(parameters: parameters, layouts: layouts) == true { return nil }
         let saved = SavedAnalysis(
