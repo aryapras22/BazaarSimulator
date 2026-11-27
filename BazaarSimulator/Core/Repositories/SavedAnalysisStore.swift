@@ -1,13 +1,33 @@
 import Foundation
 import os
 
-/// Where projects, drafts, and their saved analyses are kept between launches.
+/// Persisted per-project session selections stored additively alongside drafts and analyses.
+struct ProjectSessionState: Codable, Equatable, Sendable {
+    var eventParameters: EventParameters?
+    var comparedLayoutIDs: [Layout.ID]?
+    var latestDisplayedAnalysisID: SavedAnalysis.ID?
+
+    init(
+        eventParameters: EventParameters? = nil,
+        comparedLayoutIDs: [Layout.ID]? = nil,
+        latestDisplayedAnalysisID: SavedAnalysis.ID? = nil
+    ) {
+        self.eventParameters = eventParameters
+        self.comparedLayoutIDs = comparedLayoutIDs
+        self.latestDisplayedAnalysisID = latestDisplayedAnalysisID
+    }
+}
+
+/// Where projects, drafts, session state, and their saved analyses are kept between launches.
 protocol SavedAnalysisStoring: Sendable {
     func loadProjects() -> [ProjectSummary]
     func saveProjects(_ projects: [ProjectSummary])
     func loadDraft(for projectID: UUID) -> ProjectDraft?
     func saveDraft(_ draft: ProjectDraft, for projectID: UUID)
     func deleteDraft(for projectID: UUID)
+    func loadState(for projectID: UUID) -> ProjectSessionState?
+    func saveState(_ state: ProjectSessionState, for projectID: UUID)
+    func deleteState(for projectID: UUID)
     func loadAnalyses(for projectID: UUID) -> [SavedAnalysis]
     func save(_ analysis: SavedAnalysis, in projectID: UUID)
     func delete(analysisID: UUID, in projectID: UUID)
@@ -15,8 +35,9 @@ protocol SavedAnalysisStoring: Sendable {
     func deleteAnalyses(of projectID: UUID)
 }
 
-/// One JSON file per project draft and per saved analysis:
-/// `<root>/Projects.json`, `<root>/Drafts/<project id>.json`, and `<root>/Analyses/<project id>/<analysis id>.json`.
+/// One JSON file per project draft, per project state, and per saved analysis:
+/// `<root>/Projects.json`, `<root>/Drafts/<project id>.json`, `<root>/State/<project id>.json`, and
+/// `<root>/Analyses/<project id>/<analysis id>.json`.
 /// Files are small, so writes finish before the call returns. Nothing is lost if the app quits right after a save.
 final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
     private let root: URL
@@ -38,6 +59,11 @@ final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
 
     private func draftFile(for projectID: UUID) -> URL {
         root.appendingPathComponent("Drafts", isDirectory: true)
+            .appendingPathComponent("\(projectID.uuidString).json")
+    }
+
+    private func stateFile(for projectID: UUID) -> URL {
+        root.appendingPathComponent("State", isDirectory: true)
             .appendingPathComponent("\(projectID.uuidString).json")
     }
 
@@ -66,6 +92,20 @@ final class FileSavedAnalysisStore: SavedAnalysisStoring, @unchecked Sendable {
 
     func deleteDraft(for projectID: UUID) {
         let file = draftFile(for: projectID)
+        queue.sync { try? FileManager.default.removeItem(at: file) }
+    }
+
+    func loadState(for projectID: UUID) -> ProjectSessionState? {
+        queue.sync { read(ProjectSessionState.self, from: stateFile(for: projectID)) }
+    }
+
+    func saveState(_ state: ProjectSessionState, for projectID: UUID) {
+        let file = stateFile(for: projectID)
+        queue.sync { write(state, to: file) }
+    }
+
+    func deleteState(for projectID: UUID) {
+        let file = stateFile(for: projectID)
         queue.sync { try? FileManager.default.removeItem(at: file) }
     }
 

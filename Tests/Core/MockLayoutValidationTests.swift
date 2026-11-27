@@ -38,4 +38,12 @@ struct MockLayoutValidationTests {
 
         #expect(LayoutValidator.issues(in: layout).isEmpty)
     }
+
+    @Test("Lantern Festival validates with no issues")
+    func lanternFestivalValidatesWithNoIssues() throws {
+        let dto = try MockDataStore.load(BazaarLayoutDTO.self, from: "lantern-festival-layout")
+        let layout = MockLayoutMapper.layout(from: dto, legend: PreviewLayouts.sampleLegend)
+
+        #expect(LayoutValidator.issues(in: layout).isEmpty)
+    }
 }

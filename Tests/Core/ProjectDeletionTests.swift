@@ -2,27 +2,29 @@ import Foundation
 import Testing
 @testable import BazaarSimulator
 
+@MainActor
+@discardableResult
+private func recordRun(_ session: ProjectSession, in projectID: UUID) -> SavedAnalysis? {
+    let layout = PreviewLayouts.annyeong()
+    let measured = LayoutAnalysis(
+        layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 15, spots: [],
+        flowPerMinute: [], simulatedPeople: 10, totalPeople: 10
+    )
+    let parameters = PresetCatalog(
+        visitorTypes: TestLayouts.visitorTypes,
+        bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
+        defaultTotalVisitors: 100
+    ).defaultParameters()
+    return session.recordAnalysis(
+        layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: projectID
+    )
+}
+
 @Suite("ProjectDeletionTests")
 @MainActor
 struct ProjectDeletionTests {
     private func temporaryRoot() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("deletion-tests-\(UUID().uuidString)")
-    }
-
-    private func recordRun(_ session: ProjectSession, in projectID: UUID) {
-        let layout = PreviewLayouts.annyeong()
-        let measured = LayoutAnalysis(
-            layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 15, spots: [],
-            flowPerMinute: [], simulatedPeople: 10, totalPeople: 10
-        )
-        let parameters = PresetCatalog(
-            visitorTypes: TestLayouts.visitorTypes,
-            bazaarTypes: [BazaarTypePreset(id: "t", name: "T", mix: ["a": 50, "b": 50])],
-            defaultTotalVisitors: 100
-        ).defaultParameters()
-        session.recordAnalysis(
-            layouts: [layout], analyses: [measured], parameters: parameters, peakMinute: 700, in: projectID
-        )
     }
 
     @Test("Deleting a project removes it with its layouts, its saved analyses, and its place as the active project")
@@ -69,6 +71,31 @@ struct ProjectDeletionTests {
         #expect(reopened.projects.map(\.name) == ["Keep"])
         #expect(reopened.savedAnalyses(for: keep.id).count == 1)
         #expect(reopened.savedAnalyses(for: drop.id).isEmpty)
+    }
+
+    @Test("A run that finishes after its project is deleted saves nothing")
+    func lateRunSavesNothing() {
+        let root = temporaryRoot()
+        let session = ProjectSession(store: FileSavedAnalysisStore(root: root))
+        let project = session.createProject(named: "Drop")
+        session.deleteProject(id: project.id)
+
+        let saved = recordRun(session, in: project.id)
+
+        #expect(saved == nil)
+        #expect(session.savedAnalyses(for: project.id).isEmpty)
+        #expect(FileSavedAnalysisStore(root: root).loadAnalyses(for: project.id).isEmpty)
+    }
+
+    @Test("Parameters set for a deleted project are dropped")
+    func lateParametersAreDropped() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Drop")
+        session.deleteProject(id: project.id)
+
+        session.setEventParameters(TestLayouts.parameters, for: project.id)
+
+        #expect(session.eventParameters(for: project.id) == nil)
     }
 
     @Test("Renaming a project changes the name the sidebar lists, and keeps it after a restart")
@@ -178,6 +205,62 @@ struct SidebarDeletionTests {
         library.confirmDeletion()
         #expect(session.projects.isEmpty)
         #expect(router.destination == .empty)
+    }
+
+    @Test("Deleting a saved run while its replay is open leaves the replay")
+    func deletingTheReplayedRunLeavesIt() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        let run = recordRun(session, in: project.id)!
+        let router = AppRouter(destination: .simulation(projectID: project.id, layout: .one, analysisID: run.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+
+        library.requestDeletion(of: run, in: project)
+        library.confirmDeletion()
+
+        #expect(router.destination == .setup(projectID: project.id))
+    }
+
+    @Test("Deleting a saved run drops its cached page")
+    func deletingARunDropsItsPage() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        let run = recordRun(session, in: project.id)!
+        let router = AppRouter(destination: .setup(projectID: project.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+        let before = factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: run.id)
+
+        library.requestDeletion(of: run, in: project)
+        library.confirmDeletion()
+
+        #expect(factory.makeSavedDashboardViewModel(projectID: project.id, analysisID: run.id) !== before)
+    }
+
+    @Test("Deleting a project stops the analysis running for it")
+    func deletingAProjectStopsItsRun() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "First")
+        session.setDraft(
+            ProjectDraft(name: "First", layouts: [TestLayouts.hall(booths: 3), TestLayouts.hall(booths: 6)]),
+            for: project.id
+        )
+        var parameters = TestLayouts.parameters
+        parameters.totalVisitors = 4000
+        session.setEventParameters(parameters, for: project.id)
+        let router = AppRouter(destination: .analysis(projectID: project.id))
+        let factory = ProjectScreenFactory(services: AppServices(projectSession: session), router: router)
+        let library = factory.makeLibraryViewModel()
+        let dashboard = factory.makeDashboardViewModel(projectID: project.id)
+        dashboard.startSimulation()
+        await Task.yield()
+        #expect(dashboard.isRunning)
+
+        library.requestDeletion(of: project)
+        library.confirmDeletion()
+
+        #expect(!dashboard.isRunning)
     }
 
     @Test("Deleting a project that is not open leaves the page alone")

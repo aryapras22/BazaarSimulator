@@ -140,6 +140,335 @@ struct SavedAnalysisTests {
         #expect(decoded == original)
         #expect(decoded.replay == nil)
     }
+
+    @Test("SavedAnalysis.matches ignores layout order while checking layout edits and parameters")
+    func matchesIgnoresLayoutOrderButChecksEditsAndParameters() {
+        let pair = layouts()
+        let params = parameters(visitors: 500)
+        let saved = SavedAnalysis(
+            number: 1,
+            parameters: params,
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            peakMinute: 690
+        )
+
+        var editedFirst = pair[0]
+        editedFirst.name = "Edited Annyeong"
+        editedFirst.sizeM.x += 2
+
+        #expect(saved.matches(
+            parameters: params, layouts: [pair[1], pair[0]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [editedFirst, pair[1]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [pair[1], editedFirst], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: parameters(visitors: 800),
+            layouts: [pair[1], pair[0]],
+            analyses: saved.analyses,
+            peakMinute: saved.peakMinute
+        ))
+        #expect(!saved.matches(
+            parameters: params, layouts: [pair[0]], analyses: saved.analyses, peakMinute: saved.peakMinute
+        ))
+    }
+
+    @Test("Recording an analysis skips duplicates matching an earlier non-last run in either layout order")
+    func recordAnalysisSkipsDuplicateMatchingEarlierRunInEitherOrder() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = layouts()
+        let reversed = [pair[1], pair[0]]
+        let firstParams = parameters(visitors: 500)
+        let secondParams = parameters(visitors: 800)
+
+        let first = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: secondParams,
+            peakMinute: 700,
+            in: project.id
+        )
+
+        let duplicateSameOrder = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        let duplicateReversedOrder = session.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map(analysis(for:)),
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(duplicateSameOrder == nil)
+        #expect(duplicateReversedOrder == nil)
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
+}
+
+@Suite("SavedAnalysisMeasurementMatchingTests")
+@MainActor
+struct SavedAnalysisMeasurementMatchingTests {
+    private let fixedLayouts = [PreviewLayouts.annyeong(), PreviewLayouts.beyond()]
+
+    private func analysis(
+        for layout: Layout,
+        peakDensity: Float = 0.75,
+        flow: [Double] = [3, 4, 5],
+        replay: SimulationReplay? = nil
+    ) -> LayoutAnalysis {
+        let spot = SpotMeasurement(
+            number: 1, name: "Near B-1", position: SIMD2(4, 5),
+            densitySamples: [0.25, 0.5, peakDensity, 0.5], peopleSamples: [1, 4, 9, 5]
+        )
+        var measured = LayoutAnalysis(
+            layoutID: layout.id, eventStartMinute: 600, sampleIntervalSeconds: 15, spots: [spot],
+            flowPerMinute: flow, simulatedPeople: 120, totalPeople: 120
+        )
+        measured.plan = PlanFrame(origin: .zero, size: layout.sizeM)
+        measured.replay = replay
+        return measured
+    }
+
+    private func sampleReplay() -> SimulationReplay {
+        SimulationReplay(
+            startMinute: 600,
+            frameIntervalSeconds: 15,
+            frames: [
+                SimulationReplay.Frame(
+                    visitors: [ReplayVisitor(id: 1, position: SIMD2<Float>(2, 3), typeIndex: 0, people: 2)],
+                    footfall: [1, 2, 0, 1]
+                )
+            ],
+            walkable: WalkableMask(origin: .zero, cellSizeM: 1, columns: 2, rows: 2, cells: [true, true, true, true]),
+            footfallColumns: 2,
+            footfallRows: 2,
+            footfallTileM: 1
+        )
+    }
+
+    private func parameters(visitors: Int = 500) -> EventParameters {
+        TestLayouts.parameters.with(totalVisitors: visitors)
+    }
+
+    private func temporaryStore() -> FileSavedAnalysisStore {
+        FileSavedAnalysisStore(root: FileManager.default.temporaryDirectory
+            .appendingPathComponent("saved-analysis-matching-\(UUID().uuidString)"))
+    }
+
+    @Test("Recording saves a new run when peakMinute differs despite matching parameters and layouts")
+    func savesNewRunWhenPeakMinuteDiffers() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let reversed = [pair[1], pair[0]]
+        let params = parameters()
+
+        let first = session.recordAnalysis(
+            layouts: pair, analyses: pair.map { analysis(for: $0) }, parameters: params, peakMinute: 690, in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map { analysis(for: $0) },
+            parameters: params,
+            peakMinute: 720,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
+
+    @Test("Recording saves a new run when spot measurements differ despite matching parameters and layouts")
+    func savesNewRunWhenSpotMeasurementsDiffer() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let reversed = [pair[1], pair[0]]
+        let params = parameters()
+
+        let first = session.recordAnalysis(
+            layouts: pair,
+            analyses: [analysis(for: pair[0], peakDensity: 0.75), analysis(for: pair[1])],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: reversed,
+            analyses: [analysis(for: pair[1]), analysis(for: pair[0], peakDensity: 1.5)],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
+
+    @Test("Recording saves a new run when flowPerMinute differs despite matching parameters and layouts")
+    func savesNewRunWhenFlowPerMinuteDiffers() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let params = parameters()
+
+        let first = session.recordAnalysis(
+            layouts: pair,
+            analyses: [analysis(for: pair[0]), analysis(for: pair[1], flow: [3, 4, 5])],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: pair,
+            analyses: [analysis(for: pair[0]), analysis(for: pair[1], flow: [3, 9, 5])],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
+
+    @Test("Recording saves a new run when analyses have duplicate layoutID keys")
+    func savesNewRunWhenAnalysesHaveDuplicateLayoutIDs() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let params = parameters()
+
+        let first = session.recordAnalysis(
+            layouts: pair,
+            analyses: [analysis(for: pair[0]), analysis(for: pair[1])],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+        let second = session.recordAnalysis(
+            layouts: pair,
+            analyses: [analysis(for: pair[0]), analysis(for: pair[0])],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(first?.name == "Run 1")
+        #expect(second?.name == "Run 2")
+        #expect(session.savedAnalyses(for: project.id).count == 2)
+    }
+
+    @Test("Matching ignores replay and layout order against a disk-reloaded run while saving measurement changes")
+    func ignoresReplayAndOrderAgainstDiskReloadedRunButSavesMeasurementChanges() {
+        let store = temporaryStore()
+        defer { try? FileManager.default.removeItem(at: store.rootForTesting) }
+
+        let session = ProjectSession(store: store)
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let reversed = [pair[1], pair[0]]
+        let params = parameters()
+        let replay = sampleReplay()
+
+        _ = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map { analysis(for: $0, replay: replay) },
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        let reopened = ProjectSession(store: FileSavedAnalysisStore(root: store.rootForTesting))
+        #expect(reopened.savedAnalyses(for: project.id).first?.analyses.allSatisfy { $0.replay == nil } == true)
+
+        let duplicate = reopened.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map { analysis(for: $0, replay: replay) },
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+        let changed = reopened.recordAnalysis(
+            layouts: reversed,
+            analyses: [
+                analysis(for: pair[1], replay: replay),
+                analysis(for: pair[0], peakDensity: 1.75, replay: replay)
+            ],
+            parameters: params,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(duplicate == nil)
+        #expect(changed?.name == "Run 2")
+        #expect(reopened.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2"])
+    }
+
+    @Test("Recording against an earlier run saves measurement changes while still deduplicating identical runs")
+    func savesMeasurementChangesAgainstEarlierRunWhileDeduplicatingIdenticalRun() {
+        let session = ProjectSession()
+        let project = session.createProject(named: "Alpha")
+        let pair = fixedLayouts
+        let reversed = [pair[1], pair[0]]
+        let firstParams = parameters(visitors: 500)
+        let secondParams = parameters(visitors: 800)
+
+        _ = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map { analysis(for: $0) },
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        _ = session.recordAnalysis(
+            layouts: pair,
+            analyses: pair.map { analysis(for: $0) },
+            parameters: secondParams,
+            peakMinute: 700,
+            in: project.id
+        )
+
+        let differentMeasurements = session.recordAnalysis(
+            layouts: reversed,
+            analyses: [analysis(for: pair[1]), analysis(for: pair[0], peakDensity: 1.5)],
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+        let identicalReversed = session.recordAnalysis(
+            layouts: reversed,
+            analyses: reversed.map { analysis(for: $0) },
+            parameters: firstParams,
+            peakMinute: 690,
+            in: project.id
+        )
+
+        #expect(differentMeasurements?.name == "Run 3")
+        #expect(identicalReversed == nil)
+        #expect(session.savedAnalyses(for: project.id).map(\.name) == ["Run 1", "Run 2", "Run 3"])
+    }
 }
 
 @Suite("DashboardSavedRunTests")

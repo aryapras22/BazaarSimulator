@@ -24,7 +24,8 @@ final class ProjectScreenFactory {
                 router?.showSavedAnalysis(projectID: projectID, analysisID: analysisID)
             },
             onOpenLatestAnalysis: { [weak router] id in router?.showAnalysis(projectID: id) },
-            onDeleteProject: { [weak self] id in self?.deleteProject(id: id) }
+            onDeleteProject: { [weak self] id in self?.deleteProject(id: id) },
+            onDeleteAnalysis: { [weak self] id in self?.savedDashboardViewModels[id] = nil }
         )
     }
 
@@ -38,7 +39,9 @@ final class ProjectScreenFactory {
         services.importQueue.removeAll(projectID: id)
         setupViewModels[id] = nil
         layoutEditorViewModels[id] = nil
+        dashboardViewModels[id]?.cancelRuns()
         dashboardViewModels[id] = nil
+        savedDashboardViewModels.values.filter { $0.projectID == id }.forEach { $0.cancelRuns() }
         savedDashboardViewModels = savedDashboardViewModels.filter { $0.value.projectID != id }
         if router.parametersProjectID == id { router.dismissParameters() }
         session.deleteProject(id: id)
