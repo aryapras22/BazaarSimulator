@@ -47,6 +47,7 @@ struct PlaybackClock {
     }
 
     mutating func seek(to newTime: Double, at date: Date = Date()) {
+        if time(at: date) >= duration { isRunning = false }
         anchorTime = min(max(newTime, 0), duration)
         anchorDate = date
     }
@@ -142,6 +143,9 @@ struct PlaybackBar: View {
                 .fill(Color(hex: 0xA2AFC2).opacity(0.55))
                 .overlay { shape.strokeBorder(Color.white.opacity(0.3), lineWidth: 1) }
                 .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+        }
+        .onChange(of: finished) { _, isFinished in
+            if isFinished && clock.isRunning { clock.pause() }
         }
     }
 
