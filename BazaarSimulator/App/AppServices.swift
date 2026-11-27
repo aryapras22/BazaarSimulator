@@ -56,8 +56,8 @@ final class AppServices {
     private static let mockSeeds: [MockSeed] = [
         MockSeed(
             name: "Lantern Night Market",
-            layoutNames: ["annyeong-market-layout", "beyond-market-layout"],
-            planNames: ["Seoul Food Week", "Spooky Weekend"]
+            layoutNames: ["annyeong-market-layout", "beyond-market-layout", "lantern-festival-layout"],
+            planNames: ["Seoul Food Week", "Spooky Weekend", "Mid-Autumn Lantern Fest"]
         ),
         MockSeed(
             name: "Riverside Weekend Bazaar",

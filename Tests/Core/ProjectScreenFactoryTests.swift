@@ -72,7 +72,7 @@ struct ProjectScreenFactoryTests {
 
         let first = try #require(services.projectSession.project(named: "Lantern Night Market"))
         let firstDraft = try #require(services.projectSession.draft(for: first.id))
-        #expect(firstDraft.layouts.count == 2)
+        #expect(firstDraft.layouts.count == 3)
     }
 
     @Test("Selecting project routes to setup when no layouts exist")
