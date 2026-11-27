@@ -63,6 +63,7 @@ final class DashboardViewModel {
     /// Every layout of the project simulated in one go. Any two of them go on the cards from it at once.
     private var projectRun: ProjectRun?
     private var projectRunTask: Task<Void, Never>?
+    private var marksSessionRunning = false
 
     init(
         projectID: UUID,
@@ -120,13 +121,17 @@ extension DashboardViewModel {
         }
     }
 
-    /// The layouts the right card can show: the project's layouts other than the best one, which is always on the left.
+    /// The layouts the right card can show: the project's layouts other than the left card's layout.
     /// The left card has none, as it is not switched.
     func layoutChoices(for layout: LayoutID) -> [Layout] {
         guard layout == .two else { return [] }
         let all = layoutChoices
-        guard let bestID = bestChoiceLayoutID else { return all }
-        let others = all.filter { $0.id != bestID }
+        let excludedID: Layout.ID? = switch source {
+        case .latest: bestChoiceLayoutID
+        case .saved: floorPlan(for: .one)?.id
+        }
+        guard let excludedID else { return all }
+        let others = all.filter { $0.id != excludedID }
         return others.count > 1 ? others : []
     }
 
@@ -187,8 +192,17 @@ extension DashboardViewModel {
         startSimulation()
     }
 
+    private func cancelSavedSwitch() {
+        runCount += 1
+        savedSwitchTask?.cancel()
+        savedSwitchTask = nil
+        switchLoadingTask?.cancel()
+        switchLoadingTask = nil
+        isRunning = false
+    }
+
     /// A saved run is a record, so a switch shows the pair in place and leaves the run, and the live analysis, as they
-    /// were. The best layout stays on the left and the one picked goes on the right. It is the run's own layout if the
+    /// were. The left card stays fixed and the one picked goes on the right. It is the run's own layout if the
     /// run has it. Nothing is saved.
     private func chooseFromSavedRun(_ id: Layout.ID) {
         guard case .saved(let savedID) = source,
@@ -197,7 +211,7 @@ extension DashboardViewModel {
         let shown = LayoutID.allCases.compactMap { simulationResult?.layouts[$0] }
         if let run = projectRun, let pair = pairWithBestFirst(in: run, current: shown, wanted: id),
            let switched = run.result(showing: pair) {
-            savedSwitchTask?.cancel()
+            cancelSavedSwitch()
             simulationResult = switched
             showsDerivedPair = pair != saved.layouts
             phase = .ready
@@ -206,24 +220,27 @@ extension DashboardViewModel {
         // Without the run of the whole project, the pair is worked out for that layout alone.
         var pair = shown
         guard pair.indices.contains(1),
+              pair[0].id != id,
               let chosen = saved.layouts.first(where: { $0.id == id }) ?? session.layout(id: id, in: projectID)
         else { return }
+        cancelSavedSwitch()
         pair[1] = chosen
-        if pair == saved.layouts {
-            savedSwitchTask?.cancel()
+        let savedPair = savedResult(for: saved).map { result in
+            LayoutID.allCases.compactMap { result.layouts[$0] }
+        } ?? saved.layouts
+        if pair == savedPair {
             showSaved(savedID)
         } else if let cached = savedSwitchCache.first(where: { $0.layouts == pair }) {
-            savedSwitchTask?.cancel()
             simulationResult = cached.result
-            showsDerivedPair = true
+            showsDerivedPair = pair != saved.layouts
             phase = .ready
         } else {
-            savedSwitchTask?.cancel()
             savedSwitchTask = Task { await runSavedSwitch(to: pair, of: saved) }
         }
     }
 
     private func runSavedSwitch(to pair: [Layout], of saved: SavedAnalysis) async {
+        guard !Task.isCancelled else { return }
         runCount += 1
         let run = runCount
         isRunning = true
@@ -238,6 +255,7 @@ extension DashboardViewModel {
             if run == runCount {
                 isRunning = false
                 switchLoadingTask?.cancel()
+                switchLoadingTask = nil
             }
         }
         let loaded = await SimulationLoader.load(
@@ -338,6 +356,9 @@ extension DashboardViewModel {
     func cancelSimulation() {
         runCount += 1
         switchLoadingTask?.cancel()
+        switchLoadingTask = nil
+        savedSwitchTask?.cancel()
+        savedSwitchTask = nil
         runTask?.cancel()
         runTask = nil
         isRunning = false
@@ -345,7 +366,10 @@ extension DashboardViewModel {
         previewVenue = nil
         previewFrame = SimulationSceneFrame()
         loadingProgress = 0.0
-        session.setAnalysisRunning(false, for: projectID)
+        if marksSessionRunning {
+            marksSessionRunning = false
+            session.setAnalysisRunning(false, for: projectID)
+        }
         onBack()
     }
 
@@ -402,13 +426,20 @@ extension DashboardViewModel {
         }
         isRunning = true
         runningInputs = inputs
-        if !isQuiet { session.setAnalysisRunning(true, for: projectID) }
+        if !isQuiet {
+            marksSessionRunning = true
+            session.setAnalysisRunning(true, for: projectID)
+        }
         defer {
             if run == runCount {
                 isRunning = false
                 runningInputs = nil
                 switchLoadingTask?.cancel()
-                if !isQuiet { session.setAnalysisRunning(false, for: projectID) }
+                switchLoadingTask = nil
+                if !isQuiet, marksSessionRunning {
+                    marksSessionRunning = false
+                    session.setAnalysisRunning(false, for: projectID)
+                }
             }
         }
         switch await SimulationLoader.load(
@@ -504,22 +535,55 @@ extension DashboardViewModel {
     /// Opens a saved run, showing the measurements the run stored without simulating. Its replay stays unsaved until
     /// the Simulate page opens.
     private func openSavedRun(_ id: SavedAnalysis.ID) {
-        guard simulationResult == nil else { return }
+        guard simulationResult == nil, !isRunning else { return }
         showSaved(id)
     }
 
     private func showSaved(_ id: SavedAnalysis.ID) {
         guard let saved = session.savedAnalysis(id: id, in: projectID),
-              let result = SimulationResult(
-                saved: saved, visitorTypes: catalog.visitorTypes, projectLayouts: projectLayouts
-            )
+              let result = savedResult(for: saved)
         else {
             phase = .needsLayouts(count: 0)
             return
         }
         simulationResult = result
-        showsDerivedPair = false
+        let displayed = LayoutID.allCases.compactMap { result.layouts[$0] }
+        showsDerivedPair = displayed != saved.layouts
         phase = .ready
+    }
+
+    private func savedResult(for saved: SavedAnalysis) -> SimulationResult? {
+        guard let initial = SimulationResult(
+            saved: saved, visitorTypes: catalog.visitorTypes, projectLayouts: projectLayouts
+        ) else { return nil }
+        guard saved.layouts.count >= LayoutID.allCases.count,
+              saved.analyses.count >= LayoutID.allCases.count,
+              let bestID = bestLayoutID(in: initial),
+              initial.layouts[.two]?.id == bestID
+        else { return initial }
+        let reordered = SavedAnalysis(
+            id: saved.id,
+            number: saved.number,
+            createdAt: saved.createdAt,
+            parameters: saved.parameters,
+            layouts: [saved.layouts[1], saved.layouts[0]],
+            analyses: [saved.analyses[1], saved.analyses[0]],
+            peakMinute: saved.peakMinute
+        )
+        return SimulationResult(
+            saved: reordered, visitorTypes: catalog.visitorTypes, projectLayouts: projectLayouts
+        ) ?? initial
+    }
+
+    private func bestLayoutID(in result: SimulationResult) -> Layout.ID? {
+        let outcomes = LayoutID.allCases.compactMap { id in
+            result.layouts[id].flatMap { layout in
+                result.outcomes[id].map { ProjectOutcome(layoutID: layout.id, outcome: $0) }
+            }
+        }
+        return ProjectBestLayout.best(
+            of: outcomes, peakHourText: result.peakHourText, windowMinutes: result.windowMinutes
+        )
     }
 
     /// The project's layouts, in the order that numbers them.
