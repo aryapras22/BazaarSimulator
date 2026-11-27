@@ -24,7 +24,8 @@ final class ProjectScreenFactory {
                 router?.showSavedAnalysis(projectID: projectID, analysisID: analysisID)
             },
             onOpenLatestAnalysis: { [weak router] id in router?.showAnalysis(projectID: id) },
-            onDeleteProject: { [weak self] id in self?.deleteProject(id: id) }
+            onDeleteProject: { [weak self] id in self?.deleteProject(id: id) },
+            onDeleteAnalysis: { [weak self] id in self?.savedDashboardViewModels[id] = nil }
         )
     }
 

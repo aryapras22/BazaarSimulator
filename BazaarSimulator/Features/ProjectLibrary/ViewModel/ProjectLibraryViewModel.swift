@@ -35,6 +35,7 @@ final class ProjectLibraryViewModel {
     private let onOpenLatestAnalysis: (UUID) -> Void
     private let destination: () -> AppDestination
     private let onDeleteProject: (UUID) -> Void
+    private let onDeleteAnalysis: (UUID) -> Void
 
     /// `onOpenProject` opens the project's setup page. `destination` reads where the app is now, so the sidebar
     /// highlight follows the page and not the last click.
@@ -44,7 +45,8 @@ final class ProjectLibraryViewModel {
         onOpenProject: @escaping (UUID) -> Void,
         onOpenAnalysis: @escaping (UUID, UUID) -> Void = { _, _ in },
         onOpenLatestAnalysis: @escaping (UUID) -> Void = { _ in },
-        onDeleteProject: @escaping (UUID) -> Void = { _ in }
+        onDeleteProject: @escaping (UUID) -> Void = { _ in },
+        onDeleteAnalysis: @escaping (UUID) -> Void = { _ in }
     ) {
         self.session = session
         self.destination = destination
@@ -52,6 +54,7 @@ final class ProjectLibraryViewModel {
         self.onOpenAnalysis = onOpenAnalysis
         self.onOpenLatestAnalysis = onOpenLatestAnalysis
         self.onDeleteProject = onDeleteProject
+        self.onDeleteAnalysis = onDeleteAnalysis
         if let activeID = session.activeProjectID {
             expandedProjectIDs.insert(activeID)
         }
@@ -186,8 +189,17 @@ final class ProjectLibraryViewModel {
 
     func deleteAnalysis(_ analysis: SavedAnalysis, in project: ProjectSummary) {
         session.deleteSavedAnalysis(id: analysis.id, in: project.id)
-        guard case .savedAnalysis(_, let openID) = destination(), openID == analysis.id else { return }
+        onDeleteAnalysis(analysis.id)
+        guard isShowing(analysis.id) else { return }
         onOpenProject(project.id)
+    }
+
+    /// The run's dashboard and its replay both show the run, so either one has to leave once it is deleted.
+    private func isShowing(_ analysisID: UUID) -> Bool {
+        switch destination() {
+        case .savedAnalysis(_, let openID), .simulation(_, _, let openID?): openID == analysisID
+        default: false
+        }
     }
 
     private func nextFreeProjectName() -> String {
