@@ -37,8 +37,8 @@ protocol ProjectSessionProtocol: AnyObject {
     func setSimulationResult(_ result: RecordedSimulationResult, for layoutID: Layout.ID, in projectID: UUID)
     func runSimulations(for projectID: UUID)
     func savedAnalyses(for projectID: UUID) -> [SavedAnalysis]
-    /// Keeps a finished analysis as the project's next saved run. Nothing is added when the latest saved run was
-    /// made from the same layouts and parameters.
+    /// Keeps a finished analysis as the project's next saved run. Nothing is added when any saved run of the project
+    /// matches the same layouts and parameters.
     @discardableResult
     func recordAnalysis(
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
@@ -76,7 +76,7 @@ final class ProjectSession: ProjectSessionProtocol {
     private var savedAnalysesByProject: [UUID: [SavedAnalysis]] = [:]
     private let store: (any SavedAnalysisStoring)?
 
-    /// With a store, projects, drafts, and saved analyses are read from it now and written to it as they change.
+    /// With a store, projects, drafts, state, and saved analyses are read from it now and written to it as they change.
     init(store: (any SavedAnalysisStoring)? = nil) {
         self.store = store
         guard let store else { return }
@@ -91,6 +91,15 @@ final class ProjectSession: ProjectSessionProtocol {
                 let fallback = ProjectDraft(name: project.name, layouts: latest.layouts)
                 drafts[project.id] = fallback
                 activeLayoutIDs[project.id] = fallback.layouts.first?.id
+            }
+            if let state = store.loadState(for: project.id) {
+                if let eventParameters = state.eventParameters {
+                    eventParametersByProject[project.id] = eventParameters
+                    parametersByProject[project.id] = Self.modalParameters(from: eventParameters)
+                }
+                if let comparedIDs = state.comparedLayoutIDs {
+                    comparedLayoutIDs[project.id] = comparedIDs
+                }
             }
         }
     }
@@ -128,16 +137,8 @@ final class ProjectSession: ProjectSessionProtocol {
 
     func setEventParameters(_ parameters: EventParameters, for projectID: UUID) {
         eventParametersByProject[projectID] = parameters
-        parametersByProject[projectID] = ModalParameters(
-            totalVisitors: parameters.totalVisitors,
-            startMinutes: parameters.eventHours.startMinute,
-            endMinutes: parameters.eventHours.endMinute,
-            bazaarType: parameters.bazaarTypeID,
-            socializerPercent: Double(parameters.mix.share(for: "socializer")?.percent ?? 20),
-            familyMemberPercent: Double(parameters.mix.share(for: "family")?.percent ?? 50),
-            explorerPercent: Double(parameters.mix.share(for: "explorer")?.percent ?? 15),
-            purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 15)
-        )
+        parametersByProject[projectID] = Self.modalParameters(from: parameters)
+        persistState(for: projectID)
     }
 
     func deleteProject(id: UUID) {
@@ -157,6 +158,7 @@ final class ProjectSession: ProjectSessionProtocol {
         savedAnalysesByProject[id] = nil
         store?.saveProjects(projects)
         store?.deleteDraft(for: id)
+        store?.deleteState(for: id)
         store?.deleteAnalyses(of: id)
     }
 
@@ -255,6 +257,7 @@ final class ProjectSession: ProjectSessionProtocol {
             shown[index] = id
         }
         comparedLayoutIDs[projectID] = shown
+        persistState(for: projectID)
     }
 
     func isSimulating(_ projectID: UUID) -> Bool {
@@ -326,7 +329,7 @@ final class ProjectSession: ProjectSessionProtocol {
         layouts: [Layout], analyses: [LayoutAnalysis], parameters: EventParameters, peakMinute: Int, in projectID: UUID
     ) -> SavedAnalysis? {
         let existing = savedAnalyses(for: projectID)
-        if existing.last?.matches(parameters: parameters, layouts: layouts) == true { return nil }
+        if existing.contains(where: { $0.matches(parameters: parameters, layouts: layouts) }) { return nil }
         let saved = SavedAnalysis(
             number: (existing.map(\.number).max() ?? 0) + 1,
             parameters: parameters,
@@ -345,5 +348,28 @@ final class ProjectSession: ProjectSessionProtocol {
         } else {
             analysingProjects.remove(projectID)
         }
+    }
+}
+
+extension ProjectSession {
+    private static func modalParameters(from parameters: EventParameters) -> ModalParameters {
+        ModalParameters(
+            totalVisitors: parameters.totalVisitors,
+            startMinutes: parameters.eventHours.startMinute,
+            endMinutes: parameters.eventHours.endMinute,
+            bazaarType: parameters.bazaarTypeID,
+            socializerPercent: Double(parameters.mix.share(for: "socializer")?.percent ?? 20),
+            familyMemberPercent: Double(parameters.mix.share(for: "family")?.percent ?? 50),
+            explorerPercent: Double(parameters.mix.share(for: "explorer")?.percent ?? 15),
+            purposeBuyerPercent: Double(parameters.mix.share(for: "buyer")?.percent ?? 15)
+        )
+    }
+
+    private func persistState(for projectID: UUID) {
+        let state = ProjectSessionState(
+            eventParameters: eventParametersByProject[projectID],
+            comparedLayoutIDs: comparedLayoutIDs[projectID]
+        )
+        store?.saveState(state, for: projectID)
     }
 }

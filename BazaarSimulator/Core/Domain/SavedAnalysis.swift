@@ -36,7 +36,9 @@ struct SavedAnalysis: Identifiable, Codable, Hashable, Sendable {
 
     /// True when a run with these inputs would give the same analysis again.
     func matches(parameters: EventParameters, layouts: [Layout]) -> Bool {
-        self.parameters == parameters && self.layouts == layouts
+        self.parameters == parameters
+            && self.layouts.count == layouts.count
+            && Set(self.layouts) == Set(layouts)
     }
 
     static func == (lhs: SavedAnalysis, rhs: SavedAnalysis) -> Bool { lhs.id == rhs.id }
