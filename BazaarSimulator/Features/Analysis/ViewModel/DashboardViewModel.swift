@@ -490,6 +490,8 @@ extension DashboardViewModel {
     }
 
     func runSimulation() async {
+        // A start cancelled by a newer one before it ran would bump runCount and strand the live run's result.
+        guard !Task.isCancelled else { return }
         if case .saved(let id) = source {
             openSavedRun(id)
             return

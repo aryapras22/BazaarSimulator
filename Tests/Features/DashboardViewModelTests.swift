@@ -892,6 +892,28 @@ struct DashboardLoadRaceTests {
         #expect(session.savedAnalyses(for: project.id).first?.layouts == [edited])
     }
 
+    @Test("A run cancelled before it starts leaves the live run to finish")
+    func cancelledRunLeavesTheLiveOne() async {
+        let session = ProjectSession()
+        let project = session.createProject(named: "P")
+        session.setDraft(ProjectDraft(name: "P", layouts: [TestLayouts.hall(booths: 3)]), for: project.id)
+        let service = GatedAnalysisService(pausesFirstCall: true)
+        let model = DashboardViewModel(
+            projectID: project.id, session: session, analysisService: service, catalog: catalog
+        )
+        let live = Task { await model.runSimulation() }
+        await service.waitForFirstCall()
+
+        let stale = Task { await model.runSimulation() }
+        stale.cancel()
+        await stale.value
+        service.releaseFirstCall()
+        await live.value
+
+        #expect(model.phase == .ready)
+        #expect(model.simulationResult != nil)
+    }
+
     @Test("Changing parameters while a simulation is in flight re-runs instead of saving stale results")
     func parameterChangeDuringLoadRerunsAndRecordsMatchingParameters() async {
         let session = ProjectSession()
